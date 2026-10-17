@@ -23,6 +23,8 @@ const SHAPES := [
 	["mask_brow", "Mask with a brow", {"chin": 0.15, "forward": 0.12, "jaw": 0.2, "flat": 0.26, "cheek": 0.1, "tall": 0.03, "brow": 0.05}],
 	["mask_square", "Square jaw", {"chin": 0.13, "forward": 0.1, "jaw": 0.06, "flat": 0.28, "cheek": 0.02, "tall": 0.02, "brow": 0.02}],
 	["inside", "After Inside", {"chin": 0.15, "forward": 0.17, "jaw": 0.15, "flat": 0.25, "cheek": 0.11, "tall": 0.05, "brow": 0.02}],
+	["inside_round", "After Inside, rounder", {"chin": 0.15, "forward": 0.15, "jaw": 0.14, "flat": 0.07, "cheek": 0.07, "tall": 0.05, "brow": 0.03}],
+	["inside_full", "After Inside, full face", {"chin": 0.12, "forward": 0.13, "jaw": 0.1, "flat": 0.0, "cheek": 0.04, "tall": 0.04, "brow": 0.04}],
 ]
 
 ## Made heads, by name, so each is built once and shared by every figure.

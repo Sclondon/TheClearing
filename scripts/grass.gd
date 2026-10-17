@@ -21,11 +21,14 @@ const MAX_PUSHERS := 8
 
 ## Per quality: tufts per square metre at full density, blades in a tuft, segments in a blade,
 ## how far full density reaches, where the grass has gone entirely, the least share kept far
-## off, and whether trails are drawn.
+## off, past where far squares draw the plainer tuft, and whether trails are drawn. (Thinning
+## and the plainer tuft are kept out past where the camera of a third-person game looks, so
+## that what changes as he walks is small on the screen and in the haze: tufts that rise
+## out of the ground nearer than that are seen to.)
 const PRESETS := {
-	Quality.LOW: {"tufts": 2.6, "blades": 7, "segments": 2, "lod_near": 6.0, "fade_end": 34.0, "keep_min": 0.08, "trails": false},
-	Quality.MEDIUM: {"tufts": 3.6, "blades": 9, "segments": 3, "lod_near": 8.0, "fade_end": 44.0, "keep_min": 0.06, "trails": true},
-	Quality.HIGH: {"tufts": 5.0, "blades": 11, "segments": 4, "lod_near": 11.0, "fade_end": 58.0, "keep_min": 0.06, "trails": true},
+	Quality.LOW: {"tufts": 2.6, "blades": 6, "segments": 2, "lod_near": 12.0, "fade_end": 50.0, "keep_min": 0.15, "far_mesh": 28.0, "trails": false},
+	Quality.MEDIUM: {"tufts": 3.6, "blades": 8, "segments": 3, "lod_near": 18.0, "fade_end": 68.0, "keep_min": 0.15, "far_mesh": 40.0, "trails": true},
+	Quality.HIGH: {"tufts": 5.0, "blades": 10, "segments": 4, "lod_near": 24.0, "fade_end": 85.0, "keep_min": 0.15, "far_mesh": 50.0, "trails": true},
 }
 
 ## The quality every field builds at. Change it with set_quality() to rebuild fields already made.
@@ -167,7 +170,8 @@ void vertex() {
 
 	float d = length(CAMERA_POSITION_WORLD - root);
 	float keep = keep_at(d);
-	float shown = clamp((keep * 1.15 - own.w) / max(0.15 * keep, 0.0001), 0.0, 1.0);
+	// (over a wide band, so that a tuft rises slowly as it nears, not all at once)
+	float shown = clamp((keep * 1.15 - own.w) / max(0.6 * keep, 0.0001), 0.0, 1.0);
 	float wide = clamp(1.0 / max(keep, 0.01), 1.0, 3.0);
 
 	// Lean out of the tuft, then wind: gusts rolling through in world space, and flutter.
@@ -455,7 +459,7 @@ func _process(delta: float) -> void:
 			var share := minf(_keep(dist) * 1.15, 1.0)
 			# Far squares draw each blade as one triangle.
 			if c.grass != null:
-				var wanted: Mesh = c.meshes[1 if dist > _preset.lod_near * 1.5 else 0]
+				var wanted: Mesh = c.meshes[1 if dist > _preset.far_mesh else 0]
 				if c.grass.multimesh.mesh != wanted:
 					c.grass.multimesh.mesh = wanted
 			for mmi: MultiMeshInstance3D in c.parts:
