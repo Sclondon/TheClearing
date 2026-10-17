@@ -1,0 +1,60 @@
+class_name RemotePlayer
+extends Figure
+## Somebody else in the maze: a figure on the boy's rig that follows where their
+## game says they are. Their own game moves them; this only chases its news, so
+## that between packets they walk on smoothly, and a long way off they are put
+## straight there.
+
+## Their seat in the room.
+var slot := 0
+var escaped := false
+
+var _target := Vector3.ZERO
+var _target_velocity := Vector3.ZERO
+var _target_yaw := 0.0
+var _grounded := true
+var _heard := false
+
+
+func _init() -> void:
+	super()
+	# They pass through everyone, and only the floor and walls stop them.
+	collision_layer = 0
+	collision_mask = 1
+	walk_speed = 1.6
+	run_speed = 4.5
+
+
+## Their latest news: where they are, how fast they are going, which way they
+## face, and whether they are on the ground.
+func hear(at: Vector3, moving: Vector3, yaw: float, grounded: bool) -> void:
+	_target = at
+	_target_velocity = moving
+	_target_yaw = yaw
+	_grounded = grounded
+	if not _heard or global_position.distance_to(at) > 6.0:
+		place(at, yaw)
+	_heard = true
+
+
+func _physics_process(delta: float) -> void:
+	if not _heard:
+		return
+	# Carry on as they were going, and close the gap to where they were last heard of.
+	_target += _target_velocity * delta
+	var wish := _target_velocity + (_target - global_position) * 6.0
+	velocity = wish
+	if _grounded and is_on_floor():
+		velocity.y = minf(velocity.y, 0.0)
+	move_and_slide()
+	# (a wall between where they are drawn and where they are is no reason to lag behind)
+	if global_position.distance_to(_target) > 2.5:
+		global_position = _target
+	_prev_pos = _curr_pos
+	_curr_pos = global_position
+
+
+func _process(delta: float) -> void:
+	super(delta)
+	if Vector2(_target_velocity.x, _target_velocity.z).length() < 0.3:
+		facing_yaw = lerp_angle(facing_yaw, _target_yaw, 1.0 - exp(-8.0 * delta))
