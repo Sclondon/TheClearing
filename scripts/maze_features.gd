@@ -40,6 +40,8 @@ var terraces: Array = []
 var climbs: Array[IvyClimb] = []
 var vines: Array[Vine] = []
 var bridges: Array[RopeBridge] = []
+## Where the lower terraces stand, in the world's x and z (for keeping grass off them).
+var footprints: Array[Rect2] = []
 
 var _rng := RandomNumberGenerator.new()
 var _taken := {}
@@ -126,7 +128,9 @@ func _terrace(cell: Vector2i, step: Vector2i, upper: bool, along: float, lower_t
 	var size_for := func(long: float, deep: float, high: float) -> Vector3:
 		return (side.abs() * long + s.abs() * deep) + Vector3.UP * high
 	var low_middle := _edge(cell, step, LOWER.y * 0.5, 0.0) + Vector3.UP * LOWER.x * 0.5
-	builder._solid(lower_tool, body, low_middle, size_for.call(length, LOWER.y, LOWER.x))
+	var low_size: Vector3 = size_for.call(length, LOWER.y, LOWER.x)
+	builder._solid(lower_tool, body, low_middle, low_size)
+	footprints.append(Rect2(low_middle.x - low_size.x * 0.5, low_middle.z - low_size.z * 0.5, low_size.x, low_size.z))
 	# Ivy up its face, somewhere along it.
 	var ivy_along := _rng.randf_range(-0.3, 0.3) * length
 	_climb(_edge(cell, step, LOWER.y, ivy_along), step, LOWER.x)

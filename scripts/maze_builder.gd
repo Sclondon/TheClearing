@@ -40,6 +40,7 @@ func build(plan: Maze) -> void:
 	features.name = "Features"
 	add_child(features)
 	features.build(maze, self)
+	_grass()
 	_ground()
 	_trees()
 	_beacon()
@@ -315,3 +316,27 @@ func _beacon() -> void:
 	lamp.position.y = 1.5
 	beacon.add_child(lamp)
 	add_child(beacon)
+
+
+## Real grass over the clearing (GameCommon's Grass), up to the foot of its wall
+## and round the terraces, but not under them. The ground shader's grass goes on
+## under it and beyond, so its edge is not seen.
+func _grass() -> void:
+	var half := maze.clearing * Maze.CELL * 0.5 - RING_THICK * 0.5 - FOOT.x - 0.2
+	var footprints: Array[Rect2] = features.footprints
+	Grass.field(self, Rect2(-half, -half, half * 2.0, half * 2.0), 1.0, {
+		"mask": func(p: Vector2) -> float:
+			for footprint: Rect2 in footprints:
+				if footprint.grow(0.25).has_point(p):
+					return 0.0
+			return 1.0,
+		"ground": Color(0.13, 0.2, 0.09),
+		# (knee high, dark and damp: the clearing is as grey as the rest)
+		"blade_height": 0.4,
+		"body": Color(0.14, 0.22, 0.09),
+		"tip": Color(0.3, 0.37, 0.17),
+		"dry": Color(0.36, 0.35, 0.2),
+		"translucency": 0.08,
+		"flowers": 0.03,
+		"seed": maze.maze_seed % 1000,
+	})

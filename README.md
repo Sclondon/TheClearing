@@ -35,7 +35,8 @@ https://sclondon.github.io/TheClearing/build/.
   rings 46 m and 4.2 thick, each with a footing and a cornice, and square piers standing above them where walls
   meet; all drawn as two meshes, with a box for each piece to bump into. The next ring's outside wall stands
   unbroken beyond the last ring built, with open ground up to it. The ground; stands of pines in the clearing
-  and a few past the last ring (GameCommon's pine-tree); the light past the exit.
+  and a few past the last ring (GameCommon's pine-tree); real grass over the clearing (GameCommon's
+  grass: knee-high blades that the wind moves and the players push aside); the light past the exit.
 - `scripts/maze_features.gd` (`MazeFeatures`): the ways up, chosen from the seed. Terraces of stone against the walls
   like steps for something huge (a lower one 6.5 m up and 3 m deep, often an upper one at 13 m set back above
   it), with climbable ivy up their faces (`scripts/ivy_climb.gd`, `IvyClimb`, a `Ladder`) and sometimes on up to the
@@ -61,7 +62,7 @@ https://sclondon.github.io/TheClearing/build/.
   phone keyboard), the lobby, the HUD, round over, and the score sent to the arcade.
 - From GameCommon (`C:\Projects\GameCommon`): `godot/character-controller` (player.tscn, `scripts/player.gd`,
   `character_rig.gd`, `character_look.gd`, `follow_camera.gd`, `touch_controls.gd`, `toon.gd`, `figure.gd`,
-  models/boy*.glb and the rest listed in its FILES.txt) and `godot/pine-tree`. Copies: change them here if need
+  models/boy*.glb and the rest listed in its FILES.txt), `godot/pine-tree` and `godot/grass`. Copies: change them here if need
   be, and pull good changes back with `sh /c/Projects/GameCommon/kit.sh pull`.
 
 ## Commands
@@ -87,6 +88,6 @@ Flags (command line `-- --name=value` or the page's `?name=value`): `server=<url
 ## Not done yet
 
 Rings past the first; things that hunt you (Outside's snake and mummies, and a Griever-like thing of meat on
-metal legs, are being made); real grass (a GameCommon component is ready to put in);
+metal legs, are being made);
 walls that move, doors that shut at night, a map, sound and music, names, and reconnecting mid-round past the
 server's 90 seconds.
