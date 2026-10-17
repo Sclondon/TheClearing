@@ -257,7 +257,7 @@ var look := {}
 @export_range(-1, 1) var favoured_leg := -1
 ## Flat out and sliding, a hand clapped to his cap (Outside's boy). Off, he
 ## sprints as Thomas does in The Maze Runner: both arms pumping hard, hands flat.
-@export var cap_hand := false
+@export var cap_hand := true
 
 
 ## Something that hangs from the figure and swings behind its movement: a bone

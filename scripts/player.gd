@@ -107,11 +107,11 @@ static var input_blocked := false
 ## Kept at a full run for `sprint_delay` seconds, he breaks into a sprint (if
 ## `auto_sprint`). Holding sprint (Shift, LB or LT, the touch controls' sprint)
 ## has him sprint at once, at any push of the stick past a walk.
-@export var sprint_speed := 6.3
+@export var sprint_speed := 5.6
 @export var sprint_delay := 0.8
 ## Whether a full push held for `sprint_delay` sprints by itself. (The Clearing: off,
 ## sprint is a button of its own. GameCommon and Outside: on.)
-@export var auto_sprint := false
+@export var auto_sprint := true
 @export var push_speed := 1.15
 ## Stick deflection at which the walk starts turning into a run.
 @export_range(0.0, 1.0) var run_threshold := 0.55

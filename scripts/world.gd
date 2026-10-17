@@ -56,6 +56,10 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool) -> vo
 			player.global_position = spawn(seat)
 			player.rotation.y = spawn_yaw(seat)
 			Looks.apply(player.get_node("Rig") as CharacterRig, look)
+			# (sprinting is a button of its own here, and an all-out run after The Maze Runner)
+			player.auto_sprint = false
+			player.sprint_speed = 6.3
+			(player.get_node("Rig") as CharacterRig).cap_hand = false
 		else:
 			var other := RemotePlayer.new()
 			other.name = "Remote%d" % seat
@@ -65,6 +69,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool) -> vo
 			add_child(other)
 			other.place(spawn(seat), spawn_yaw(seat))
 			Looks.apply(other.rig, look)
+			other.rig.cap_hand = false
 			remotes[seat] = other
 
 	camera = FollowCamera.new()
