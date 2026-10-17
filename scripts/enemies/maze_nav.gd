@@ -1,0 +1,261 @@
+class_name MazeNav
+extends RefCounted
+## Finding the way through a Maze (scripts/maze.gd) for the things that hunt in
+## it, from the plan alone: no navmesh and no physics. Everything is on the
+## grid of cells and the walls between them (`Maze.blocked`).
+##
+## - `field(goal)` is how many steps every cell is from `goal` (a breadth-first
+##   walk out from it). Fields are kept for the last few goals asked for, so a
+##   pack after the same player shares one.
+## - `waypoint(from, goal, clearance)` is where to make for next: the furthest
+##   cell along the way to `goal` that can be reached in a straight line with
+##   `clearance` metres to spare from any wall's face, or `goal` itself when it can.
+##   So they cut corners as far as the walls let them, not cell to cell.
+## - `sees(a, b)` is a line of sight through the passages (walls are all far
+##   taller than anyone), and `clear_of_walls(point, margin)` whether a point is that
+##   far from every wall.
+## - `wander(from, rng)` picks somewhere a few turns off to go when there is
+##   nobody to go after.
+##
+## `avoid_clearing` (on by default) keeps them out of the clearing: they come
+## to the gates of it and no further. A player in there draws them to the
+## nearest gate.
+##
+## The walls stand on the lines between cells, as thick as MazeBuilder makes
+## them (WALL_THICK, RING_THICK between rings), with a footing (FOOT.x) further
+## out at their base and a pier (PIER) at each turn. Ledges and the like that
+## come later do not matter here: only the plan does.
+
+## How far apart the points tested along a line are.
+const SAMPLE := 0.6
+## How many goals' fields are kept.
+const KEEP := 6
+
+var maze: Maze
+var avoid_clearing := true
+
+var _fields := {}
+var _order: Array[Vector2i] = []
+
+
+func _init(plan: Maze = null, keep_out_of_clearing := true) -> void:
+	maze = plan
+	avoid_clearing = keep_out_of_clearing
+
+
+## Whether one of them may be in this cell at all.
+func allowed(cell: Vector2i) -> bool:
+	return maze.inside(cell) and not (avoid_clearing and maze.in_clearing(cell))
+
+
+## Steps from every cell to `goal` (-1 where it cannot be got to from there).
+## With `avoid_clearing`, a goal in the clearing is the whole clearing, reached
+## at its gates; otherwise no way goes through the clearing.
+func field(goal: Vector2i) -> PackedInt32Array:
+	if _fields.has(goal):
+		return _fields[goal]
+	var size := maze.size
+	var steps := PackedInt32Array()
+	steps.resize(size * size)
+	steps.fill(-1)
+	var queue: Array[Vector2i] = []
+	if maze.inside(goal):
+		if avoid_clearing and maze.in_clearing(goal):
+			for i in size * size:
+				var cell := Vector2i(i % size, i / size)
+				if maze.in_clearing(cell):
+					steps[i] = 0
+					queue.append(cell)
+		else:
+			steps[maze.index(goal)] = 0
+			queue.append(goal)
+	var head := 0
+	while head < queue.size():
+		var cell: Vector2i = queue[head]
+		head += 1
+		var here := steps[maze.index(cell)]
+		for step: Vector2i in Maze.STEPS:
+			var next := cell + step
+			if not allowed(next) or steps[maze.index(next)] != -1 or maze.blocked(cell, step):
+				continue
+			steps[maze.index(next)] = here + 1
+			queue.append(next)
+	_fields[goal] = steps
+	_order.append(goal)
+	if _order.size() > KEEP:
+		_fields.erase(_order.pop_front())
+	return steps
+
+
+## Steps from `from` to `goal` round the walls (-1: no way).
+func distance(from: Vector2i, goal: Vector2i) -> int:
+	if not maze.inside(from):
+		return -1
+	return field(goal)[maze.index(from)]
+
+
+## The next cell from `from` on the way to `goal` (`from` itself if it is there, or there is no way).
+func next_cell(from: Vector2i, goal: Vector2i) -> Vector2i:
+	if not maze.inside(from):
+		return from
+	var steps := field(goal)
+	var best := steps[maze.index(from)]
+	var pick := from
+	for step: Vector2i in Maze.STEPS:
+		var next := from + step
+		if not allowed(next) or maze.blocked(from, step):
+			continue
+		var there := steps[maze.index(next)]
+		if there != -1 and (best == -1 or there < best):
+			best = there
+			pick = next
+	return pick
+
+
+## The cells from `from` to `goal`, both included ([] if there is no way).
+func path(from: Vector2i, goal: Vector2i) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = [from]
+	var at := from
+	for i in maze.size * maze.size:
+		var next := next_cell(at, goal)
+		if next == at:
+			break
+		cells.append(next)
+		at = next
+	if distance(from, goal) != 0 and cells.size() == 1:
+		return []
+	return cells
+
+
+## Where to make for next, from `from` on the way to `goal`, keeping `clearance`
+## metres off the walls: `goal` itself if it is in a clear straight line (and
+## somewhere it may go), else the furthest of the next `look` cells along the
+## way that is, else the middle of the cell it is in.
+func waypoint(from: Vector3, goal: Vector3, clearance: float, look := 5) -> Vector3:
+	var here := maze.cell_at(from)
+	var there := maze.cell_at(goal)
+	goal.y = from.y
+	if allowed(there) and line_free(from, goal, clearance):
+		return goal
+	var at := here
+	var best := maze.world(here)
+	best.y = from.y
+	for i in look:
+		var next := next_cell(at, there)
+		if next == at:
+			break
+		at = next
+		var point := maze.world(at)
+		point.y = from.y
+		if not line_free(from, point, clearance):
+			break
+		best = point
+	# (stood in its own cell's middle already, with the next not in sight: go for the next anyway)
+	if Vector2(best.x - from.x, best.z - from.z).length() < 0.3:
+		var next := next_cell(here, there)
+		best = maze.world(next)
+		best.y = from.y
+	return best
+
+
+## Whether a point is at least `margin` from the face of every wall, by the
+## plan (a wall's face: its middle line and half its thickness; the walls
+## between rings are thicker). Near a corner where any wall meets, the pier
+## that stands there counts.
+func clear_of_walls(point: Vector3, margin: float) -> bool:
+	var cell := maze.cell_at(point)
+	var middle := maze.world(cell)
+	var half := Maze.CELL * 0.5
+	var off := Vector2(point.x - middle.x, point.z - middle.z)
+	for step: Vector2i in Maze.STEPS:
+		var along := off.x * step.x + off.y * step.y
+		if along > half - _wall_half(cell, step) - margin and maze.blocked(cell, step):
+			return false
+	# Near a corner: any wall that meets there (a pier stands at every turn).
+	var pier := (MazeBuilder.WALL_THICK + MazeBuilder.PIER.x) * 0.5 + margin
+	if absf(off.x) > half - pier and absf(off.y) > half - pier:
+		var sx := 1 if off.x > 0.0 else -1
+		var sy := 1 if off.y > 0.0 else -1
+		var side := cell + Vector2i(sx, 0)
+		var below := cell + Vector2i(0, sy)
+		if maze.blocked(cell, Vector2i(sx, 0)) or maze.blocked(cell, Vector2i(0, sy)) \
+				or (maze.inside(side) and maze.blocked(side, Vector2i(0, sy))) or (maze.inside(below) and maze.blocked(below, Vector2i(sx, 0))):
+			return false
+	return true
+
+
+## Half the thickness of the wall (if there is one) on a cell's `step` side.
+func _wall_half(cell: Vector2i, step: Vector2i) -> float:
+	if maze.inside(cell + step) and maze.ring_wall(cell, step):
+		return MazeBuilder.RING_THICK * 0.5
+	if not maze.inside(cell + step):
+		return MazeBuilder.RING_THICK * 0.5
+	return MazeBuilder.WALL_THICK * 0.5
+
+
+## Whether a straight line from `a` to `b` stays `margin` off the walls' faces.
+func line_free(a: Vector3, b: Vector3, margin: float) -> bool:
+	var flat := Vector2(b.x - a.x, b.z - a.z)
+	var count := maxi(ceili(flat.length() / SAMPLE), 1)
+	for k in count + 1:
+		var point := a.lerp(b, float(k) / count)
+		if not maze.inside(maze.cell_at(point)):
+			return false
+		if not clear_of_walls(point, margin):
+			return false
+	return true
+
+
+## Whether there is a line of sight from `a` to `b` through the passages, no
+## more than `reach` metres long (the walls are far taller than anyone).
+func sees(a: Vector3, b: Vector3, reach := 1000.0) -> bool:
+	if Vector2(b.x - a.x, b.z - a.z).length() > reach:
+		return false
+	return line_free(a, b, 0.0)
+
+
+## How far from a wall's face something `radius` round must keep: its footing and `radius` more.
+static func clearance_for(radius: float) -> float:
+	return MazeBuilder.FOOT.x + radius
+
+
+## Somewhere to go: a cell between `near` and `far` steps away by the passages
+## (or the furthest there is), chosen by `rng`.
+func wander(from: Vector2i, rng: RandomNumberGenerator, near := 3, far := 9) -> Vector2i:
+	var steps := field(from)
+	var choices: Array[Vector2i] = []
+	var furthest := from
+	var most := 0
+	for i in steps.size():
+		var d := steps[i]
+		if d <= 0:
+			continue
+		var cell := Vector2i(i % maze.size, i / maze.size)
+		if d >= near and d <= far:
+			choices.append(cell)
+		if d > most:
+			most = d
+			furthest = cell
+	if choices.is_empty():
+		return furthest
+	return choices[rng.randi_range(0, choices.size() - 1)]
+
+
+## Cells where something may be put: in a passage (not the clearing), at least
+## `away` steps from the clearing, as Maze.distance counts them.
+func lairs(away := 6) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	for i in maze.size * maze.size:
+		var cell := Vector2i(i % maze.size, i / maze.size)
+		if allowed(cell) and maze.distance.size() > i and maze.distance[i] >= away:
+			cells.append(cell)
+	return cells
+
+
+## Whether a cell is a dead end (three walls round it).
+func dead_end(cell: Vector2i) -> bool:
+	var walls := 0
+	for step: Vector2i in Maze.STEPS:
+		if maze.blocked(cell, step):
+			walls += 1
+	return walls >= 3
