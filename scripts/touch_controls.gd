@@ -123,22 +123,26 @@ func _button_radius() -> float:
 	return stick_radius * 0.58
 
 
-## Duck sits under the thumb's resting place, act beside it.
+## The buttons sit in the bottom right corner, measured from it in button
+## sizes so that they are on the screen either way up: duck under the thumb's
+## resting place, act beside it, jump above them, sprint left of jump.
 func _duck_centre() -> Vector2:
-	return Vector2(size.x * 0.93, size.y - size.x * 0.055)
+	var r := _button_radius()
+	return Vector2(size.x - r * 1.25, size.y - r * 1.3)
 
 
 func _act_centre() -> Vector2:
-	return Vector2(size.x * 0.795, size.y - size.x * 0.055)
+	return _duck_centre() - Vector2(_button_radius() * 2.3, 0.0)
 
 
 func _jump_centre() -> Vector2:
-	return Vector2(size.x * 0.87, size.y - size.x * 0.17)
+	return (_duck_centre() + _act_centre()) * 0.5 - Vector2(0.0, _button_radius() * 2.15)
 
 
 ## Sprint: left of jump, at its height, out of the stick's half of the screen.
 func _sprint_centre() -> Vector2:
-	return Vector2(maxf(size.x * 0.665, size.x * stick_zone + _button_radius() * 1.15), size.y - size.x * 0.17)
+	var beside := _jump_centre().x - stick_radius * 0.62 - _button_radius() * 1.25
+	return Vector2(maxf(beside, size.x * stick_zone + _button_radius() * 1.15), _jump_centre().y)
 
 
 ## Where the mark for turning the camera is drawn.
