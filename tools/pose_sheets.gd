@@ -290,6 +290,7 @@ func place(at: Vector3, yaw: float) -> void:
 	touch.move = Vector2.ZERO
 	touch.duck_held = false
 	touch.act_held = false
+	touch.sprint_held = false
 	touch.jump_held = false
 	player.state = Player.State.FREE
 	player.global_position = at
@@ -808,6 +809,41 @@ func walk() -> void:
 
 
 func sprint() -> void:
+	# (sprint held, as the button or Shift would)
+	await strip_sprinting("sprint", Vector3(1, 0, 0), 70, 3, 9, Vector3(PI * 0.5, 0.05, 3.6))
+	await strip_sprinting("sprint_front", Vector3(1, 0, 0), 70, 4, 6, Vector3(0.5, 0.1, 3.6))
+	await strip_sprinting("sprint_fine", Vector3(1, 0, 0), 70, 2, 12, Vector3(PI * 0.5, 0.05, 3.6))
+	# Into it from a standstill, and pulled up out of it
+	place(Vector3(0, 0.05, 0), PI * 0.5)
+	view = Vector3(PI * 0.5, 0.05, 4.2)
+	await frames(10)
+	touch.sprint_held = true
+	for i in 12:
+		await frames(3, Vector3(1, 0, 0))
+		await snap()
+	sheet("sprint_start", 6)
+	await frames(40, Vector3(1, 0, 0))
+	touch.move = Vector2.ZERO
+	touch.sprint_held = false
+	for i in 18:
+		await frames(2)
+		await snap()
+	sheet("sprint_stop", 6)
+
+
+func strip_sprinting(name: String, heading: Vector3, lead: int, every: int, count: int, v: Vector3) -> void:
+	place(Vector3(0, 0.05, 0), atan2(heading.x, heading.z))
+	touch.sprint_held = true
+	view = v
+	await frames(lead, heading)
+	for i in count:
+		await frames(every, heading)
+		await snap()
+	touch.sprint_held = false
+	sheet(name)
+
+
+func sprint_old() -> void:
 	await strip("sprint", Vector3(1, 0, 0), 70, 3, 9, Vector3(PI * 0.5, 0.05, 3.6))
 	await strip("sprint_front", Vector3(1, 0, 0), 70, 4, 6, Vector3(0.5, 0.1, 3.6))
 
@@ -831,6 +867,7 @@ func cap() -> void:
 
 
 func flatout() -> void:
+	touch.sprint_held = true
 	# Kept at a full run until he sprints, a hand on his cap
 	await strip("flatout", Vector3(1, 0, 0), 150, 3, 9, Vector3(PI * 0.5, 0.05, 3.6))
 	await strip("flatout_front", Vector3(1, 0, 0), 150, 4, 6, Vector3(0.6, 0.12, 3.2))

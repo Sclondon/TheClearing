@@ -6,6 +6,11 @@ extends Control
 ## the right turns the camera: a mark there shows where, and two quick taps
 ## bring the camera round behind him.
 ##
+## Sprint, two ways, neither of which takes the right thumb off jump for long:
+## push the stick on out past its rim (a second, dashed ring shows where) and
+## he sprints for as long as the thumb is out there; or tap the SPRINT button
+## (left of jump) and he sprints until it is tapped again or the stick is let go.
+##
 ## The stick appears wherever the thumb lands and its base trails the thumb when
 ## dragged past the rim, so the player never has to look for it or re-centre.
 
@@ -26,6 +31,14 @@ signal look_reset
 var move := Vector2.ZERO
 var jump_held := false
 var duck_held := false
+## Sprinting (see the class notes): the button's toggle, or the stick pushed past its rim.
+var sprint_held: bool:
+	get:
+		return _sprint_on or _rim
+	set(value):
+		_sprint_on = value
+## How far past its rim the stick must be pushed to sprint, as a share of `stick_radius`.
+@export var sprint_rim := 1.28
 ## The hand: pressed (`act_pressed`) it picks up, throws and so on; held, it climbs a rope.
 var act_held := false
 ## Set by an orbiting camera: drags on the right of the screen (off the
@@ -36,6 +49,12 @@ var _stick_index := -1
 var _jump_index := -1
 var _duck_index := -1
 var _act_index := -1
+var _sprint_index := -1
+## The button's toggle, and the stick out past its rim.
+var _sprint_on := false
+var _rim := false
+var _sprint_alpha := 0.0
+var _rim_alpha := 0.0
 var _look_index := -1
 var _look := Vector2.ZERO
 ## The touch that is turning the camera: where and when it came down, how far
@@ -96,7 +115,7 @@ func _input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	# Touches never get a release event if the app loses focus mid-press.
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
-		for index: int in [_stick_index, _jump_index, _duck_index, _act_index, _look_index]:
+		for index: int in [_stick_index, _jump_index, _duck_index, _act_index, _look_index, _sprint_index]:
 			_release(index)
 
 
@@ -117,6 +136,11 @@ func _jump_centre() -> Vector2:
 	return Vector2(size.x * 0.87, size.y - size.x * 0.17)
 
 
+## Sprint: left of jump, at its height, out of the stick's half of the screen.
+func _sprint_centre() -> Vector2:
+	return Vector2(maxf(size.x * 0.665, size.x * stick_zone + _button_radius() * 1.15), size.y - size.x * 0.17)
+
+
 ## Where the mark for turning the camera is drawn.
 func _look_centre() -> Vector2:
 	return Vector2(size.x * 0.72, size.y * 0.3)
@@ -135,6 +159,10 @@ func _press(index: int, pos: Vector2) -> void:
 			_stick_origin = pos
 			_stick_knob = pos
 			move = Vector2.ZERO
+	elif pos.distance_to(_sprint_centre()) < reach:
+		if _sprint_index == -1:
+			_sprint_index = index
+			_sprint_on = not _sprint_on
 	elif pos.distance_to(_duck_centre()) < reach:
 		if _duck_index == -1:
 			_duck_index = index
@@ -161,11 +189,16 @@ func _release(index: int) -> void:
 		return
 	if index == _stick_index:
 		_stick_index = -1
+		# (letting go of the stick is stopping: the sprint goes with it)
+		_sprint_on = false
+		_rim = false
 		move = Vector2.ZERO
 	elif index == _jump_index:
 		_jump_index = -1
 		jump_held = false
 		jump_released.emit()
+	elif index == _sprint_index:
+		_sprint_index = -1
 	elif index == _duck_index:
 		_duck_index = -1
 		duck_held = false
@@ -186,11 +219,17 @@ func _release(index: int) -> void:
 
 func _drag(pos: Vector2) -> void:
 	var offset := pos - _stick_origin
-	var distance := offset.length()
-	if distance > stick_radius:
-		_stick_origin = pos - offset / distance * stick_radius
+	var out := offset.length()
+	# Past the rim (by a little more to start than to stop) he sprints; the base
+	# only trails the thumb once it is out beyond the sprinting ring.
+	_rim = out > stick_radius * sprint_rim if not _rim else out > stick_radius * 1.05
+	var trail := stick_radius * (sprint_rim + 0.22)
+	if out > trail:
+		_stick_origin = pos - offset / out * trail
 		offset = pos - _stick_origin
-		distance = stick_radius
+	var distance := minf(offset.length(), stick_radius)
+	if offset.length() > stick_radius:
+		offset = offset / offset.length() * stick_radius
 	_stick_knob = pos
 	var strength := inverse_lerp(dead_zone, 1.0, distance / stick_radius)
 	move = offset / distance * clampf(strength, 0.0, 1.0) if distance > 0.0 else Vector2.ZERO
@@ -202,6 +241,8 @@ func _process(delta: float) -> void:
 	_jump_alpha = lerpf(_jump_alpha, 1.0 if jump_held else 0.0, blend)
 	_duck_alpha = lerpf(_duck_alpha, 1.0 if duck_held else 0.0, blend)
 	_act_alpha = lerpf(_act_alpha, 1.0 if _act_index != -1 else 0.0, blend)
+	_sprint_alpha = lerpf(_sprint_alpha, 1.0 if sprint_held else 0.0, blend)
+	_rim_alpha = lerpf(_rim_alpha, 1.0 if _stick_index != -1 else 0.0, blend)
 	_look_alpha = lerpf(_look_alpha, 1.0 if _look_index != -1 else 0.0, blend)
 	queue_redraw()
 
@@ -216,6 +257,12 @@ func _draw() -> void:
 	var knob := _stick_knob if _stick_index != -1 else rest
 	draw_circle(origin, stick_radius, Color(0.0, 0.0, 0.0, lerpf(0.1, 0.16, _stick_alpha)))
 	draw_arc(origin, stick_radius, 0.0, TAU, 48, Color(tint, lerpf(0.45, 0.7, _stick_alpha)), 2.5, true)
+	# (the sprinting ring, dashed, out past the rim: it lights up while he sprints)
+	if _rim_alpha > 0.01:
+		var ring := stick_radius * sprint_rim
+		for k in 24:
+			var a := TAU * k / 24.0
+			draw_arc(origin, ring, a, a + TAU / 48.0, 4, Color(tint, lerpf(0.3, 0.95, _sprint_alpha) * _rim_alpha), lerpf(2.0, 4.0, _sprint_alpha), true)
 	draw_circle(knob, stick_radius * 0.36, Color(0.0, 0.0, 0.0, 0.22))
 	draw_circle(knob, stick_radius * 0.33, Color(tint, lerpf(0.4, 0.7, _stick_alpha)))
 
@@ -223,14 +270,29 @@ func _draw() -> void:
 	_draw_button(jump_centre, stick_radius * 0.62, _jump_alpha)
 	_draw_button(_duck_centre(), _button_radius(), _duck_alpha)
 	_draw_button(_act_centre(), _button_radius(), _act_alpha)
+	_draw_button(_sprint_centre(), _button_radius(), _sprint_alpha)
 	var mark := Color(tint, 0.9)
 	# Jump: a chevron pointing up. Duck: one pointing down. Grab: an open hand.
 	draw_polyline([jump_centre + Vector2(-17.0, 8.0), jump_centre + Vector2(0.0, -11.0), jump_centre + Vector2(17.0, 8.0)], mark, 3.5, true)
 	var duck := _duck_centre()
 	draw_polyline([duck + Vector2(-13.0, -6.0), duck + Vector2(0.0, 8.0), duck + Vector2(13.0, -6.0)], mark, 3.5, true)
 	_draw_hand(_act_centre(), _button_radius() * 0.5, mark)
+	_draw_sprint(_sprint_centre(), _button_radius(), mark)
 	if look_enabled:
 		_draw_look(_look_centre(), _button_radius() * 0.8)
+
+
+# Sprint: two chevrons leaning forward, like speed lines, and the word under them.
+func _draw_sprint(centre: Vector2, radius: float, colour: Color) -> void:
+	var w := radius * 0.26
+	for k in 2:
+		var at := centre + Vector2(-radius * 0.2 + k * radius * 0.32, -radius * 0.14)
+		draw_polyline([at + Vector2(-w * 0.55, -w), at + Vector2(w * 0.55, 0.0), at + Vector2(-w * 0.55, w)], colour, 3.5, true)
+	var font := get_theme_default_font()
+	var big := int(radius * 0.27)
+	var words := "SPRINT"
+	var wide := font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1.0, big).x
+	draw_string(font, centre + Vector2(-wide * 0.5, radius * 0.55), words, HORIZONTAL_ALIGNMENT_LEFT, -1.0, big, colour)
 
 
 # An open hand, palm towards the eye, about `reach` from its middle to a fingertip.

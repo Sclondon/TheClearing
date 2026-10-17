@@ -104,9 +104,14 @@ static var input_blocked := false
 @export_group("Ground")
 @export var walk_speed := 1.6
 @export var run_speed := 4.4
-## Kept at a full run for `sprint_delay` seconds, he breaks into a sprint.
-@export var sprint_speed := 5.6
+## Kept at a full run for `sprint_delay` seconds, he breaks into a sprint (if
+## `auto_sprint`). Holding sprint (Shift, LB or LT, the touch controls' sprint)
+## has him sprint at once, at any push of the stick past a walk.
+@export var sprint_speed := 6.3
 @export var sprint_delay := 0.8
+## Whether a full push held for `sprint_delay` sprints by itself. (The Clearing: off,
+## sprint is a button of its own. GameCommon and Outside: on.)
+@export var auto_sprint := false
 @export var push_speed := 1.15
 ## Stick deflection at which the walk starts turning into a run.
 @export_range(0.0, 1.0) var run_threshold := 0.55
@@ -944,12 +949,13 @@ func _move_horizontal(strength: float, grounded: bool, delta: float) -> void:
 	var current := Vector3(velocity.x, 0.0, velocity.z)
 	# Running flat out with nothing in his way for a moment, he sprints. (In
 	# the air he neither gets there nor loses it.)
-	var flat_out := strength > 0.95 and not is_pushing and not is_ducking and landing_progress >= 1.0 and current.length() > run_speed * 0.85 and wade < 0.25 and not is_spinning and gun_raise < 0.5
+	var called := _is_sprint_held() and strength > run_threshold
+	var flat_out := (strength > 0.95 and auto_sprint or called) and not is_pushing and not is_ducking and landing_progress >= 1.0 and (current.length() > run_speed * 0.85 or called) and wade < 0.25 and not is_spinning and gun_raise < 0.5
 	if not flat_out:
 		_run_time = 0.0
 	elif grounded:
 		_run_time += delta
-	is_sprinting = _run_time > sprint_delay
+	is_sprinting = _run_time > sprint_delay or (called and flat_out)
 	if strength > 0.0:
 		target_speed = lerpf(walk_speed, run_speed, smoothstep(run_threshold, run_threshold + 0.2, strength))
 		if is_sprinting:
@@ -1005,7 +1011,8 @@ func _move_horizontal(strength: float, grounded: bool, delta: float) -> void:
 	elif is_sprinting:
 		# He works up to it. But it is only his speed that is slow to come: his
 		# feet have as good a hold of the ground as ever, and he turns as surely.
-		target = target.normalized() * clampf(current.length() + acceleration * 0.25 * delta, run_speed, sprint_speed)
+		# (called for, he throws himself into it: twice as hard)
+		target = target.normalized() * clampf(current.length() + acceleration * (0.5 if _is_sprint_held() else 0.25) * delta, run_speed, sprint_speed)
 	if landing_progress < 1.0 and grounded:
 		# A hard landing has him for a moment. On three points he is brought
 		# up short, and what is left carries him forward onto his hands; a
@@ -1179,6 +1186,11 @@ func _is_recovering() -> bool:
 
 func _is_jump_held() -> bool:
 	return _listening() and (Input.is_action_pressed(&"jump") or (_touch != null and _touch.jump_held))
+
+
+## Sprint: Shift, a gamepad's LB or LT, or the touch controls' sprint (held, toggled, or the stick pushed past its rim).
+func _is_sprint_held() -> bool:
+	return _listening() and (Input.is_action_pressed(&"sprint") or (_touch != null and _touch.sprint_held))
 
 
 func _is_duck_held() -> bool:
@@ -2588,7 +2600,8 @@ static func _ensure_input_actions() -> void:
 	_add_action(&"move_right", [KEY_D, KEY_RIGHT], JOY_AXIS_LEFT_X, 1.0)
 	_add_action(&"move_up", [KEY_W, KEY_UP], JOY_AXIS_LEFT_Y, -1.0)
 	_add_action(&"move_down", [KEY_S, KEY_DOWN], JOY_AXIS_LEFT_Y, 1.0)
-	_add_action(&"walk", [KEY_SHIFT])
+	_add_action(&"walk", [KEY_ALT])
+	_add_action(&"sprint", [KEY_SHIFT], JOY_AXIS_TRIGGER_LEFT, 1.0, JOY_BUTTON_LEFT_SHOULDER)
 	_add_action(&"jump", [KEY_SPACE], JOY_AXIS_INVALID, 0.0, JOY_BUTTON_A)
 	_add_action(&"duck", [KEY_C, KEY_CTRL], JOY_AXIS_INVALID, 0.0, JOY_BUTTON_B)
 	_add_action(&"act", [KEY_E, KEY_F], JOY_AXIS_INVALID, 0.0, JOY_BUTTON_X)
