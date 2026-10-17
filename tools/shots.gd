@@ -68,7 +68,7 @@ func _run() -> void:
 	# From above.
 	var above := Camera3D.new()
 	world.add_child(above)
-	above.position = Vector3(0.0, 120.0, 0.01)
+	above.position = Vector3(0.0, 260.0, 0.01)
 	above.fov = 55.0
 	above.look_at(Vector3.ZERO)
 	above.make_current()

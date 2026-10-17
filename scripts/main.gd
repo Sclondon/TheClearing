@@ -264,8 +264,8 @@ func _process(delta: float) -> void:
 	if _preview_camera:
 		_preview_angle += delta * 0.05
 		var away := Vector3(sin(_preview_angle), 0.0, cos(_preview_angle))
-		_preview_camera.position = away * 70.0 + Vector3.UP * 58.0
-		_preview_camera.look_at(Vector3.UP * -6.0)
+		_preview_camera.position = away * 150.0 + Vector3.UP * 150.0
+		_preview_camera.look_at(Vector3.UP * -20.0)
 	if world and _clock_label:
 		_clock_label.text = clock_text(world.out.get(world.slot, world.clock))
 	if _toast and _toast_time > 0.0:

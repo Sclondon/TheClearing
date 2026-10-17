@@ -46,21 +46,21 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool) -> vo
 
 	for entry: Dictionary in players:
 		var seat := int(entry["slot"])
-		var look: Dictionary = Looks.decode(str(entry.get("look", "")))
+		var look: Dictionary = Looks.decode(str(entry.get("look", "")), seat)
 		if seat == slot:
 			player = load("res://player.tscn").instantiate()
 			player.name = "Player"
 			add_child(player)
 			player.global_position = spawn(seat)
 			player.rotation.y = spawn_yaw(seat)
-			CharacterLook.apply(player.get_node("Rig") as CharacterRig, look)
+			Looks.apply(player.get_node("Rig") as CharacterRig, look)
 		else:
 			var other := RemotePlayer.new()
 			other.name = "Remote%d" % seat
 			other.slot = seat
 			add_child(other)
 			other.place(spawn(seat), spawn_yaw(seat))
-			CharacterLook.apply(other.rig, look)
+			Looks.apply(other.rig, look)
 			remotes[seat] = other
 
 	camera = FollowCamera.new()
@@ -68,6 +68,10 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool) -> vo
 	camera.mode = FollowCamera.Mode.ORBIT
 	camera.indoors = true
 	camera.distance = 5.0
+	# (low, and looking a little above him, so that the walls tower)
+	camera.look_height = 1.8
+	camera.orbit_fov = 62.0
+	camera._pitch = 0.16
 	add_child(camera)
 	camera.make_current()
 	camera.snap()
@@ -98,7 +102,7 @@ func _sky() -> void:
 	var sky_material := ProceduralSkyMaterial.new()
 	sky_material.sky_top_color = Color(0.42, 0.52, 0.62)
 	sky_material.sky_horizon_color = Color(0.72, 0.72, 0.66)
-	sky_material.ground_horizon_color = Color(0.5, 0.52, 0.46)
+	sky_material.ground_horizon_color = Color(0.45, 0.48, 0.44)
 	sky_material.ground_bottom_color = Color(0.22, 0.24, 0.2)
 	var sky := Sky.new()
 	sky.sky_material = sky_material
@@ -108,10 +112,10 @@ func _sky() -> void:
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	environment.ambient_light_energy = 0.5
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	# A haze that hides how far the passages go.
+	# A damp haze: the clearing's walls stand grey in it, the far ones are only shapes.
 	environment.fog_enabled = true
-	environment.fog_light_color = Color(0.62, 0.66, 0.64)
-	environment.fog_density = 0.022
+	environment.fog_light_color = Color(0.5, 0.55, 0.54)
+	environment.fog_density = 0.0075
 	environment.fog_sky_affect = 0.35
 	var world := WorldEnvironment.new()
 	world.environment = environment
@@ -122,7 +126,7 @@ func _sky() -> void:
 	sun.light_color = Color(1.0, 0.94, 0.82)
 	sun.light_energy = 0.85
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 45.0
+	sun.directional_shadow_max_distance = 140.0
 	add_child(sun)
 
 

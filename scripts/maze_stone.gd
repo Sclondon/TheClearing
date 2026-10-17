@@ -10,23 +10,25 @@ class_name MazeStone
 ##
 ## Both are lit as the figures are, in hard bands, with a little wrap.
 
-const STONE := Color(0.5, 0.5, 0.47)
-const IVY := Color(0.16, 0.27, 0.12)
+const STONE := Color(0.4, 0.42, 0.39)
+const IVY := Color(0.13, 0.23, 0.11)
 
 const WALL_SHADER := """
 shader_type spatial;
 
 uniform vec3 albedo : source_color = vec3(0.5, 0.5, 0.47);
-uniform vec3 ivy : source_color = vec3(0.16, 0.27, 0.12);
+uniform vec3 ivy : source_color = vec3(0.13, 0.23, 0.11);
+uniform vec3 moss : source_color = vec3(0.2, 0.27, 0.13);
+uniform vec3 wet : source_color = vec3(0.16, 0.19, 0.18);
 uniform float banded = 1.0;
 uniform float wrap = 0.2;
-uniform float course = 1.1;
-uniform float block = 2.0;
-uniform float wear = 0.7;
+uniform float course = 2.4;
+uniform float block = 5.5;
+uniform float wear = 0.9;
 uniform float cracks = 0.6;
 // How tall the walls are, and how far down the ivy comes on average (0..1).
-uniform float height = 8.0;
-uniform float overgrown = 0.8;
+uniform float height = 34.0;
+uniform float overgrown = 0.55;
 
 varying vec3 place;
 varying vec3 lie;
@@ -73,8 +75,6 @@ void fragment() {
 	tone += (hash(vec2(row, column)) - 0.5) * 0.14 * seen(course, pixel * 1.5);
 	float runs = patches(vec2(at.x * 1.6, at.y * 0.22 + 3.0)) * patches(at * 0.31 + 11.0);
 	tone -= smoothstep(0.28, 0.5, runs) * 0.16 * wear * (flat_top ? 0.4 : 1.0) * seen(0.6, pixel);
-	// Damp low down.
-	tone -= (1.0 - smoothstep(0.0, 1.4, place.y)) * 0.12;
 	if (!flat_top) {
 		float lip = seen(0.08, pixel);
 		tone += (1.0 - smoothstep(0.05, 0.05 + pixel, course - within.y)) * 0.06 * lip;
@@ -91,13 +91,28 @@ void fragment() {
 	float crack = (1.0 - smoothstep(max(thick - 0.5, 0.0), thick + 0.5, from_crack)) * clamp(thick * 2.0, 0.0, 1.0) * where_cracked;
 	vec3 colour = albedo * tone * (1.0 - 0.5 * line) * (1.0 - 0.55 * crack);
 
+	// Damp. Water seeps out along the joints and runs down the face in long dark
+	// streaks; the foot of the wall is soaked to a few metres up, black-green, and
+	// moss takes the joints and the flats of the blocks the higher it is wet.
+	if (!flat_top) {
+		float streak_at = at.x * 0.55 + patches(vec2(at.x * 0.8, at.y * 0.05)) * 1.5;
+		float streaks = smoothstep(0.55, 0.85, patches(vec2(streak_at, 0.5)) * patches(vec2(at.x * 0.13, at.y * 0.025 + 2.0)) * 1.8);
+		float soaked = 1.0 - smoothstep(0.0, 3.0 + 4.0 * patches(vec2(at.x * 0.07, 6.0)), place.y);
+		float damp = max(streaks * 0.8, soaked);
+		colour = mix(colour, wet * tone, damp * 0.75);
+		float mossy = smoothstep(0.45, 0.75, patches(at * 0.45 + 70.0) * 0.7 + soaked * 0.5 + line * 0.4 + streaks * 0.2);
+		colour = mix(colour, moss * (0.7 + 0.5 * patches(at * 3.1)), mossy * 0.85);
+	} else {
+		colour = mix(colour, moss, 0.6);
+	}
+
 	// Ivy: curtains hung from the top, longer in some places than others, with a
 	// ragged edge of leaves. On top of the wall it is a mat.
-	float drop = height * overgrown * (0.15 + 1.6 * patches(vec2(at.x * 0.35, 1.7)) * patches(vec2(at.x * 0.09, 8.2)));
+	float drop = height * overgrown * (0.15 + 1.6 * patches(vec2(at.x * 0.2, 1.7)) * patches(vec2(at.x * 0.05, 8.2)));
 	float down = height - place.y;
-	vec2 leaf_at = vec2(at.x, place.y) / 0.22;
+	vec2 leaf_at = vec2(at.x, place.y) / 0.35;
 	float leaves = patches(leaf_at) * 0.6 + patches(leaf_at * 2.3 + 4.0) * 0.4;
-	float covered = flat_top ? smoothstep(0.35, 0.45, patches(place.xz * 0.4) + 0.2) : 1.0 - smoothstep(drop - 0.4, drop + 0.4, down + (leaves - 0.5) * 1.4 * seen(0.3, pixel));
+	float covered = flat_top ? smoothstep(0.35, 0.45, patches(place.xz * 0.4) + 0.2) : 1.0 - smoothstep(drop - 0.4, drop + 0.4, down + (leaves - 0.5) * 3.0 * seen(0.3, pixel));
 	float leaf_tone = 0.75 + 0.5 * patches(leaf_at * 1.1 + 30.0) * seen(0.25, pixel);
 	colour = mix(colour, ivy * leaf_tone, covered);
 
@@ -123,13 +138,15 @@ void light() {
 const GROUND_SHADER := """
 shader_type spatial;
 
-uniform vec3 grass : source_color = vec3(0.2, 0.29, 0.12);
-uniform vec3 earth : source_color = vec3(0.33, 0.28, 0.21);
+uniform vec3 grass : source_color = vec3(0.13, 0.2, 0.09);
+uniform vec3 earth : source_color = vec3(0.24, 0.21, 0.16);
 uniform float banded = 1.0;
 uniform float wrap = 0.2;
 // Half the width of the clearing and of the whole maze, in metres.
 uniform float clearing_half = 10.0;
 uniform float maze_half = 50.0;
+uniform float cell = 8.0;
+uniform float wall_thick = 2.6;
 
 varying vec3 place;
 
@@ -158,9 +175,9 @@ void fragment() {
 	// Grass in the clearing and out past the walls; between them trodden earth,
 	// with grass coming back along the foot of the walls, where nobody walks.
 	float in_maze = smoothstep(clearing_half - 0.6, clearing_half + 0.6, out_x) * (1.0 - smoothstep(maze_half - 0.2, maze_half + 0.4, out_x));
-	float cell = 4.0;
+
 	vec2 off = abs(fract(at / cell + 0.5) - 0.5) * cell;
-	float by_wall = smoothstep(0.9, 0.2, 2.0 - max(off.x, off.y) + patches(at * 0.8) * 0.5);
+	float by_wall = smoothstep(1.4, 0.3, cell * 0.5 - wall_thick * 0.5 - max(off.x, off.y) + patches(at * 0.8) * 0.7);
 	float tufts = patches(at * 1.7) * 0.6 + patches(at * 5.0) * 0.4 * clamp(0.6 / pixel, 0.0, 1.0);
 	float grassy = 1.0 - in_maze * (1.0 - smoothstep(0.55, 0.75, by_wall * 0.7 + tufts * 0.6));
 	float tone = 0.85 + 0.3 * patches(at * 0.35) + (tufts - 0.5) * 0.25;
@@ -199,7 +216,7 @@ static func wall(height: float) -> ShaderMaterial:
 	return material
 
 
-static func ground(clearing_half: float, maze_half: float) -> ShaderMaterial:
+static func ground(clearing_half: float, maze_half: float, wall_thick: float) -> ShaderMaterial:
 	if _ground == null:
 		_ground = Shader.new()
 		_ground.code = GROUND_SHADER
@@ -207,4 +224,6 @@ static func ground(clearing_half: float, maze_half: float) -> ShaderMaterial:
 	material.shader = _ground
 	material.set_shader_parameter(&"clearing_half", clearing_half)
 	material.set_shader_parameter(&"maze_half", maze_half)
+	material.set_shader_parameter(&"cell", Maze.CELL)
+	material.set_shader_parameter(&"wall_thick", wall_thick)
 	return material

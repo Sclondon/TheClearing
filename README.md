@@ -1,11 +1,13 @@
 # The Clearing
 
 A maze game for the Scareathon arcade, after *The Maze Runner* and *Labyrinth*. You and up to three friends
-wake in a grassy clearing in the middle of a huge stone maze, ivy hanging from its walls, and find the way out.
-A pale light stands up past the one way out, seen over the walls when you look up.
+wake in a wide grassy clearing walled in by a maze that was not built for people: grey stone walls 34 m
+high, damp and mossy, ivy hanging from them. Find the way out. The maze goes round the clearing in rings, each
+walled off from the next but for one gate; a pale light stands up past the gate out of the last ring.
 
-This is the start: the clearing, rooms for playing together, and a maze made fresh each round. Nothing hunts you
-yet, the walls do not move, and there is no night.
+This is the start: the clearing, the first ring, rooms for playing together, and a maze made fresh each
+round. Nothing hunts you yet, the walls do not move, and there is no night. Every player is Inside's boy:
+no face, a plain shirt (its colour by seat, the first red) and dark trousers.
 
 Godot 4.7, GL Compatibility, portrait first (it also fills a landscape window). Web build in `build/`, served at
 https://sclondon.github.io/TheClearing/build/.
@@ -15,27 +17,35 @@ https://sclondon.github.io/TheClearing/build/.
 - **Move:** a thumb on the left half of the screen (touch), WASD or arrows, or a gamepad stick.
 - **Look:** drag on the right half, the mouse, or the right stick. **Jump:** the jump button, Space, or A.
 - Everything else the boy from *Outside* can do works too (sprint, duck, slide, climb a ledge, kick off a wall).
-  The maze walls are too tall to climb.
+  The maze walls are far too tall to climb.
 - **PLAY ALONE**, or **MAKE A ROOM** and give friends its four-letter code to **JOIN A ROOM**. The room's
   maker starts the game. When everyone is out, the room's maker picks the next maze.
 - A run's score, sent to the arcade, is 10000 less the seconds it took you to get out.
 
 ## How it works
 
-- `scripts/maze.gd` (`Maze`): the plan. A 25 x 25 grid of 4 m cells, a 5 x 5 clearing open in the middle with
-  a gap in each side, passages carved by a depth-first walk from behind each gap, 6% more walls knocked through
-  for loops, and the exit put on the outer edge as far round the walls from the clearing as there is. The same
-  seed always gives the same maze: `Maze.seed_for(room code, round)`.
-- `scripts/maze_builder.gd` (`MazeBuilder`): walls 8 m high as one mesh, with a box for each straight run to bump
-  into; the ground; pines from GameCommon round the clearing and outside; the light past the exit.
+- `scripts/maze.gd` (`Maze`): the plan. Square cells 8 m across. `Maze.RINGS` gives the clearing (11 cells
+  across, 88 m, open) and the ring round it after ring, middle out; `rings` of them are built (1 for now) and
+  the grid runs to the outside of the last. Each ring is carved on its own by a depth-first walk from its way in
+  (into the first, a gate in the middle of each side of the clearing; into each later one, the gate out of the
+  ring inside it), with 6% more walls knocked through for loops, and its gate out put on its outside as far
+  round the walls from its way in as there is. The gate out of the last ring is the exit. The same seed always
+  gives the same maze: `Maze.seed_for(room code, round)`.
+- `scripts/maze_builder.gd` (`MazeBuilder`): the walls inside a ring 34 m high and 2.6 thick, the walls between
+  rings 46 m and 3.6 thick, each with a footing and a cornice, and square piers standing above them where walls
+  meet; all drawn as two meshes, with a box for each piece to bump into. The next ring's outside wall stands
+  unbroken beyond the last ring built, with open ground up to it. The ground; stands of pines in the clearing
+  and a few past the last ring (GameCommon's pine-tree); the light past the exit.
 - `scripts/maze_stone.gd` (`MazeStone`): the wall and ground shaders. The stone is Outside's `Sandstone`
-  shader, made grey with ivy curtains added; lit in hard bands like the figures.
+  shader at a giant's scale (blocks 5 m long), made grey and damp: dark streaks run down from the joints, the
+  foot of every wall is soaked and mossy, and ivy hangs in curtains from the top. Lit in hard bands like the figures.
 - `scripts/world.gd` (`World`): one round. Sky, fog and sun; the maze; this player (`player.tscn`, Outside's boy
   from GameCommon) with `FollowCamera` (orbit, `indoors` so it stays out of the walls) and `TouchControls`;
   a `RemotePlayer` for each friend. Each copy sends where its own player is 12 times a second.
 - `scripts/remote_player.gd` (`RemotePlayer`): a friend, a `Figure` on the boy's rig chasing their news.
-- `scripts/looks.gd` (`Looks`): each player is one of Outside's made-up people (`CharacterLook.random`), known
-  by a seed that goes round the room as the server's "hero" word (`p123456`).
+- `scripts/looks.gd` (`Looks`): each player is the boy as Inside has him (no face, cropped hair, no cap, shirt,
+  dark trousers and boots). The shirt's colour goes by seat; skin and hair by a seed that goes round the room as
+  the server's "hero" word (`p123456`).
 - `scripts/net.gd` (autoload `Net`): the rooms connection, copied from October Valley. Server side:
   `server/routes/theClearing.js` in scareathon-v3 at `/the-clearing/ws`, which reuses
   `server/eightBitEvilV2/rooms.js` (four seats, four-letter codes, the maker hosts, seats held through
@@ -65,5 +75,7 @@ Flags (command line `-- --name=value` or the page's `?name=value`): `server=<url
 
 ## Not done yet
 
-Things that hunt you in the maze, walls that move, doors that shut at night, a map, sound and music, names,
-reconnecting mid-round past the server's 90 seconds, and a preview film for the arcade.
+Rings past the first; things that hunt you (Outside's snake and mummies, and a Griever-like thing of meat on
+metal legs, are being made); climbing (ivy, vines, ledges up the walls, mezzanines, rope bridges); real grass;
+walls that move, doors that shut at night, a map, sound and music, names, and reconnecting mid-round past the
+server's 90 seconds.

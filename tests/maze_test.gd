@@ -1,6 +1,7 @@
 extends SceneTree
 ## The maze plan on its own: the same seed gives the same maze, every cell can be
-## reached, the clearing is open, there is a way out, and the walls are mostly kept.
+## reached, the clearing is open, each ring is walled off from the next but for
+## its gates, there is a way out, and the walls are mostly kept.
 ##
 ##     godot --headless --path . -s res://tests/maze_test.gd
 
@@ -19,26 +20,40 @@ func _initialize() -> void:
 	var c := Maze.generate(Maze.seed_for("ABCD", 2))
 	check("same seed, same maze", a.east == b.east and a.south == b.south and a.exit == b.exit)
 	check("next round, new maze", a.east != c.east or a.south != c.south)
+	check("first ring only, for now", a.rings == 1 and a.size == Maze.RINGS[1])
 
-	for seed_value in [1, 2, 3, 99, 12345]:
-		var maze := Maze.generate(seed_value)
-		var unreached := 0
-		for i in maze.size * maze.size:
-			var cell := Vector2i(i % maze.size, i / maze.size)
-			if not maze.in_clearing(cell) and maze.distance[i] < 0:
-				unreached += 1
-		check("seed %d: every cell reachable" % seed_value, unreached == 0, "(%d not)" % unreached)
-		var path := maze.path_out(maze.cell_at(Vector3.ZERO))
-		check("seed %d: a way out from the middle" % seed_value, path.size() > maze.size, "(%d cells)" % path.size())
-		var open := 0
-		for x in range(maze.size - 1):
-			for y in range(maze.size - 1):
-				open += 1 - maze.east[maze.index(Vector2i(x, y))]
-		check("seed %d: still a maze" % seed_value, open < maze.size * maze.size * 0.75, "(%d open east walls)" % open)
-		check("seed %d: clearing open" % seed_value, not maze.blocked(Vector2i(12, 12), Vector2i(1, 0)) and not maze.blocked(Vector2i(10, 10), Vector2i(0, 1)))
-		var edge := maze.exit + maze.exit_side
-		check("seed %d: exit on the edge" % seed_value, not maze.inside(edge) and not maze.blocked(maze.exit, maze.exit_side))
-		check("seed %d: escaped past the exit" % seed_value, maze.escaped(maze.world(edge)) and not maze.escaped(maze.world(maze.exit)))
+	for built in [1, 3]:
+		for seed_value in [1, 2, 3, 99, 12345]:
+			var maze := Maze.generate(seed_value, built)
+			var name := "%d ring(s), seed %d" % [built, seed_value]
+			var unreached := 0
+			for i in maze.size * maze.size:
+				var cell := Vector2i(i % maze.size, i / maze.size)
+				if not maze.in_clearing(cell) and maze.distance[i] < 0:
+					unreached += 1
+			check("%s: every cell reachable" % name, unreached == 0, "(%d not)" % unreached)
+			var path := maze.path_out(maze.cell_at(Vector3.ZERO))
+			check("%s: a way out from the middle" % name, path.size() > maze.clearing / 2 + 8 * built, "(%d cells)" % path.size())
+			# Every ring wall is shut but for the gates: 4 out of the clearing, 1 out of each ring after.
+			var openings := 0
+			var open := 0
+			for i in maze.size * maze.size:
+				var cell := Vector2i(i % maze.size, i / maze.size)
+				for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+					if not maze.inside(cell + step):
+						continue
+					if maze.ring_wall(cell, step) and not maze.blocked(cell, step):
+						openings += 1
+					if not maze.in_clearing(cell) and not maze.blocked(cell, step):
+						open += 1
+			check("%s: rings shut but for their gates" % name, openings == 4 + built - 1, "(%d)" % openings)
+			var ring_cells := maze.size * maze.size - maze.clearing * maze.clearing
+			check("%s: still a maze" % name, open < ring_cells * 1.2, "(%d open of %d cells)" % [open, ring_cells])
+			var middle := maze.size / 2
+			check("%s: clearing open" % name, not maze.blocked(Vector2i(middle, middle), Vector2i(1, 0)) and not maze.blocked(Vector2i(middle - 3, middle - 3), Vector2i(0, 1)))
+			var edge := maze.exit + maze.exit_side
+			check("%s: exit on the edge" % name, not maze.inside(edge) and not maze.blocked(maze.exit, maze.exit_side))
+			check("%s: escaped past the exit" % name, maze.escaped(maze.world(edge)) and not maze.escaped(maze.world(maze.exit)))
 
 	print("MAZE TEST %s" % ("PASSED" if failures == 0 else "FAILED (%d)" % failures))
 	quit(failures)

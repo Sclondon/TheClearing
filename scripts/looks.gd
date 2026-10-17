@@ -1,8 +1,18 @@
 class_name Looks
-## How each player is turned out, so that friends can tell each other apart in
-## the maze. A look is one of Outside's made-up people (CharacterLook.random),
-## known by its seed. The seed is what goes round the room, as a short word the
-## server takes for a "hero" (lower-case letters and digits): "p" and the number.
+## How each player is turned out. Everyone is the boy as Inside has him: no face,
+## short hair and no cap, a plain shirt, dark trousers and boots. What tells
+## friends apart in the maze is the colour of the shirt, which goes by seat (the
+## first is Inside's red), and their skin and hair, which go by a seed each player
+## picks (NEW LOOK picks another). The seed is what goes round the room, as a
+## short word the server takes for a "hero" (lower-case letters and digits): "p"
+## and the number.
+
+## Shirts, by seat: red, a faded blue, mustard, a dull green.
+const SHIRTS: Array[Color] = [
+	Color(0.62, 0.13, 0.11), Color(0.27, 0.38, 0.52), Color(0.66, 0.52, 0.2), Color(0.3, 0.42, 0.27),
+]
+const TROUSERS := Color(0.17, 0.17, 0.19)
+const BOOTS := Color(0.09, 0.08, 0.08)
 
 
 ## A new look, as its word.
@@ -10,12 +20,28 @@ static func pick() -> String:
 	return "p%d" % randi_range(1, 999999)
 
 
-## The look a word stands for. Anything else is the boy as he was made.
-static func decode(word: String) -> Dictionary:
-	if not word.begins_with("p") or not word.substr(1).is_valid_int():
-		return {}
-	var look := CharacterLook.random(int(word.substr(1)))
-	# Everyone is the boy's size: the controller's moves are made for him.
-	look.erase("size")
-	look.erase("build")
-	return look
+## The look a word stands for, on a seat. Anything but "p<n>" is the boy's own
+## skin and hair.
+static func decode(word: String, seat := 0) -> Dictionary:
+	var colours := {
+		"shirt": SHIRTS[posmod(seat, SHIRTS.size())], "overalls": TROUSERS, "boots": BOOTS, "socks": TROUSERS,
+	}
+	if word.begins_with("p") and word.substr(1).is_valid_int():
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash(int(word.substr(1)))
+		var skin := rng.randi() % CharacterLook.SKINS.size()
+		colours["skin"] = CharacterLook.SKINS[skin]
+		# (dark hair mostly, as his is; fair only with fair skin)
+		var hairs := 4 if skin < 4 else 3
+		colours["hair"] = CharacterLook.HAIR_COLOURS[rng.randi() % hairs]
+	return {"face": "base", "hair": "crop", "cap": false, "outfit": "trousers", "colours": colours}
+
+
+## Dresses a figure on the boy's rig in a look from `decode`. It is the trousers
+## outfit without its braces, which CharacterLook has no outfit for.
+static func apply(rig: CharacterRig, look: Dictionary) -> void:
+	var whole := CharacterLook.dressed(look)
+	whole["parts"]["over"] = "none"
+	rig.look = whole
+	if rig.is_node_ready():
+		rig.restyle()
