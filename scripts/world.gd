@@ -98,36 +98,94 @@ func spawn_yaw(seat: int) -> float:
 	return seat * TAU / 4.0 + PI * 0.25
 
 
+## The light, after Inside: an overcast day, nearly without colour, so that the
+## only strong colour is the shirts. A pale sky and a mist that thickens with
+## distance and low down, until the far walls are flat grey shapes; soft light
+## from above with soft shadows; a little glow round bright things, and the
+## edges of the picture darkened (see _vignette).
 func _sky() -> void:
 	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color(0.42, 0.52, 0.62)
-	sky_material.sky_horizon_color = Color(0.72, 0.72, 0.66)
-	sky_material.ground_horizon_color = Color(0.45, 0.48, 0.44)
-	sky_material.ground_bottom_color = Color(0.22, 0.24, 0.2)
+	sky_material.sky_top_color = Color(0.5, 0.56, 0.58)
+	sky_material.sky_horizon_color = Color(0.74, 0.77, 0.76)
+	sky_material.ground_horizon_color = Color(0.6, 0.63, 0.62)
+	sky_material.ground_bottom_color = Color(0.3, 0.32, 0.31)
+	sky_material.sun_angle_max = 0.0
+	sky_material.sun_curve = 0.0
 	var sky := Sky.new()
 	sky.sky_material = sky_material
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	environment.ambient_light_energy = 0.5
+	environment.ambient_light_energy = 0.75
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	# A damp haze: the clearing's walls stand grey in it, the far ones are only shapes.
+	environment.tonemap_white = 1.3
+	# The mist: thick with distance, and thicker still low down.
 	environment.fog_enabled = true
-	environment.fog_light_color = Color(0.5, 0.55, 0.54)
-	environment.fog_density = 0.0075
-	environment.fog_sky_affect = 0.35
+	environment.fog_light_color = Color(0.66, 0.7, 0.69)
+	environment.fog_density = 0.009
+	environment.fog_sky_affect = 0.6
+	environment.fog_aerial_perspective = 0.4
+	environment.fog_height = 6.0
+	environment.fog_height_density = 0.01
+	# Glow round the bright (the light past the exit, the sky between the walls).
+	environment.glow_enabled = true
+	environment.glow_intensity = 0.6
+	environment.glow_bloom = 0.08
+	environment.glow_hdr_threshold = 0.9
+	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	# Most of the colour taken out.
+	environment.adjustment_enabled = true
+	environment.adjustment_saturation = 0.72
+	environment.adjustment_contrast = 1.1
+	environment.adjustment_brightness = 1.0
 	var world := WorldEnvironment.new()
 	world.environment = environment
 	add_child(world)
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
-	sun.rotation_degrees = Vector3(-52.0, 35.0, 0.0)
-	sun.light_color = Color(1.0, 0.94, 0.82)
-	sun.light_energy = 0.85
+	# (high and soft: an overcast sun, its shadows short and blurred)
+	sun.rotation_degrees = Vector3(-68.0, 25.0, 0.0)
+	sun.light_color = Color(0.92, 0.94, 0.95)
+	sun.light_energy = 0.55
 	sun.shadow_enabled = true
+	sun.shadow_blur = 2.5
+	sun.shadow_opacity = 0.75
 	sun.directional_shadow_max_distance = 140.0
 	add_child(sun)
+	_vignette()
+
+
+## The edges of the picture darkened, as through a lens, and a faint grain over
+## it all. Under the controls.
+func _vignette() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "Vignette"
+	layer.layer = -1
+	add_child(layer)
+	var cover := ColorRect.new()
+	cover.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shader := Shader.new()
+	shader.code = """
+shader_type canvas_item;
+uniform float strength = 0.55;
+uniform float grain = 0.035;
+void fragment() {
+	vec2 from_middle = (UV - 0.5) * vec2(1.0, 1.15);
+	float dark = smoothstep(0.32, 0.85, length(from_middle)) * strength;
+	float noise = fract(sin(dot(FRAGCOORD.xy + fract(TIME) * 61.0, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+	// Dark towards the edges, and each pixel a touch lighter or darker at random.
+	float speck = noise * grain;
+	float cover = clamp(dark + abs(speck), 0.0, 1.0);
+	vec3 tint = vec3(0.03, 0.035, 0.035) * dark + vec3(speck > 0.0 ? abs(speck) : 0.0);
+	COLOR = vec4(tint / max(cover, 0.001), cover);
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	cover.material = material
+	layer.add_child(cover)
 
 
 func _physics_process(delta: float) -> void:

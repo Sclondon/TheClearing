@@ -7,9 +7,10 @@ class_name Looks
 ## short word the server takes for a "hero" (lower-case letters and digits): "p"
 ## and the number.
 
-## Shirts, by seat: red, a faded blue, mustard, a dull green.
+## Shirts, by seat: red (deep, as it is the one strong colour in the picture),
+## a faded blue, mustard, a dull green.
 const SHIRTS: Array[Color] = [
-	Color(0.62, 0.13, 0.11), Color(0.27, 0.38, 0.52), Color(0.66, 0.52, 0.2), Color(0.3, 0.42, 0.27),
+	Color(0.7, 0.07, 0.05), Color(0.27, 0.38, 0.52), Color(0.66, 0.52, 0.2), Color(0.3, 0.42, 0.27),
 ]
 const TROUSERS := Color(0.17, 0.17, 0.19)
 const BOOTS := Color(0.17, 0.13, 0.1)
