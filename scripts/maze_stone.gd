@@ -26,6 +26,9 @@ uniform float course = 2.4;
 uniform float block = 5.5;
 uniform float wear = 0.9;
 uniform float cracks = 0.6;
+// Whether joints are painted on (1), or the stone is built of blocks that are
+// their own shapes, each in its own tone given as the vertex colour (0).
+uniform float painted = 1.0;
 // How tall the walls are, and how far down the ivy comes on average (0..1).
 uniform float height = 34.0;
 uniform float overgrown = 0.55;
@@ -89,7 +92,7 @@ void fragment() {
 	float from_crack = abs(wander - 0.62) / max(fwidth(wander), 0.00001);
 	float thick = (0.004 + 0.016 * stretch) / pixel;
 	float crack = (1.0 - smoothstep(max(thick - 0.5, 0.0), thick + 0.5, from_crack)) * clamp(thick * 2.0, 0.0, 1.0) * where_cracked;
-	vec3 colour = albedo * tone * (1.0 - 0.5 * line) * (1.0 - 0.55 * crack);
+	vec3 colour = albedo * mix(1.0, tone, painted) * (1.0 - 0.5 * line * painted) * (1.0 - 0.55 * crack) * COLOR.rgb;
 
 	// Damp. Water seeps out along the joints and runs down the face in long dark
 	// streaks; the foot of the wall is soaked to a few metres up, black-green, and
@@ -204,7 +207,7 @@ static var _wall: Shader
 static var _ground: Shader
 
 
-static func wall(height: float) -> ShaderMaterial:
+static func wall(height: float, built := true) -> ShaderMaterial:
 	if _wall == null:
 		_wall = Shader.new()
 		_wall.code = WALL_SHADER
@@ -213,6 +216,7 @@ static func wall(height: float) -> ShaderMaterial:
 	material.set_shader_parameter(&"albedo", STONE)
 	material.set_shader_parameter(&"ivy", IVY)
 	material.set_shader_parameter(&"height", height)
+	material.set_shader_parameter(&"painted", 0.0 if built else 1.0)
 	return material
 
 

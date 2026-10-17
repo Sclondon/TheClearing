@@ -129,7 +129,7 @@ func _terrace(cell: Vector2i, step: Vector2i, upper: bool, along: float, lower_t
 		return (side.abs() * long + s.abs() * deep) + Vector3.UP * high
 	var low_middle := _edge(cell, step, LOWER.y * 0.5, 0.0) + Vector3.UP * LOWER.x * 0.5
 	var low_size: Vector3 = size_for.call(length, LOWER.y, LOWER.x)
-	builder._solid(lower_tool, body, low_middle, low_size)
+	builder._solid(lower_tool, body, low_middle, low_size, true)
 	footprints.append(Rect2(low_middle.x - low_size.x * 0.5, low_middle.z - low_size.z * 0.5, low_size.x, low_size.z))
 	# Ivy up its face, somewhere along it.
 	var ivy_along := _rng.randf_range(-0.3, 0.3) * length
@@ -140,7 +140,7 @@ func _terrace(cell: Vector2i, step: Vector2i, upper: bool, along: float, lower_t
 		return
 	var upper_length := Maze.CELL * 0.5
 	var up_middle := _edge(cell, step, UPPER.y * 0.5, along) + Vector3.UP * UPPER.x * 0.5
-	builder._solid(upper_tool, body, up_middle, size_for.call(upper_length, UPPER.y, UPPER.x))
+	builder._solid(upper_tool, body, up_middle, size_for.call(upper_length, UPPER.y, UPPER.x), true)
 	# Ivy from the lower terrace up the upper's face, away from the one below.
 	var up_along := along + (_rng.randf_range(0.1, 0.35) if ivy_along < along else _rng.randf_range(-0.35, -0.1)) * upper_length
 	_climb(_edge(cell, step, UPPER.y, up_along) + Vector3.UP * LOWER.x, step, UPPER.x - LOWER.x)

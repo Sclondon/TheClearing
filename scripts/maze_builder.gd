@@ -118,29 +118,72 @@ const CORNICE := Vector2(0.6, 1.8)
 const PIER := Vector2(2.2, 4.0)
 
 
+## The walls are drawn in squares this many metres across, so that what is off
+## the screen is not drawn; built of blocks out to `DETAIL` metres from the camera,
+## and as plain boxes beyond, in the haze. Their shadows are always the plain boxes'.
+const CHUNK := 70.0
+const DETAIL := 110.0
+
+
 func _walls(body: StaticBody3D, runs: Array, height: float) -> void:
-	var tool := SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var great := height == RING_HEIGHT
+	# Each square's [masonry, plain] SurfaceTools.
+	var chunks := {}
+	var tools_for := func(at: Vector3) -> Array:
+		var key := Vector2i(floori(at.x / CHUNK), floori(at.z / CHUNK))
+		if not chunks.has(key):
+			var pair := [SurfaceTool.new(), SurfaceTool.new()]
+			for tool: SurfaceTool in pair:
+				tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+			chunks[key] = pair
+		return chunks[key]
 	for run: Array in runs:
 		var at: Vector3 = run[0]
 		var size: Vector3 = run[1]
 		var wide := Vector3(1.0 if size.x < size.z else 0.0, 0.0, 1.0 if size.z < size.x else 0.0)
-		_solid(tool, body, at, size)
+		var pair: Array = tools_for.call(at)
+		_solid(pair[0], body, at, size, true)
+		_box(pair[1], at, size)
 		# A stepped footing, and a cornice standing out along the top.
-		_solid(tool, body, Vector3(at.x, FOOT.y * 0.5, at.z), size * Vector3(1, 0, 1) + wide * FOOT.x * 2.0 + Vector3.UP * FOOT.y)
-		_solid(tool, body, Vector3(at.x, height - CORNICE.y * 0.5, at.z), size * Vector3(1, 0, 1) + wide * CORNICE.x * 2.0 + Vector3.UP * CORNICE.y)
+		for moulding: Array in [[Vector3(at.x, FOOT.y * 0.5, at.z), size * Vector3(1, 0, 1) + wide * FOOT.x * 2.0 + Vector3.UP * FOOT.y],
+				[Vector3(at.x, height - CORNICE.y * 0.5, at.z), size * Vector3(1, 0, 1) + wide * CORNICE.x * 2.0 + Vector3.UP * CORNICE.y]]:
+			_solid(pair[0], body, moulding[0], moulding[1])
+			_box(pair[1], moulding[0], moulding[1])
 	for pier: Array in _piers(great):
-		_solid(tool, body, pier[0], pier[1])
-	var visual := MeshInstance3D.new()
-	visual.mesh = tool.commit()
-	visual.material_override = MazeStone.wall(height)
-	body.add_child(visual)
+		var pair: Array = tools_for.call(pier[0])
+		_solid(pair[0], body, pier[0], pier[1], true)
+		_box(pair[1], pier[0], pier[1])
+	var material := MazeStone.wall(height)
+	for key: Vector2i in chunks:
+		var pair: Array = chunks[key]
+		var built := MeshInstance3D.new()
+		built.mesh = (pair[0] as SurfaceTool).commit()
+		built.material_override = material
+		built.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		built.visibility_range_end = DETAIL
+		built.visibility_range_end_margin = 8.0
+		built.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
+		body.add_child(built)
+		var plain_mesh := (pair[1] as SurfaceTool).commit()
+		var far := MeshInstance3D.new()
+		far.mesh = plain_mesh
+		far.material_override = material
+		far.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		far.visibility_range_begin = DETAIL
+		far.visibility_range_begin_margin = 8.0
+		body.add_child(far)
+		var shadow := MeshInstance3D.new()
+		shadow.mesh = plain_mesh
+		shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+		body.add_child(shadow)
 
 
-## A box drawn and bumped into.
-func _solid(tool: SurfaceTool, body: StaticBody3D, at: Vector3, size: Vector3) -> void:
-	_box(tool, at, size)
+## A box drawn and bumped into: plain, or (`masonry`) built of blocks.
+func _solid(tool: SurfaceTool, body: StaticBody3D, at: Vector3, size: Vector3, masonry := false) -> void:
+	if masonry:
+		_masonry(tool, at, size)
+	else:
+		_box(tool, at, size)
 	var shape := BoxShape3D.new()
 	shape.size = size
 	var collider := CollisionShape3D.new()
@@ -199,7 +242,7 @@ func _along_z(i: int, y: int) -> int:
 
 
 ## Five faces of a box (no bottom), facing out.
-func _box(tool: SurfaceTool, at: Vector3, size: Vector3) -> void:
+func _box(tool: SurfaceTool, at: Vector3, size: Vector3, tint := Color.WHITE) -> void:
 	var h := size * 0.5
 	var faces := [
 		[Vector3.UP, Vector3(1, 0, 0), Vector3(0, 0, 1)],
@@ -218,9 +261,99 @@ func _box(tool: SurfaceTool, at: Vector3, size: Vector3) -> void:
 		var c := centre + u + v
 		var d := centre - u + v
 		tool.set_normal(normal)
+		tool.set_color(tint)
 		# (clockwise seen from outside, as Godot faces are)
 		for corner: Vector3 in [a, c, b, a, d, c]:
 			tool.add_vertex(corner)
+
+
+## How far the blocks' backs sit in from the face that is bumped into, how far
+## they may stand proud of it or sink into it, the joint between them, and the
+## chamfer on their edges. A course is between `COURSE` heights, a block between
+## `BLOCK` lengths.
+const BLOCK_INSET := 0.16
+const PROUD := Vector2(-0.07, 0.14)
+const JOINT := 0.07
+const CHAMFER := 0.16
+const COURSE := Vector2(2.6, 3.6)
+const BLOCK := Vector2(4.5, 8.0)
+
+
+## A box of dressed stone: a dark core set in, with its four sides laid in
+## courses of blocks, each a chamfered slab standing a little proud or sunk, in
+## its own tone. Its top is the core's.
+func _masonry(tool: SurfaceTool, at: Vector3, size: Vector3) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(at.snappedf(0.01))
+	_box(tool, at, size - Vector3(BLOCK_INSET * 2.0, 0.0, BLOCK_INSET * 2.0), Color(0.5, 0.5, 0.5))
+	var h := size * 0.5
+	var bottom := at.y - h.y
+	for face: Array in [[Vector3.RIGHT, Vector3.BACK, h.x, size.z], [Vector3.LEFT, Vector3.FORWARD, h.x, size.z],
+			[Vector3.BACK, Vector3.LEFT, h.z, size.x], [Vector3.FORWARD, Vector3.RIGHT, h.z, size.x]]:
+		var n: Vector3 = face[0]
+		var a: Vector3 = face[1]
+		var plane: Vector3 = Vector3(at.x, bottom, at.z) + n * float(face[2])
+		var long: float = face[3]
+		var v := 0.0
+		while v < size.y - 0.3:
+			var tall := minf(rng.randf_range(COURSE.x, COURSE.y), size.y - v)
+			if size.y - v - tall < 0.9:
+				tall = size.y - v
+			var u := -long * 0.5
+			# (each course starts at its own place, so the joints do not line up)
+			var first := rng.randf_range(0.3, 1.0)
+			while u < long * 0.5 - 0.3:
+				var wide := minf(rng.randf_range(BLOCK.x, BLOCK.y) * (first if u == -long * 0.5 else 1.0), long * 0.5 - u)
+				if long * 0.5 - u - wide < 1.0:
+					wide = long * 0.5 - u
+				var tone := rng.randf_range(0.82, 1.08)
+				_block(tool, plane, n, a, u, u + wide, v, v + tall, rng.randf_range(PROUD.x, PROUD.y), Color(tone, tone, tone))
+				u += wide
+			v += tall
+
+
+## One block on a face: `plane` the bottom of the face's middle, `n` out of it,
+## `a` along it; from `u0` to `u1` along and `v0` to `v1` up, its front `proud`
+## out from the face.
+func _block(tool: SurfaceTool, plane: Vector3, n: Vector3, a: Vector3, u0: float, u1: float, v0: float, v1: float, proud: float, tint: Color) -> void:
+	var at := func(u: float, v: float, out: float) -> Vector3:
+		return plane + a * u + Vector3.UP * v + n * out
+	var g := JOINT * 0.5
+	var c := minf(CHAMFER, minf(u1 - u0, v1 - v0) * 0.3)
+	var back := -BLOCK_INSET
+	var b0: Vector3 = at.call(u0 + g, v0 + g, back)
+	var b1: Vector3 = at.call(u1 - g, v0 + g, back)
+	var b2: Vector3 = at.call(u1 - g, v1 - g, back)
+	var b3: Vector3 = at.call(u0 + g, v1 - g, back)
+	var f0: Vector3 = at.call(u0 + g + c, v0 + g + c, proud)
+	var f1: Vector3 = at.call(u1 - g - c, v0 + g + c, proud)
+	var f2: Vector3 = at.call(u1 - g - c, v1 - g - c, proud)
+	var f3: Vector3 = at.call(u0 + g + c, v1 - g - c, proud)
+	tool.set_color(tint)
+	_quad(tool, f0, f1, f2, f3, n)
+	for side: Array in [[b0, b1, f1, f0], [b1, b2, f2, f1], [b2, b3, f3, f2], [b3, b0, f0, f3]]:
+		var p: Array = side
+		# (the chamfer faces out and sideways: its normal is between the two)
+		var facing: Vector3 = ((p[0] + p[1]) * 0.5 - (b0 + b2) * 0.5)
+		facing = (facing - n * facing.dot(n)).normalized()
+		_quad(tool, p[0], p[1], p[2], p[3], (facing + n).normalized())
+
+
+## Two triangles, wound so that the side `normal` points to is their front.
+func _quad(tool: SurfaceTool, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, normal: Vector3) -> void:
+	tool.set_normal(normal)
+	for tri: Array in [[p0, p1, p2], [p0, p2, p3]]:
+		var p: Vector3 = tri[0]
+		var q: Vector3 = tri[1]
+		var r: Vector3 = tri[2]
+		# (Godot's front faces are the ones whose (q - p) x (r - p) points away from the viewer)
+		if (q - p).cross(r - p).dot(normal) > 0.0:
+			var swap := q
+			q = r
+			r = swap
+		tool.add_vertex(p)
+		tool.add_vertex(q)
+		tool.add_vertex(r)
 
 
 func _ground() -> void:

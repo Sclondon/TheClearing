@@ -33,7 +33,9 @@ https://sclondon.github.io/TheClearing/build/.
   gives the same maze: `Maze.seed_for(room code, round)`.
 - `scripts/maze_builder.gd` (`MazeBuilder`): the walls inside a ring 34 m high and 3.2 thick, the walls between
   rings 46 m and 4.2 thick, each with a footing and a cornice, and square piers standing above them where walls
-  meet; all drawn as two meshes, with a box for each piece to bump into. The next ring's outside wall stands
+  meet; built of real blocks (each a chamfered slab a little proud or sunk, with joints between) out to 110 m
+  and plain boxes beyond, in squares of 70 m so that what is off screen is not drawn, with plain boxes for shadows;
+  a box for each piece to bump into. The next ring's outside wall stands
   unbroken beyond the last ring built, with open ground up to it. The ground; stands of pines in the clearing
   and a few past the last ring (GameCommon's pine-tree); real grass over the clearing (GameCommon's
   grass: knee-high blades that the wind moves and the players push aside); the light past the exit.
