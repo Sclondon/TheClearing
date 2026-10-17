@@ -2,3 +2,6 @@
 .godot/
 /android/
 *.blend1
+
+# The maze to look round in the editor: made by tools/bake_preview.gd
+preview/
