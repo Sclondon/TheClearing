@@ -1,3 +1,4 @@
+@tool
 class_name IvyClimb
 extends Ladder
 ## Ivy grown thick enough up a wall to climb: a Ladder (the boy takes hold by

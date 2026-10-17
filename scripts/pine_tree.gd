@@ -1,3 +1,4 @@
+@tool
 class_name PineTree
 extends Resource
 ## A pine (fir, spruce, lodgepole...) built from code, as a mesh: a tapering trunk with a flare at

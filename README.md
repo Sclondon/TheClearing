@@ -23,6 +23,20 @@ https://sclondon.github.io/TheClearing/build/.
   maker starts the game. When everyone is out, the room's maker picks the next maze.
 - A run's score, sent to the arcade, is 10000 less the seconds it took you to get out.
 
+## Laying out mazes by hand
+
+Open `res://maze_editor.tscn`. Its root is a `MazeLayout`: set **Maze Seed** and **Rings** in the Inspector and
+press **Generate**. The maze is laid out as pieces (`MazePiece`) in folders: Walls, Piers, Terraces, Ivy, Vines,
+Bridges, Trees and the Beacon, each shown as it will be. Move, turn, resize (a box's **Size**, or scale it), copy or
+delete any of them; a bridge's far end is its child **End**. Save the scene as `res://mazes/<name>.tscn` and rounds
+play it: layouts in `res://mazes/` are played in name order (round 1 the first), round and round; with none there,
+every maze is generated. **Playable** off leaves one out. **Game Light** off shows it in the editor's plain light.
+
+Walls count where they stand: which lines between cells have a wall is read from the wall and pier pieces when the
+maze is played, so taking one away opens the way there (for the players, the things that hunt them and the way out),
+and one put down on a line (every 14 m, half a cell off the middle) closes it. The rings, gates and clearing come
+from the seed. Generate again replaces everything in the layout.
+
 ## How it works
 
 - `scripts/maze.gd` (`Maze`): the plan. Square cells 14 m across (halls about 10 m wide). `Maze.RINGS` gives the clearing (7 cells
@@ -32,6 +46,10 @@ https://sclondon.github.io/TheClearing/build/.
   ring inside it), with 6% more walls knocked through for loops, and its gate out put on its outside as far
   round the walls from its way in as there is. The gate out of the last ring is the exit. The same seed always
   gives the same maze: `Maze.seed_for(room code, round)`.
+- `scripts/maze_layout.gd` (`MazeLayout`) and `scripts/maze_piece.gd` (`MazePiece`): a maze as pieces, generated
+  or laid out by hand (above). `MazeBuilder.build(plan)` lays out a generated maze and realizes it; `realize(layout)`
+  builds any layout. `scripts/mazes.gd` (`Mazes`) finds the ones in res://mazes/; `scripts/maze_light.gd`
+  (`MazeLight`) is the sky, mist and sun, for the game and the editor alike.
 - `scripts/maze_builder.gd` (`MazeBuilder`): the walls inside a ring 34 m high and 3.2 thick, the walls between
   rings 46 m and 4.2 thick, each with a footing and a cornice, and square piers standing above them where walls
   meet; built of real blocks (each a chamfered slab a little proud or sunk, with joints between) out to 110 m
@@ -84,6 +102,8 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/smoke_test.gd     # alone: walk, walls, out, next maze, touch
 "$G" --headless --path . -s res://tests/climb_test.gd     # ivy onto a terrace, a vine, a rope bridge
 "$G" --headless --path . -s res://tests/hunt_test.gd      # enemies in a round; caught, back to the clearing
+"$G" --headless --path . -s res://tests/layout_test.gd    # a layout changed by hand, saved, loaded and played
+"$G" --editor --path . res://tests/editor_check.tscn       # (after layout_test) what the editor shows, saved to user://editor_view.png
 "$G" --headless --path . -s res://tests/enemy_test.gd     # Apophis and the mummies on their own
 "$G" --headless --path . -s res://tests/griever_test.gd   # the Griever on its own
 "$G" --path . --resolution 720x1280 -s res://tools/climb_shots.gd -- <folder>   # pictures of the ways up

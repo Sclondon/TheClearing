@@ -1,3 +1,4 @@
+@tool
 class_name MazeStone
 ## The materials of the maze: its walls and the ground.
 ##

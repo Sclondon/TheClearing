@@ -1,3 +1,4 @@
+@tool
 class_name Ladder
 extends Node3D
 ## A ladder standing straight up from where this node is placed. Its rungs face

@@ -5,3 +5,5 @@
 
 # The maze to look round in the editor: made by tools/bake_preview.gd
 preview/
+# Made by tests/layout_test.gd, opened by tests/editor_check.tscn
+tests/layout_check.tscn

@@ -47,15 +47,27 @@ var _enemies_in := 0.0
 
 ## Builds the maze for `seed_value` and puts everyone in the clearing.
 ## `players` is [{slot, look}] for everyone, this player included.
-func setup(seed_value: int, my_slot: int, players: Array, is_online: bool) -> void:
+## `layout_path`, if given, is a maze laid out in the editor (see Mazes) to play
+## instead of generating one.
+func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layout_path := "") -> void:
 	slot = my_slot
 	online = is_online
 	_sky()
-	maze = Maze.generate(seed_value)
 	var builder := MazeBuilder.new()
 	builder.name = "Maze"
 	add_child(builder)
-	builder.build(maze)
+	var laid_out: MazeLayout = null
+	if layout_path != "":
+		var scene := load(layout_path) as PackedScene
+		laid_out = scene.instantiate() as MazeLayout if scene else null
+	if laid_out:
+		laid_out.name = "Layout"
+		builder.add_child(laid_out)
+		builder.realize(laid_out)
+		maze = builder.maze
+	else:
+		maze = Maze.generate(seed_value)
+		builder.build(maze)
 
 	for entry: Dictionary in players:
 		var seat := int(entry["slot"])
@@ -186,61 +198,10 @@ func spawn_yaw(seat: int) -> float:
 	return seat * TAU / 4.0 + PI * 0.25
 
 
-## The light, after Inside: an overcast day, nearly without colour, so that the
-## only strong colour is the shirts. A pale sky and a mist that thickens with
-## distance and low down, until the far walls are flat grey shapes; soft light
-## from above with soft shadows; a little glow round bright things, and the
-## edges of the picture darkened (see _vignette).
+## The light, after Inside (see MazeLight), and the edges of the picture darkened
+## (see _vignette).
 func _sky() -> void:
-	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color(0.5, 0.56, 0.58)
-	sky_material.sky_horizon_color = Color(0.74, 0.77, 0.76)
-	sky_material.ground_horizon_color = Color(0.6, 0.63, 0.62)
-	sky_material.ground_bottom_color = Color(0.3, 0.32, 0.31)
-	sky_material.sun_angle_max = 0.0
-	sky_material.sun_curve = 0.0
-	var sky := Sky.new()
-	sky.sky_material = sky_material
-	var environment := Environment.new()
-	environment.background_mode = Environment.BG_SKY
-	environment.sky = sky
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	environment.ambient_light_energy = 0.75
-	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.tonemap_white = 1.3
-	# The mist: thick with distance, and thicker still low down.
-	environment.fog_enabled = true
-	environment.fog_light_color = Color(0.66, 0.7, 0.69)
-	environment.fog_density = 0.009
-	environment.fog_sky_affect = 0.6
-	environment.fog_aerial_perspective = 0.4
-	environment.fog_height = 6.0
-	environment.fog_height_density = 0.01
-	# Glow round the bright (the light past the exit, the sky between the walls).
-	environment.glow_enabled = true
-	environment.glow_intensity = 0.6
-	environment.glow_bloom = 0.08
-	environment.glow_hdr_threshold = 0.9
-	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
-	# Most of the colour taken out.
-	environment.adjustment_enabled = true
-	environment.adjustment_saturation = 0.72
-	environment.adjustment_contrast = 1.1
-	environment.adjustment_brightness = 1.0
-	var world := WorldEnvironment.new()
-	world.environment = environment
-	add_child(world)
-	var sun := DirectionalLight3D.new()
-	sun.name = "Sun"
-	# (high and soft: an overcast sun, its shadows short and blurred)
-	sun.rotation_degrees = Vector3(-68.0, 25.0, 0.0)
-	sun.light_color = Color(0.92, 0.94, 0.95)
-	sun.light_energy = 0.55
-	sun.shadow_enabled = true
-	sun.shadow_blur = 2.5
-	sun.shadow_opacity = 0.75
-	sun.directional_shadow_max_distance = 140.0
-	add_child(sun)
+	MazeLight.put(self)
 	_vignette()
 
 

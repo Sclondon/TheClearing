@@ -229,7 +229,7 @@ func _begin(players: Array, my_slot: int, online: bool, seed_value: int) -> void
 	world = World.new()
 	world.name = "World"
 	add_child(world)
-	world.setup(seed_value, my_slot, players, online)
+	world.setup(seed_value, my_slot, players, online, Mazes.for_round(round_number))
 	world.escaped.connect(_on_escaped)
 	world.caught.connect(func(_seat: int) -> void: _say("Caught! Back to the clearing."))
 	_show_hud()

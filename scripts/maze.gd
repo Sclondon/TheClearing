@@ -1,3 +1,4 @@
+@tool
 class_name Maze
 extends RefCounted
 ## The maze: a great open clearing in the middle, and round it rings of maze, one
@@ -291,3 +292,23 @@ func _measure() -> void:
 			if inside(next) and not in_clearing(next) and distance[index(next)] == -1 and not blocked(cell, step):
 				distance[index(next)] = distance[index(cell)] + 1
 				queue.push_back(next)
+
+
+## Sets the walls from `is_wall(cell, step)` (whether the line on that side of the
+## cell has a wall on it): what MazeLayout does when its walls have been moved by
+## hand. The way out is kept if it is still open; otherwise it is the first gap
+## found in the outer wall. The steps from the clearing are counted again.
+func set_walls(is_wall: Callable) -> void:
+	for i in size * size:
+		var cell := Vector2i(i % size, i / size)
+		east[i] = 1 if cell.x < size - 1 and is_wall.call(cell, Vector2i(1, 0)) else (1 if cell.x == size - 1 else 0)
+		south[i] = 1 if cell.y < size - 1 and is_wall.call(cell, Vector2i(0, 1)) else (1 if cell.y == size - 1 else 0)
+	if is_wall.call(exit, exit_side):
+		for i in size * size:
+			var cell := Vector2i(i % size, i / size)
+			for step: Vector2i in STEPS:
+				if not inside(cell + step) and not is_wall.call(cell, step):
+					exit = cell
+					exit_side = step
+					break
+	_measure()

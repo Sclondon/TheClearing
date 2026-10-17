@@ -1,3 +1,4 @@
+@tool
 class_name RopeBridge
 extends Node3D
 ## A bridge of planks hung on two ropes across a gap, from `from` to `to` (both
@@ -85,6 +86,9 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# (in the editor it only hangs, as it was made)
+	if Engine.is_editor_hint():
+		return
 	var gravity := Vector3.DOWN * 9.8
 	var pull := []
 	pull.resize(POINTS)

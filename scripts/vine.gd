@@ -1,3 +1,4 @@
+@tool
 class_name Vine
 extends Rope
 ## A vine hanging from a ledge or the top of a wall: a Rope (so it swings, and the

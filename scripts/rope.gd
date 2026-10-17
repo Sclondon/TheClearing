@@ -1,3 +1,4 @@
+@tool
 class_name Rope
 extends Node3D
 ## A rope hanging from where this node is placed, and it is a real one: a chain
@@ -121,6 +122,9 @@ func take_in(distance: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# (in the editor it only hangs, as it was made)
+	if Engine.is_editor_hint():
+		return
 	var piece := length / PIECES
 	var fall := Vector3.DOWN * gravity * delta * delta
 	var top := global_position
