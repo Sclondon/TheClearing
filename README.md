@@ -6,7 +6,8 @@ high, damp and mossy, ivy hanging from them. Find the way out. The maze goes rou
 walled off from the next but for one gate; a pale light stands up past the gate out of the last ring.
 
 This is the start: the clearing, the first ring, rooms for playing together, and a maze made fresh each
-round. Nothing hunts you yet, the walls do not move, and there is no night. Every player is Inside's boy:
+round. Apophis, packs of mummies and a Griever hunt the passages; the walls do not move, and there is no night.
+Every player is Inside's boy:
 no face, a plain shirt (its colour by seat, the first red) and dark trousers.
 
 Godot 4.7, GL Compatibility, portrait first (it also fills a landscape window). Web build in `build/`, served at
@@ -52,6 +53,12 @@ https://sclondon.github.io/TheClearing/build/.
 - `scripts/world.gd` (`World`): one round. Sky, fog and sun; the maze; this player (`player.tscn`, Outside's boy
   from GameCommon) with `FollowCamera` (orbit, `indoors` so it stays out of the walls) and `TouchControls`;
   a `RemotePlayer` for each friend. Each copy sends where its own player is 12 times a second.
+- `scripts/enemies/`: what hunts the maze. `Apophis` (Outside's great snake) and six kinds of `Mummy` (Outside's,
+  with their rigs and models in `models/enemies/`) on a shared `MazeEnemy`, finding their way with `MazeNav` on the maze
+  plan and placed from the seed by `MazeEnemies`; and the `Griever` (`griever*.gd`): a lump of wet meat on eight
+  procedural robotic spider legs that plant on walls and ground, with a stinger. `World` puts in an Apophis, two
+  packs of mummies and a Griever; alone or as the host they are run there and their state goes to guests ten times a
+  second (K_ENEMIES), where copies follow it. Caught, a player is put back in the clearing; out, nobody is hunted.
 - `scripts/remote_player.gd` (`RemotePlayer`): a friend, a `Figure` on the boy's rig chasing their news.
 - `scripts/looks.gd` (`Looks`): each player is the boy as Inside has him (no face, cropped hair, no cap, shirt,
   dark trousers and boots). The shirt's colour goes by seat; skin and hair by a seed that goes round the room as
@@ -76,6 +83,9 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/maze_test.gd      # the maze plan
 "$G" --headless --path . -s res://tests/smoke_test.gd     # alone: walk, walls, out, next maze, touch
 "$G" --headless --path . -s res://tests/climb_test.gd     # ivy onto a terrace, a vine, a rope bridge
+"$G" --headless --path . -s res://tests/hunt_test.gd      # enemies in a round; caught, back to the clearing
+"$G" --headless --path . -s res://tests/enemy_test.gd     # Apophis and the mummies on their own
+"$G" --headless --path . -s res://tests/griever_test.gd   # the Griever on its own
 "$G" --path . --resolution 720x1280 -s res://tools/climb_shots.gd -- <folder>   # pictures of the ways up
 "$G" --headless --path . -s res://tools/bake_preview.gd -- [seed] [rings]   # a maze to look round in the editor: preview/maze_preview.scn
 "$G" --path . --resolution 900x900 -s res://tools/head_sheet.gd -- <file.png>    # every head shape
@@ -90,7 +100,6 @@ Flags (command line `-- --name=value` or the page's `?name=value`): `server=<url
 
 ## Not done yet
 
-Rings past the first; things that hunt you (Outside's snake and mummies, and a Griever-like thing of meat on
-metal legs, are being made);
+Rings past the first; enemies knowing about the ways up (terraces, bridges); ears;
 walls that move, doors that shut at night, a map, sound and music, names, and reconnecting mid-round past the
 server's 90 seconds.

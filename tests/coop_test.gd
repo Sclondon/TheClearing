@@ -118,6 +118,11 @@ func _play() -> void:
 	await frames(90)
 	Input.action_release(&"move_up")
 	await until("the other player moved", func() -> bool: return other.global_position.distance_to(started_at) > 0.5, 10.0)
+	# What hunts the maze: run by the host, followed by the guest.
+	var griever = world.griever
+	check("the Griever is the host's", griever.puppet == (role == "guest"))
+	var griever_from: Vector3 = griever.global_position
+	await until("the Griever goes about", func() -> bool: return griever.global_position.distance_to(griever_from) > 1.0, 15.0)
 	# Out past the exit (the host first).
 	if role == "guest":
 		await until("the host got out", func() -> bool: return world.out.has(0), 20.0)

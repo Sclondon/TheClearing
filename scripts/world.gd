@@ -11,9 +11,17 @@ extends Node3D
 ## from the room's code and the round (Maze.seed_for).
 
 signal escaped(slot: int, seconds: float)
+## This player was caught, and is back in the clearing.
+signal caught(slot: int)
 
 const K_STATE := 83  # S
 const SEND_EVERY := 1.0 / 12.0
+## The host's news of what hunts the maze: MazeEnemies.pack(), then the Griever's state.
+const K_ENEMIES := 69  # E
+const ENEMIES_EVERY := 0.1
+## How many packs of mummies, and how many snakes.
+const PACKS := 2
+const SNAKES := 1
 
 ## This player's seat (0 when playing alone).
 var slot := 0
@@ -29,7 +37,12 @@ var clock := 0.0
 ## Seats that have got out, and how long each took.
 var out := {}
 
+## What hunts the maze (see _enemies).
+var enemies: MazeEnemies
+var griever: Griever
+
 var _send_in := 0.0
+var _enemies_in := 0.0
 
 
 ## Builds the maze for `seed_value` and puts everyone in the clearing.
@@ -92,9 +105,75 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool) -> vo
 	touch.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hud.add_child(touch)
 
+	_enemies(seed_value)
+
 	if online:
 		Net.packet.connect(_on_packet)
 		Net.left.connect(_on_left)
+
+
+## What hunts the maze: an Apophis, packs of mummies (MazeEnemies) and a Griever,
+## all placed from the seed, so every copy has the same ones in the same places.
+## Alone, or as the host, they are run here; a guest's are puppets that follow the
+## host's news (K_ENEMIES).
+func _enemies(seed_value: int) -> void:
+	player.add_to_group(&"maze_players")
+	for seat: int in remotes:
+		remotes[seat].add_to_group(&"maze_players")
+	enemies = MazeEnemies.new()
+	enemies.name = "Enemies"
+	add_child(enemies)
+	enemies.populate(maze, hash("enemies/%d" % seed_value), PACKS, SNAKES)
+	griever = Griever.new()
+	griever.name = "Griever"
+	add_child(griever)
+	# (in the dead end furthest round the walls from the snake and the mummies)
+	var nav := MazeNav.new(maze)
+	var taken: Array[Vector2i] = []
+	for enemy: MazeEnemy in enemies.enemies:
+		taken.append(maze.cell_at(enemy.global_position))
+	var lair := maze.exit
+	var best := -1
+	for cell: Vector2i in nav.lairs(4):
+		var apart := 1000
+		for other: Vector2i in taken:
+			apart = mini(apart, absi(cell.x - other.x) + absi(cell.y - other.y))
+		if nav.dead_end(cell) and apart > best:
+			best = apart
+			lair = cell
+	griever.setup(maze, lair, 0.0)
+	var puppets := online and not Net.is_host
+	enemies.set_puppet(puppets)
+	griever.puppet = puppets
+	enemies.caught.connect(func(who: Node3D, _enemy: MazeEnemy) -> void: _on_caught(who))
+	griever.caught.connect(_on_caught)
+	Grass.push(griever, 1.6)
+	for enemy: Node3D in enemies.enemies:
+		Grass.push(enemy, 1.0)
+
+
+## Something has caught `who`. Here (alone or as the host, where they are run):
+## this player goes back to the clearing, and a guest is told to.
+func _on_caught(who: Node3D) -> void:
+	if who == player:
+		_back_to_the_clearing()
+	elif online and Net.is_host:
+		for seat: int in remotes:
+			if remotes[seat] == who:
+				Net.send_json(Net.BROADCAST, {"caught": seat})
+
+
+## Caught: put back in the middle of the clearing, to try again.
+func _back_to_the_clearing() -> void:
+	if player.state == player.State.LADDER:
+		player._leave_ladder()
+	elif player.state == player.State.ROPE:
+		player._leave_rope()
+	player.global_position = spawn(slot)
+	player.velocity = Vector3.ZERO
+	player.rotation.y = spawn_yaw(slot)
+	camera.snap()
+	caught.emit(slot)
 
 
 ## Where a seat starts: round the middle of the clearing, facing out.
@@ -210,6 +289,13 @@ func _physics_process(delta: float) -> void:
 		if _send_in <= 0.0:
 			_send_in = SEND_EVERY
 			Net.send(Net.BROADCAST, K_STATE, _state(slot, player.global_position, player.velocity, player.facing_yaw, player.is_on_floor()))
+		if Net.is_host:
+			_enemies_in -= delta
+			if _enemies_in <= 0.0:
+				_enemies_in = ENEMIES_EVERY
+				var news := enemies.pack()
+				news.append_array(griever.state_bytes())
+				Net.send(Net.BROADCAST, K_ENEMIES, news)
 
 
 func _got_out(seat: int, seconds: float) -> void:
@@ -218,6 +304,9 @@ func _got_out(seat: int, seconds: float) -> void:
 	out[seat] = seconds
 	if remotes.has(seat):
 		remotes[seat].escaped = true
+	# (nothing hunts anyone who is out)
+	if seat == slot:
+		player.remove_from_group(&"maze_players")
 	escaped.emit(seat, seconds)
 
 
@@ -260,10 +349,17 @@ func _on_packet(from: int, kind: int, data: PackedByteArray) -> void:
 			Vector3(data.decode_float(1), data.decode_float(5), data.decode_float(9)),
 			Vector3(data.decode_float(13), data.decode_float(17), data.decode_float(21)),
 			data.decode_float(25), data[29] == 1)
+	elif kind == K_ENEMIES and not Net.is_host:
+		enemies.unpack(data, 0)
+		var at := 1 + MazeEnemy.STATE_SIZE * enemies.enemies.size()
+		if data.size() >= at + Griever.STATE_SIZE:
+			griever.from_bytes(data, at)
 	elif kind == Net.K_JSON:
 		var message: Variant = JSON.parse_string(data.get_string_from_utf8())
 		if not (message is Dictionary):
 			return
+		if message.has("caught") and int(message["caught"]) == slot:
+			_back_to_the_clearing()
 		if message.has("out"):
 			var seat := int(message["out"])
 			if Net.is_host and from != slot:
