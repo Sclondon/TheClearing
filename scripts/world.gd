@@ -50,6 +50,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool) -> vo
 		if seat == slot:
 			player = load("res://player.tscn").instantiate()
 			player.name = "Player"
+			player.add_to_group(&"bridge_weights")
 			add_child(player)
 			player.global_position = spawn(seat)
 			player.rotation.y = spawn_yaw(seat)
@@ -58,6 +59,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool) -> vo
 			var other := RemotePlayer.new()
 			other.name = "Remote%d" % seat
 			other.slot = seat
+			other.add_to_group(&"bridge_weights")
 			add_child(other)
 			other.place(spawn(seat), spawn_yaw(seat))
 			Looks.apply(other.rig, look)

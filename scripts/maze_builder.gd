@@ -20,6 +20,8 @@ const RING_THICK := 4.2
 var maze: Maze
 ## The light past the exit.
 var beacon: Node3D
+## The terraces, ivy, vines and bridges (MazeFeatures).
+var features: MazeFeatures
 
 
 func build(plan: Maze) -> void:
@@ -34,6 +36,10 @@ func build(plan: Maze) -> void:
 	add_child(body)
 	_walls(body, inner, WALL_HEIGHT)
 	_walls(body, great, RING_HEIGHT)
+	features = MazeFeatures.new()
+	features.name = "Features"
+	add_child(features)
+	features.build(maze, self)
 	_ground()
 	_trees()
 	_beacon()

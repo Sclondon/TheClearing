@@ -17,7 +17,7 @@ https://sclondon.github.io/TheClearing/build/.
 - **Move:** a thumb on the left half of the screen (touch), WASD or arrows, or a gamepad stick.
 - **Look:** drag on the right half, the mouse, or the right stick. **Jump:** the jump button, Space, or A.
 - Everything else the boy from *Outside* can do works too (sprint, duck, slide, climb a ledge, kick off a wall).
-  The maze walls are far too tall to climb.
+  The walls themselves are far too tall to climb, but there are ways up: ivy up the terraces, vines, rope bridges.
 - **PLAY ALONE**, or **MAKE A ROOM** and give friends its four-letter code to **JOIN A ROOM**. The room's
   maker starts the game. When everyone is out, the room's maker picks the next maze.
 - A run's score, sent to the arcade, is 10000 less the seconds it took you to get out.
@@ -36,6 +36,13 @@ https://sclondon.github.io/TheClearing/build/.
   meet; all drawn as two meshes, with a box for each piece to bump into. The next ring's outside wall stands
   unbroken beyond the last ring built, with open ground up to it. The ground; stands of pines in the clearing
   and a few past the last ring (GameCommon's pine-tree); the light past the exit.
+- `scripts/maze_features.gd` (`MazeFeatures`): the ways up, chosen from the seed. Terraces of stone against the walls
+  like steps for something huge (a lower one 6.5 m up and 3 m deep, often an upper one at 13 m set back above
+  it), with climbable ivy up their faces (`scripts/ivy_climb.gd`, `IvyClimb`, a `Ladder`) and sometimes on up to the
+  wall top, where he can walk to the next pier; vines to swing on (`scripts/vine.gd`, `Vine`, a `Rope`, its end
+  2.6 m up so it takes a jump); and rope bridges (`scripts/rope_bridge.gd`, `RopeBridge`: a chain of points that
+  sags, dips under anyone in the group `bridge_weights` and sways, its planks moving bodies) between terraces
+  across a hall and between wall tops.
 - `scripts/maze_stone.gd` (`MazeStone`): the wall and ground shaders. The stone is Outside's `Sandstone`
   shader at a giant's scale (blocks 5 m long), made grey and damp: dark streaks run down from the joints, the
   foot of every wall is soaked and mossy, and ivy hangs in curtains from the top. Lit in hard bands like the figures.
@@ -65,6 +72,10 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . --import                         # after adding a class_name script or a model
 "$G" --headless --path . -s res://tests/maze_test.gd      # the maze plan
 "$G" --headless --path . -s res://tests/smoke_test.gd     # alone: walk, walls, out, next maze, touch
+"$G" --headless --path . -s res://tests/climb_test.gd     # ivy onto a terrace, a vine, a rope bridge
+"$G" --path . --resolution 720x1280 -s res://tools/climb_shots.gd -- <folder>   # pictures of the ways up
+"$G" --path . --resolution 900x900 -s res://tools/head_sheet.gd -- <file.png>    # every head shape
+"$G" --path . --resolution 900x900 -s res://tools/legs_sheet.gd -- <file.png>    # every trouser cut and boot
 node tools/dev_relay.mjs <scareathon-v3/server> 3111      # local rooms (needs server/node_modules)
 sh tools/coop_test.sh                                     # two copies in one room against it
 "$G" --path . --resolution 720x1280 -s res://tools/shots.gd -- <folder>   # pictures to look at
@@ -76,6 +87,6 @@ Flags (command line `-- --name=value` or the page's `?name=value`): `server=<url
 ## Not done yet
 
 Rings past the first; things that hunt you (Outside's snake and mummies, and a Griever-like thing of meat on
-metal legs, are being made); climbing (ivy, vines, ledges up the walls, mezzanines, rope bridges); real grass;
+metal legs, are being made); real grass (a GameCommon component is ready to put in);
 walls that move, doors that shut at night, a map, sound and music, names, and reconnecting mid-round past the
 server's 90 seconds.
