@@ -17,9 +17,9 @@ const BOOTS := Color(0.17, 0.13, 0.1)
 ## The head everyone has (one of HeadShape.SHAPES).
 const HEAD := "inside_round"
 ## The locks over the close crop (one of HairShape.STYLES).
-const LOCKS := "loose"
+const LOCKS := "inside"
 ## And the cut of his trousers and his boots (BodyShape.CUTS and BOOTS).
-const CUT := "slim"
+const CUT := "shaped_slim"
 const BOOT := "angular"
 
 

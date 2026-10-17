@@ -9,13 +9,21 @@ class_name BodyShape
 ## mesh (with his hands), so a shape of boot replaces that mesh: `boots(rig,
 ## name)`. Every shape is kept, to be looked at side by side (tools/legs_sheet.gd).
 
-## Cuts: [name, label, {"thigh", "knee", "ankle": its width there}], as
+## Cuts: [name, label, {"thigh", "knee", "ankle": its width there}], or, for one
+## shaped like a leg, {"profile": [[height up the leg 0..1, width], ...], and how
+## much the calf swells behind, the thigh before and the knee: "calf", "thigh",
+## "kneecap"}; widths as
 ## shares of the width as made (1 at the hip).
 const CUTS := [
 	["tube", "As made", {}],
 	["taper", "Tapered", {"thigh": 0.92, "knee": 0.8, "ankle": 0.6}],
 	["slim", "Slim", {"thigh": 0.88, "knee": 0.72, "ankle": 0.52}],
 	["soft", "A little tapered", {"thigh": 0.96, "knee": 0.9, "ankle": 0.75}],
+	# (after a body: full in the thigh, a knee, the calf swelling behind, a slim ankle)
+	["shaped", "Shaped to the leg", {"profile": [[0.0, 0.54], [0.12, 0.6], [0.3, 0.84], [0.47, 0.74], [0.53, 0.77], [0.62, 0.82], [0.8, 0.95], [1.0, 1.0]],
+		"calf": 0.22, "thigh": 0.12, "kneecap": 0.12}],
+	["shaped_slim", "Shaped and slim", {"profile": [[0.0, 0.48], [0.12, 0.52], [0.3, 0.8], [0.46, 0.63], [0.53, 0.68], [0.62, 0.76], [0.8, 0.92], [1.0, 1.0]],
+		"calf": 0.4, "thigh": 0.2, "kneecap": 0.18}],
 ]
 ## Boots: [name, label, {"length": how long the foot is in front of the ankle,
 ## "toe": how flat the top of the toe is, "square": how square its end}].
@@ -176,12 +184,21 @@ static func _taper(material: String, points: PackedVector3Array, how: Dictionary
 			continue
 		var middle: Vector3 = sums[key][0] / float(sums[key][1])
 		var width := 1.0
-		if p.y > KNEE:
+		var front := 1.0
+		var back := 1.0
+		if how.has("profile"):
+			var t := clampf((p.y - HEM) / (HIP - HEM), 0.0, 1.0)
+			width = _along(how["profile"], t)
+			# (front and back of the leg, not its sides)
+			front += how.get("thigh", 0.0) * _bump(t, 0.78, 0.16) + how.get("kneecap", 0.0) * _bump(t, 0.53, 0.05)
+			back += how.get("calf", 0.0) * _bump(t, 0.31, 0.12)
+		elif p.y > KNEE:
 			var thigh: float = how.get("thigh", 1.0)
 			width = lerpf(how["knee"], lerpf(thigh, 1.0, _ease(HIP - 0.08, HIP, p.y)), _ease(KNEE, HIP - 0.08, p.y))
 		else:
 			width = lerpf(how["ankle"], how["knee"], _ease(HEM, KNEE, p.y))
 		var off := Vector2(p.x - middle.x, p.z - middle.z) * width
+		off.y *= front if off.y > 0.0 else back
 		moved[i] = Vector3(middle.x + off.x, p.y, middle.z + off.y)
 	return moved
 
@@ -228,3 +245,19 @@ static func _boot(material: String, points: PackedVector3Array, how: Dictionary)
 			q.z = lerpf(q.z, ankle + (tip - ankle) * how["length"] * 0.97, how["square"] * (ahead - 0.85) / 0.15)
 		moved[i] = q
 	return moved
+
+
+## A smooth curve through [x, y] points (x rising), at `x`.
+static func _along(points: Array, x: float) -> float:
+	for i in points.size() - 1:
+		var a: Array = points[i]
+		var b: Array = points[i + 1]
+		if x <= b[0]:
+			return lerpf(a[1], b[1], _ease(a[0], b[0], x))
+	return points.back()[1]
+
+
+## A smooth swelling round `at`, `wide` either side, 1 at its height.
+static func _bump(x: float, at: float, wide: float) -> float:
+	var d := clampf(absf(x - at) / wide, 0.0, 1.0)
+	return 1.0 - d * d * (3.0 - 2.0 * d)

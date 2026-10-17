@@ -13,7 +13,8 @@ class_name HairShape
 
 ## [name, label, {"count": locks, "length": metres, "width": metres, "lift": how far
 ## the tips stand off, "fringe": how much longer the locks over the brow are,
-## "messy": how much each lock wanders from the flow, "wavy": the waved hair
+## "messy": how much each lock wanders from the flow, "band": how far up from the
+## hairline they grow (all over, if not given), "wavy": the waved hair
 ## shader rather than the curly one}].
 const STYLES := [
 	["loose", "Loose locks", {"count": 46, "length": 0.075, "width": 0.042, "lift": 0.018, "fringe": 1.35, "messy": 0.35, "wavy": true}],
@@ -21,6 +22,9 @@ const STYLES := [
 	["short", "Short and chunky", {"count": 40, "length": 0.055, "width": 0.046, "lift": 0.012, "fringe": 1.2, "messy": 0.3, "wavy": true}],
 	["swept", "Swept to the side", {"count": 46, "length": 0.08, "width": 0.042, "lift": 0.016, "fringe": 1.5, "messy": 0.25, "wavy": true, "sweep": 0.6}],
 	["curly_locks", "Locks, curled shading", {"count": 46, "length": 0.075, "width": 0.042, "lift": 0.018, "fringe": 1.35, "messy": 0.35, "wavy": false}],
+	# (after Inside's boy: the close cut whole on top, and only a ring of broad, flat clumps
+	# round the hairline, longest over the brow and at the temples)
+	["inside", "Broad clumps at the hairline", {"count": 70, "length": 0.07, "width": 0.07, "lift": 0.003, "fringe": 1.4, "messy": 0.12, "wavy": true, "band": 0.32}],
 ]
 
 ## Segments along a lock.
@@ -99,7 +103,7 @@ static func mesh(head: Mesh, cut: Mesh, material: Material, name: String, how: D
 		var dir := Vector3(cos(around) * round, y, sin(around) * round)
 		# (the hairline: high over the brow, over the ears at the sides, down to the nape behind)
 		var line := lerpf(-0.42, 0.3, smoothstep(-0.6, 0.85, dir.z))
-		if dir.y < line:
+		if dir.y < line or dir.y > line + float(how.get("band", 3.0)):
 			continue
 		_lock(tool, dir, crown, centre, reach, how, rng, bone_set, weight_set)
 	tool.generate_normals()
