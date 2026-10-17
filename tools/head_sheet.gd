@@ -52,7 +52,7 @@ func _run() -> void:
 	var names := HeadShape.names()
 	var sheet := Image.create(CELL * VIEWS.size(), CELL * names.size(), false, Image.FORMAT_RGBA8)
 	for row in names.size():
-		Looks.apply(figure.rig, Looks.decode("p11", 0).merged({"head": names[row]}))
+		Looks.apply(figure.rig, Looks.decode("p11", 0).merged({"head": names[row]}, true))
 		var look: Dictionary = figure.rig.look
 		look["parts"]["head"] = HeadShape.option(names[row])
 		figure.rig.restyle()
