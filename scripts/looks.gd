@@ -13,6 +13,8 @@ const SHIRTS: Array[Color] = [
 ]
 const TROUSERS := Color(0.17, 0.17, 0.19)
 const BOOTS := Color(0.09, 0.08, 0.08)
+## The head everyone has (one of HeadShape.SHAPES).
+const HEAD := "inside"
 
 
 ## A new look, as its word.
@@ -34,14 +36,17 @@ static func decode(word: String, seat := 0) -> Dictionary:
 		# (dark hair mostly, as his is; fair only with fair skin)
 		var hairs := 4 if skin < 4 else 3
 		colours["hair"] = CharacterLook.HAIR_COLOURS[rng.randi() % hairs]
-	return {"face": "base", "hair": "crop", "cap": false, "outfit": "trousers", "colours": colours}
+	return {"face": "base", "head": HEAD, "hair": "crop", "cap": false, "outfit": "trousers", "colours": colours}
 
 
 ## Dresses a figure on the boy's rig in a look from `decode`. It is the trousers
-## outfit without its braces, which CharacterLook has no outfit for.
+## outfit without its braces, which CharacterLook has no outfit for, and the
+## head is one of HeadShape's (the look's "head").
 static func apply(rig: CharacterRig, look: Dictionary) -> void:
 	var whole := CharacterLook.dressed(look)
 	whole["parts"]["over"] = "none"
+	whole["parts"]["head"] = HeadShape.option(look.get("head", HEAD))
+	HeadShape.add_to(rig)
 	rig.look = whole
 	if rig.is_node_ready():
 		rig.restyle()
