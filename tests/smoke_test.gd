@@ -37,7 +37,7 @@ func _run() -> void:
 	check("playing", main.screen == "play" and world != null)
 	var player = world.player
 	check("in the clearing", player.global_position.length() < 4.0 and player.is_on_floor(), str(player.global_position))
-	check("maze built", world.get_node("Maze/Walls").get_child_count() > 100, "(%d wall runs)" % world.get_node("Maze/Walls").get_child_count())
+	check("maze built", world.get_node("Maze/Walls").get_child_count() > 40, "(%d wall runs)" % world.get_node("Maze/Walls").get_child_count())
 
 	# Walk: he goes somewhere.
 	var from: Vector3 = player.global_position

@@ -20,14 +20,14 @@ extends RefCounted
 ## and north is implied, and is solid except at `exit`.
 
 ## Metres across one cell, from the middle of one wall to the middle of the next.
-const CELL := 8.0
+const CELL := 14.0
 ## Cells across the clearing, and then across the outside of each ring, from the
 ## middle out. All odd, so each has a middle cell.
-const RINGS: Array[int] = [11, 21, 33, 47]
+const RINGS: Array[int] = [7, 15, 23, 31]
 
-var size := 21
+var size := 15
 ## Cells along a side of the clearing.
-var clearing := 11
+var clearing := 7
 ## How many rings are built.
 var rings := 1
 var maze_seed := 0

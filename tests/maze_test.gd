@@ -33,7 +33,7 @@ func _initialize() -> void:
 					unreached += 1
 			check("%s: every cell reachable" % name, unreached == 0, "(%d not)" % unreached)
 			var path := maze.path_out(maze.cell_at(Vector3.ZERO))
-			check("%s: a way out from the middle" % name, path.size() > maze.clearing / 2 + 8 * built, "(%d cells)" % path.size())
+			check("%s: a way out from the middle" % name, path.size() > maze.clearing / 2 + 4 * built, "(%d cells)" % path.size())
 			# Every ring wall is shut but for the gates: 4 out of the clearing, 1 out of each ring after.
 			var openings := 0
 			var open := 0

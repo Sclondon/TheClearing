@@ -24,15 +24,15 @@ https://sclondon.github.io/TheClearing/build/.
 
 ## How it works
 
-- `scripts/maze.gd` (`Maze`): the plan. Square cells 8 m across. `Maze.RINGS` gives the clearing (11 cells
-  across, 88 m, open) and the ring round it after ring, middle out; `rings` of them are built (1 for now) and
+- `scripts/maze.gd` (`Maze`): the plan. Square cells 14 m across (halls about 10 m wide). `Maze.RINGS` gives the clearing (7 cells
+  across, 98 m, open) and the ring round it after ring, middle out; `rings` of them are built (1 for now) and
   the grid runs to the outside of the last. Each ring is carved on its own by a depth-first walk from its way in
   (into the first, a gate in the middle of each side of the clearing; into each later one, the gate out of the
   ring inside it), with 6% more walls knocked through for loops, and its gate out put on its outside as far
   round the walls from its way in as there is. The gate out of the last ring is the exit. The same seed always
   gives the same maze: `Maze.seed_for(room code, round)`.
-- `scripts/maze_builder.gd` (`MazeBuilder`): the walls inside a ring 34 m high and 2.6 thick, the walls between
-  rings 46 m and 3.6 thick, each with a footing and a cornice, and square piers standing above them where walls
+- `scripts/maze_builder.gd` (`MazeBuilder`): the walls inside a ring 34 m high and 3.2 thick, the walls between
+  rings 46 m and 4.2 thick, each with a footing and a cornice, and square piers standing above them where walls
   meet; all drawn as two meshes, with a box for each piece to bump into. The next ring's outside wall stands
   unbroken beyond the last ring built, with open ground up to it. The ground; stands of pines in the clearing
   and a few past the last ring (GameCommon's pine-tree); the light past the exit.

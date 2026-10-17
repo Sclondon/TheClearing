@@ -13,9 +13,9 @@ extends Node3D
 
 ## The walls inside a ring, and the great walls between rings.
 const WALL_HEIGHT := 34.0
-const WALL_THICK := 2.6
+const WALL_THICK := 3.2
 const RING_HEIGHT := 46.0
-const RING_THICK := 3.6
+const RING_THICK := 4.2
 
 var maze: Maze
 ## The light past the exit.
