@@ -266,6 +266,10 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 			var walker := MazeSkinwalker.new()
 			walker.pack_id = pack_now[0].pack_id
 			add(walker, middle, rng.randf_range(-PI, PI), rng.randi(), Vector3(2.0, 0.0, -2.0))
+	for i in style.tripods:
+		var cell := _far_from(taken, lairs, rng)
+		taken.append(cell)
+		add(MazeTripod.new(), cell, rng.randf_range(-PI, PI), rng.randi())
 
 
 ## Puts in the wildlife of the clearing that is run with what hunts (so that
@@ -290,10 +294,6 @@ func add_wildlife(clearing: ClearingStyle, seed_value: int) -> void:
 			var spot := home + Vector3(rng.randf_range(-4.0, 4.0), 0.0, rng.randf_range(-4.0, 4.0))
 			var cell := maze.cell_at(spot)
 			add(one, cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell) + Vector3.UP * (maze.ground_height(spot) + 0.3))
-	for i in style.tripods:
-		var cell := _far_from(taken, lairs, rng)
-		taken.append(cell)
-		add(MazeTripod.new(), cell, rng.randf_range(-PI, PI), rng.randi())
 
 
 ## Puts a pack round `middle`: one to a cell within two steps of it, and two
