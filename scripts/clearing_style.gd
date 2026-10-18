@@ -117,6 +117,11 @@ var entrance_spots: Array = []
 ## Flocks of tame chickens (TameChickens) foraging in the clearing: hens and a
 ## rooster that hunt nobody, the first at the edge of the woods.
 @export_range(0, 6) var chicken_flocks := 2
+## Dragonflies over the marsh (Insects), about this many in all, in patches
+## along its pools, perching on the bulrushes.
+@export_range(0, 120) var marsh_dragonflies := 36
+## Clouds of moths out over the grass, in the evening and through the night (Insects).
+@export_range(0, 8) var dusk_moth_clouds := 3
 
 var _noise: FastNoiseLite
 var _noise_seed := -1

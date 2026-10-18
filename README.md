@@ -109,8 +109,19 @@ from the seed. Generate again replaces everything in the layout.
 - `scripts/wildlife/`: what lives in the clearing and hunts nobody. `TameChickens`: a tame ChickenFlock (with its
   sounds, ChickenVoice), placed by `TameChickens.populate` from the seed (ClearingStyle and MazeStyle, "Wildlife"),
   scattered by anyone running through; each copy of the game runs its own (`World.wildlife`).
+  `Insects` (`World.insects`): moths, flies and dragonflies (InsectSwarm, `creatures/insects/`), placed by
+  `Insects.populate` from the seed (MazeStyle and ClearingStyle, "Wildlife"). Moths gather round anything in the group
+  `moth_lights` (meta `moth_radius`, `moth_height`, `moth_count`): it puts the angel, the light past the exit and any
+  GameCommon `Fire` there (a fire joins by itself when it is put in); big moths rest on hall walls (placed with a ray
+  when someone first comes near), clouds come out over the clearing at dusk. Flies gather round anything in
+  `fly_carrion` (meta `carrion_radius`, `carrion_height`): the flesh mounds, the meat beast, the slime wall, carcasses
+  (`InsectLook.carcass()`) in dead ends and in the boar's lair, and for `Insects.CAUGHT_TIME` where anyone is caught
+  (World's `caught`, MazeEnemies' and the Griever's); they buzz, and land on someone standing still. Dragonflies hunt
+  patches of the marsh and perch on its bulrushes' tips (`Marsh.bulrush_tops`, swaying with them:
+  `Marsh.bulrush_sway`). Each swarm is drawn and moved only near the camera. The dev panel's + MOTHS (round a lantern),
+  + FLIES (on a carcass) and + DRAGONFLIES put them in ahead.
 - `creatures/`: GameCommon's creatures, look and motion only (see each one's README): `ghoul`, `centipede`,
-  `giant_spider`, `abomination`, `flesh_mound` (needs the boy from the character controller), `slime_wall`, `bats`, `baboon`, `dog`, `alien`, `beetle_swarm`, `fish_person`, `angel`, `frog` (the giant toad and the frog swarm), `harpy`, `boar`, `chicken`, `gargoyle`, `deer`, `elk`, `imp`, `imp_swarm`. Change them here, then `kit.sh pull`
+  `giant_spider`, `abomination`, `flesh_mound` (needs the boy from the character controller), `slime_wall`, `bats`, `baboon`, `dog`, `alien`, `beetle_swarm`, `fish_person`, `angel`, `frog` (the giant toad and the frog swarm), `harpy`, `boar`, `chicken`, `gargoyle`, `deer`, `elk`, `imp`, `imp_swarm`, `insects` (moths, flies, dragonflies, and a carcass). Change them here, then `kit.sh pull`
   them back to GameCommon (`godot/<name>`, with `_` as `-`). Their models are built in Blender by their `tools/` scripts.
 - `scripts/wildlife.gd` (`Wildlife`): the animals that hunt nobody: herds of ordinary deer and elk grazing in the
   clearing's meadow (ClearingStyle, "Wildlife") and in the halls (MazeStyle, "Wildlife"), running off when someone
@@ -176,6 +187,8 @@ sh tools/coop_test.sh                                     # two copies in one ro
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/deer_shots.gd -- <folder> [studio|strips|maze|clearing|all]   # deer and elk, gallop strips, the herd, wildlife
 "$G" --headless --audio-driver Dummy --path . -s res://tests/marsh_test.gd   # the marsh: water, sedges in it, the lane in
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/marsh_shots.gd -- <folder> [seed]   # the marsh, him in it
+"$G" --headless --audio-driver Dummy --path . -s res://tests/insects_test.gd   # moths, flies, dragonflies: counts, culling, a light, carrion, caught, perching, cost
+"$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/insects_shots.gd -- <folder> [studio|maze|all]   # the insects up close, and in a round
 "$G" --headless --path . --export-release "Web" build/index.html
 ```
 

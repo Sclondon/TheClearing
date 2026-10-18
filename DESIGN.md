@@ -298,6 +298,23 @@ non hostile regular deer and elk and chicken as well. Some should be in the clea
   The clearing has a couple of flocks (ClearingStyle, "Wildlife"), the first pecking at the edge of the woods, all well
   away from the middle and the paths to the gates; a ring can have some in its halls too (MazeStyle, "Wildlife", none
   by default). Placed from the round's seed, so everyone in a room sees the same flocks.
+- **Insects** (added 2026-10-18: "moths and flys", "dragon flys"). Mostly atmosphere, and a tell or two:
+  - **Moths**: pale, dusty moths fluttering erratically in clouds round every light in the mist: the angel's burning
+    heart, fires and torches, the pale light past the exit; they blunder into the light and bounce off it, and a few
+    rest on the wall by it and scatter as you come. Big ones (luna moths, death's-head hawkmoths among the plain ones)
+    rest on the walls of the halls with their wings spread flat, and burst off as you pass, flutter about and settle
+    again. At dusk and through the night clouds of them come out over the clearing's grass.
+  - **Flies**: buzzing clouds of blowflies (red eyes, metallic blue-green bodies) round anything dead or of meat: the
+    flesh mounds, the meat beast, the slime wall, carcasses lying in dead ends, the boar's lair; and for a while
+    wherever someone was caught. Their buzz carries a few metres: flies mean something dead, or something of meat, is
+    near. Stand still among them and a few land on you and crawl on your head and shoulders until you move.
+  - **Dragonflies**: over the marsh, in patches along its pools: darting fast and straight, stopping dead to hover,
+    turning at right angles, perching on the bulrushes' tips with their wings held out flat; blue-green, the one
+    colour in the grey. They take off as you come near.
+  - They catch nobody, call nobody, and nothing about them is sent between players: each machine makes its own from
+    the round's seed. How many: MazeStyle "Wildlife" (moths per light, big moths on the walls, flies per carrion,
+    carcasses in dead ends) and ClearingStyle "Wildlife" (dragonflies over the marsh, moth clouds at dusk). Each swarm
+    is one draw, and is drawn and moved only near the camera.
 
 ## Playing together
 

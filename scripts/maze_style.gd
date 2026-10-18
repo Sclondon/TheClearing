@@ -181,6 +181,15 @@ extends Resource
 @export_group("Wildlife")
 ## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
 @export_range(0, 4) var tame_chicken_flocks := 0
+## Insects (Insects): moths round each light in its halls (the angel, fires,
+## the light past the exit), big moths resting on its walls that scatter as
+## you pass, flies round each thing of meat in it (flesh mounds, the meat
+## beast, the slime wall, the boar's lair, carcasses), and carcasses lying in
+## its dead ends.
+@export_range(0, 60) var moths_per_light := 18
+@export_range(0, 30) var wall_moths := 8
+@export_range(0, 80) var flies_per_carrion := 26
+@export_range(0, 8) var carcasses := 3
 ## Gangs of tiny imps (three or four), each perched on a wall.
 @export_range(0, 4) var imp_gangs := 2
 ## Swarms of imps, each a crack at the foot of a wall that dozens pour out of.

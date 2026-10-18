@@ -48,6 +48,8 @@ var griever: Griever
 var runners: MazeRunners
 ## Tame chickens in the clearing (and the maze), hunting nobody (the other peaceful animals are in `wildlife`).
 var tame_chickens: Array[TameChickens] = []
+## Moths, flies and dragonflies (Insects), hunting nobody.
+var insects: Insects
 ## God mode and the rest (DevTools), when it is on for this run.
 var dev: DevTools
 ## The hour, the light with it, and the doors of the clearing (put once the walls stand).
@@ -152,6 +154,10 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	add_child(wildlife)
 	wildlife.populate(maze, hash("wildlife/%d" % seed_value))
 	tame_chickens = TameChickens.populate(self, maze, hash("chickens/%d" % seed_value))
+	insects = Insects.new()
+	insects.name = "Insects"
+	add_child(insects)
+	insects.populate(maze, hash("insects/%d" % seed_value), self)
 	if DevTools.enabled():
 		dev = DevTools.new(self)
 		hud.add_child(dev)

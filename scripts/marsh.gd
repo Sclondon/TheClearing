@@ -122,7 +122,8 @@ varying float v_rnd;
 void vertex() {
 	vec3 root = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	float t = clamp(VERTEX.y / height, 0.0, 1.0);
-	float rnd = fract(sin(dot(root.xz, vec2(12.9898, 78.233))) * 43758.5453);
+	// (a hash with no sine in it, so that Marsh.bulrush_sway can work out the same on the CPU)
+	float rnd = fract(dot(fract(root.xz * vec2(0.1031, 0.11369)), vec2(17.33, 23.71)));
 	vec2 wd = normalize(wind_dir);
 	// (a slow nod in the wind, each its own)
 	vec2 bend = wd * wind * (0.12 + 0.1 * sin(TIME * (1.1 + rnd * 0.7) + rnd * 6.28 + dot(root.xz, wd) * 0.3));
@@ -183,6 +184,10 @@ var reeds: Grass
 ## How many bulrushes and lily pads there are.
 var bulrush_count := 0
 var lily_pad_count := 0
+## Where the tip of every bulrush is, standing still (what perches on them: Insects).
+var bulrush_tops := PackedVector3Array()
+## And where each stands in the ground (the same order).
+var bulrush_roots := PackedVector3Array()
 
 var _heights := PackedFloat32Array()
 var _wets := PackedFloat32Array()
@@ -446,6 +451,8 @@ func _bulrushes_and_pads() -> void:
 				if not rushes.has(square):
 					rushes[square] = []
 				rushes[square].append(Transform3D(basis, Vector3(p.x, y - 0.05, p.y)))
+				bulrush_tops.append(Transform3D(basis, Vector3(p.x, y - 0.05, p.y)) * Vector3(0.0, BULRUSH_HEIGHT, 0.0))
+				bulrush_roots.append(Vector3(p.x, y - 0.05, p.y))
 				continue
 			if look.marsh_lily_pads <= 0.0:
 				continue
@@ -586,3 +593,16 @@ func _process(_delta: float) -> void:
 	_bulrush_material.set_shader_parameter(&"pushers", packed)
 	_bulrush_material.set_shader_parameter(&"pusher_count", n)
 	_pushing = n > 0
+
+
+## How far the tip of the bulrush standing at `root` has been moved by the wind
+## at `time` (the shaders' TIME: seconds since the start, round every hour), as
+## BULRUSH_SHADER moves it (with its wind as it is set there, and no one
+## pushing through): for what perches on its tip.
+static func bulrush_sway(root: Vector3, time: float) -> Vector3:
+	var rnd := fposmod(fposmod(root.x * 0.1031, 1.0) * 17.33 + fposmod(root.z * 0.11369, 1.0) * 23.71, 1.0)
+	var wd := Vector2(1.0, 0.35).normalized()
+	var bend := wd * 0.45 * (0.12 + 0.1 * sin(time * (1.1 + rnd * 0.7) + rnd * 6.28 + Vector2(root.x, root.z).dot(wd) * 0.3))
+	var angle := minf(bend.length(), 1.3)
+	var dir := bend.normalized() if bend.length() > 0.0001 else wd
+	return Vector3(dir.x * BULRUSH_HEIGHT * sin(angle), -BULRUSH_HEIGHT * (1.0 - cos(angle)), dir.y * BULRUSH_HEIGHT * sin(angle))
