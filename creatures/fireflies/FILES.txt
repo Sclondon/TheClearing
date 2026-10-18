@@ -1,0 +1,5 @@
+# Fireflies: clouds of them blinking at dusk and by night, moved in their shader (stands alone)
+creatures/fireflies/firefly_field.gd
+creatures/fireflies/firefly.gdshader
+creatures/fireflies/models/firefly.glb
+creatures/fireflies/tools/build_firefly.py
