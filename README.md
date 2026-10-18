@@ -20,6 +20,8 @@ https://sclondon.github.io/TheClearing/build/.
 
 - **Move:** a thumb on the left half of the screen (touch), WASD or arrows, or a gamepad stick.
 - **Look:** drag on the right half, the mouse, or the right stick. **Jump:** the jump button, Space, or A.
+- **Cut** a vine strung across a hall (walk it like a tightrope from the buttress at its end): the hand button, E or F.
+  It falls into two vines hanging from the walls; if you were on it, you keep hold of yours.
 - Everything else the boy from *Outside* can do works too (sprint, duck, slide, climb a ledge, kick off a wall).
   The walls themselves are far too tall to climb, but there are ways up: ivy up the terraces, vines, rope bridges.
 - **PLAY ALONE**, or **MAKE A ROOM** and give friends its four-letter code to **JOIN A ROOM**. The room's
