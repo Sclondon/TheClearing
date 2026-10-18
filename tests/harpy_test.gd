@@ -5,7 +5,7 @@ extends SceneTree
 ## In turn: it finds a perch high on a wall (the ledge, or the top) facing out
 ## over a hall; someone out in the open in front of it is seen, screeched at,
 ## and it takes off, out and up over the wall tops, and circles over them;
-## someone under the ledge, in the clearing, or in a narrow slot cannot be dived
+## someone under a roof (a bridge, a platform) or in the clearing cannot be dived
 ## at; it stoops (crying) and dives down the hall, and someone who stands still
 ## is snatched; someone who ducks as it comes is missed, and so is someone who
 ## steps aside once its line is set; it climbs away; when they stay under cover
@@ -102,11 +102,21 @@ func _run() -> void:
 	await frames(60)
 	check("with nobody about it sits", harpy.mode == MazeHarpy.Mode.PERCH)
 
-	# Out of sight and out in the open it is not dived at, but who is under cover cannot be.
-	var wall_foot: Vector3 = in_front(harpy, 0.0) + harpy.perch_out * 0.35
+	# Who is under cover cannot be dived at: here, under a slab of stone (a bridge, a
+	# platform) put over a spot out in the hall.
+	var shelter: Vector3 = in_front(harpy, 7.0) + harpy.perch_out.cross(Vector3.UP) * 3.0
+	var roof := StaticBody3D.new()
+	var slab := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(4.0, 0.5, 4.0)
+	slab.shape = box
+	roof.add_child(slab)
+	stage.add_child(roof)
+	roof.global_position = shelter + Vector3.UP * 3.0
+	var wall_foot: Vector3 = shelter
 	put(wall_foot)
 	await frames(2)
-	check("under the ledge (or against the wall) is under cover", not harpy.exposed(runner))
+	check("under a roof (a bridge, a platform) is under cover", not harpy.exposed(runner))
 	put(Vector3(0, 0.05, 0))
 	await frames(2)
 	check("in the clearing nobody is hunted", not harpy.exposed(runner))

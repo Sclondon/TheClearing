@@ -181,8 +181,8 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     hall below. Seeing someone out in the open it screeches (the first warning), takes off over the walls and
     circles high over them; then a falling cry (the second warning), a stoop over the end of a long straight hall,
     and a dive down it, talons first, at chest height. It flies over the walls, so it can come from anywhere, but
-    it needs a straight run of hall under open sky: under a ledge or a bridge, or in a slot, you cannot be dived at,
-    and staying hidden long enough sends it home. Its line is set the last half second: duck, slide or roll and
+    it needs a straight run of hall, wider than its wings, under open sky: under a bridge or a platform, or in a
+    slot, you cannot be dived at, and staying hidden long enough sends it home. Its line is set the last half second: duck, slide or roll and
     the talons pass over; step aside and they pass by; stand or run straight and you are snatched. Two dives, then
     it climbs back to its perch and lands.
   - **Giant boar** (after the boar gods of *Princess Mononoke*): a wild boar far over the boy's head at the
