@@ -44,7 +44,8 @@ render_mode cull_back;
 uniform vec3 flesh : source_color = vec3(0.3, 0.13, 0.12);
 uniform vec3 raw : source_color = vec3(0.46, 0.07, 0.08);
 uniform vec3 dark : source_color = vec3(0.16, 0.06, 0.07);
-uniform vec3 fat : source_color = vec3(0.62, 0.53, 0.38);
+uniform vec3 fat : source_color = vec3(0.55, 0.45, 0.3);
+uniform vec3 grime : source_color = vec3(0.11, 0.07, 0.05);
 uniform vec3 vein : source_color = vec3(0.12, 0.04, 0.1);
 uniform vec3 through : source_color = vec3(0.7, 0.12, 0.1);
 uniform vec3 slime : source_color = vec3(0.7, 0.74, 0.68);
@@ -75,6 +76,10 @@ varying vec3 obj;
 varying float meat;
 varying vec3 tint;
 varying float glow;
+// From fragment to light: where the surface is wet enough to glint (a fine
+// broken mask), and the way it faces before it was bumped.
+varying float wet;
+varying vec3 form;
 
 float hash3(vec3 p) {
 	p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419));
@@ -156,9 +161,15 @@ void fragment() {
 		colour = mix(dark, flesh, smoothstep(0.25, 0.55, mottle));
 		colour = mix(colour, raw, smoothstep(0.58, 0.8, mottle) * 0.85);
 		float lumps = noise3(p * 2.4 + 13.0) * 0.6 + noise3(p * 6.0 + 3.0) * 0.4;
-		colour = mix(colour, fat, smoothstep(0.7, 0.78, lumps) * 0.6);
+		colour = mix(colour, fat, smoothstep(0.72, 0.8, lumps) * 0.5);
 		if (!strands) {
-			colour *= mix(0.4, 1.0, smoothstep(0.1, 1.8, p.y));
+			// Underneath: fat gone grey-yellow and grime from the floor it drags over,
+			// darkening into the ground.
+			float low = 1.0 - smoothstep(0.0, 2.6, p.y);
+			float grot = noise3(p * 1.7 + 31.0);
+			vec3 under = mix(grime, fat * 0.45, smoothstep(0.55, 0.7, grot));
+			colour = mix(colour, under, low * 0.75);
+			colour *= mix(0.45, 1.0, smoothstep(0.0, 1.6, p.y));
 		}
 		// Veins along the middle of a field of noise, filling with the heartbeat.
 		float a = abs(noise3(p * 0.8 + vec3(3.1, 0.0, 1.7)) - 0.5);
@@ -179,18 +190,23 @@ void fragment() {
 	ALBEDO = colour;
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
-	// Wet, uneven skin: bumped by noise, so the light breaks up into many glints.
+	// Uneven skin: bumped by noise (for the bands of light; the glints keep
+	// mostly to the form, see light()).
+	form = NORMAL;
 	float e = 0.06;
 	vec3 q = p * (meat > 0.5 ? 6.5 : 5.0);
 	float n0 = noise3(q);
 	vec3 slope = vec3(noise3(q + vec3(e, 0, 0)) - n0, noise3(q + vec3(0, e, 0)) - n0, noise3(q + vec3(0, 0, e)) - n0) / e;
 	vec3 tilt = (VIEW_MATRIX * (strands ? vec4(slope, 0.0) : MODEL_MATRIX * vec4(slope, 0.0))).xyz;
 	NORMAL = normalize(NORMAL - tilt * bump * (meat > 0.5 ? 1.0 : 0.3));
-	// Slime: the sky caught on it in thin broken streaks.
+	// Wet in specks and runs, not all over: a fine noise, cut.
+	wet = cut(noise3(p * 11.0 + 5.0) * 0.6 + noise3(p * 3.0) * 0.4, 0.5);
+	// A thin film of slime over its upper surface: a faint pale wash that is
+	// strongest seen side-on, so its form shows through it.
 	vec3 sky_up = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
-	float sky = cut(dot(reflect(-VIEW, NORMAL), sky_up), 0.7) * cut(noise3(p * 4.0 + 3.0), 0.45);
-	float side_on = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
-	EMISSION += slime * sky * 0.18 * side_on * side_on;
+	float side_on = 1.0 - clamp(dot(form, VIEW), 0.0, 1.0);
+	float upper = smoothstep(0.1, 0.8, dot(form, sky_up));
+	EMISSION += slime * upper * (0.015 + 0.09 * side_on * side_on * side_on);
 }
 
 void light() {
@@ -203,12 +219,14 @@ void light() {
 	// Light comes through the meat: its shadow side glows red.
 	float behind = clamp(dot(VIEW, -LIGHT) * 0.5 + 0.5, 0.0, 1.0);
 	DIFFUSE_LIGHT += (1.0 - lit) * through * meat * (0.12 + 0.3 * behind * behind) * LIGHT_COLOR / PI;
-	// Wet: hard bright glints and a broad faint sheen, on all of it.
+	// Wet: small hard glints where the form turns to the light, broken up by
+	// where it is wet, and a soft see-through sheen round them.
 	vec3 half_way = normalize(LIGHT + VIEW);
-	float shine = max(dot(NORMAL, half_way), 0.0);
-	float glint = cut(pow(shine, 160.0), 0.5);
-	float sheen = cut(pow(shine, 14.0), 0.55);
-	SPECULAR_LIGHT += (glint * 0.8 + sheen * 0.05) * lit * reach * LIGHT_COLOR;
+	vec3 n = normalize(mix(form, NORMAL, 0.35));
+	float shine = max(dot(n, half_way), 0.0);
+	float glint = cut(pow(shine, 90.0), 0.5) * wet;
+	float sheen = pow(shine, 24.0);
+	SPECULAR_LIGHT += (glint * 0.9 + sheen * 0.12) * lit * reach * LIGHT_COLOR;
 	float graze = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 	SPECULAR_LIGHT += cut(graze, 0.82) * lit * 0.14 * LIGHT_COLOR * fat;
 }
