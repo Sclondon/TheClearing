@@ -131,40 +131,66 @@ func _stage_shots() -> void:
 	await frames(3)
 	var cost := centipede.cost()
 	print("centipede: %d triangles in %d draws" % [cost["triangles"], cost["draws"]])
-	# Running along the open floor, then close-ups of it standing still mid-stride.
-	place(Vector3(4.0, 0.0, -2.0), Vector3(0, 0, 1))
-	await run(2.5, 5.0)
-	var head := centipede.global_position
-	look(head + Vector3(5.0, 2.2, 6.0), head + Vector3(0, 0.6, -1.5))
-	await shot("01_threequarter_close")
-	look(head + Vector3(0.0, 1.6, 6.5), head + Vector3(0, 0.7, 0))
-	await shot("02_front")
-	look(head + Vector3(13.0, 4.0, -8.0), head + Vector3(0, 0.6, -8.0))
+	# Close-ups, stopped mid-stride after a run, its feelers stirring.
+	# (out past the end of the walls, clear of their shadows)
+	place(Vector3(30.0, 0.0, -14.0), Vector3(0, 0, 1))
+	await run(2.6, 5.0)
+	await run(0.5, 0.0)
+	var head := centipede.head_at
+	var ahead := centipede.head_way
+	var across := Vector3(ahead.z, 0.0, -ahead.x).normalized()
+	look(head + ahead * 3.4 + Vector3.UP * 0.9, head + Vector3.UP * 0.05 - ahead * 0.3)
+	await shot("01_head_front")
+	look(head + ahead * 2.6 + across * 2.6 + Vector3.UP * 1.7, head - ahead * 1.8)
+	await shot("02_threequarter")
+	var middle := centipede.spine[centipede.segments / 3]
+	look(middle + across * 5.0 + Vector3.UP * 0.9, middle + Vector3.UP * 0.3)
 	await shot("03_side")
-	look(head + Vector3(7.0, 14.0, -6.0), head + Vector3(0, 0, -8.0))
-	await shot("04_above")
-	look(head + Vector3(2.5, 0.8, -15.0), head + Vector3(0, 0.6, -18.0))
-	await shot("05_tail")
-	# Running: mid-stride, seen from low and to the side as it comes.
-	place(Vector3(4.0, 0.0, -12.0), Vector3(0, 0, 1))
-	look(Vector3(14.0, 2.5, 10.0), Vector3(4.0, 0.6, 4.0))
-	await run(3.6, 5.0)
-	await shot("06_running")
+	look(middle + Vector3.UP * 7.5 + across * 0.01, middle)
+	await shot("04_top")
+	look(head + ahead * 2.7 - Vector3.UP * 0.35 + across * 0.35, head + ahead * 0.5 - Vector3.UP * 0.1)
+	await shot("05_under_the_head")
+	var tail := centipede.spine[centipede.segments]
+	look(tail - ahead * 3.5 + across * 2.0 + Vector3.UP * 1.6, tail - ahead * 1.0)
+	await shot("06_tail")
+	# The leg wave: the middle of it running past, five frames a fortieth of a second apart.
+	place(Vector3(30.0, 0.0, -14.0), Vector3(0, 0, 1))
+	await run(2.0, 4.4)
+	var strip: Array[Image] = []
+	for k in 5:
+		var at := centipede.spine[centipede.segments / 3]
+		look(at + Vector3(7.5, 2.4, 0.0), at + Vector3(0.0, 0.0, 0.0))
+		await frames(2)
+		await RenderingServer.frame_post_draw
+		var image := root.get_texture().get_image()
+		# (a band through the middle of the picture)
+		var band := image.get_region(Rect2i(0, image.get_height() / 2 - 260, image.get_width(), 520))
+		strip.append(band)
+		await run(0.025, 4.4)
+	var sheet := Image.create(strip[0].get_width(), strip[0].get_height() * strip.size(), false, strip[0].get_format())
+	for k in strip.size():
+		sheet.blit_rect(strip[k], Rect2i(Vector2i.ZERO, strip[k].get_size()), Vector2i(0, k * strip[k].get_height()))
+	sheet.save_png("%s/07_leg_wave_strip.png" % folder)
+	print("saved %s/07_leg_wave_strip.png" % folder)
+	# Running, seen from low and to the side as it comes: the body bends from side to side.
+	place(Vector3(4.0, 0.0, -14.0), Vector3(0, 0, 1))
+	look(Vector3(13.0, 3.0, 12.0), Vector3(4.0, 0.6, 5.0))
+	await run(3.4, 5.0)
+	await shot("08_running")
+	look(centipede.global_position + Vector3(0.0, 13.0, -7.0), centipede.global_position + Vector3(0, 0, -7.0))
+	await shot("09_running_above")
 	# Rearing to look about, feelers up.
 	centipede.rear(0.85)
 	centipede.look_about = true
-	await run(1.2, 0.0)
+	await run(1.4, 0.0)
 	head = centipede.global_position
-	look(head + Vector3(8.0, 2.5, 7.0), head + Vector3(0, 2.0, -2.0))
-	await shot("07_reared_looking")
-	await run(0.8, 0.0)
-	await shot("08_reared_looking_b")
+	look(head + Vector3(7.0, 2.6, 6.0), head + Vector3(0, 2.2, -1.5))
+	await shot("10_reared_looking")
 	centipede.look_about = false
 	centipede.rear(0.0)
-	await run(1.0, 0.0)
-	# The strike at a target in front of it.
+	await run(1.2, 0.0)
+	# The strike at a post the size of the boy in front of it.
 	var target := head + Vector3(0.0, 0.0, 5.0)
-	# (a post the size of the boy, to strike at)
 	var post := MeshInstance3D.new()
 	var capsule := CapsuleMesh.new()
 	capsule.radius = 0.25
@@ -174,35 +200,40 @@ func _stage_shots() -> void:
 	stage.add_child(post)
 	centipede.aim = target + Vector3.UP
 	centipede.strike(target + Vector3.UP * 0.6)
-	look(head + Vector3(14.0, 3.5, 2.0), head + Vector3(0, 1.3, 1.5))
-	await run(centipede.wind_up * 0.8, 0.0)
-	await shot("09_strike_windup")
-	await run(centipede.wind_up * 0.2 + centipede.pounce_time * 0.5, 0.0)
-	await shot("10_strike_pounce")
-	await run(centipede.pounce_time * 0.5 + centipede.hold_time * 0.4, 0.0)
-	await shot("11_strike_hold")
+	look(head + Vector3(11.0, 3.2, 2.0), head + Vector3(0, 1.6, 1.0))
+	await run(centipede.wind_up * 0.85, 0.0)
+	await shot("11_strike_windup")
+	look(head + Vector3(3.5, 3.6, 3.6), head + Vector3(0, 2.6, 0.4))
+	await frames(2)
+	await shot("12_strike_windup_close")
+	look(head + Vector3(11.0, 3.2, 2.0), head + Vector3(0, 1.6, 1.0))
+	await run(centipede.wind_up * 0.15 + centipede.pounce_time * 0.6, 0.0)
+	await shot("13_strike_pounce")
+	await run(centipede.pounce_time * 0.4 + centipede.hold_time * 0.5, 0.0)
+	await shot("14_strike_hold")
 	centipede.aim = Vector3.INF
-	await run(1.2, 0.0)
-	# Coiled at rest.
+	post.queue_free()
+	await run(1.4, 0.0)
+	# Curling up where it lies, and coiled.
 	place(Vector3(14.0, 0.0, 10.0), Vector3(0, 0, 1))
 	await frames(3)
-	look(Vector3(26.0, 16.0, 16.0), Vector3(13.0, 0.4, 6.0))
+	look(Vector3(24.0, 14.0, 14.0), Vector3(13.0, 0.4, 6.0))
 	centipede.curl(2.8)
 	await run(0.8, 0.0)
-	await shot("12a_curling")
+	await shot("15_curling")
 	await run(1.4, 0.0)
-	await shot("12b_coiled")
+	look(Vector3(19.0, 11.0, 15.0), Vector3(12.5, 0.0, 9.5))
+	await shot("16_coiled")
 	# Along the foot of the wall and round the corner, up it.
 	place(Vector3(-6.3, 0.0, 14.0), Vector3(0, 0, -1))
 	look(Vector3(-2.5, 2.2, 20.0), Vector3(-7.0, 0.8, 2.0))
 	await run(3.4, 4.5)
-	await shot("13_along_the_wall")
+	await shot("17_along_the_wall")
 	await run(2.0, 4.5)
 	await run(0.56, 4.5, -2.8)
 	await run(0.6, 4.5)
-	await shot("14_round_the_corner")
 	look(Vector3(3.0, 2.5, -4.0), Vector3(-6.5, 1.2, -13.0))
-	await shot("15_round_the_corner_close")
+	await shot("18_round_the_corner")
 	stage.queue_free()
 	await frames(2)
 

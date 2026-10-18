@@ -37,10 +37,16 @@ extends Node3D
 ##   `curl(radius, middle, seconds)` curls it up where it lies, as it comes to
 ##   rest (hold it still meanwhile).
 ##
-## LOOKS. Three draws whatever its length: the plates of its body (one
-## MultiMesh), its head, and every leg, feeler and claw (one MultiMesh of a
-## jointed bar). It is lit with cel shading and a hard chitin gloss
-## (CentipedeParts). Further than `cull_distance` from the camera it is
+## LOOKS. After a Scolopendra: a domed, rimmed, grooved plate of red-brown
+## armour to each length, lapping over the next, pale soft skin between them
+## that shows as it bends; a redder shield of a head with a cluster of black
+## eyes each side, feelers of 22 tapering beads, and great curved poison claws
+## with black fangs; amber legs of six joints and a black claw each, the last
+## pair long and trailing. Four draws whatever its length: the plates (one
+## MultiMesh), its head, every leg joint, bead and claw (one MultiMesh of a
+## round tapering bar), and every claw tip, fang and eye (one of a cone). It
+## is lit with cel shading and a hard chitin gloss (CentipedeParts). Running,
+## its body bends from side to side (`undulate`). Further than `cull_distance` from the camera it is
 ## hidden and its legs are not worked out, though its body still follows.
 ##
 ## SOUND. With `voice`, the dry clatter of its legs (louder the faster it goes)
@@ -84,12 +90,18 @@ enum Stage { NONE, WIND_UP, POUNCE, HOLD, RECOVER }
 @export_flags_3d_physics var wall_mask := 1
 ## How high up a wall it goes round a tight corner (metres).
 @export var corner_climb := 2.6
-## Shell, the pale band at the back of each plate, the underside, the legs, and the tips of claws and feelers.
-@export var shell := Color(0.075, 0.06, 0.05)
-@export var edge := Color(0.38, 0.27, 0.16)
-@export var under := Color(0.3, 0.23, 0.15)
-@export var leg := Color(0.52, 0.43, 0.3)
-@export var tip := Color(0.04, 0.03, 0.025)
+## How far its body bends from side to side as it runs (metres; 0: not at all).
+@export var undulate := 0.22
+## Its colours: the shell on its back; the deeper, redder shell of its head, its
+## first length and its poison claws; the rims of its plates; its underside; the
+## soft skin between its plates; its legs; and the black of its claws and eyes.
+@export var shell := Color(0.12, 0.055, 0.04)
+@export var head_shell := Color(0.3, 0.11, 0.05)
+@export var rim := Color(0.4, 0.2, 0.1)
+@export var under := Color(0.46, 0.34, 0.2)
+@export var membrane := Color(0.66, 0.58, 0.44)
+@export var leg := Color(0.6, 0.42, 0.22)
+@export var tip := Color(0.04, 0.025, 0.02)
 @export var voice := true
 ## Further than this from the camera it is hidden (0: never).
 @export var cull_distance := 110.0
@@ -129,6 +141,16 @@ var _spacing := 0.7
 var _head_long := 1.1
 var _plates: MultiMeshInstance3D
 var _bars: MultiMeshInstance3D
+var _spikes: MultiMeshInstance3D
+var _spike_buffer := PackedFloat32Array()
+var _spike_count := 0
+var _bar_n := 0
+var _spike_n := 0
+var _travel := 0.0
+var _wiggle := 0.0
+## Where it was last coiled up (INF: it has moved off since), and how far its legs are tucked in under it.
+var _coiled_at := Vector3.INF
+var _tuck := 0.0
 var _head: MeshInstance3D
 var _plate_buffer := PackedFloat32Array()
 var _bar_buffer := PackedFloat32Array()
@@ -140,9 +162,14 @@ var _curl_for := 0.0
 var _clatter: AudioStreamPlayer3D
 var _chitter: AudioStreamPlayer3D
 
-## Bars: two to each leg, then the feelers, the poison claws, and the trailing legs.
-const FEELER_LINKS := 7
-const FEELER := 2.6
+## How many beads each feeler is in, and how long it is.
+const FEELER_LINKS := 22
+const FEELER := 3.3
+## How long one wave of its side-to-side bending is (metres).
+const WAVE := 5.5
+## How far behind the leg in front each leg is in its step (a share of a step):
+## the waves of stepping that run down it.
+const WAVE_STEP := 0.085
 
 static var _clatter_stream: AudioStreamWAV
 static var _chitter_stream: AudioStreamWAV
@@ -275,6 +302,8 @@ func lay_along(points: PackedVector3Array) -> void:
 ## `middle` if that is given (then the ring is as wide as the head is from it).
 func lay_coil(radius_of_ring := 2.8, middle := Vector3.INF) -> void:
 	lay_along(_coil_points(radius_of_ring, middle))
+	_coiled_at = global_position
+	_tuck = 1.0
 
 
 ## Curls up where it lies, over `seconds`: its body wound in from where it is
@@ -293,6 +322,8 @@ func curl(radius_of_ring := 2.8, middle := Vector3.INF, seconds := 1.6) -> void:
 	_trail_up = was_up.slice(0, count)
 	_curl_time = 0.0
 	_curl_for = maxf(seconds, 0.01)
+	_coiled_at = global_position
+	_tuck = 0.0
 
 
 func _coil_points(radius_of_ring: float, middle: Vector3) -> PackedVector3Array:
@@ -313,7 +344,7 @@ func _coil_points(radius_of_ring: float, middle: Vector3) -> PackedVector3Array:
 	var gone := 0.0
 	var turn := 0.0
 	while gone < length + 2.0:
-		var r := maxf(outer - turn / TAU * width * 1.15, width * 0.7)
+		var r := maxf(outer - turn / TAU * width * 1.3, width * 0.75)
 		var angle := start - turn * round_way
 		points.append(middle + Vector3(sin(angle), 0.0, cos(angle)) * r)
 		turn += 0.3 / r
@@ -335,6 +366,11 @@ func _process(delta: float) -> void:
 		lay_straight()
 		return
 	_gait += moved / stride
+	_travel += moved
+	# Coiled at rest, it tucks its legs in under itself; moving off, it puts them out again.
+	if _coiled_at.is_finite() and global_position.distance_to(_coiled_at) > 0.5:
+		_coiled_at = Vector3.INF
+	_tuck = move_toward(_tuck, 1.0 if _coiled_at.is_finite() and _curl_time >= _curl_for * 0.6 else 0.0, delta * 1.5)
 	if moved < 0.002 * delta * 60.0:
 		# (standing, its legs still shift a little)
 		_gait += delta * 0.12
@@ -353,7 +389,7 @@ func _process(delta: float) -> void:
 	var hidden := cull_distance > 0.0 and _camera_far()
 	if hidden != _hidden:
 		_hidden = hidden
-		for part: Node3D in [_plates, _bars, _head]:
+		for part: Node3D in [_plates, _bars, _spikes, _head]:
 			part.visible = not hidden
 	if not hidden:
 		_draw(delta)
@@ -557,8 +593,21 @@ func _draw(delta: float) -> void:
 			var out := centres[i] - from
 			if out.length() > 0.001:
 				centres[i] = from + out.normalized() * gaps[i + 1]
+	# Running, it bends from side to side: a wave that stands still on the ground, which it slides through.
+	_wiggle = lerpf(_wiggle, clampf(_speed / 4.0, 0.0, 1.0), 1.0 - exp(-3.0 * delta) if delta > 0.0 else 1.0)
+	if _wiggle > 0.01 and undulate > 0.0:
+		var bent := centres.duplicate()
+		for i in count:
+			var along := i * _spacing
+			var run := bent[maxi(i - 1, 0)] - bent[mini(i + 1, count - 1)]
+			run.y = 0.0
+			if run.length() < 0.001:
+				continue
+			var side := Vector3(run.z, 0.0, -run.x).normalized()
+			centres[i] += side * undulate * _wiggle * smoothstep(0.8, 3.5, along) * sin(TAU * (_travel - along) / WAVE)
 	spine = centres
-	# The plates.
+	# The plates: each lies along the way the body runs there; the hindmost are
+	# smaller, and part a little (the soft skin shows between them).
 	var low := centres[0]
 	var high := centres[0]
 	for i in range(1, count):
@@ -567,10 +616,17 @@ func _draw(delta: float) -> void:
 		var up := ups[i]
 		up = (up - run * up.dot(run)).normalized() if absf(up.dot(run)) < 0.98 else Vector3.UP
 		var side := up.cross(run).normalized()
-		# (the hindmost few lengths are smaller, and the head-end ones a little)
-		var size := lerpf(1.0, 0.62, smoothstep(0.75, 1.0, float(i) / count)) * lerpf(0.86, 1.0, smoothstep(0.0, 0.12, float(i) / count))
-		var basis := Basis(side * width * size, up * width * 0.85 * size, run * _spacing)
-		_put(_plate_buffer, i - 1, 12, Transform3D(basis, centres[i]))
+		var size := _size_at(i, count)
+		var share := float(i) / count
+		var long := _spacing * lerpf(1.0, 0.84, smoothstep(0.55, 1.0, share))
+		var basis := Basis(side * width * size, up * width * size, run * long)
+		_put(_plate_buffer, i - 1, 16, Transform3D(basis, centres[i]))
+		# (its instance colour: white, its alpha the head's tone, on the first length and a little on the second)
+		var o := (i - 1) * 16 + 12
+		_plate_buffer[o] = 1.0
+		_plate_buffer[o + 1] = 1.0
+		_plate_buffer[o + 2] = 1.0
+		_plate_buffer[o + 3] = 1.0 if i == 1 else 0.35 if i == 2 else 0.0
 		low = low.min(centres[i])
 		high = high.max(centres[i])
 	# The head.
@@ -589,36 +645,52 @@ func _draw(delta: float) -> void:
 	var head_side := head_up.cross(head_way).normalized()
 	head_up = head_way.cross(head_side)
 	head_at = centres[0]
-	_head.global_transform = Transform3D(Basis(head_side * width * 1.1, head_up * width * 1.05, head_way * _head_long), head_at)
+	_head.global_transform = Transform3D(Basis(head_side * width * 1.05, head_up * width, head_way * _head_long), head_at)
 	_jaw_was = _jaw_now
 	_jaw_now = jaws()
+	_bar_n = 0
+	_spike_n = 0
 	_legs(centres, ups, raised, forward)
+	_head_parts(head_side, head_up)
 	var box := AABB(low, high - low).grow(foot_out + rear_height + FEELER)
 	_plates.multimesh.buffer = _plate_buffer
 	_bars.multimesh.buffer = _bar_buffer
+	_spikes.multimesh.buffer = _spike_buffer
 	_plates.custom_aabb = box
 	_bars.custom_aabb = box
+	_spikes.custom_aabb = box
 
 
-# Every leg, the feelers, the claws, and the trailing legs, as bars.
+# How big a length of it is, against the middle: the hindmost few smaller, the first a little.
+func _size_at(i: int, count: int) -> float:
+	var share := float(i) / count
+	return lerpf(1.0, 0.66, smoothstep(0.78, 1.0, share)) * lerpf(0.9, 1.0, smoothstep(0.0, 0.1, share))
+
+
+# Every leg, each in six joints: a short hip joint out from under the plate,
+# two joints up to a knee held above its back, a long shin down, two joints of
+# foot, and a black claw. They step in waves that run from its head to its
+# tail, the two sides in turn: each foot planted while the body passes over
+# it, then lifted, swung forward and set down. The last pair trail behind.
 func _legs(centres: PackedVector3Array, ups: PackedVector3Array, raised: PackedFloat32Array, forward: Vector3) -> void:
-	var n := 0
 	var count := centres.size()
-	var lift_each := 0.32
-	var stance := 0.55
+	var stance := 0.5
 	var reach := stride * stance * 0.5
+	var lifting := clampf(_speed * 0.4 + 0.25, 0.0, 1.0)
 	for i in range(1, count):
 		var run := (centres[i - 1] - centres[mini(i + 1, count - 1)])
 		run = run.normalized() if run.length() > 0.001 else forward
 		var up := ups[i]
 		up = (up - run * up.dot(run)).normalized() if absf(up.dot(run)) < 0.98 else Vector3.UP
 		var side := up.cross(run).normalized()
-		var size := lerpf(1.0, 0.7, smoothstep(0.75, 1.0, float(i) / count))
-		# How far this length is off the ground (reared): its legs claw at the air.
+		var size := _size_at(i, count)
+		# How far this length is off the ground (reared): its legs draw in and claw at the air.
 		var airborne := clampf((raised[i] - 0.15) / 0.6, 0.0, 1.0)
 		for s: float in [1.0, -1.0]:
-			var hip := centres[i] + side * s * width * 0.36 * size - up * width * 0.08
-			var cycle := fposmod(_gait - i * 0.11 + (0.5 if s < 0.0 else 0.0), 1.0)
+			var hip := centres[i] + side * s * width * 0.4 * size - up * width * 0.1 * size
+			var coxa := hip + side * s * 0.22 * size - up * 0.05 * size
+			# (the wave runs from the head back: a leg steps a little after the one in front of it)
+			var cycle := fposmod(_gait - i * WAVE_STEP + (0.5 if s < 0.0 else 0.0), 1.0)
 			var fore := 0.0
 			var lifted := 0.0
 			if cycle < stance:
@@ -626,82 +698,127 @@ func _legs(centres: PackedVector3Array, ups: PackedVector3Array, raised: PackedF
 			else:
 				var t := (cycle - stance) / (1.0 - stance)
 				fore = lerpf(-reach, reach, t * t * (3.0 - 2.0 * t))
-				lifted = sin(PI * t) * lift_each * clampf(_speed * 0.5 + 0.2, 0.0, 1.0)
-			# (the legs angle back a little, more towards the tail)
-			var rake := -0.25 - 0.25 * float(i) / count
+				lifted = sin(PI * t) * 0.42 * size * lifting
+			# (the legs angle back, more towards the tail)
+			var rake := -0.15 - 0.3 * float(i) / count
 			var foot := centres[i] + side * s * foot_out * size - up * (ride - lifted) + run * (fore + rake)
-			var knee := (hip + foot) * 0.5 + up * leg_length * 0.42 * size + side * s * 0.12
+			var knee := coxa + (foot - coxa) * 0.36 + up * (0.62 * size + lifted * 0.35) + side * s * 0.04
 			if airborne > 0.0:
-				# Off the ground, its legs are drawn in and claw at the air.
 				var flail := sin(_clock * 11.0 + i * 1.3 + s * 1.7) * 0.3
-				var folded_knee := hip + side * s * leg_length * 0.8 * size + up * 0.12 + run * (flail * 0.4 - 0.1)
-				var folded_foot := folded_knee - up * leg_length * 0.6 * size + run * (flail - 0.25) - side * s * 0.12
+				var folded_knee := coxa + side * s * 0.55 * size + up * 0.3 * size + run * (flail * 0.3)
+				var folded_foot := folded_knee - up * 0.75 * size + run * (flail - 0.2) - side * s * 0.1
 				knee = knee.lerp(folded_knee, airborne)
 				foot = foot.lerp(folded_foot, airborne)
-			var thick := 0.11 * size
-			_bar(n, hip, knee, thick, run, Color(0.12, 0.0, 0.0))
-			_bar(n + 1, knee, foot, thick * 0.75, run, Color(0.0, 0.9, 0.0))
-			n += 2
-	# The trailing legs: long, out behind, a little apart.
+			if _tuck > 0.0:
+				var tucked_knee := coxa + side * s * 0.4 * size - up * 0.05 * size - run * 0.15
+				var tucked_foot := tucked_knee - up * 0.3 * size - side * s * 0.12 * size - run * 0.2
+				knee = knee.lerp(tucked_knee, _tuck)
+				foot = foot.lerp(tucked_foot, _tuck)
+			var femur := coxa.lerp(knee, 0.45) + up * 0.08 * size
+			var ankle := knee.lerp(foot, 0.6) + side * s * 0.08 * size + up * 0.04 * size
+			var tarsus := ankle.lerp(foot, 0.55) + side * s * 0.03 * size
+			var claw_way := (foot - tarsus).normalized()
+			_bar(hip, coxa, 0.08 * size, run, Color(0.0, 0.0, 0.0))
+			_bar(coxa, femur, 0.068 * size, run, Color(0.0, 0.0, 0.0))
+			_bar(femur, knee, 0.062 * size, run, Color(0.0, 0.0, 0.0))
+			_bar(knee, ankle, 0.052 * size, run, Color(0.0, 0.0, 0.0))
+			_bar(ankle, tarsus, 0.043 * size, run, Color(0.0, 0.0, 0.0))
+			_bar(tarsus, foot, 0.035 * size, run, Color(0.0, 0.6, 0.0))
+			_spike(foot - claw_way * 0.02, foot + claw_way * 0.16 * size, 0.032 * size, run, Color(0.0, 0.0, 1.0))
+	# The last pair: long and thick, held out behind like a pair of pincers, a little apart and stirring.
 	var tail := centres[count - 1]
 	var tail_run := (centres[count - 2] - tail).normalized() if (centres[count - 2] - tail).length() > 0.001 else forward
 	var tail_up := ups[count - 1]
 	var tail_side := tail_up.cross(tail_run).normalized()
+	var tail_size := _size_at(count - 1, count)
 	for s: float in [1.0, -1.0]:
-		var wag := sin(_clock * 2.0 + s) * 0.12
-		var root := tail + tail_side * s * width * 0.25 - tail_run * _spacing * 0.3
-		var mid := root - tail_run * leg_length * 1.0 + tail_side * s * (0.45 + wag) + tail_up * 0.15
-		var end := mid - tail_run * leg_length * 1.1 + tail_side * s * (0.3 + wag) - tail_up * 0.25
-		_bar(n, root, mid, 0.1, tail_up, Color(0.3, 0.0, 0.0))
-		_bar(n + 1, mid, end, 0.07, tail_up, Color(0.2, 0.8, 0.0))
-		n += 2
-	# The feelers: from the front of its head, up and out, waving; reaching for what it is after.
-	var front := head_at + head_way * _head_long * 0.42
-	var head_side := Vector3.UP.cross(head_way).normalized() if absf(head_way.y) < 0.98 else Vector3.RIGHT
-	var head_up := head_way.cross(head_side).normalized()
+		var at := tail + tail_side * s * width * 0.3 * tail_size - tail_run * _spacing * 0.2 - tail_up * 0.05
+		var thick := 0.1 * tail_size
+		var stir := sin(_clock * 1.7 + s * 1.3) * 0.08
+		var joints := [[0.42, 0.34, 0.08], [0.5, 0.16, 0.05], [0.5, 0.02 + stir, 0.0], [0.42, -0.08 - stir, -0.06], [0.36, -0.12, -0.08]]
+		for joint: Array in joints:
+			var next: Vector3 = at - tail_run * joint[0] + tail_side * s * joint[1] + tail_up * joint[2]
+			_bar(at, next, thick, tail_up, Color(0.45, 0.0, 0.0, 0.0))
+			at = next
+			thick *= 0.82
+		var end_way := (at - tail).normalized()
+		_spike(at, at + end_way * 0.22, thick, tail_up, Color(0.0, 0.0, 1.0))
+
+
+# Its feelers, its eyes, the poison claws under its head and the small mouthparts between them.
+func _head_parts(head_side: Vector3, head_up: Vector3) -> void:
+	# The feelers: from the front corners of its head, up and out, each in many
+	# small beads, tapering, waving as they feel the air; reaching for what it is after.
+	var front := head_at + head_way * _head_long * 0.42 + head_up * width * 0.06
+	var link := FEELER / FEELER_LINKS
 	for s: float in [1.0, -1.0]:
-		var at := front + head_side * s * width * 0.22 + head_up * 0.08
-		var dir := (head_way + head_side * s * 0.55 + head_up * (0.25 + _rear * 0.4)).normalized()
+		var at := front + head_side * s * width * 0.2
+		var dir := (head_way + head_side * s * 0.4 + head_up * (0.55 + _rear * 0.3)).normalized()
 		var target := Vector3.INF
 		if aim.is_finite():
-			target = aim + Vector3.UP * 1.0 + head_side * s * 0.5
-		var link := FEELER / FEELER_LINKS
+			target = aim + Vector3.UP * 0.8 + head_side * s * 0.6
 		for k in FEELER_LINKS:
-			var wave := sin(_clock * (3.3 + s * 0.4) - k * 0.7) * 0.22 + sin(_clock * 7.1 + k + s) * 0.06
-			dir = (dir + head_side * s * wave * 0.25 + head_up * wave * 0.2 - head_up * 0.03).normalized()
+			var along := float(k) / FEELER_LINKS
+			# (a slow wave runs out along each, and a quicker tremor near the tip)
+			var wave := sin(_clock * (2.6 + s * 0.3) - k * 0.35) * 0.06 + sin(_clock * 8.0 + k * 0.9 + s) * 0.03 * along
+			dir = (dir + head_side * s * wave + head_up * (wave * 0.7 - 0.012)).normalized()
 			if target.is_finite():
-				dir = _turned(dir, (target - at).normalized(), 0.18).normalized()
+				dir = _turned(dir, (target - at).normalized(), 0.06).normalized()
 			var next := at + dir * link
-			_bar(n, at, next, lerpf(0.035, 0.012, float(k) / FEELER_LINKS), head_up, Color(0.35, 0.0, lerpf(0.0, 0.9, float(k) / FEELER_LINKS)))
-			n += 1
+			_bar(at, next, lerpf(0.026, 0.009, along), head_up, Color(0.3, 0.0, lerpf(0.0, 0.6, along), 0.4))
 			at = next
-	# The poison claws: from under its head, curving in to meet in front of it; spread wide to strike.
-	var under_head := head_at - head_up * width * 0.12 + head_way * _head_long * 0.2
+	# Its eyes: four small black glossy domes each side, in a cluster behind the root of its feeler.
 	for s: float in [1.0, -1.0]:
-		# (three parts: a thick base, the curve, and a black hooked point, turned in to meet the other)
-		var root := under_head + head_side * s * width * 0.28
-		var spread := lerpf(0.1, 1.0, _claws_open)
-		var mid := root + head_way * 0.55 + head_side * s * (0.12 + 0.45 * spread) - head_up * 0.1
-		var bend := mid + head_way * (0.38 - 0.08 * spread) - head_side * s * lerpf(0.3, 0.02, spread) + head_up * 0.02
-		var point := bend + head_way * lerpf(0.05, 0.22, spread) - head_side * s * lerpf(0.3, 0.16, spread) + head_up * 0.04
-		_bar(n, root, mid, 0.14, head_up, Color(0.8, 0.0, 0.0))
-		_bar(n + 1, mid, bend, 0.1, head_up, Color(0.75, 0.6, 0.0))
-		_bar(n + 2, bend, point, 0.055, head_up, Color(0.5, 0.0, 1.0))
-		n += 3
-	# Its eyes: a little black glossy cluster each side behind the feelers.
+		for k in 4:
+			var spot := head_at + head_way * _head_long * (0.24 + 0.06 * (k % 2)) + head_side * s * width * (0.36 + 0.05 * (k / 2)) + head_up * width * 0.08
+			var out := (head_up + head_side * s * 0.6).normalized()
+			_spike(spot - out * 0.02, spot + out * 0.045, 0.038, head_way, Color(0.0, 0.0, 1.0))
+	# The poison claws: from under its head, a thick glossy base, then curving
+	# forward and in to meet in front of it, each ending in a black fang. Spread wide to strike.
+	var under_head := head_at - head_up * width * 0.13 + head_way * _head_long * 0.05
+	var spread := lerpf(0.05, 1.0, _claws_open)
 	for s: float in [1.0, -1.0]:
-		var eye := head_at + head_way * _head_long * 0.18 + head_side * s * width * 0.36 + head_up * width * 0.12
-		_bar(n, eye - head_side * s * 0.05, eye + head_side * s * 0.07 + head_up * 0.02, 0.075, head_way, Color(0.0, 0.0, 1.0))
-		n += 1
+		# (a swing outward that grows as they spread, then a curve that turns in, darkening to a black point)
+		var root := under_head + head_side * s * width * 0.24
+		var one := root + head_way * 0.36 + head_side * s * (0.08 + 0.26 * spread) - head_up * 0.05
+		var two := one + head_way * 0.26 + head_side * s * (0.04 + 0.1 * spread) - head_up * 0.01
+		var three := two + head_way * 0.2 - head_side * s * lerpf(0.1, 0.0, spread) + head_up * 0.01
+		var four := three + head_way * lerpf(0.06, 0.16, spread) - head_side * s * lerpf(0.18, 0.08, spread) - head_up * 0.02
+		var fang := four + (head_way * lerpf(-0.02, 0.06, spread) - head_side * s * 0.13 - head_up * 0.05)
+		_bar(root, one, 0.095, head_up, Color(1.0, 0.0, 0.0, 1.0))
+		_bar(one, two, 0.078, head_up, Color(1.0, 0.0, 0.0, 1.0))
+		_bar(two, three, 0.062, head_up, Color(1.0, 0.45, 0.0, 1.0))
+		_bar(three, four, 0.047, head_up, Color(1.0, 0.55, 0.0, 1.0))
+		_spike(four, fang, 0.034, head_up, Color(0.0, 0.0, 1.0))
+	# The mouthparts: two small jointed feelers of the mouth between the claws.
+	for s: float in [1.0, -1.0]:
+		var at := head_at + head_way * _head_long * 0.42 - head_up * width * 0.08 + head_side * s * width * 0.08
+		var twitch := sin(_clock * 5.0 + s * 2.0) * 0.04
+		var mid := at + head_way * 0.16 - head_up * 0.04 + head_side * s * (0.04 + twitch)
+		_bar(at, mid, 0.028, head_up, Color(0.2, 0.0, 0.0, 0.5))
+		_bar(mid, mid + head_way * 0.12 - head_side * s * 0.02 - head_up * 0.03, 0.022, head_up, Color(0.1, 0.5, 0.0, 0.5))
 
 
-func _bar(n: int, from: Vector3, to: Vector3, thick: float, side: Vector3, tint: Color) -> void:
-	_put(_bar_buffer, n, 16, CentipedeParts.between(from, to, thick, side))
-	var o := n * 16 + 12
+func _bar(from: Vector3, to: Vector3, thick: float, side: Vector3, tint: Color) -> void:
+	# (each a little longer at both ends, so that the joints overlap and close)
+	var way := (to - from).normalized() if (to - from).length_squared() > 0.000001 else Vector3.UP
+	_put(_bar_buffer, _bar_n, 16, CentipedeParts.between(from - way * thick * 0.5, to + way * thick * 0.3, thick, side))
+	var o := _bar_n * 16 + 12
 	_bar_buffer[o] = tint.r
 	_bar_buffer[o + 1] = tint.g
 	_bar_buffer[o + 2] = tint.b
-	_bar_buffer[o + 3] = 1.0
+	_bar_buffer[o + 3] = tint.a
+	_bar_n += 1
+
+
+func _spike(from: Vector3, to: Vector3, thick: float, side: Vector3, tint: Color) -> void:
+	_put(_spike_buffer, _spike_n, 16, CentipedeParts.between(from, to, thick, side))
+	var o := _spike_n * 16 + 12
+	_spike_buffer[o] = tint.r
+	_spike_buffer[o + 1] = tint.g
+	_spike_buffer[o + 2] = tint.b
+	_spike_buffer[o + 3] = tint.a
+	_spike_n += 1
 
 
 ## `a` turned towards `b` by `weight` (both of a length of one); safe when they are nearly the same way or opposite.
@@ -732,39 +849,35 @@ static func _put(buffer: PackedFloat32Array, n: int, stride_of: int, t: Transfor
 # --- What it is made of ---
 
 func _build() -> void:
-	var colours := {"shell": shell, "edge": edge, "under": under, "leg": leg, "tip": tip}
+	var colours := {"shell": shell, "head_shell": head_shell, "rim": rim, "under": under, "membrane": membrane, "leg": leg, "tip": tip}
 	var plates := MultiMesh.new()
 	plates.transform_format = MultiMesh.TRANSFORM_3D
+	plates.use_colors = true
 	plates.mesh = CentipedeParts.plate()
 	plates.instance_count = segments
-	_plate_buffer.resize(segments * 12)
+	_plate_buffer.resize(segments * 16)
 	_plates = MultiMeshInstance3D.new()
 	_plates.name = "Plates"
 	_plates.multimesh = plates
-	_plates.material_override = CentipedeParts.material(colours, true)
+	_plates.material_override = CentipedeParts.material(colours, 0)
 	_plates.top_level = true
 	add_child(_plates)
 	_plates.global_transform = Transform3D.IDENTITY
 	_head = MeshInstance3D.new()
 	_head.name = "Head"
 	_head.mesh = CentipedeParts.head()
-	_head.material_override = _plates.material_override
+	_head.material_override = CentipedeParts.material(colours, 1)
 	_head.top_level = true
 	add_child(_head)
-	_bar_count = segments * 4 + 4 + FEELER_LINKS * 2 + 8
-	var bars := MultiMesh.new()
-	bars.transform_format = MultiMesh.TRANSFORM_3D
-	bars.use_colors = true
-	bars.mesh = CentipedeParts.bar()
-	bars.instance_count = _bar_count
+	# Bars: six to each leg, five to each trailing leg, the feelers, eyes, poison claws and mouthparts.
+	_bar_count = segments * 12 + 10 + FEELER_LINKS * 2 + 8 + 4
+	var bar_material := CentipedeParts.material(colours, 2)
+	_bars = _many(CentipedeParts.bar(), _bar_count, bar_material, "Legs")
 	_bar_buffer.resize(_bar_count * 16)
-	_bars = MultiMeshInstance3D.new()
-	_bars.name = "Legs"
-	_bars.multimesh = bars
-	_bars.material_override = CentipedeParts.material(colours, false)
-	_bars.top_level = true
-	add_child(_bars)
-	_bars.global_transform = Transform3D.IDENTITY
+	# Spikes: a claw to each leg, the tips of the trailing legs, the fangs, the eyes.
+	_spike_count = segments * 2 + 4 + 8
+	_spikes = _many(CentipedeParts.spike(), _spike_count, bar_material, "Claws")
+	_spike_buffer.resize(_spike_count * 16)
 	if voice:
 		_sounds()
 		_clatter = AudioStreamPlayer3D.new()
@@ -779,12 +892,30 @@ func _build() -> void:
 		add_child(_chitter)
 
 
+# A MultiMesh of `count` of `mesh`, with colours, drawn from the world' origin.
+func _many(mesh: Mesh, count: int, material: Material, called: String) -> MultiMeshInstance3D:
+	var multi := MultiMesh.new()
+	multi.transform_format = MultiMesh.TRANSFORM_3D
+	multi.use_colors = true
+	multi.mesh = mesh
+	multi.instance_count = count
+	var node := MultiMeshInstance3D.new()
+	node.name = called
+	node.multimesh = multi
+	node.material_override = material
+	node.top_level = true
+	add_child(node)
+	node.global_transform = Transform3D.IDENTITY
+	return node
+
+
 ## How many triangles it is, and how many things are drawn for it.
 func cost() -> Dictionary:
 	var plate_tris := CentipedeParts.plate().surface_get_array_len(0) / 3
 	var head_tris := CentipedeParts.head().surface_get_array_len(0) / 3
 	var bar_tris := CentipedeParts.bar().surface_get_array_len(0) / 3
-	return {"triangles": plate_tris * segments + head_tris + bar_tris * _bar_count, "draws": 3}
+	var spike_tris := CentipedeParts.spike().surface_get_array_len(0) / 3
+	return {"triangles": plate_tris * segments + head_tris + bar_tris * _bar_count + spike_tris * _spike_count, "draws": 4}
 
 
 # --- Its sound ---

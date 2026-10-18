@@ -68,7 +68,7 @@ func _body_alone() -> void:
 	stage.add_child(body)
 	await frames(3)
 	check("its body is laid out", body.spine.size() == body.segments + 1)
-	check("it is three draws", body.cost()["draws"] == 3, "(%d triangles)" % body.cost()["triangles"])
+	check("it is four draws", body.cost()["draws"] == 4, "(%d triangles)" % body.cost()["triangles"])
 	# Runs forward 20 m and round a bend: every length stays its own distance from the next.
 	for i in 180:
 		var turn := 0.02 if i > 90 else 0.0
