@@ -62,6 +62,18 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
 - 41 cells across: about 574 m. Open grass, stands of pines round its edge and dense woods in one corner (chosen by
   the seed), but no trees within 95 m of the middle. The middle is level (70 m out); past it very gentle hills, up to
   4 m, level again near the walls. All set by `ClearingStyle` (`scripts/clearing_style.gd`, `MazeLayout.clearing_style`).
+- Something different before each entrance (`ClearingStyle.entrances`): dense woods round one, grass up to his chest
+  round another, a marsh in front of another, nothing at all near the last.
+- The marsh (`scripts/marsh.gd`, the marsh settings of `ClearingStyle`): not a pond but a wide, ragged bog, about
+  190 m along the wall and 125 m out, beginning a few metres from the wall's foot. Many shallow, irregular pools and
+  channels of standing water between hummocks and tussocks of wet ground, black mud at the water's edge, broad open
+  meres in some parts and flats of tussocks in others, and a few deep dark pools he has to swim. The water is one
+  sheet at one level that the ground stands up through: the shape is all the ground's, from the seed. Sedges grow all
+  over it, up out of the shallow water too (thinner there, darker and yellower than the field's grass, and none in the
+  deep pools), with reeds and bulrushes in clumps along the pools' edges and lily pads and a scum of duckweed on the
+  open water. All of it bends round whoever pushes through. Wading slows him (the deeper, the slower), he splashes
+  going in and leaves rings. A lane in from the gate has nothing deep and nothing standing in it: the way in is wet
+  but open.
 - Its wall is a special case, far thicker than the grid: about 54 m of solid stone (the first ring's `rampart`), 92
   m high (`inner_height`), twice the other walls between rings. Nothing grows or stands on it.
 - Four gates, one in the middle of each side, each a slot about 2 m wide (about three of him) running the whole way

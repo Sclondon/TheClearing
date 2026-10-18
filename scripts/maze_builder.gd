@@ -297,7 +297,7 @@ func _ground() -> void:
 	ground_material = MazeStone.ground(maze.clearing * Maze.CELL * 0.5, maze.extent() * 0.5, WALL_THICK, boxes)
 	var material := ground_material
 	# Flat ground everywhere, or with a hole for the clearing where its ground is
-	# shaped (it may go down below level, into the pond).
+	# shaped (it may go down below level, into the marsh).
 	var shaped := maze.clearing_style.shaped()
 	var hole := maze.clearing * Maze.CELL * 0.5 - 1.0 if shaped else 0.0
 	for part: Rect2 in _framed(size * 0.5, hole):
@@ -327,8 +327,9 @@ func _ground() -> void:
 		var half := (across - 1) * HILL_STEP * 0.5
 		for j in across:
 			for i in across:
-				# (in heightmap units: the shape is scaled up by HILL_STEP)
-				data[i + j * across] = maze.ground_height(Vector3(i * HILL_STEP - half, 0.0, j * HILL_STEP - half)) / HILL_STEP
+				# (in heightmap units: the shape is scaled up by HILL_STEP; sunk
+				# under the marsh, which has its own)
+				data[i + j * across] = maze.clearing_style.coarse_height_at(i * HILL_STEP - half, j * HILL_STEP - half, maze.maze_seed) / HILL_STEP
 		heights.map_data = data
 		var on_hills := CollisionShape3D.new()
 		on_hills.shape = heights
@@ -337,36 +338,16 @@ func _ground() -> void:
 	add_child(body)
 
 
-## The pond in front of the flooded entrance (ClearingStyle.Entrance.POND), if
-## there is one: still, dark water in the hollow the ground makes for it.
+## The marsh in front of the flooded entrance (ClearingStyle.Entrance.MARSH), if
+## there is one (Marsh: its finer ground, its water, sedges, reeds and the rest).
+## (Named for the pond that was there before it.)
 func _pond() -> void:
-	var look := maze.clearing_style
-	var middle := look.pond_middle()
-	if not middle.is_finite():
+	if maze.clearing_style.entrance(ClearingStyle.Entrance.MARSH).is_empty():
 		return
-	var pool := Pool.new()
-	pool.name = "Pond"
-	var across := look.pond_radius * 2.6
-	pool.size = Vector3(across, look.pond_depth * 1.3 + 0.5, across)
-	pool.position = Vector3(middle.x, ClearingStyle.POND_LEVEL, middle.y)
-	add_child(pool)
-	if pool.water:
-		_murky(pool)
-	else:
-		pool.ready.connect(_murky.bind(pool))
-
-
-# (grey and murky, as the rest of the place)
-static func _murky(pool: Pool) -> void:
-	var water := pool.water
-	water.shallow = Color(0.2, 0.25, 0.22)
-	water.deep = Color(0.05, 0.07, 0.07)
-	water.foam = Color(0.55, 0.58, 0.56)
-	water.sky = Color(0.62, 0.65, 0.66)
-	water.depth_range = 1.4
-	water.alpha_shallow = 0.55
-	water.caustics = 0.0
-	water.swell_height = 0.01
+	var marsh := Marsh.new()
+	marsh.name = "Marsh"
+	add_child(marsh)
+	marsh.realize(maze)
 
 
 ## A square `half` metres each way from the middle, as rects (x, z): the whole of
@@ -395,7 +376,7 @@ static func hills(look: ClearingStyle, seed_value: int, material: Material) -> M
 	heights.resize(across * across)
 	for j in across:
 		for i in across:
-			heights[i + j * across] = look.height_at(i * HILL_STEP - half, j * HILL_STEP - half, seed_value)
+			heights[i + j * across] = look.coarse_height_at(i * HILL_STEP - half, j * HILL_STEP - half, seed_value)
 	var points := PackedVector3Array()
 	var normals := PackedVector3Array()
 	points.resize(across * across)
@@ -516,10 +497,9 @@ func _grass() -> void:
 		if footprint.grow(0.25).intersects(field):
 			footprints.append(footprint.grow(0.25))
 	var look := maze.clearing_style
-	# (none under the pond's water)
-	var pond := look.pond_middle()
+	# (giving way to the marsh's own sedges, Marsh)
 	var dry := func(p: Vector2) -> bool:
-		if pond.is_finite() and p.distance_to(pond) < look.pond_radius * 1.3 and maze.ground_height(Vector3(p.x, 0.0, p.y)) < ClearingStyle.POND_LEVEL + 0.08:
+		if look.marsh_keeps_grass_out(p, maze.maze_seed):
 			return false
 		for footprint: Rect2 in footprints:
 			if footprint.has_point(p):

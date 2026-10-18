@@ -143,10 +143,10 @@ func _run() -> void:
 	put(Vector3(centre.x, 0.05, centre.z) - along * 7.0)
 	await frames(60)
 	check("someone standing quietly 7 m off does not startle them", chickens.mode == Chickens.Mode.FORAGE)
-	# (crouched, walking slowly along, 2.5 m from the nearest of them)
+	# (crouched, walking slowly along, 4 m to the side of their middle: they wander, so passing a bird by a metre or so)
 	runner.set(&"is_ducking", true)
 	var side := Vector3(-along.z, 0.0, along.x)
-	var creep_from := Vector3(centre.x, 0.05, centre.z) - along * 6.0 + side * 2.5
+	var creep_from := Vector3(centre.x, 0.05, centre.z) - along * 6.0 + side * 4.0
 	var closest := INF
 	for i in 60 * 8:
 		put(creep_from + along * 1.2 * i / 60.0, along * 1.2)
@@ -154,7 +154,7 @@ func _run() -> void:
 		closest = minf(closest, chickens._nearest_bird(runner.global_position))
 		if chickens.mode != Chickens.Mode.FORAGE:
 			break
-	check("creeping past crouched does not startle them", chickens.mode == Chickens.Mode.FORAGE, "(as near as %.1f m)" % closest)
+	check("creeping past crouched does not startle them", chickens.mode == Chickens.Mode.FORAGE, "(as near as %.1f m; mode %s; quarry %s; ducking %s)" % [closest, Chickens.Mode.keys()[chickens.mode], chickens.quarry, runner.get(&"is_ducking")])
 	runner.set(&"is_ducking", false)
 
 	# Running past: they explode, and the racket wakes the mummy.
