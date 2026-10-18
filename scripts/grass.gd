@@ -19,7 +19,7 @@ const PUSHERS := &"grass_pushers"
 const FIELDS := &"grass_fields"
 const MAX_PUSHERS := 8
 ## How long a frame may spend filling squares with tufts, microseconds.
-const FILL_BUDGET := 3000
+const FILL_BUDGET := 1200
 
 ## Per quality: tufts per square metre at full density, blades in a tuft, segments in a blade,
 ## how far full density reaches, where the grass has gone entirely, the least share kept far

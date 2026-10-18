@@ -42,6 +42,7 @@ func _ready() -> void:
 
 
 func _build() -> void:
+	_drips.clear()
 	for child in get_children(true):
 		remove_child(child)
 		child.queue_free()
@@ -115,8 +116,11 @@ func _build() -> void:
 		drop.rings = 3
 		drop.material = _drop
 		drips.mesh = drop
-		drips.visibility_range_end = 70.0
+		drips.emitting = false
+		drips.visible = false
 		add_child(drips, false, Node.INTERNAL_MODE_BACK)
+		_drips.append(drips)
+	set_process(true)
 
 
 ## The side of a tube round `middle`, `radius` round, from z `from` to `to`;
@@ -173,3 +177,23 @@ static func _materials() -> void:
 	_drop.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_drop.roughness = 0.1
 	_drop.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+
+
+# The drips, which only fall while the camera is near (each falling costs, even
+# unseen), looked at now and then.
+var _drips: Array[CPUParticles3D] = []
+var _look_in := randf()
+const DRIPS_SEEN := 80.0
+
+
+func _process(delta: float) -> void:
+	_look_in -= delta
+	if _look_in > 0.0 or _drips.is_empty():
+		return
+	_look_in = 0.5
+	var camera := get_viewport().get_camera_3d()
+	var near := camera != null and camera.global_position.distance_to(global_position) < DRIPS_SEEN
+	for drips in _drips:
+		if drips.emitting != near:
+			drips.emitting = near
+			drips.visible = near

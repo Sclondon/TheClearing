@@ -102,7 +102,11 @@ func _process(delta: float) -> void:
 	var camera := get_viewport().get_camera_3d()
 	if camera:
 		_rain.global_position = camera.global_position + Vector3.UP * RAIN_BOX.y * 0.45
-	_rain.emitting = rain > 0.02
+	# (not there at all unless it is raining: idle, it still costs a lot to draw)
+	var raining := rain > 0.02
+	_rain.emitting = raining
+	_rain.visible = raining
+	_rain.process_mode = Node.PROCESS_MODE_INHERIT if raining else Node.PROCESS_MODE_DISABLED
 	_rain.amount_ratio = rain
 
 
@@ -131,6 +135,7 @@ func _rain_fall() -> void:
 	_rain.local_coords = false
 	_rain.visibility_aabb = AABB(-RAIN_BOX, RAIN_BOX * 2.0)
 	_rain.emitting = false
+	_rain.visible = false
 	var process := ParticleProcessMaterial.new()
 	process.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
 	process.emission_box_extents = Vector3(RAIN_BOX.x * 0.5, 0.5, RAIN_BOX.z * 0.5)
