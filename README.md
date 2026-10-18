@@ -94,14 +94,18 @@ from the seed. Generate again replaces everything in the layout.
   plan and placed from the seed by `MazeEnemies`; and the `Griever` (`griever*.gd`): a lump of wet meat on eight
   procedural robotic spider legs that plant on walls and ground, with a stinger. Then the newer kinds, each a thin
   `MazeEnemy` driving a creature from `creatures/` (installed from GameCommon): `MazeGhoul`, `Centipede`,
-  `MazeSpider`, `Abomination`, `MazeSlimeWall`, `Bats`, `MazeBaboon`, `MazeDog`, `Alien`. How many of each a ring
+  `MazeSpider`, `Abomination`, `MazeSlimeWall`, `Bats`, `MazeBaboon`, `MazeDog`, `MazeDeer` (the watching herd),
+  `MazeElk` (the territorial bull), `Alien`. How many of each a ring
   has is its `MazeStyle` ("What hunts it"); `World` asks `MazeEnemies` for the first ring's (`populate`, then
   `add_hunters`) and puts in a Griever; alone or as the host they are run there and their state goes to guests ten
   times a second (K_ENEMIES), where copies follow it. Caught, a player is put back in the clearing; out, nobody is
   hunted.
 - `creatures/`: GameCommon's creatures, look and motion only (see each one's README): `ghoul`, `centipede`,
-  `giant_spider`, `abomination`, `slime_wall`, `bats`, `baboon`, `dog`, `alien`. Change them here, then `kit.sh pull`
+  `giant_spider`, `abomination`, `slime_wall`, `bats`, `baboon`, `dog`, `deer`, `elk`, `alien`. Change them here, then `kit.sh pull`
   them back to GameCommon (`godot/<name>`, with `_` as `-`). Their models are built in Blender by their `tools/` scripts.
+- `scripts/wildlife.gd` (`Wildlife`): the animals that hunt nobody: herds of ordinary deer and elk grazing in the
+  clearing's meadow (ClearingStyle, "Wildlife") and in the halls (MazeStyle, "Wildlife"), running off when someone
+  comes near. Lightweight (not MazeEnemies, not sent over the network): each copy runs its own from the round's seed.
 - `scripts/remote_player.gd` (`RemotePlayer`): a friend, a `Figure` on the boy's rig chasing their news.
 - `scripts/looks.gd` (`Looks`): every player is the same boy, as Inside has him (no face, a basin cut, no cap,
   shirt, dark trousers and boots). Only the shirt's colour differs, by seat.
@@ -133,7 +137,7 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/enemy_test.gd     # Apophis and the mummies on their own
 "$G" --headless --path . -s res://tests/griever_test.gd   # the Griever on its own
 # each newer kind on its own (always with --audio-driver Dummy: some make sounds)
-for t in ghoul centipede spider abomination slime_wall bats baboon dog alien; do
+for t in ghoul centipede spider abomination slime_wall bats baboon dog deer wildlife alien; do
   "$G" --headless --audio-driver Dummy --path . -s res://tests/${t}_test.gd; done
 # pictures of each: tools/<kind>_shots.gd (windowed, 1280x720)
 "$G" --headless --path . -s res://tests/dev_test.gd -- --dev   # the dev tools (and the clearing wall's height)
@@ -145,6 +149,7 @@ node tools/dev_relay.mjs <scareathon-v3/server> 3111      # local rooms (needs s
 sh tools/coop_test.sh                                     # two copies in one room against it
 "$G" --path . --resolution 1280x720 -s res://tools/shots.gd -- <folder>   # pictures to look at
 "$G" --path . --resolution 1280x720 -s res://tools/clearing_shots.gd -- <folder> [seed]   # the clearing: hills, woods
+"$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/deer_shots.gd -- <folder> [studio|strips|maze|clearing|all]   # deer and elk, gallop strips, the herd, wildlife
 "$G" --headless --path . --export-release "Web" build/index.html
 ```
 

@@ -104,6 +104,13 @@ func _run() -> void:
 		var put: int = world.enemies.enemies.size() - had
 		var last = world.enemies.enemies.back()
 		check("+ %s" % one[0], put >= 1 and is_instance_valid(last) and last.is_inside_tree(), "(%d put in)" % put)
+	# The peaceful animals, from theirs: not among what hunts
+	for one: Array in world.dev.WILDLIFE:
+		var hunters: int = world.enemies.enemies.size()
+		var herds: int = world.wildlife.herds.size()
+		world.dev.spawn_wildlife(one[1])
+		await frames(2)
+		check("+ %s" % one[0], world.wildlife.herds.size() == herds + 1 and world.enemies.enemies.size() == hunters, "(%d animals)" % world.wildlife.herds.back().animals.size())
 	await frames(30)
 
 	world.dev.toggle_god()

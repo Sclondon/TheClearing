@@ -75,6 +75,12 @@ var entrance_spots: Array = []
 ## Bushes over the field (none within the treeless radius), most of them near the trees.
 @export_range(0, 400) var bush_count := 70
 
+@export_group("Wildlife")
+## Herds of deer grazing out in the meadow (Wildlife: peaceful, they run from you).
+@export_range(0, 4) var deer_herds := 2
+## Herds of elk (a bull, cows and calves) grazing out in the meadow.
+@export_range(0, 4) var elk_herds := 1
+
 var _noise: FastNoiseLite
 var _noise_seed := -1
 

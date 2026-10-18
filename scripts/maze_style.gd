@@ -132,6 +132,16 @@ extends Resource
 ## Pairs of aliens (each pack two or three).
 @export_range(0, 3) var alien_packs := 1
 @export_range(0, 3) var dog_packs := 1
+## Herds of deer (four or five each, one of them wrong), standing in the halls.
+@export_range(0, 3) var deer_herds := 1
+## Bull elk, each holding a stretch of halls as his own.
+@export_range(0, 3) var elk := 1
+
+@export_group("Wildlife")
+## Herds of ordinary deer in the halls (Wildlife: peaceful, they run from you;
+## not among what hunts it).
+@export_range(0, 4) var wild_deer_herds := 1
+@export_range(0, 4) var wild_elk_herds := 1
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []

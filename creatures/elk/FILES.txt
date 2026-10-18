@@ -1,0 +1,6 @@
+# Elk, a bull and a cow: their look, every move and the bugle, for any game (needs godot/deer installed too)
+creatures/elk/elk.gd
+creatures/elk/models/elk_bull.glb
+creatures/elk/models/elk_bull_lo.glb
+creatures/elk/models/elk_cow.glb
+creatures/elk/models/elk_cow_lo.glb

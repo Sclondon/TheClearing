@@ -26,6 +26,11 @@ const HUNTERS := [
 	["GHOUL", "ghoul", AHEAD], ["CENTIPEDE", "centipede", SNAKE_AHEAD], ["SPIDER", "spider", AHEAD],
 	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD],
+	["DEER", "deer", SNAKE_AHEAD], ["ELK", "elk", SNAKE_AHEAD],
+]
+## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
+const WILDLIFE := [
+	["DEER (TAME)", Wildlife.Kind.DEER], ["ELK (TAME)", Wildlife.Kind.ELK],
 ]
 
 var world: World
@@ -91,6 +96,8 @@ func _init(in_world: World) -> void:
 	grid.add_child(_button("+ GRIEVER", spawn_griever))
 	for one: Array in HUNTERS:
 		grid.add_child(_button("+ " + String(one[0]), spawn_hunter.bind(one[1], one[2])))
+	for one: Array in WILDLIFE:
+		grid.add_child(_button("+ " + String(one[0]), spawn_wildlife.bind(one[1])))
 	grid.add_child(_button("CLEAR ALL", clear))
 	grid.add_child(_button("TO GATE", to_gate))
 	grid.add_child(_button("TO MIDDLE", to_middle))
@@ -184,8 +191,18 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = MazeDog.pack_of(4, randi())
 		"aliens":
 			made = [Alien.new(), Alien.new()]
+		"deer":
+			made = MazeDeer.herd_of(5, randi())
+		"elk":
+			made = [MazeElk.new()]
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
+
+
+## Puts a peaceful herd (Wildlife) in ahead of him, grazing.
+func spawn_wildlife(kind: Wildlife.Kind) -> void:
+	var at := _ahead(SNAKE_AHEAD)
+	world.wildlife.add_herd(kind, at, world.maze.in_clearing(world.maze.cell_at(at)), randi())
 
 
 ## Takes away everything that hunts (the Griever World put in is only put to
