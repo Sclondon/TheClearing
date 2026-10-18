@@ -151,7 +151,8 @@ static func mouldings(size: Vector3) -> Array:
 static func box(tool: SurfaceTool, at: Vector3, size: Vector3, tint := Color.WHITE) -> void:
 	var h := size * 0.5
 	var faces := [
-		[Vector3.UP, Vector3(1, 0, 0), Vector3(0, 0, 1)],
+		# (each face's across x up is its outward way, so that all are wound alike)
+		[Vector3.UP, Vector3(1, 0, 0), Vector3(0, 0, -1)],
 		[Vector3.RIGHT, Vector3(0, 0, -1), Vector3(0, 1, 0)],
 		[Vector3.LEFT, Vector3(0, 0, 1), Vector3(0, 1, 0)],
 		[Vector3.BACK, Vector3(1, 0, 0), Vector3(0, 1, 0)],

@@ -55,5 +55,19 @@ func _initialize() -> void:
 			check("%s: exit on the edge" % name, not maze.inside(edge) and not maze.blocked(maze.exit, maze.exit_side))
 			check("%s: escaped past the exit" % name, maze.escaped(maze.world(edge)) and not maze.escaped(maze.world(maze.exit)))
 
+	# The boxes the walls are built of face out on every side, the top too (wound as
+	# Godot's front faces are: clockwise seen from outside), or they show hollow.
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	MazeBuilder.box(tool, Vector3.ZERO, Vector3(4, 6, 2))
+	var arrays := tool.commit().surface_get_arrays(0)
+	var points: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var inside_out := 0
+	for t in range(0, points.size(), 3):
+		if (points[t + 1] - points[t]).cross(points[t + 2] - points[t]).dot(normals[t]) > 0.0:
+			inside_out += 1
+	check("wall boxes face out on every side", inside_out == 0, "(%d of %d triangles inside out)" % [inside_out, points.size() / 3])
+
 	print("MAZE TEST %s" % ("PASSED" if failures == 0 else "FAILED (%d)" % failures))
 	quit(failures)

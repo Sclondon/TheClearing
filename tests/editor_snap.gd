@@ -7,8 +7,8 @@ extends Node
 ##     godot --editor --path . res://tests/editor_check.tscn
 
 @export var out := "user://editor_view.png"
-@export var eye := Vector3(30, 26, 70)
-@export var look_at_point := Vector3(0, 0, 10)
+@export var eye := Vector3(10, 95, 70)
+@export var look_at_point := Vector3(0, 0, 0)
 
 var _time := 0.0
 var _done := false
