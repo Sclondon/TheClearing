@@ -196,6 +196,10 @@ extends Resource
 @export_range(0, 4) var imp_gangs := 2
 ## Swarms of imps, each a crack at the foot of a wall that dozens pour out of.
 @export_range(0, 3) var imp_swarms := 1
+## A colossus that crawls over the ring on its wall tops (one at most: it would
+## stand 260 m tall). The Avenues and the Galleries, whose walls are thick and
+## far apart, have one.
+@export_range(0, 1) var colossi := 0
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
@@ -262,6 +266,7 @@ static func avenues() -> MazeStyle:
 	style.sewer_pipe_share = 0.08
 	style.plant_density = 0.8
 	style.harpies = 2
+	style.colossi = 1
 	return style
 
 
@@ -285,6 +290,7 @@ static func galleries() -> MazeStyle:
 	style.wall_ivy_share = 0.1
 	style.hanging_vine_share = 0.04
 	style.plant_density = 0.6
+	style.colossi = 1
 	return style
 
 

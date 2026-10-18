@@ -1,0 +1,7 @@
+# The colossus: two scripts, two models, and the Blender script that makes the models
+creatures/colossus/colossus.gd
+creatures/colossus/colossus_look.gd
+creatures/colossus/models/colossus.glb
+creatures/colossus/models/colossus_lo.glb
+creatures/colossus/tools/.gdignore
+creatures/colossus/tools/build_colossus.py
