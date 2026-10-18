@@ -16,6 +16,8 @@ extends Node3D
 const PIECES := 16
 ## How near (past its own length) someone must be for it to move when it is still.
 const WAKE := 12.0
+## Past this a rope (or a bridge, or a vine) is lost in the mist: not drawn.
+const SEEN := 130.0
 
 @export var length := 5.0
 ## How quickly a swing dies away, per second.
@@ -67,6 +69,7 @@ func _ready() -> void:
 		link.mesh = mesh
 		link.material_override = hemp
 		link.top_level = true
+		link.visibility_range_end = SEEN
 		add_child(link)
 		_links.append(link)
 	# A knot at the end, so the bottom reads
@@ -79,6 +82,7 @@ func _ready() -> void:
 	_knot.mesh = ball
 	_knot.material_override = hemp
 	_knot.top_level = true
+	_knot.visibility_range_end = SEEN
 	add_child(_knot)
 	_draw()
 

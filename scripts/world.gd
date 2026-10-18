@@ -382,6 +382,10 @@ func _physics_process(delta: float) -> void:
 	if player == null:
 		return
 	clock += delta
+	_sleep_in -= delta
+	if _sleep_in <= 0.0:
+		_sleep_in = 0.5
+		_sleep_far()
 	if Input.is_action_just_pressed(&"act"):
 		try_cut()
 	if not out.has(slot) and maze.escaped(player.global_position):
@@ -506,3 +510,49 @@ func _shut_gates(shutting: bool) -> void:
 ## How many rings the maze has: the square ones and the round ones past them.
 func ring_count() -> int:
 	return maze.rings + (maze.round_rings.rings.size() if maze.round_rings else 0)
+
+
+## Things that hunt, roam or forage far from everyone are put to sleep: they
+## neither think nor are drawn (the maze is a kilometre and more across, and
+## most of what is in it is far out of anyone's sight). Woken again as someone
+## comes near. (Far from every player in the room, so the host's copy keeps on
+## moving whatever anyone is near.)
+const SLEEP_FAR := 220.0
+const WAKE_NEAR := 190.0
+const SLEEPERS: Array[StringName] = [&"pursuers", &"maze_enemies", &"grievers", &"runners", &"campers", &"wildlife"]
+var _sleep_in := 0.0
+
+
+func _sleep_far() -> void:
+	var eyes: Array[Vector3] = []
+	if player:
+		eyes.append(player.global_position)
+	for seat: int in remotes:
+		if is_instance_valid(remotes[seat]):
+			eyes.append((remotes[seat] as Node3D).global_position)
+	if eyes.is_empty():
+		return
+	var found := {}
+	for group in SLEEPERS:
+		for node in get_tree().get_nodes_in_group(group):
+			found[node] = true
+	for holder: Node in [enemies, wildlife, runners]:
+		if holder:
+			for node in holder.get_children():
+				found[node] = true
+	for node: Node in found:
+		var thing := node as Node3D
+		if thing == null or not is_instance_valid(thing) or thing == player:
+			continue
+		var nearest := INF
+		for eye in eyes:
+			nearest = minf(nearest, eye.distance_to(thing.global_position))
+		var asleep := thing.process_mode == Node.PROCESS_MODE_DISABLED
+		if not asleep and nearest > SLEEP_FAR:
+			thing.process_mode = Node.PROCESS_MODE_DISABLED
+			thing.visible = false
+		elif asleep and nearest < WAKE_NEAR:
+			thing.visible = true
+			# (unless the dev panel has frozen everything)
+			if not (dev and dev.frozen):
+				thing.process_mode = Node.PROCESS_MODE_INHERIT

@@ -65,6 +65,7 @@ func _ready() -> void:
 		stem.mesh = line
 		stem.material_override = _stem
 		stem.top_level = true
+		stem.visibility_range_end = Rope.SEEN
 		add_child(stem)
 		_stems.append(stem)
 	var rng := RandomNumberGenerator.new()

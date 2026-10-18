@@ -51,9 +51,9 @@ static func apply(rig: CharacterRig, look: Dictionary) -> void:
 	whole["parts"]["over"] = "none"
 	whole["parts"]["head"] = HeadShape.option(look.get("head", HEAD))
 	whole["parts"]["body"] = BodyShape.option(look.get("cut", CUT))
-	HeadShape.add_to(rig)
-	BodyShape.add_to(rig)
-	HairShape.add_to(rig)
+	HeadShape.add_to(rig, look.get("head", HEAD))
+	BodyShape.add_to(rig, look.get("cut", CUT))
+	HairShape.add_to(rig, look.get("locks", LOCKS))
 	whole["parts"]["locks"] = look.get("locks", LOCKS)
 	BodyShape.boots(rig, look.get("boots", BOOT))
 	rig.look = whole

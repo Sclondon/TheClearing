@@ -39,9 +39,10 @@ static func names() -> Array[String]:
 	return all
 
 
-## Adds every shape to a figure on the boy's rig (once; it does nothing the
-## second time). Call it once the rig is in the tree, before restyling it.
-static func add_to(rig: Node) -> void:
+## Adds every shape (or only the shape `only`) to a figure on the boy's rig
+## (once; it does nothing the second time). Call it once the rig is in the tree,
+## before restyling it.
+static func add_to(rig: Node, only := "") -> void:
 	var found := rig.find_children("*_head__base", "MeshInstance3D", true, false)
 	if found.is_empty():
 		return
@@ -50,9 +51,11 @@ static func add_to(rig: Node) -> void:
 	for shape: Array in SHAPES:
 		if shape[0] == "round" or base.get_parent().has_node(prefix + shape[0]):
 			continue
-		var head := base.duplicate() as MeshInstance3D
+		# (just the one asked for, if one is)
+		if only != "" and shape[0] != only:
+			continue
+		var head := BodyShape.copy_of(base, mesh(base.mesh, shape[0]))
 		head.name = prefix + shape[0]
-		head.mesh = mesh(base.mesh, shape[0])
 		head.visible = false
 		base.get_parent().add_child(head)
 		head.owner = base.owner

@@ -54,6 +54,7 @@ func _ready() -> void:
 	_leaves.multimesh = multi
 	_leaves.material_override = _leaf
 	_leaves.top_level = true
+	_leaves.visibility_range_end = Rope.SEEN
 	_leaves.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_leaves)
 	_draw()

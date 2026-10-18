@@ -70,6 +70,7 @@ func _ready() -> void:
 		mesh.size = Vector3(width * rng.randf_range(0.92, 1.0), 0.07, _piece * 0.82)
 		look.mesh = mesh
 		look.material_override = _wood
+		look.visibility_range_end = Rope.SEEN
 		look.rotation.y = rng.randf_range(-0.04, 0.04)
 		plank.add_child(look)
 		add_child(plank)
@@ -86,6 +87,7 @@ func _ready() -> void:
 			rail.mesh = line
 			rail.material_override = _hemp
 			rail.top_level = true
+			rail.visibility_range_end = Rope.SEEN
 			add_child(rail)
 			_rails.append(rail)
 	_lay()

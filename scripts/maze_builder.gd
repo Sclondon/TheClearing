@@ -135,6 +135,8 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 		var walls := MeshInstance3D.new()
 		walls.mesh = (chunks[key] as SurfaceTool).commit()
 		walls.material_override = materials[key[0]]
+		# (lost in the mist past this; the editor, seen from high over it all, shows all)
+		walls.visibility_range_end = 0.0 if Engine.is_editor_hint() else WALL_FAR
 		body.add_child(walls)
 
 
@@ -145,6 +147,8 @@ const LEDGE_LOOK := Wall.Look.ROUGH
 const LEDGE_TINT := Color(0.55, 0.52, 0.47)
 ## How many times bigger the great walls' concrete is drawn than the texture's own size.
 const GREAT_TILE_SCALE := 4.0
+## Past this, walls are lost in the mist: not drawn.
+const WALL_FAR := 550.0
 const GREAT_LOOK := Wall.Look.CAST
 const MAZE_LOOK := Wall.Look.SLABS
 

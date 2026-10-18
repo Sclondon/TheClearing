@@ -42,7 +42,7 @@ static func names() -> Array[String]:
 
 ## Adds every style to a figure on the boy's rig (once). Call it once the rig is
 ## in the tree, before restyling it.
-static func add_to(rig: Node) -> void:
+static func add_to(rig: Node, only := "") -> void:
 	var heads := rig.find_children("*_head__base", "MeshInstance3D", true, false)
 	var cuts := rig.find_children("*_hair__crop", "MeshInstance3D", true, false)
 	var waved := rig.find_children("*_hair__quiff", "MeshInstance3D", true, false)
@@ -54,11 +54,13 @@ static func add_to(rig: Node) -> void:
 	for style: Array in STYLES:
 		if cut.get_parent().has_node(prefix + style[0]):
 			continue
+		# (just the one asked for, if one is)
+		if only != "" and style[0] != only:
+			continue
 		var how: Dictionary = style[2]
 		var hair_from: MeshInstance3D = waved[0] if how.get("wavy", false) and not waved.is_empty() else cut
-		var locks := cut.duplicate() as MeshInstance3D
+		var locks := BodyShape.copy_of(cut, mesh(head.mesh, cut.mesh, hair_from.mesh.surface_get_material(0), style[0], how))
 		locks.name = prefix + style[0]
-		locks.mesh = mesh(head.mesh, cut.mesh, hair_from.mesh.surface_get_material(0), style[0], how)
 		locks.visible = false
 		cut.get_parent().add_child(locks)
 		locks.owner = cut.owner

@@ -62,7 +62,7 @@ static func option(name: String) -> String:
 
 
 ## Adds every cut of trousers to a figure on the boy's rig (once).
-static func add_to(rig: Node) -> void:
+static func add_to(rig: Node, only := "") -> void:
 	var found := rig.find_children("*_body__long", "MeshInstance3D", true, false)
 	if found.is_empty():
 		return
@@ -71,9 +71,11 @@ static func add_to(rig: Node) -> void:
 		var called: String = String(long.name) + "_" + cut[0]
 		if cut[0] == "tube" or long.get_parent().has_node(called):
 			continue
-		var made := long.duplicate() as MeshInstance3D
+		# (just the one asked for, if one is)
+		if only != "" and cut[0] != only:
+			continue
+		var made := copy_of(long, _reshaped(long.mesh, "cut/" + cut[0], cut[2], _taper))
 		made.name = called
-		made.mesh = _reshaped(long.mesh, "cut/" + cut[0], cut[2], _taper)
 		made.visible = false
 		long.get_parent().add_child(made)
 		made.owner = long.owner
@@ -261,3 +263,20 @@ static func _along(points: Array, x: float) -> float:
 static func _bump(x: float, at: float, wide: float) -> float:
 	var d := clampf(absf(x - at) / wide, 0.0, 1.0)
 	return 1.0 - d * d * (3.0 - 2.0 * d)
+
+
+## A part of a figure made as `source` is (bones, skin, materials, shadow) but
+## for its mesh, `mesh`. (Not `duplicate()`: the first duplicate of a figure's
+## part takes seconds.)
+static func copy_of(source: MeshInstance3D, mesh: Mesh) -> MeshInstance3D:
+	var made := MeshInstance3D.new()
+	made.transform = source.transform
+	made.skeleton = source.skeleton
+	made.skin = source.skin
+	made.material_override = source.material_override
+	made.cast_shadow = source.cast_shadow
+	made.layers = source.layers
+	made.mesh = mesh
+	for s in mini(source.get_surface_override_material_count(), made.get_surface_override_material_count()):
+		made.set_surface_override_material(s, source.get_surface_override_material(s))
+	return made
