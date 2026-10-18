@@ -52,6 +52,9 @@ var features: MazeFeatures
 var undergrowth: Undergrowth
 ## The ground's material (MazeStone.ground), for the weather to wet.
 var ground_material: ShaderMaterial
+## For the maze editor's live preview: only what shows the maze's rules (no grass,
+## marsh or undergrowth: they do not run in the editor, and are only dressing).
+var preview := false
 ## The round sections, if the maze has any.
 var round_sections: RoundBuilder
 
@@ -81,11 +84,14 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 	features.name = "Features"
 	add_child(features)
 	features.realize(pieces)
-	_grass()
+	if not preview:
+		_grass()
 	_ground()
-	_pond()
+	if not preview:
+		_pond()
 	_trees(pieces)
-	_undergrowth(pieces)
+	if not preview:
+		_undergrowth(pieces)
 	# The round sections outside the square ones, past the moor.
 	if maze.round_rings:
 		round_sections = RoundBuilder.new()

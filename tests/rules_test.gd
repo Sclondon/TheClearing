@@ -58,6 +58,12 @@ func _run() -> void:
 	if to_desert.round_rings:
 		var out_at: float = to_desert.round_rings.exit_angle
 		_check(to_desert.escaped(Vector3(cos(out_at), 0.0, sin(out_at)) * (to_desert.round_rings.inner_radius + 5.0)), "and out past its far wall is out of the maze")
+	# The live preview is built again when any rule changes (MazeLayout.rules_key).
+	var key := editor.rules_key()
+	editor.square_sections[0].maze_wall_height += 1.0
+	var after_wall := editor.rules_key()
+	editor.desert.dune_height += 1.0
+	_check(key != after_wall and after_wall != editor.rules_key(), "the live preview sees a section's and the desert's rules change")
 	var old := MazeLayout.new()
 	var mixed: Array[MazeStyle] = MazeStyle.square_defaults()
 	var legacy := MazeStyle.made(5, 1, 0.3, 0.3, 0.06)

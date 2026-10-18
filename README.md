@@ -55,6 +55,14 @@ maze is played, so taking one away opens the way there (for the players, the thi
 and one put down on a line (every 14 m, half a cell off the middle) closes it. The rings, gates and clearing come
 from the seed. Generate again replaces everything in the layout.
 
+To find out what a setting does, turn on **Live Preview**: the maze is shown as the game builds it from the rules,
+and built again a moment after any setting changes (about 3 s for the whole maze; nothing of it is saved, and the
+pieces are hidden meanwhile). Clear the pieces to keep the scene light; Generate only when you want pieces to move by
+hand. Hover a setting for what it does. In the editor ivy is drawn flat green (`IvyClimb.plain`): growing every patch
+leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened in the editor
+(`"$G" --headless --path . --editor tests/preview_check.tscn --quit-after 600`) builds the preview and prints its time;
+`tools/generate_times.gd` times the steps.
+
 ## How it works
 
 - `scripts/maze.gd` (`Maze`): the plan. Square cells 14 m across. `Maze.CLEARING` cells across the clearing (41),

@@ -39,7 +39,9 @@ func _ready() -> void:
 		_leaf_mesh = Vine.leaf_mesh(0.13)
 	# (drawn only once the camera first comes near enough to see it: a maze has
 	# hundreds of patches, too many leaves to lay all at once; the editor draws all)
-	if Engine.is_editor_hint():
+	if Engine.is_editor_hint() and plain:
+		_grow_plain()
+	elif Engine.is_editor_hint():
 		_grow()
 	else:
 		if not is_instance_valid(_grower):
@@ -82,6 +84,30 @@ class Grower extends Node:
 			var ivy = _due.pop_back()
 			if is_instance_valid(ivy) and not ivy.grown:
 				ivy._grow()
+
+
+## In the editor, patches are drawn as flat green, not grown leaf by leaf: Generate
+## and the live preview put thousands at once, nearly a minute of leaves. (The game
+## grows them as the camera comes near.)
+static var plain := true
+static var _plain_material: StandardMaterial3D
+
+
+## Draws it as a flat green patch where its leaves would be.
+func _grow_plain() -> void:
+	grown = true
+	if _plain_material == null:
+		_plain_material = StandardMaterial3D.new()
+		_plain_material.albedo_color = Color(0.22, 0.32, 0.16)
+		_plain_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var patch := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2(width, height)
+	patch.mesh = quad
+	patch.material_override = _plain_material
+	# (over where its stems run, close against the wall)
+	patch.position = Vector3(0.0, height * 0.5, -0.05)
+	add_child(patch)
 
 
 ## Draws its stems and leaves.

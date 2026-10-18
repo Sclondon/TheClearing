@@ -1,0 +1,73 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://cvxv74a34yt7x" path="res://scripts/maze_layout.gd" id="1"]
+[ext_resource type="Script" uid="uid://dp1ho362r3vsv" path="res://scripts/maze_style.gd" id="2_83lp3"]
+[ext_resource type="Script" uid="uid://6ntx7at31oq3" path="res://scripts/maze_piece.gd" id="2_dfkco"]
+[ext_resource type="Script" uid="uid://dbqrbfj2su78w" path="res://scripts/clearing_style.gd" id="3_7fxqu"]
+[ext_resource type="Script" uid="uid://tswa12vvd8em" path="res://scripts/round_style.gd" id="4_round"]
+[ext_resource type="Script" uid="uid://yx4c0yb5l665" path="res://scripts/desert_style.gd" id="5_desert"]
+
+[sub_resource type="Resource" id="Resource_7fxqu"]
+script = ExtResource("2_83lp3")
+section_width_cells = 8
+hallway_diameter_cells = 2
+maze_wall_diameter = 13.0
+maze_wall_height = 120.0
+section_border_wall_height = 175.0
+border_wall_thickness_cells = 5
+straight_on_chance = 0.5
+loop_share = 0.0
+terrace_share = 0.0
+wall_top_bridge_share = 0.0
+hanging_vine_share = 0.1
+
+[sub_resource type="Resource" id="Resource_5ge7g"]
+script = ExtResource("2_83lp3")
+section_width_cells = 6
+straight_on_chance = 0.563
+loop_share = 0.0
+
+[sub_resource type="Resource" id="Resource_h67si"]
+script = ExtResource("2_83lp3")
+
+[sub_resource type="Resource" id="Resource_owt5n"]
+script = ExtResource("4_round")
+hallway_diameter_cells = 2
+maze_wall_diameter = 4.0
+straight_on_chance = 0.6
+loop_share = 0.05
+
+[sub_resource type="Resource" id="Resource_i0nbs"]
+script = ExtResource("4_round")
+section_width_cells = 5
+straight_on_chance = 0.3
+side_branch_chance = 0.3
+
+[sub_resource type="Resource" id="Resource_41t42"]
+script = ExtResource("4_round")
+section_border_wall_height = 60.0
+section_width_cells = 5
+straight_on_chance = 0.1
+side_branch_chance = 0.5
+loop_share = 0.18
+
+[sub_resource type="Resource" id="Resource_desert"]
+script = ExtResource("5_desert")
+
+[sub_resource type="Resource" id="Resource_1favp"]
+script = ExtResource("3_7fxqu")
+clearing_wall_height = 200.0
+clearing_wall_thickness_cells = 6
+
+[node name="MazeLayout" type="Node3D" unique_id=511331440]
+script = ExtResource("1")
+maze_seed = 3462
+rings = 7
+square_sections = Array[ExtResource("2_83lp3")]([SubResource("Resource_7fxqu"), SubResource("Resource_5ge7g"), SubResource("Resource_h67si")])
+round_sections = Array[ExtResource("4_round")]([SubResource("Resource_owt5n"), SubResource("Resource_i0nbs"), SubResource("Resource_41t42")])
+desert = SubResource("Resource_desert")
+clearing_style = SubResource("Resource_1favp")
+playable = false
+game_light = false
+live_preview = true
+

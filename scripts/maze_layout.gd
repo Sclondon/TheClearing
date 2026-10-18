@@ -59,6 +59,16 @@ var styles: Array[MazeStyle]:
 	set(value):
 		game_light = value
 		_show_in_editor()
+## Live preview: the maze shown as the game builds it from these rules, and built
+## again a moment after any of them is changed, so that what a setting does is
+## seen at once. Nothing of it is saved, and the pieces (Generate's) are hidden
+## while it is on: Clear them for a light scene, Generate when you want pieces to
+## move by hand. (No grass or undergrowth; ivy, here as in the pieces, is flat green.)
+@export var live_preview := false:
+	set(value):
+		live_preview = value
+		_preview_key = ""
+		_show_in_editor()
 @export_tool_button("Generate", "Reload") var generate_button := generate
 @export_tool_button("Clear", "Remove") var clear_button := clear
 
@@ -70,10 +80,52 @@ const GROUPS := {
 }
 
 var _editor_shown: Array[Node] = []
+# The live preview: the rules it was built for, the rules seen at the last look
+# (it is built once they have stayed the same a moment), and when it looks next.
+var _preview_key := ""
+var _pending_key := ""
+var _look_in := 0.0
+var _preview_pieces: MazeLayout
 
 
 func _ready() -> void:
 	_show_in_editor()
+	set_process(Engine.is_editor_hint())
+
+
+func _notification(what: int) -> void:
+	# (the preview's pieces are in no tree: nothing else frees them)
+	if what == NOTIFICATION_PREDELETE and is_instance_valid(_preview_pieces):
+		_preview_pieces.free()
+
+
+func _process(delta: float) -> void:
+	if not live_preview or not is_inside_tree():
+		return
+	_look_in -= delta
+	if _look_in > 0.0:
+		return
+	_look_in = 0.25
+	var key := rules_key()
+	if key == _preview_key:
+		return
+	# (built once a change has stopped: not again and again while a slider is dragged)
+	if key == _pending_key:
+		_show_in_editor()
+	_pending_key = key
+
+
+## Every rule the maze is made by, as one string: it changes when any does.
+func rules_key() -> String:
+	var values: Array = [maze_seed, rings]
+	for rules: Resource in styles + [clearing_style, desert]:
+		if rules == null:
+			values.append(null)
+			continue
+		for property in rules.get_property_list():
+			if property.usage & PROPERTY_USAGE_STORAGE and property.usage & PROPERTY_USAGE_SCRIPT_VARIABLE and property.name != "entrance_spots":
+				values.append(rules.get(property.name))
+	return var_to_str(values)
 
 
 ## In the editor: the ground under the pieces, and (with `game_light`) the game's
@@ -84,8 +136,17 @@ func _show_in_editor() -> void:
 	for shown: Node in _editor_shown:
 		shown.queue_free()
 	_editor_shown.clear()
+	if is_instance_valid(_preview_pieces):
+		_preview_pieces.free()
 	var open := get_tree().edited_scene_root
 	if open == null or not (open == self or open.is_ancestor_of(self)):
+		return
+	for group: String in GROUPS.values():
+		var holder := get_node_or_null(NodePath(group)) as Node3D
+		if holder:
+			holder.visible = not live_preview
+	if live_preview:
+		_show_preview()
 		return
 	var size := Maze.ring_extent(rings + 1, styles, clearing_style) + 80.0
 	# (the round sections, past the moor, are not pieces: they are shown as the
@@ -114,6 +175,29 @@ func _show_in_editor() -> void:
 		MazeLight.put(self, true)
 		for i in range(before, get_child_count(true)):
 			_editor_shown.append(get_child(i, true))
+
+
+## The live preview: the maze built as the game builds it (MazeBuilder), from
+## pieces laid out but never put in the scene (so none draws itself or is saved).
+func _show_preview() -> void:
+	var started := Time.get_ticks_msec()
+	_preview_key = rules_key()
+	_pending_key = _preview_key
+	var plan := Maze.generate(maze_seed, rings, styles, clearing_style, desert)
+	_preview_pieces = MazeLayout.new()
+	_preview_pieces.lay_out(plan)
+	var built := MazeBuilder.new()
+	built.name = "Preview"
+	built.preview = true
+	add_child(built, false, Node.INTERNAL_MODE_BACK)
+	_editor_shown.append(built)
+	built.realize(_preview_pieces, plan)
+	if game_light and get_tree().edited_scene_root.find_children("*", "WorldEnvironment", true, true).is_empty():
+		var before := get_child_count(true)
+		MazeLight.put(self, true)
+		for i in range(before, get_child_count(true)):
+			_editor_shown.append(get_child(i, true))
+	print("Maze preview built in %.1f s" % ((Time.get_ticks_msec() - started) / 1000.0))
 
 
 ## Lays out the maze for `maze_seed` and `rings`, in place of what is here.
