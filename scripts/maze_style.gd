@@ -111,6 +111,8 @@ extends Resource
 ## Pairs of aliens (each pack two or three).
 @export_range(0, 3) var alien_packs := 1
 @export_range(0, 3) var dog_packs := 1
+## Harpies, each perched high on a wall (its ledge, or its top) over a hallway.
+@export_range(0, 4) var harpies := 1
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
@@ -175,6 +177,7 @@ static func avenues() -> MazeStyle:
 	style.tightrope_vine_share = 0.12
 	style.tightrope_vine_height_range = Vector2(0.45, 0.75)
 	style.plant_density = 0.8
+	style.harpies = 2
 	return style
 
 

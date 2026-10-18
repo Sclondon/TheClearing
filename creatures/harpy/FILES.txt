@@ -1,0 +1,4 @@
+# The harpy: how it looks, moves and sounds (stands alone)
+creatures/harpy/harpy.gd
+creatures/harpy/harpy_look.gd
+creatures/harpy/models/harpy.glb
