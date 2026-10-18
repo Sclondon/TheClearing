@@ -1,0 +1,7 @@
+# The skinwalker: how it looks, moves and sounds, for any game (no thinking). Needs godot/character-controller, godot/coyote and godot/dog.
+creatures/skinwalker/skinwalker.gd
+creatures/skinwalker/skinwalker_rig.gd
+creatures/skinwalker/models/skinwalker.glb
+creatures/skinwalker/models/skinwalker_lo.glb
+creatures/skinwalker/tools/.gdignore
+creatures/skinwalker/tools/build_skinwalker.py

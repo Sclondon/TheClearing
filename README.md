@@ -94,13 +94,13 @@ from the seed. Generate again replaces everything in the layout.
   plan and placed from the seed by `MazeEnemies`; and the `Griever` (`griever*.gd`): a lump of wet meat on eight
   procedural robotic spider legs that plant on walls and ground, with a stinger. Then the newer kinds, each a thin
   `MazeEnemy` driving a creature from `creatures/` (installed from GameCommon): `MazeGhoul`, `Centipede`,
-  `MazeSpider`, `Abomination`, `MazeFleshMound` (amalgams and flesh mounds: one kind in sizes, that grow by absorbing whom they catch and by merging), `MazeSlimeWall`, `Bats`, `MazeBaboon`, `MazeDog`, `Alien`, `Beetles`, `MazeFishPerson` (it brings its own pool to lurk in), `MazeAngel` (it drifts over the halls and its gaze, which builds while you stay in its sight, takes you; `Ophan` is its look), `MazeFrog` (a giant toad) and `MazeFrogSwarm`, `MazeHarpy`, `MazeBoar`, `Chickens`. How many of each a ring
+  `MazeSpider`, `Abomination`, `MazeFleshMound` (amalgams and flesh mounds: one kind in sizes, that grow by absorbing whom they catch and by merging), `MazeSlimeWall`, `Bats`, `MazeBaboon`, `MazeDog`, `Alien`, `Beetles`, `MazeFishPerson` (it brings its own pool to lurk in), `MazeAngel` (it drifts over the halls and its gaze, which builds while you stay in its sight, takes you; `Ophan` is its look), `MazeFrog` (a giant toad) and `MazeFrogSwarm`, `MazeHarpy`, `MazeBoar`, `Chickens`, `MazeCoyote` (skittish packs that shadow you and grow bold round someone alone; tame ones in the clearing, put in by `MazeEnemies.add_wildlife` from ClearingStyle "Wildlife") and `MazeSkinwalker` (hidden in a coyote pack). How many of each a ring
   has is its `MazeStyle` ("What hunts it"); `World` asks `MazeEnemies` for the first ring's (`populate`, then
   `add_hunters`) and puts in a Griever; alone or as the host they are run there and their state goes to guests ten
   times a second (K_ENEMIES), where copies follow it. Caught, a player is put back in the clearing; out, nobody is
   hunted.
 - `creatures/`: GameCommon's creatures, look and motion only (see each one's README): `ghoul`, `centipede`,
-  `giant_spider`, `abomination`, `flesh_mound` (needs the boy from the character controller), `slime_wall`, `bats`, `baboon`, `dog`, `alien`, `beetle_swarm`, `fish_person`, `angel`, `frog` (the giant toad and the frog swarm), `harpy`, `boar`, `chicken`. Change them here, then `kit.sh pull`
+  `giant_spider`, `abomination`, `flesh_mound` (needs the boy from the character controller), `slime_wall`, `bats`, `baboon`, `dog`, `alien`, `beetle_swarm`, `fish_person`, `angel`, `frog` (the giant toad and the frog swarm), `harpy`, `boar`, `chicken`, `coyote` (needs `dog`), `skinwalker` (needs the character controller, `coyote` and `dog`). Change them here, then `kit.sh pull`
   them back to GameCommon (`godot/<name>`, with `_` as `-`). Their models are built in Blender by their `tools/` scripts.
 - `scripts/remote_player.gd` (`RemotePlayer`): a friend, a `Figure` on the boy's rig chasing their news.
 - `scripts/looks.gd` (`Looks`): every player is the same boy, as Inside has him (no face, a basin cut, no cap,
@@ -133,10 +133,12 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/enemy_test.gd     # Apophis and the mummies on their own
 "$G" --headless --path . -s res://tests/griever_test.gd   # the Griever on its own
 # each newer kind on its own (always with --audio-driver Dummy: some make sounds)
-for t in ghoul centipede spider abomination flesh_mound slime_wall bats baboon dog alien beetles fish_person angel frog frog_swarm harpy boar chicken; do
+for t in ghoul centipede spider abomination flesh_mound slime_wall bats baboon dog alien beetles fish_person angel frog frog_swarm harpy boar chicken coyote skinwalker; do
   "$G" --headless --audio-driver Dummy --path . -s res://tests/${t}_test.gd; done
 # pictures of each: tools/<kind>_shots.gd (windowed, 1280x720)
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/frog_shots.gd -- <folder> [toad|swarm|maze|all]   # the frogs
+"$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/coyote_shots.gd -- <folder> [studio|strips|maze|all]   # coyotes: views, trot/gallop strips, a pack in a hall
+"$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/skinwalker_shots.gd -- <folder> [studio|strips|maze|all]   # the skinwalker
 "$G" --headless --path . -s res://tests/dev_test.gd -- --dev   # the dev tools (and the clearing wall's height)
 "$G" --path . --resolution 1280x720 -s res://tools/climb_shots.gd -- <folder>   # pictures of the ways up
 "$G" --headless --path . -s res://tools/bake_preview.gd -- [seed] [rings]   # a maze to look round in the editor: preview/maze_preview.scn

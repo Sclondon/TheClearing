@@ -746,12 +746,22 @@ static func _keyed(keys: Array, time: float) -> float:
 	return (2.0 * u3 - 3.0 * u2 + 1.0) * v0 + (u3 - 2.0 * u2 + u) * span * m0 + (-2.0 * u3 + 3.0 * u2) * v1 + (u3 - u2) * span * m1
 
 
+## The model it poses. A rig that extends this one for another animal on the
+## same bones (the coyote's) gives its own.
+func _model_path() -> String:
+	return "res://creatures/dog/models/dog_%s%s.glb" % ["b" if variant == 1 else "a", "_lo" if low_poly else ""]
+
+
+## Gives the model its materials, and says which is which (see DogLook.dress).
+func _dress(model: Node) -> Dictionary:
+	return DogLook.dress(model, coat_tint, 0 if low_poly else fur_shells, mange, eyeshine)
+
+
 func _build() -> void:
-	var path := "res://creatures/dog/models/dog_%s%s.glb" % ["b" if variant == 1 else "a", "_lo" if low_poly else ""]
-	var model: Node = (load(path) as PackedScene).instantiate()
+	var model: Node = (load(_model_path()) as PackedScene).instantiate()
 	add_child(model)
 	_skeleton = model.find_children("*", "Skeleton3D", true, false)[0]
-	materials = DogLook.dress(model, coat_tint, 0 if low_poly else fur_shells, mange, eyeshine)
+	materials = _dress(model)
 	_body_rest = _rest(&"body")
 	_body = _joint(self, &"body")
 	_chest = _joint(_body, &"chest")

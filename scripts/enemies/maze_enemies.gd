@@ -6,7 +6,7 @@ extends Node3D
 ## `populate(maze, seed)` puts Apophis and packs of mummies in the passages, out
 ## of the clearing and well away from it, and `add_hunters(style, seed)` the
 ## rest of what a ring's MazeStyle asks for (ghouls, centipedes, spiders,
-## abominations, flesh mounds and amalgams, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms, harpies, boars, chickens: each kind's own
+## abominations, flesh mounds and amalgams, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms, harpies, boars, chickens, coyotes and skinwalkers: each kind's own
 ## script is in scripts/enemies/, its look and motion in creatures/). The same maze and seed always give the
 ## same ones in the same places in the same order, so every machine in a room
 ## can build the same set without it being sent; then one machine (the host)
@@ -100,6 +100,8 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ## - Harpies are put in hallways and perch on the nearest high wall over one.
 ## - A boar roots in a dead end or a straight hall, facing out.
 ## - Chicken flocks forage in straight halls, where people must pass them.
+## - Coyotes go about in packs, put round one cell; a skinwalker is put in with
+##   a pack (as one of them).
 func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	var nav := MazeNav.new(maze)
 	var rng := RandomNumberGenerator.new()
@@ -210,6 +212,39 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
 		taken.append(cell)
 		add(Chickens.new(), cell, 0.0, rng.randi())
+	# Coyote packs go about together; a skinwalker hides in one (one more pack for any without one).
+	for i in maxi(style.coyote_packs, style.skinwalkers):
+		var pack_now := MazeCoyote.pack_of(rng.randi_range(3, 5), rng.randi())
+		var middle := _far_from(taken, lairs, rng)
+		_add_pack(pack_now, middle, nav, rng, taken)
+		if i < style.skinwalkers:
+			var walker := MazeSkinwalker.new()
+			walker.pack_id = pack_now[0].pack_id
+			add(walker, middle, rng.randf_range(-PI, PI), rng.randi(), Vector3(2.0, 0.0, -2.0))
+
+
+## Puts in the wildlife of the clearing that is run with what hunts (so that
+## guests see it where the host does): as many tame coyote packs as `clearing`
+## (ClearingStyle, "Wildlife") says, out in the meadow on the diagonals, each
+## keeping to its own patch.
+func add_wildlife(clearing: ClearingStyle, seed_value: int) -> void:
+	if clearing == null:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	for i in clearing.coyote_packs:
+		var round_about := PI * 0.25 + PI * 0.5 * ((i + rng.randi_range(0, 3)) % 4) + rng.randf_range(-0.25, 0.25)
+		var home := Vector3(cos(round_about), 0.0, sin(round_about)) * rng.randf_range(130.0, 190.0)
+		home.y = maze.ground_height(home)
+		var pack_now := MazeCoyote.pack_of(rng.randi_range(2, 4), rng.randi())
+		for k in pack_now.size():
+			var one := pack_now[k]
+			one.tame = true
+			one.keep_out_of_clearing = false
+			one.home = home
+			var spot := home + Vector3(rng.randf_range(-4.0, 4.0), 0.0, rng.randf_range(-4.0, 4.0))
+			var cell := maze.cell_at(spot)
+			add(one, cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell) + Vector3.UP * (maze.ground_height(spot) + 0.3))
 
 
 ## Puts a pack round `middle`: one to a cell within two steps of it, and two
