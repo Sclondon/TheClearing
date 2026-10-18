@@ -60,4 +60,11 @@ static func put(parent: Node, internal := false) -> void:
 	sun.shadow_blur = 2.5
 	sun.shadow_opacity = 0.75
 	sun.directional_shadow_max_distance = 140.0
+	# (two cascades, blended where they meet, so that shadows do not jump in detail
+	# as he walks; the near one covers the first quarter, where he is)
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	sun.directional_shadow_split_1 = 0.25
+	sun.directional_shadow_blend_splits = true
+	sun.directional_shadow_fade_start = 0.6
+	sun.shadow_normal_bias = 1.2
 	parent.add_child(sun, false, Node.INTERNAL_MODE_BACK if internal else Node.INTERNAL_MODE_DISABLED)

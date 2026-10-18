@@ -5,13 +5,17 @@ class_name Looks
 ## is Inside's red), tells friends apart in the maze. The look still goes round
 ## the room as a word (the server takes it for a "hero"), but it is always "boy".
 
-## Shirts, by seat: red (deep, as it is the one strong colour in the picture),
+## Shirts, by seat, all muted to sit in the grey picture: red (still the strongest
+## colour in it, but dulled, as Inside's is),
 ## a faded blue, mustard, a dull green.
 const SHIRTS: Array[Color] = [
-	Color(0.7, 0.07, 0.05), Color(0.27, 0.38, 0.52), Color(0.66, 0.52, 0.2), Color(0.3, 0.42, 0.27),
+	Color(0.5, 0.14, 0.11), Color(0.3, 0.35, 0.41), Color(0.5, 0.43, 0.27), Color(0.3, 0.36, 0.29),
 ]
 const TROUSERS := Color(0.17, 0.17, 0.19)
 const BOOTS := Color(0.17, 0.13, 0.1)
+## His skin and hair, pale and dull rather than warm (the boy's own are brighter).
+const SKIN := Color(0.72, 0.66, 0.6)
+const HAIR_COLOUR := Color(0.2, 0.16, 0.13)
 ## The head everyone has (one of HeadShape.SHAPES).
 const HEAD := "inside_round"
 ## The locks over the close crop (one of HairShape.STYLES), or "none": the close
@@ -34,6 +38,7 @@ static func pick() -> String:
 static func decode(_word: String, seat := 0) -> Dictionary:
 	var colours := {
 		"shirt": SHIRTS[posmod(seat, SHIRTS.size())], "overalls": TROUSERS, "boots": BOOTS, "socks": TROUSERS,
+		"skin": SKIN, "hair": HAIR_COLOUR,
 	}
 	return {"face": "base", "head": HEAD, "locks": LOCKS, "cut": CUT, "boots": BOOT, "hair": HAIR, "cap": false, "outfit": "trousers", "colours": colours}
 

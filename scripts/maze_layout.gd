@@ -43,7 +43,7 @@ extends Node3D
 const GROUPS := {
 	MazePiece.Kind.WALL: "Walls", MazePiece.Kind.PIER: "Piers", MazePiece.Kind.TERRACE: "Terraces",
 	MazePiece.Kind.IVY: "Ivy", MazePiece.Kind.VINE: "Vines", MazePiece.Kind.BRIDGE: "Bridges",
-	MazePiece.Kind.TREE: "Trees", MazePiece.Kind.BEACON: "Beacon",
+	MazePiece.Kind.TREE: "Trees", MazePiece.Kind.BEACON: "Beacon", MazePiece.Kind.STRAND: "Strands",
 }
 
 var _editor_shown: Array[Node] = []
@@ -171,7 +171,7 @@ func _add(kind: MazePiece.Kind, where: Transform3D, settings: Dictionary) -> Maz
 	piece.transform = where
 	group.add_child(piece)
 	_own(piece)
-	if kind == MazePiece.Kind.BRIDGE:
+	if kind in [MazePiece.Kind.BRIDGE, MazePiece.Kind.STRAND]:
 		var end := Marker3D.new()
 		end.name = "End"
 		end.position = where.affine_inverse() * settings.get("to", where.origin + Vector3(6, 0, 0))
@@ -215,7 +215,13 @@ static func _runs(maze: Maze) -> Array:
 			if start >= 0 and (not wall or great != kind or here != thick or high != tall):
 				var z := (j - 0.5 - middle) * Maze.CELL
 				var cx := ((start + x - 1) * 0.5 - middle) * Maze.CELL
-				runs.append([Vector3(cx, tall * 0.5, z), Vector3((x - start) * Maze.CELL + thick, tall, thick), kind])
+				var long := (x - start) * Maze.CELL + thick
+				if not kind:
+					var back := _cut_back(maze, [Vector2i(start - 1, j - 1), Vector2i(start - 1, j)], _great_z(maze, start, j), thick)
+					var front := _cut_back(maze, [Vector2i(x, j - 1), Vector2i(x, j)], _great_z(maze, x, j), thick)
+					long -= back + front
+					cx += (back - front) * 0.5
+				runs.append([Vector3(cx, tall * 0.5, z), Vector3(long, tall, thick), kind])
 				start = -1
 			if wall and start < 0:
 				start = x
@@ -243,7 +249,13 @@ static func _runs(maze: Maze) -> Array:
 			if start >= 0 and (not wall or great != kind or here != thick or high != tall):
 				var x := (i - 0.5 - middle) * Maze.CELL
 				var cz := ((start + y - 1) * 0.5 - middle) * Maze.CELL
-				runs.append([Vector3(x, tall * 0.5, cz), Vector3(thick, tall, (y - start) * Maze.CELL + thick), kind])
+				var long := (y - start) * Maze.CELL + thick
+				if not kind:
+					var back := _cut_back(maze, [Vector2i(i - 1, start - 1), Vector2i(i, start - 1)], _great_x(maze, i, start), thick)
+					var front := _cut_back(maze, [Vector2i(i - 1, y), Vector2i(i, y)], _great_x(maze, i, y), thick)
+					long -= back + front
+					cz += (back - front) * 0.5
+				runs.append([Vector3(x, tall * 0.5, cz), Vector3(thick, tall, long), kind])
 				start = -1
 			if wall and start < 0:
 				start = y
@@ -251,6 +263,20 @@ static func _runs(maze: Maze) -> Array:
 				thick = here
 				tall = high
 	return runs
+
+
+## How far to take back the end of a run of wall inside a ring where it meets a
+## great wall, so that no face of it lies in one of the great wall's (they are
+## different concretes, and would flicker where they met): to the face of a
+## rampart if one of `beyond` (the cells past its end, either side of its line)
+## is one, to the near face of a great wall `crossing` thick across its end.
+static func _cut_back(maze: Maze, beyond: Array, crossing: float, thick: float) -> float:
+	for cell: Vector2i in beyond:
+		if maze.solid.has(cell):
+			# (a rampart stands half its wall out past its cells: see _ramparts)
+			var way: Array = maze.gates[maze.ring_of(cell) - 1][0]
+			return (thick + maze.wall_thick(way[0], way[1])) * 0.5
+	return (thick + crossing) * 0.5 if crossing > 0.0 else 0.0
 
 
 ## The ramparts round the inside of rings (MazeStyle.rampart), as [middle of the
@@ -454,3 +480,23 @@ static func _on_side(side: int, along: float, out: float) -> Vector3:
 		1: return Vector3(out, 0.0, along)
 		2: return Vector3(along, 0.0, out)
 	return Vector3(-out, 0.0, along)
+
+
+## How thick a great wall along x on the line north of row j is at the line west
+## of column i (where a wall along z there would meet it), 0 for none.
+static func _great_x(maze: Maze, i: int, j: int) -> float:
+	var thick := 0.0
+	for x in [i - 1, i]:
+		if _along_x(maze, x, j) == 2:
+			thick = maxf(thick, _thick_x(maze, x, j))
+	return thick
+
+
+## How thick a great wall along z on the line west of column i is at the line
+## north of row j (where a wall along x there would meet it), 0 for none.
+static func _great_z(maze: Maze, i: int, j: int) -> float:
+	var thick := 0.0
+	for y in [j - 1, j]:
+		if _along_z(maze, i, y) == 2:
+			thick = maxf(thick, _thick_z(maze, i, y))
+	return thick

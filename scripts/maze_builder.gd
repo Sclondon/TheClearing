@@ -48,6 +48,8 @@ var layout: MazeLayout
 var beacon: Node3D
 ## The terraces, ivy, vines and bridges (MazeFeatures).
 var features: MazeFeatures
+## The ferns, bushes, moss and tufts of grass.
+var undergrowth: Undergrowth
 
 
 ## Builds the maze `plan`, laid out as it generates.
@@ -76,6 +78,7 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 	_grass()
 	_ground()
 	_trees(pieces)
+	_undergrowth(pieces)
 	for piece in pieces.pieces(MazePiece.Kind.BEACON):
 		beacon = beacon_light()
 		beacon.name = "Beacon"
@@ -444,3 +447,83 @@ func _grass() -> void:
 		"flowers": 0.03,
 		"seed": maze.maze_seed % 1000,
 	})
+
+
+## The low plants. Along the foot of the walls in the rings, as thick as each
+## ring's style says (MazeStyle.undergrowth): ferns a little out from the wall,
+## moss right at its foot, tufts of grass between. In the clearing, as its style
+## says: ferns and moss round the foot of the pines (so thickest in the woods)
+## and bushes over the field, most of them near the trees. All from the seed.
+func _undergrowth(pieces: MazeLayout) -> void:
+	undergrowth = Undergrowth.new()
+	undergrowth.name = "Undergrowth"
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("undergrowth/%d" % maze.maze_seed)
+	for i in maze.size * maze.size:
+		var cell := Vector2i(i % maze.size, i / maze.size)
+		var ring := maze.ring_of(cell)
+		if ring < 1 or ring > maze.rings or maze.solid.has(cell) or maze.entrances.has(cell):
+			continue
+		var thick: float = maze.styles[ring - 1].undergrowth
+		if thick <= 0.0:
+			continue
+		for step: Vector2i in Maze.STEPS:
+			if not maze.blocked(cell, step):
+				continue
+			var s := Vector3(step.x, 0.0, step.y)
+			var side := Vector3(-s.z, 0.0, s.x)
+			var face := maze.world(cell) + s * (Maze.CELL * 0.5 - maze.wall_thick(cell, step) * 0.5)
+			var along := -Maze.CELL * 0.5
+			while along < Maze.CELL * 0.5:
+				along += rng.randf_range(0.7, 1.8)
+				if rng.randf() >= thick:
+					continue
+				var pick := rng.randf()
+				var kind := Undergrowth.Kind.MOSS if pick < 0.3 else (Undergrowth.Kind.FERN if pick < 0.65 else Undergrowth.Kind.TUFT)
+				var out := rng.randf_range(0.2, 0.6) if kind == Undergrowth.Kind.MOSS else rng.randf_range(0.5, 1.8)
+				var at := face - s * out + side * along
+				if _on_terrace(at):
+					continue
+				undergrowth.add(kind, _plant(at, rng, kind))
+	var look := maze.clearing_style
+	var half := maze.clearing * Maze.CELL * 0.5 - 8.0
+	var near_trees: Array[Vector3] = []
+	for piece in pieces.pieces(MazePiece.Kind.TREE):
+		var foot := piece.position
+		if maxf(absf(foot.x), absf(foot.z)) > half:
+			continue
+		near_trees.append(foot)
+		for f in int(look.ferns) + (1 if rng.randf() < fmod(look.ferns, 1.0) else 0):
+			var round_about := rng.randf() * TAU
+			var at := foot + Vector3(cos(round_about), 0.0, sin(round_about)) * rng.randf_range(1.2, 4.5)
+			undergrowth.add(Undergrowth.Kind.FERN, _plant(at, rng, Undergrowth.Kind.FERN))
+		if rng.randf() < look.moss:
+			undergrowth.add(Undergrowth.Kind.MOSS, _plant(foot + Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.0, 1.0)), rng, Undergrowth.Kind.MOSS))
+	for b in look.bushes:
+		var at: Vector3
+		if not near_trees.is_empty() and rng.randf() < 0.75:
+			var round_about := rng.randf() * TAU
+			at = near_trees[rng.randi() % near_trees.size()] + Vector3(cos(round_about), 0.0, sin(round_about)) * rng.randf_range(2.5, 7.0)
+		else:
+			at = Vector3(rng.randf_range(-half, half), 0.0, rng.randf_range(-half, half))
+		if Vector2(at.x, at.z).length() < look.glade or maxf(absf(at.x), absf(at.z)) > half:
+			continue
+		undergrowth.add(Undergrowth.Kind.BUSH, _plant(at, rng, Undergrowth.Kind.BUSH))
+	undergrowth.build()
+	add_child(undergrowth)
+
+
+## Where a plant of `kind` stands at `at` (on the ground there), turned and sized at random.
+func _plant(at: Vector3, rng: RandomNumberGenerator, kind: Undergrowth.Kind) -> Transform3D:
+	var sizes := {Undergrowth.Kind.FERN: Vector2(1.1, 2.0), Undergrowth.Kind.BUSH: Vector2(0.9, 1.8), Undergrowth.Kind.MOSS: Vector2(1.0, 2.4), Undergrowth.Kind.TUFT: Vector2(1.0, 1.7)}
+	var range_of: Vector2 = sizes[kind]
+	var big := rng.randf_range(range_of.x, range_of.y)
+	at.y = maze.ground_height(at)
+	return Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * big), at)
+
+
+func _on_terrace(at: Vector3) -> bool:
+	for footprint: Rect2 in features.footprints:
+		if footprint.grow(0.3).has_point(Vector2(at.x, at.z)):
+			return true
+	return false

@@ -16,15 +16,16 @@ const Flags := preload("res://scripts/flags.gd")
 const INK := Color(0.93, 0.9, 0.8)
 const MOSS := Color(0.45, 0.62, 0.33)
 const STONE := Color(0.13, 0.14, 0.13, 0.86)
-## How far ahead of him things are put, metres (they go in the nearest open cell
-## out in the maze, by the passages no more than `REACH` cells from him).
-const AHEAD := 28.0
-const REACH := 10
-## The other kinds the panel puts in (spawn_hunter): the button, and the kind.
+## How far ahead of him things are put, metres (short of any wall in the way).
+const AHEAD := 12.0
+## The snake is long: further off, so that he is not on top of him.
+const SNAKE_AHEAD := 20.0
+## The other kinds the panel puts in (spawn_hunter): the button, the kind, and
+## how far ahead (the big ones further off, like the snake).
 const HUNTERS := [
-	["GHOUL", "ghoul"], ["CENTIPEDE", "centipede"], ["SPIDER", "spider"],
-	["ABOMINATION", "abomination"], ["SLIME WALL", "slime"], ["BATS", "bats"],
-	["BABOONS", "baboons"], ["DOGS", "dogs"], ["ALIENS", "aliens"],
+	["GHOUL", "ghoul", AHEAD], ["CENTIPEDE", "centipede", SNAKE_AHEAD], ["SPIDER", "spider", AHEAD],
+	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
+	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD],
 ]
 
 var world: World
@@ -89,7 +90,7 @@ func _init(in_world: World) -> void:
 	grid.add_child(_button("+ SNAKE", spawn_snake))
 	grid.add_child(_button("+ GRIEVER", spawn_griever))
 	for one: Array in HUNTERS:
-		grid.add_child(_button("+ " + String(one[0]), spawn_hunter.bind(one[1])))
+		grid.add_child(_button("+ " + String(one[0]), spawn_hunter.bind(one[1], one[2])))
 	grid.add_child(_button("CLEAR ALL", clear))
 	grid.add_child(_button("TO GATE", to_gate))
 	grid.add_child(_button("TO MIDDLE", to_middle))
@@ -132,22 +133,25 @@ func spawn_mummy() -> void:
 
 ## A pack of the chosen kind and two shamblers, side by side.
 func spawn_pack() -> void:
-	var cell := _ahead()
+	var at := _ahead()
+	var across := _look().cross(Vector3.UP) * 2.4
 	for k in 3:
 		var mummy := Mummy.new()
 		mummy.kind = _kind as Mummy.Kind if k == 0 else Mummy.Kind.SHAMBLER
-		_add(mummy, cell, Vector3(k - 1, 0.0, 0.0).rotated(Vector3.UP, randf() * TAU) * 2.4)
+		_add(mummy, at + across * (k - 1))
 
 
 func spawn_snake() -> void:
-	_add(Apophis.new(), _ahead())
+	_add(Apophis.new(), _ahead(SNAKE_AHEAD))
 
 
 func spawn_griever() -> void:
+	var at := _ahead()
 	var griever := Griever.new()
 	griever.name = "DevGriever%d" % _grievers.size()
 	world.add_child(griever)
-	griever.setup(world.maze, _ahead(), _facing_him(_ahead()))
+	griever.setup(world.maze, world.maze.cell_at(at), _facing_him(at))
+	griever.place(at, _facing_him(at))
 	griever.caught.connect(world._on_caught)
 	Grass.push(griever, 1.6)
 	_grievers.append(griever)
@@ -156,9 +160,10 @@ func spawn_griever() -> void:
 
 
 ## Puts one of the other kinds in ahead of him (see HUNTERS): one creature, or
-## a whole pack for those that go about in packs, round the cell.
-func spawn_hunter(kind: String) -> void:
-	var cell := _ahead()
+## a whole pack for those that go about in packs, side by side across his way.
+func spawn_hunter(kind: String, reach := AHEAD) -> void:
+	var at := _ahead(reach)
+	var across := _look().cross(Vector3.UP) * 2.6
 	var made: Array = []
 	match kind:
 		"ghoul":
@@ -180,10 +185,7 @@ func spawn_hunter(kind: String) -> void:
 		"aliens":
 			made = [Alien.new(), Alien.new()]
 	for k in made.size():
-		var offset := Vector3.ZERO
-		if k > 0:
-			offset = Vector3(2.6, 0.0, 0.0).rotated(Vector3.UP, TAU * k / made.size())
-		_add(made[k], cell, offset)
+		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 
 
 ## Takes away everything that hunts (the Griever World put in is only put to
@@ -199,43 +201,38 @@ func clear() -> void:
 	world.griever.visible = false
 
 
-func _add(enemy: MazeEnemy, cell: Vector2i, offset := Vector3.ZERO) -> void:
-	world.enemies.add(enemy, cell, _facing_him(cell), randi(), offset)
+## Puts one in at `at`, facing him. (Allowed in the clearing, so that what is put
+## in there stays where it can be seen.)
+func _add(enemy: MazeEnemy, at: Vector3) -> void:
+	enemy.keep_out_of_clearing = false
+	var cell := world.maze.cell_at(at)
+	world.enemies.add(enemy, cell, _facing_him(at), randi(), at - world.maze.world(cell) - Vector3.UP * 0.05)
 	Grass.push(enemy, 1.0)
 	if frozen:
 		enemy.process_mode = Node.PROCESS_MODE_DISABLED
 
 
-## The open cell out in the maze (not the clearing) nearest to a point AHEAD
-## metres in front of the camera, among those he can walk to within REACH cells;
-## the nearest he can walk to at all if there are none.
-func _ahead() -> Vector2i:
-	var maze := world.maze
-	var nav := MazeNav.new(maze, false)
-	var steps := nav.field(maze.cell_at(world.player.global_position))
+## Level, the way the camera looks.
+func _look() -> Vector3:
 	var look := -world.camera.global_basis.z
 	look.y = 0.0
-	var point := world.player.global_position + look.normalized() * AHEAD
-	var best := Vector2i(-1, -1)
-	var best_score := INF
-	var nearest := Vector2i(-1, -1)
-	for i in steps.size():
-		var cell := Vector2i(i % maze.size, i / maze.size)
-		var d := steps[i]
-		if d < 1 or maze.in_clearing(cell) or maze.solid.has(cell):
-			continue
-		if nearest.x < 0 or d < steps[maze.index(nearest)]:
-			nearest = cell
-		var score := maze.world(cell).distance_to(Vector3(point.x, 0.0, point.z))
-		if d <= REACH and score < best_score:
-			best_score = score
-			best = cell
-	return best if best.x >= 0 else nearest
+	return look.normalized() if look.length() > 0.01 else Vector3.FORWARD
 
 
-## The way from `cell` to him.
-func _facing_him(cell: Vector2i) -> float:
-	var to := world.player.global_position - world.maze.world(cell)
+## A point `reach` metres in front of him the way the camera looks, on the
+## ground, brought back short of any wall in the way, so that it can be seen.
+func _ahead(reach := AHEAD) -> Vector3:
+	var from := world.player.global_position + Vector3.UP * 1.0
+	var to := from + _look() * reach
+	var hit := world.get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(from, to, 1, [world.player.get_rid()]))
+	if not hit.is_empty():
+		to = from + _look() * maxf((hit["position"] as Vector3).distance_to(from) - 3.0, 2.5)
+	return Vector3(to.x, world.maze.ground_height(to) + 0.05, to.z)
+
+
+## The way from `at` to him.
+func _facing_him(at: Vector3) -> float:
+	var to := world.player.global_position - at
 	return atan2(to.x, to.z)
 
 

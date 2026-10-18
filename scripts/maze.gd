@@ -372,6 +372,20 @@ func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: Rando
 				var other: Vector2i = block_of.get(cell + s, NO_BLOCK)
 				if other != NO_BLOCK and other != block and _joins(cell, s, block, other, ends):
 					(next_to[block] as Dictionary)[other] = s
+	# Each way in comes out into a hall across it: the block past the entrance is
+	# joined to those either side of it and never to the one straight on.
+	for key: Vector2i in ends:
+		var step: Vector2i = ends[key][1]
+		var past: Vector2i = block_of.get(ends[key][0] + step, NO_BLOCK)
+		if not next_to.has(past):
+			continue
+		for other: Vector2i in (next_to[past] as Dictionary).keys():
+			var s: Vector2i = next_to[past][other]
+			if s == step:
+				(next_to[past] as Dictionary).erase(other)
+				(next_to[other] as Dictionary).erase(past)
+			elif s != -step:
+				_join(past, other, block_of, cells_of, ends)
 
 	var reached := {}
 	var heading := {}

@@ -54,9 +54,22 @@ extends Resource
 @export_range(0.0, 1.0) var terrace_vines := 0.5
 ## The share of halls with a rope bridge across from wall top to wall top.
 @export_range(0.0, 1.0) var top_bridges := 0.05
-## The share of wall faces with a vine hanging from the top of the wall, down to
+## The share of wall faces with ivy growing straight up the wall from the ground,
+## thick enough to climb, part of the way up (`ivy_reach`), never to the top.
+@export_range(0.0, 1.0) var wall_ivy := 0.0
+## How far up the wall that ivy grows, as shares of its height (least, most).
+@export var ivy_reach := Vector2(0.3, 0.6)
+## The share of wall faces with a vine hanging from partway up the wall (from the
+## top of a patch of ivy, to be climbed to it, `ivy_reach` up), down to
 ## a jump over the ground.
 @export_range(0.0, 1.0) var wall_vines := 0.0
+## The share of halls with a vine strung across from wall to wall, sagging, `strand_reach`
+## up (as shares of the lower wall's height).
+@export_range(0.0, 1.0) var strands := 0.0
+@export var strand_reach := Vector2(0.3, 0.75)
+## How thickly ferns, moss and tufts of grass grow along the foot of its walls (0
+## none, 1 all along every wall).
+@export_range(0.0, 1.0) var undergrowth := 0.0
 
 @export_group("What hunts it")
 ## How many of each thing that hunts are put in the ring's passages (by
@@ -105,10 +118,13 @@ static func avenues() -> MazeStyle:
 	# (the clearing's wall three cells thicker, 54 m in all, a slot through it at each gate)
 	style.rampart = 3
 	style.inner_height = 92.0
-	# (nothing on its walls but vines hanging from their tops)
+	# (on its walls: ivy, vines hanging from it, and vines strung across the halls)
 	style.terraces = 0.0
 	style.top_bridges = 0.0
-	style.wall_vines = 0.1
+	style.wall_ivy = 0.1
+	style.wall_vines = 0.08
+	style.strands = 0.12
+	style.undergrowth = 0.8
 	return style
 
 

@@ -29,6 +29,14 @@ extends Resource
 ## About how far apart the trees in the woods are, metres.
 @export_range(3.0, 20.0) var spacing := 6.5
 
+@export_group("Undergrowth")
+## Ferns round the foot of each pine, on average (more in the woods, where they stand close).
+@export_range(0.0, 10.0) var ferns := 2.5
+## The chance of a cushion of moss at the foot of a pine.
+@export_range(0.0, 1.0) var moss := 0.5
+## Bushes over the field (none in the glade), most of them near the trees.
+@export_range(0, 400) var bushes := 70
+
 var _noise: FastNoiseLite
 var _noise_seed := -1
 

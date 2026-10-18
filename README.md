@@ -20,6 +20,8 @@ https://sclondon.github.io/TheClearing/build/.
 
 - **Move:** a thumb on the left half of the screen (touch), WASD or arrows, or a gamepad stick.
 - **Look:** drag on the right half, the mouse, or the right stick. **Jump:** the jump button, Space, or A.
+- **Cut** a vine strung across a hall (walk it like a tightrope from the buttress at its end): the hand button, E or F.
+  It falls into two vines hanging from the walls; if you were on it, you keep hold of yours.
 - Everything else the boy from *Outside* can do works too (sprint, duck, slide, climb a ledge, kick off a wall).
   The walls themselves are far too tall to climb, but there are ways up: ivy up the terraces, vines, rope bridges.
 - **PLAY ALONE**, or **MAKE A ROOM** and give friends its four-letter code to **JOIN A ROOM**. The room's
@@ -117,6 +119,7 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/maze_test.gd      # the maze plan
 "$G" --headless --path . -s res://tests/smoke_test.gd     # alone: walk, walls, out, next maze, touch
 "$G" --headless --path . -s res://tests/climb_test.gd     # ivy onto a terrace, a vine, a rope bridge
+"$G" --headless --path . -s res://tests/strand_test.gd    # a strung vine: walked as a tightrope, cut into two vines
 "$G" --headless --path . -s res://tests/hunt_test.gd      # enemies in a round; caught, back to the clearing
 "$G" --headless --path . -s res://tests/layout_test.gd    # a layout changed by hand, saved, loaded and played
 "$G" --editor --path . res://tests/editor_check.tscn       # (after layout_test) what the editor shows, saved to user://editor_view.png
