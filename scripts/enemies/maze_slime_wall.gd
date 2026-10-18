@@ -82,7 +82,7 @@ func _ready() -> void:
 	creature.width = width
 	# (the first ring's avenues are some 25 m between walls; it fills them too)
 	creature.max_width = max_width
-	creature.contents_count = 40
+	creature.contents_count = 16
 	creature.contents_seed = _rng.randi_range(1, 1 << 20)
 	creature.top_level = true
 	add_child(creature)

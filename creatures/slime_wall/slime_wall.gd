@@ -61,7 +61,7 @@ signal released(node: Node3D)
 		contents_seed = value
 		if _contents:
 			_contents.mesh = SlimeWallLook.contents(contents_seed, contents_count)
-@export_range(0, 40) var contents_count := 30
+@export_range(0, 40) var contents_count := 20
 ## How murky it is: how fast it clouds over, per metre seen through.
 @export var murk := 0.22
 @export var jelly_color := Color(0.20, 0.27, 0.13)
@@ -345,7 +345,7 @@ func _apply(reach_to := Vector3(0.0, 1.0, 4.0)) -> void:
 	_inside.set_shader_parameter(&"sway", _sway)
 	_inside.set_shader_parameter(&"surge", _surge)
 	# (narrow, the pieces are drawn smaller; in a great one, bigger)
-	_inside.set_shader_parameter(&"content_scale", clampf(fitted_width / 3.5, 0.55, 1.0) * clampf(height / 6.0, 1.0, 1.5))
+	_inside.set_shader_parameter(&"content_scale", clampf(fitted_width / 3.5, 0.55, 1.0) * clampf(height / 6.0, 1.0, 1.35))
 	_trail_material.set_shader_parameter(&"now", _clock)
 	_trail_material.set_shader_parameter(&"lasts", trail_lasts)
 	# (shaders move its faces about: say how far they might go)
