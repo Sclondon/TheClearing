@@ -146,6 +146,10 @@ void fragment() {
 	if (has_normal) {
 		vec3 t = mix(textureGrad(normal_map, uv + off_a, dx, dy).rgb, textureGrad(normal_map, uv + off_b, dx, dy).rgb, w) * 2.0 - 1.0;
 		t.xy *= relief;
+		// (the maps are imported as compressed normal maps, which keep only red and
+		// green: the blue, how far the normal stands out of the wall, is made again
+		// here, or it reads as -1 and the wall is lit as if it faced the other way)
+		t.z = sqrt(max(0.0, 1.0 - dot(t.xy, t.xy)));
 		// (an OpenGL normal map: red across, green up the picture)
 		bent = normalize(u_axis * t.x + v_axis * t.y + n * t.z);
 	}
