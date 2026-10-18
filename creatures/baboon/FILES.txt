@@ -1,0 +1,3 @@
+# The baboon: two scripts, no scenes, no models, no textures (all made in code)
+creatures/baboon/baboon.gd
+creatures/baboon/baboon_look.gd
