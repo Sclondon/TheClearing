@@ -33,11 +33,14 @@ extends Resource
 @export_range(0.5, 13.0) var maze_wall_diameter := 3.2
 ## How high the maze walls inside the section are, metres.
 @export_range(8.0, 120.0) var maze_wall_height := 34.0
-## How high the border wall round the inside of the section is, metres (the wall
-## between it and what it goes round, and the walls beside its entrances).
-@export_range(20.0, 200.0) var section_border_wall_height := 46.0
-## How many cells of solid wall thicken the border wall round its inside (each
-## gate a slot through them); the section is moved that much further out.
+## How high the border wall round the outside of the section is, metres: the wall
+## between it and the next section out (for the last square section, the wall out
+## to the desert; for the last round one, the wall round the whole maze), and the
+## walls beside its gates. The clearing's own wall is ClearingStyle's.
+@export_range(20.0, 300.0) var section_border_wall_height := 46.0
+## How many cells of solid wall thicken that border wall (each gate a slot through
+## them): the next section out is moved that much further out. (Not for the last
+## square section, nor round ones.)
 @export_range(0, 6) var border_wall_thickness_cells := 0
 
 @export_group("Hallways")
@@ -122,6 +125,8 @@ extends Resource
 ## How high the great walls are that run from each corner of the square out to
 ## the circle, across the desert (each with a gate through it).
 @export_range(20.0, 200.0) var diagonal_wall_height := 80.0
+## How high the wall is on the desert's far side: round the inside of the first circle.
+@export_range(20.0, 300.0) var desert_far_wall_height := 46.0
 
 @export_group("Plants")
 ## How thickly ferns, moss and tufts of grass grow along the foot of its walls (0
@@ -277,16 +282,13 @@ static func made(depth_cells: int, hallway_cells: int, straightness: float, bran
 ## Avenues: the first section. The simplest maze, but big: hallways two cells wide
 ## (about 16 m between walls) that run long and straight, few turns and few side
 ## branches. Its maze walls are massive, 12 m thick, so each way through a wall a
-## cell long is a slot about three of him wide; and the border wall round the
-## clearing is 54 m thick and 92 m high (twice the other border walls), each gate
-## a slot through it. A mezzanine a third of the way up every wall, ivy up to it,
+## cell long is a slot about three of him wide. (The wall round the clearing, on
+## its inside, is ClearingStyle's.) A mezzanine a third of the way up every wall, ivy up to it,
 ## vines hanging from it and strung across the hallways above it, plants at the
 ## foot of the walls, and sewer pipes through the walls high up.
 static func avenues() -> MazeStyle:
 	var style := made(6, 2, 0.5, 0.0, 0.0)
 	style.maze_wall_diameter = 12.0
-	style.border_wall_thickness_cells = 3
-	style.section_border_wall_height = 92.0
 	style.mezzanine_height = style.maze_wall_height / 3.0
 	style.terrace_share = 0.0
 	style.wall_top_bridge_share = 0.0
@@ -350,6 +352,8 @@ static func spokes() -> MazeStyle:
 static func whorl() -> MazeStyle:
 	var style := made(5, 1, 0.3, 0.3, 0.06)
 	style.round_section = true
+	# (the wall out to the Labyrinth: as high as the Labyrinth's own round the whole)
+	style.section_border_wall_height = 60.0
 	return style
 
 

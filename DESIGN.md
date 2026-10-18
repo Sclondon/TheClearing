@@ -76,8 +76,8 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
   open water. All of it bends round whoever pushes through. Wading slows him (the deeper, the slower), he splashes
   going in and leaves rings. A lane in from the gate has nothing deep and nothing standing in it: the way in is wet
   but open.
-- Its wall is a special case, far thicker than the grid: about 54 m of solid stone (the first ring's `rampart`), 92
-  m high (`inner_height`), twice the other walls between rings. Nothing grows or stands on it.
+- Its wall is a special case, far thicker than the grid, with its own controls (ClearingStyle, "Clearing wall"):
+  by default 3 cells of solid stone (about 54 m) and 92 m high, twice the other walls between rings. Nothing grows or stands on it.
 - Four gates, one in the middle of each side, each a slot about 2 m wide (about three of him) running the whole way
   through that wall. Every gate leads on into the maze: none is a dead end.
 
@@ -85,14 +85,14 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
 
 | | Avenues (ring 1) | Warren (ring 2, planned) | Tangle (ring 3, planned) |
 | --- | --- | --- | --- |
-| Depth | 6 cells, inside 3 of rampart (9 in all) | 4 cells | 4 cells |
+| Depth | 6 cells (outside the clearing wall's 3 of solid stone) | 4 cells | 4 cells |
 | Halls | 2 cells wide (about 16 m between walls) | 1 cell | 1 cell |
 | Walls | 12 m thick, 34 m high | 3.2 m thick | 3.2 m thick |
 | Passages | go on straight half the time; no extra branching; no loops | winding, forking | branching often, many loops |
 | On the walls | climbable ivy up a tenth of the faces (a third to two-thirds of the way up, never to the top), vines hanging from some of it, vines strung across an eighth of the halls (walked as tightropes from a buttress with ivy up it; the act button cuts one into two hanging vines) | terraces, ivy, vines, rope bridges | as Warren |
 
-What a style can set: depth (cells), hall width (cells), wall thickness, rampart (extra cells of solid wall round
-its inside), how high the wall round its inside is, how often passages go straight, how often they branch, how many loops, narrow entrances (a passage of
+What a style can set: depth (cells), hall width (cells), wall thickness, its border wall (the wall round its outside: how high, and extra cells of solid wall
+thickening it on the far side), how often passages go straight, how often they branch, how many loops, narrow entrances (a passage of
 some length from each gate) and doorways (a slot through a gatehouse), and the share of walls with terraces, upper
 terraces, rope bridges, ivy to the top, vines on terraces, wall-top bridges and wall-top vines.
 

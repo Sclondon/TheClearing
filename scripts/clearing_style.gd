@@ -8,6 +8,13 @@ extends Resource
 ## entrances): dense woods round one, grass up to his chest round another, a
 ## marsh in front of another, and nothing at all near the last.
 
+@export_group("Clearing wall")
+## How high the wall round the clearing is, metres (and the walls beside its gates).
+@export_range(20.0, 300.0) var clearing_wall_height := 92.0
+## How many cells of solid wall thicken it, past its face (each gate a slot through
+## them): the first section is moved that much further out.
+@export_range(0, 6) var clearing_wall_thickness_cells := 3
+
 @export_group("Ground")
 ## No trees nearer the middle than this, metres.
 @export_range(0.0, 250.0) var treeless_radius := 95.0

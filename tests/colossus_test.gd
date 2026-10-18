@@ -108,7 +108,7 @@ func _run() -> void:
 	# A cell out in the first ring, well away from the clearing.
 	var start := Vector2i(-1, -1)
 	for cell: Vector2i in nav.lairs(4):
-		if maze.ring_of(cell) == 1 and maze.depth_in_ring(cell) >= maze.styles[0].border_wall_thickness_cells + 3:
+		if maze.ring_of(cell) == 1 and maze.depth_in_ring(cell) >= maze.rampart(1) + 3:
 			start = cell
 			break
 	check("a place in the first ring", start.x >= 0)
@@ -230,7 +230,7 @@ func _run() -> void:
 	var rampart_cell := Vector2i(-1, -1)
 	var best := INF
 	for c: Vector2i in nav.lairs(1):
-		if maze.ring_of(c) == 1 and maze.depth_in_ring(c) == maze.styles[0].border_wall_thickness_cells + 1:
+		if maze.ring_of(c) == 1 and maze.depth_in_ring(c) == maze.rampart(1) + 1:
 			var at := maze.world(c)
 			var across_side := minf(absf(at.x), absf(at.z))
 			if across_side > 60.0 and across_side < best:
@@ -242,7 +242,7 @@ func _run() -> void:
 	peer._pause = 1e9
 	var peering: bool = peer._start_peering()
 	await wait(10.0)
-	var over: float = peer.figure.eye().y - maze.styles[0].section_border_wall_height
+	var over: float = peer.figure.eye().y - maze.inner_height(1)
 	check("beside the great wall it rears up to look over it", peering and peer.mode == MazeColossus.Mode.PEERING and over > 15.0, "(its eyes %.0f m over the top)" % over)
 	await wait(peer.peer_time)
 	check("and gets down again", peer.mode == MazeColossus.Mode.CRAWLING and peer.figure.lean_on == Vector3.INF)

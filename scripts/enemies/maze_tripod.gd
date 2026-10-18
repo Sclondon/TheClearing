@@ -141,8 +141,7 @@ func _find_band() -> void:
 	var ring := maze.ring_of(maze.cell_at(global_position))
 	_ring = clampi(ring, 1, maxi(maze.ring_sizes.size() - 1, 1))
 	var inner := maze.ring_sizes[_ring - 1] * Maze.CELL * 0.5
-	if _ring - 1 < maze.styles.size():
-		inner += maze.styles[_ring - 1].border_wall_thickness_cells * Maze.CELL
+	inner += maze.rampart(_ring) * Maze.CELL
 	var outer := maze.ring_sizes[mini(_ring, maze.ring_sizes.size() - 1)] * Maze.CELL * 0.5
 	_band_mid = (inner + outer) * 0.5
 	_band_half = maxf((outer - inner) * 0.5 - 24.0, 3.0)

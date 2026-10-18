@@ -11,8 +11,8 @@ section_depth_cells = 8
 hallway_diameter_cells = 2
 maze_wall_diameter = 13.0
 maze_wall_height = 120.0
-section_border_wall_height = 200.0
-border_wall_thickness_cells = 6
+section_border_wall_height = 175.0
+border_wall_thickness_cells = 5
 straight_on_chance = 0.5
 loop_share = 0.0
 terrace_share = 0.0
@@ -22,8 +22,6 @@ hanging_vine_share = 0.1
 [sub_resource type="Resource" id="Resource_5ge7g"]
 script = ExtResource("2_83lp3")
 section_depth_cells = 6
-section_border_wall_height = 175.0
-border_wall_thickness_cells = 5
 straight_on_chance = 0.563
 loop_share = 0.0
 
@@ -47,6 +45,7 @@ side_branch_chance = 0.3
 
 [sub_resource type="Resource" id="Resource_41t42"]
 script = ExtResource("2_83lp3")
+section_border_wall_height = 60.0
 round_section = true
 section_depth_cells = 5
 straight_on_chance = 0.1
@@ -64,6 +63,8 @@ loop_share = 0.03
 
 [sub_resource type="Resource" id="Resource_1favp"]
 script = ExtResource("3_7fxqu")
+clearing_wall_height = 200.0
+clearing_wall_thickness_cells = 6
 
 [node name="MazeLayout" type="Node3D" unique_id=511331440]
 script = ExtResource("1")

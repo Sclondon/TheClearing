@@ -65,7 +65,7 @@ func _show_in_editor() -> void:
 	var open := get_tree().edited_scene_root
 	if open == null or not (open == self or open.is_ancestor_of(self)):
 		return
-	var size := Maze.ring_extent(rings + 1, styles) + 80.0
+	var size := Maze.ring_extent(rings + 1, styles, clearing_style) + 80.0
 	# (the round sections, past the moor, are not pieces: they are shown as the
 	# game will build them, from the seed and their styles)
 	var plan := Maze.generate(maze_seed, rings, styles, clearing_style)
@@ -305,7 +305,7 @@ static func _cut_back(maze: Maze, beyond: Array, crossing: float, thick: float) 
 	return (thick + crossing) * 0.5 if crossing > 0.0 else 0.0
 
 
-## The ramparts round the inside of rings (MazeStyle.border_wall_thickness_cells), as [middle of the
+## The ramparts round the inside of rings (Maze.rampart), as [middle of the
 ## foot, size]: solid stone as high as the wall between rings, from the face of
 ## that wall out over the rampart's cells to the face of the walls beyond, as
 ## four sides, each broken by a slot (as narrow as a way through a wall a cell
@@ -313,14 +313,14 @@ static func _cut_back(maze: Maze, beyond: Array, crossing: float, thick: float) 
 static func _ramparts(maze: Maze) -> Array:
 	var walls: Array = []
 	for ring in range(1, maze.rings + 1):
-		var style: MazeStyle = maze.styles[ring - 1]
-		if style.border_wall_thickness_cells <= 0:
+		var cells := maze.rampart(ring)
+		if cells <= 0:
 			continue
 		var way: Array = maze.gates[ring - 1][0]
 		var thick := maze.wall_thick(way[0], way[1])
 		var slot := Maze.CELL - thick
 		var near := maze.ring_sizes[ring - 1] * Maze.CELL * 0.5 - thick * 0.5
-		var far := near + thick + style.border_wall_thickness_cells * Maze.CELL
+		var far := near + thick + cells * Maze.CELL
 		for side: Vector2i in Maze.STEPS:
 			var out := Vector3(side.x, 0.0, side.y)
 			var along := Vector3(absf(out.z), 0.0, absf(out.x))
@@ -336,7 +336,7 @@ static func _ramparts(maze: Maze) -> Array:
 			for i in range(0, cuts.size(), 2):
 				var long: float = cuts[i + 1] - cuts[i]
 				var middle := out * (near + far) * 0.5 + along * (cuts[i] + cuts[i + 1]) * 0.5
-				walls.append([middle, along * long + out.abs() * (far - near) + Vector3.UP * style.section_border_wall_height])
+				walls.append([middle, along * long + out.abs() * (far - near) + Vector3.UP * maze.inner_height(ring)])
 	return walls
 
 
@@ -400,7 +400,7 @@ static func _gatehouses(maze: Maze) -> Array:
 ## The outside wall of the next ring, which is not built yet: unbroken for now,
 ## so that past the gate there is open ground to the foot of the next wall.
 static func _next_ring(maze: Maze) -> Array:
-	var half := Maze.ring_extent(maze.rings + 1, maze.styles) * 0.5
+	var half := Maze.ring_extent(maze.rings + 1, maze.styles, maze.clearing_style) * 0.5
 	var long := half * 2.0 + MazeBuilder.RING_THICK
 	var high := maze.inner_height(maze.rings + 1)
 	var runs: Array = []
@@ -522,7 +522,7 @@ func _trees(maze: Maze) -> void:
 	# (nothing near the clear entrance, nor in the pond)
 	points = points.filter(func(p: Vector3) -> bool: return not look.kept_clear(Vector2(p.x, p.z)))
 	var built := maze.extent() * 0.5 + 6.0
-	var next := Maze.ring_extent(maze.rings + 1, maze.styles) * 0.5 - 6.0
+	var next := Maze.ring_extent(maze.rings + 1, maze.styles, maze.clearing_style) * 0.5 - 6.0
 	# (none in the desert outside, when there are round sections)
 	if not maze.round_rings:
 		for i in 60:

@@ -93,7 +93,7 @@ func _round() -> void:
 func _long_hall(run: int) -> Array:
 	for c: Vector2i in MazeNav.new(maze).lairs(3):
 		# (out in the ring, away from the great wall round the clearing)
-		if maze.ring_of(c) != 1 or maze.depth_in_ring(c) < maze.styles[0].border_wall_thickness_cells + 3:
+		if maze.ring_of(c) != 1 or maze.depth_in_ring(c) < maze.rampart(1) + 3:
 			continue
 		for step: Vector2i in Maze.STEPS:
 			var ok := true
@@ -267,7 +267,7 @@ func _from_the_clearing() -> void:
 	var wall_cell := Vector2i(-1, -1)
 	var best := INF
 	for c: Vector2i in MazeNav.new(maze).lairs(1):
-		if maze.ring_of(c) == 1 and maze.depth_in_ring(c) == maze.styles[0].border_wall_thickness_cells + 1:
+		if maze.ring_of(c) == 1 and maze.depth_in_ring(c) == maze.rampart(1) + 1:
 			var at := maze.world(c)
 			var across_side := minf(absf(at.x), absf(at.z))
 			if across_side > 60.0 and across_side < best:

@@ -55,7 +55,7 @@ var distance := PackedInt32Array()
 ## as {cell: the way out along it}.
 var entrances := {}
 ## The cells of solid stone in the ramparts round the inside of rings (see
-## MazeStyle.border_wall_thickness_cells): no way into them, walls all round.
+## `rampart`): no way into them, walls all round.
 var solid := {}
 
 
@@ -70,7 +70,7 @@ static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] 
 	var maze := Maze.new()
 	maze.styles = ring_styles if not ring_styles.is_empty() else MazeStyle.defaults()
 	maze.clearing_style = clearing_look if clearing_look else ClearingStyle.new()
-	maze.ring_sizes = sizes_for(maze.styles)
+	maze.ring_sizes = sizes_for(maze.styles, maze.clearing_style)
 	# (the square sections are the first, up to the first round one; the round ones
 	# are RoundMaze's, outside them)
 	var square := 0
@@ -96,12 +96,29 @@ static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] 
 
 
 ## Cells across the clearing and then across the outside of each ring of `ring_styles`.
-static func sizes_for(ring_styles: Array[MazeStyle]) -> Array[int]:
+static func sizes_for(ring_styles: Array[MazeStyle], clearing_look: ClearingStyle = null) -> Array[int]:
 	var sizes: Array[int] = [CLEARING]
-	for style in ring_styles:
-		# (its rampart is on top of its width: a thicker wall moves the ring out)
-		sizes.append(sizes.back() + (style.section_depth_cells + style.border_wall_thickness_cells) * 2)
+	for k in ring_styles.size():
+		# (the rampart round its inside is on top of its width: a thicker wall moves the ring out)
+		sizes.append(sizes.back() + (ring_styles[k].section_depth_cells + rampart_cells(k + 1, ring_styles, clearing_look)) * 2)
 	return sizes
+
+
+## How many cells of solid wall thicken the wall round the inside of `ring`: the
+## clearing's own (ClearingStyle.clearing_wall_thickness_cells) round the first,
+## and round any other the section inside it's (MazeStyle.border_wall_thickness_cells,
+## that section's outer wall).
+static func rampart_cells(ring: int, ring_styles: Array[MazeStyle], clearing_look: ClearingStyle = null) -> int:
+	if ring == 1:
+		return (clearing_look if clearing_look else ClearingStyle.new()).clearing_wall_thickness_cells
+	if ring >= 2 and ring - 2 < ring_styles.size() and not ring_styles[ring - 2].round_section:
+		return ring_styles[ring - 2].border_wall_thickness_cells
+	return 0
+
+
+## The rampart round the inside of `ring` (see rampart_cells), in cells.
+func rampart(ring: int) -> int:
+	return rampart_cells(ring, styles, clearing_style)
 
 
 func index(cell: Vector2i) -> int:
@@ -173,7 +190,7 @@ func ground_height(point: Vector3) -> float:
 
 
 ## How high the wall on the `step` side of `cell` is: a wall between rings as
-## the outer ring's style says (MazeStyle.section_border_wall_height), any other as
+## inner_height of the outer ring, any other as
 ## high as its ring's maze walls (MazeStyle.maze_wall_height).
 func wall_height(cell: Vector2i, step: Vector2i) -> float:
 	if ring_wall(cell, step):
@@ -189,12 +206,16 @@ func maze_wall_height(ring: int) -> float:
 	return styles[ring - 1].maze_wall_height
 
 
-## How high the wall round the inside of `ring` is (MazeBuilder.RING_HEIGHT for
-## a ring that has no style).
+## How high the wall round the inside of `ring` is: the clearing's own wall
+## (ClearingStyle.clearing_wall_height) round the first, and round any other the
+## outer wall of the section inside it (MazeStyle.section_border_wall_height);
+## MazeBuilder.RING_HEIGHT past the styles.
 func inner_height(ring: int) -> float:
-	if ring < 1 or ring > styles.size():
+	if ring == 1:
+		return clearing_style.clearing_wall_height if clearing_style else ClearingStyle.new().clearing_wall_height
+	if ring < 2 or ring - 2 >= styles.size():
 		return MazeBuilder.RING_HEIGHT
-	return styles[ring - 1].section_border_wall_height
+	return styles[ring - 2].section_border_wall_height
 
 
 ## Whether there is a wall between `cell` and its neighbour the `step` way
@@ -231,8 +252,8 @@ func extent() -> float:
 
 ## How far across a ring is (0, the clearing), built or not, with the rings of
 ## `ring_styles` (MazeStyle.defaults() if none are given).
-static func ring_extent(ring: int, ring_styles: Array[MazeStyle] = []) -> float:
-	var sizes := sizes_for(ring_styles if not ring_styles.is_empty() else MazeStyle.defaults())
+static func ring_extent(ring: int, ring_styles: Array[MazeStyle] = [], clearing_look: ClearingStyle = null) -> float:
+	var sizes := sizes_for(ring_styles if not ring_styles.is_empty() else MazeStyle.defaults(), clearing_look)
 	return sizes[clampi(ring, 0, sizes.size() - 1)] * CELL
 
 
@@ -355,7 +376,7 @@ func _carve() -> void:
 ## stand but for the gates.
 func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: RandomNumberGenerator) -> void:
 	var style: MazeStyle = styles[ring - 1]
-	var blocks := _blocks(ring, style.hallway_diameter_cells, style.border_wall_thickness_cells)
+	var blocks := _blocks(ring, style.hallway_diameter_cells, rampart(ring))
 	var block_of: Dictionary = blocks[0]
 	var cells_of: Dictionary = blocks[1]
 	# The entrances: each its own block, a line of cells (taken out of the blocks it
@@ -366,7 +387,7 @@ func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: Rando
 		var line: Array = []
 		var cell: Vector2i = ways_in[g][0] + step
 		# (through the rampart at least)
-		while line.size() < maxi(style.entrance_corridor_cells, style.border_wall_thickness_cells) and inside(cell) and ring_of(cell) == ring and block_of.get(cell, Vector2i.ZERO).x >= 0:
+		while line.size() < maxi(style.entrance_corridor_cells, rampart(ring)) and inside(cell) and ring_of(cell) == ring and block_of.get(cell, Vector2i.ZERO).x >= 0:
 			line.append(cell)
 			cell += step
 		if line.is_empty():

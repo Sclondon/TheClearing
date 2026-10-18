@@ -291,7 +291,7 @@ static func _quad(tool: SurfaceTool, p0: Vector3, p1: Vector3, p2: Vector3, p3: 
 
 
 func _ground() -> void:
-	var size := Maze.ring_extent(maze.rings + 1, maze.styles) + 80.0
+	var size := Maze.ring_extent(maze.rings + 1, maze.styles, maze.clearing_style) + 80.0
 	if maze.round_rings:
 		size = (maze.round_rings.outermost() + 300.0) * 2.0
 	var body := StaticBody3D.new()

@@ -55,7 +55,7 @@ from the seed. Generate again replaces everything in the layout.
 
 - `scripts/maze.gd` (`Maze`): the plan. Square cells 14 m across. `Maze.CLEARING` cells across the clearing (41),
   then each ring as its `MazeStyle` (`scripts/maze_style.gd`) says: depth, hall width (it carves over blocks of
-  cells), wall thickness, a rampart of solid cells round its inside and how high that wall is, straightness,
+  cells), wall thickness, its border wall (round its outside: how high, and a rampart of solid cells; the clearing's own wall is `ClearingStyle`'s), straightness,
   branching, loops, entrances, and
   what is on its walls (see DESIGN.md). `rings` of them are built (1 for now) and the grid runs to the outside of
   the last. Each ring is grown from its first way in (into the first, a gate in the middle of each side of the

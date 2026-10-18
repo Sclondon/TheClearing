@@ -235,12 +235,12 @@ static func _limb_yaw(limb: int, yaw: float) -> float:
 ## The outer face of the rampart round the inside of its ring (as the walls go
 ## round) and how high it is; 0 if there is none.
 func _rampart_bounds() -> void:
-	var style: MazeStyle = maze.styles[ring - 1] if ring >= 1 and ring <= maze.styles.size() else null
-	if style and style.border_wall_thickness_cells > 0 and not maze.gates[ring - 1].is_empty():
+	var cells := maze.rampart(ring) if ring >= 1 and ring <= maze.styles.size() else 0
+	if cells > 0 and not maze.gates[ring - 1].is_empty():
 		var way: Array = maze.gates[ring - 1][0]
 		var thick := maze.wall_thick(way[0], way[1])
-		_rampart = maze.ring_sizes[ring - 1] * Maze.CELL * 0.5 + thick * 0.5 + style.border_wall_thickness_cells * Maze.CELL
-		_rampart_height = style.section_border_wall_height
+		_rampart = maze.ring_sizes[ring - 1] * Maze.CELL * 0.5 + thick * 0.5 + cells * Maze.CELL
+		_rampart_height = maze.inner_height(ring)
 
 
 ## Whether a point is at least `margin` from the face of every wall, by the plan,

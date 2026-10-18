@@ -38,6 +38,14 @@ func _run() -> void:
 	_check(same, "each section as the editor has it (section 1 walls %.0f m, the editor %.0f m)" % [maze.styles[0].maze_wall_height, editor.styles[0].maze_wall_height])
 	if editor.clearing_style:
 		_check(maze.clearing_style.get_property_list().all(func(p: Dictionary) -> bool: return p.usage & PROPERTY_USAGE_STORAGE == 0 or p.name == "entrance_spots" or maze.clearing_style.get(p.name) == editor.clearing_style.get(p.name)), "the clearing as the editor has it")
+	# The clearing's wall is its own; each section's border wall is its outer one.
+	_check(maze.inner_height(1) == maze.clearing_style.clearing_wall_height and maze.rampart(1) == maze.clearing_style.clearing_wall_thickness_cells, "the clearing's wall by its own controls (%.0f m, %d cells)" % [maze.inner_height(1), maze.rampart(1)])
+	_check(maze.ring_sizes[1] == Maze.CLEARING + (maze.styles[0].section_depth_cells + maze.clearing_style.clearing_wall_thickness_cells) * 2, "the first section starts past the clearing's wall")
+	var outer_ok := true
+	for ring in range(2, maze.rings + 1):
+		if maze.inner_height(ring) != maze.styles[ring - 2].section_border_wall_height or maze.rampart(ring) != maze.styles[ring - 2].border_wall_thickness_cells:
+			outer_ok = false
+	_check(outer_ok, "each section's border wall is the one round its outside (1 to 2: %.0f m)" % maze.inner_height(2))
 	print("  (made from the round's own seed, %d; the editor's is %d)" % [maze.maze_seed, editor.maze_seed])
 	editor.free()
 	print("RULES TEST PASSED" if failures == 0 else "RULES TEST FAILED (%d)" % failures)
