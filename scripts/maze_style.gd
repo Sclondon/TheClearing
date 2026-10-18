@@ -19,6 +19,9 @@ extends Resource
 ## How thick its walls are, metres. (A cell is Maze.CELL across, wall middle to
 ## wall middle: a way through a wall one cell long is a slot that much narrower.)
 @export_range(0.5, 13.0) var wall_thick := 3.2
+## Rows of cells of solid stone round the inside of the ring, making the wall
+## round what it is round that much thicker: each way in a slot through it.
+@export_range(0, 6) var rampart := 0
 ## The chance a passage goes on straight when it can.
 @export_range(0.0, 1.0) var straight := 0.0
 ## The chance a passage grows from an older place instead of the newest.
@@ -69,11 +72,13 @@ static func made(width_cells: int, hall_span: int, straightness: float, branches
 ## Avenues: the first ring. The simplest maze, but big: halls two cells wide
 ## (about 25 m between walls) that run long and straight, few turns and few side
 ## branches. Its walls are massive, 12 m thick, so each way through a wall a
-## cell long, as the gates from the clearing are, is a slot about three of him
-## wide and a hall deep.
+## cell long is a slot about three of him wide; and the wall round the clearing
+## is a rampart 40 m thick, each gate a slot through it.
 static func avenues() -> MazeStyle:
-	var style := made(6, 2, 0.5, 0.0, 0.0)
+	var style := made(8, 2, 0.5, 0.0, 0.0)
 	style.wall_thick = 12.0
+	# (the clearing's wall two cells thicker, 40 m in all, a slot through it at each gate)
+	style.rampart = 2
 	# (nothing on its walls but vines hanging from their tops)
 	style.terraces = 0.0
 	style.top_bridges = 0.0

@@ -69,12 +69,13 @@ func _run() -> void:
 	player.global_position = before_gate + Vector3.UP * 0.1
 	player.velocity = Vector3.ZERO
 	await frames(10)
-	for i in 240:
+	var deep: float = Maze.CELL * (1.2 + maze.styles[0].rampart)
+	for i in int(deep / 5.0 * 60.0) + 60:
 		player.velocity.x = into.x * 5.0
 		player.velocity.z = into.z * 5.0
 		await physics_frame
 	var through: float = (player.global_position - before_gate).dot(into)
-	check("through a gate", through > Maze.CELL * 1.2, "(%.1f m on, the wall %.1f thick)" % [through, maze.wall_thick(gate[0], gate[1])])
+	check("through a gate", through > deep, "(%.1f m on, the wall %.1f thick)" % [through, maze.wall_thick(gate[0], gate[1])])
 
 	# Out past the exit.
 	var path: Array = maze.path_out(maze.cell_at(Vector3.ZERO))

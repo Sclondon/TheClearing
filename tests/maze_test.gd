@@ -29,7 +29,7 @@ func _initialize() -> void:
 			var unreached := 0
 			for i in maze.size * maze.size:
 				var cell := Vector2i(i % maze.size, i / maze.size)
-				if not maze.in_clearing(cell) and maze.distance[i] < 0:
+				if not maze.in_clearing(cell) and not maze.solid.has(cell) and maze.distance[i] < 0:
 					unreached += 1
 			check("%s: every cell reachable" % name, unreached == 0, "(%d not)" % unreached)
 			var path := maze.path_out(maze.cell_at(Vector3.ZERO))
@@ -80,7 +80,7 @@ func _initialize() -> void:
 			var narrow := 0
 			for i in maze.size * maze.size:
 				var cell := Vector2i(i % maze.size, i / maze.size)
-				if maze.ring_of(cell) != 1:
+				if maze.ring_of(cell) != 1 or maze.solid.has(cell) or maze.entrances.has(cell):
 					continue
 				var across := not maze.blocked(cell, Vector2i(1, 0)) or not maze.blocked(cell, Vector2i(-1, 0))
 				var along := not maze.blocked(cell, Vector2i(0, 1)) or not maze.blocked(cell, Vector2i(0, -1))
@@ -95,7 +95,8 @@ func _initialize() -> void:
 			check("%s: no gate a dead end" % name, shut_in == 0, "(%d of %d)" % [shut_in, maze.gates[0].size()])
 			var first_ring := 0
 			for i in maze.size * maze.size:
-				if maze.ring_of(Vector2i(i % maze.size, i / maze.size)) == 1:
+				var counted := Vector2i(i % maze.size, i / maze.size)
+				if maze.ring_of(counted) == 1 and not maze.solid.has(counted) and not maze.entrances.has(counted):
 					first_ring += 1
 			check("%s: wide halls in the first ring" % name, maze.styles[0].span < 2 or narrow < first_ring * 0.12, "(%d of %d cells in a narrow hall)" % [narrow, first_ring])
 			var middle := maze.size / 2

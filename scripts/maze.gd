@@ -50,6 +50,9 @@ var distance := PackedInt32Array()
 ## The cells of the narrow entrances into each ring (see MazeStyle.entrance),
 ## as {cell: the way out along it}.
 var entrances := {}
+## The cells of solid stone in the ramparts round the inside of rings (see
+## MazeStyle.rampart): no way into them, walls all round.
+var solid := {}
 
 
 ## A seed for a room's maze on a given round: the same on every copy of the game.
@@ -97,6 +100,17 @@ func ring_of(cell: Vector2i) -> int:
 		if across <= ring_sizes[ring]:
 			return ring
 	return ring_sizes.size()
+
+
+## How many cells out from the inside of its ring a cell is (0 next to the wall
+## round what the ring is round).
+func depth_in_ring(cell: Vector2i) -> int:
+	var middle := size / 2
+	var out := maxi(absi(cell.x - middle), absi(cell.y - middle))
+	var ring := ring_of(cell)
+	if ring == 0:
+		return out
+	return out - (ring_sizes[ring - 1] - 1) / 2 - 1
 
 
 func in_clearing(cell: Vector2i) -> bool:
@@ -277,11 +291,13 @@ func _carve() -> void:
 ## blocks of `span` x `span` cells, whose inside walls all come down (so a hall is
 ## `span` cells wide), each new block joined to one already reached. Each way in
 ## is first a narrow entrance, one cell wide and `entrance` cells long, straight
-## out from the gate, that opens into the rest only at its far end. The walk stays
-## in its ring: the walls between rings stand but for the gates.
+## out from the gate, that opens into the rest only at its far end. Round the
+## inside of the ring, `rampart` rows of cells are solid stone, but for the
+## entrances through them. The walk stays in its ring: the walls between rings
+## stand but for the gates.
 func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: RandomNumberGenerator) -> void:
 	var style: MazeStyle = styles[ring - 1]
-	var blocks := _blocks(ring, style.span)
+	var blocks := _blocks(ring, style.span, style.rampart)
 	var block_of: Dictionary = blocks[0]
 	var cells_of: Dictionary = blocks[1]
 	# The entrances: each its own block, a line of cells (taken out of the blocks it
@@ -291,7 +307,8 @@ func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: Rando
 		var step: Vector2i = ways_in[g][1]
 		var line: Array = []
 		var cell: Vector2i = ways_in[g][0] + step
-		while line.size() < style.entrance and inside(cell) and ring_of(cell) == ring and block_of[cell].x >= 0:
+		# (through the rampart at least)
+		while line.size() < maxi(style.entrance, style.rampart) and inside(cell) and ring_of(cell) == ring and block_of.get(cell, Vector2i.ZERO).x >= 0:
 			line.append(cell)
 			cell += step
 		if line.is_empty():
@@ -300,11 +317,18 @@ func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: Rando
 			entrances[taken] = step
 		var key := Vector2i(-1 - g, -1)
 		for taken: Vector2i in line:
-			(cells_of[block_of[taken]] as Array).erase(taken)
+			if block_of.has(taken):
+				(cells_of[block_of[taken]] as Array).erase(taken)
 			block_of[taken] = key
 		cells_of[key] = line
 		ends[key] = [line.back(), step]
 	_split_apart(block_of, cells_of)
+	# The rest of the rampart is stone.
+	for i in size * size:
+		var cell := Vector2i(i % size, i / size)
+		if ring_of(cell) == ring and not block_of.has(cell):
+			solid[cell] = true
+			visited[i] = 1
 	for block: Vector2i in cells_of:
 		for cell: Vector2i in cells_of[block]:
 			visited[index(cell)] = 1
@@ -376,16 +400,17 @@ const NO_BLOCK := Vector2i(-1000, -1000)
 ## across the square of the ring from its outside corner; across its depth they
 ## are `span` cells (the last one taking any cells left over), and so along the
 ## sides of what it is round.
-func _blocks(ring: int, span: int) -> Array:
+func _blocks(ring: int, span: int, rampart := 0) -> Array:
 	var outer: int = ring_sizes[ring]
-	var inner: int = ring_sizes[ring - 1]
+	# (the rampart's cells are in none: the blocks start outside it)
+	var inner: int = ring_sizes[ring - 1] + rampart * 2
 	var band := (outer - inner) / 2
 	var low := (size - outer) / 2
 	var block_of := {}
 	var cells_of := {}
 	for i in size * size:
 		var cell := Vector2i(i % size, i / size)
-		if ring_of(cell) != ring:
+		if ring_of(cell) != ring or depth_in_ring(cell) < rampart:
 			continue
 		var block := Vector2i(_block_on(cell.x - low, band, inner, span), _block_on(cell.y - low, band, inner, span))
 		block_of[cell] = block

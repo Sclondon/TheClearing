@@ -132,6 +132,8 @@ func lay_out(maze: Maze) -> void:
 	for great in [false, true]:
 		for pier: Array in _piers(maze, great):
 			_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, Vector3(pier[0].x, 0.0, pier[0].z)), {"size": pier[1], "great": great})
+	for rampart: Array in _ramparts(maze):
+		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, rampart[0]), {"size": rampart[1], "great": true})
 	for gatehouse: Array in _gatehouses(maze):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, gatehouse[0]), {"size": gatehouse[1], "great": true})
 	MazeFeatures.lay_out(self, maze)
@@ -193,7 +195,8 @@ static func _runs(maze: Maze) -> Array:
 			if x < n:
 				var cell := Vector2i(x, j) if j < n else Vector2i(x, n - 1)
 				var step := Vector2i(0, -1) if j < n else Vector2i(0, 1)
-				wall = maze.blocked(cell, step)
+				# (none in or round a rampart: its stone is laid whole, see _ramparts)
+				wall = maze.blocked(cell, step) and not maze.solid.has(cell) and not maze.solid.has(cell + step)
 				great = maze.ring_wall(cell, step)
 				here = maze.wall_thick(cell, step)
 			if start >= 0 and (not wall or great != kind or here != thick):
@@ -218,7 +221,7 @@ static func _runs(maze: Maze) -> Array:
 			if y < n:
 				var cell := Vector2i(i, y) if i < n else Vector2i(n - 1, y)
 				var step := Vector2i(-1, 0) if i < n else Vector2i(1, 0)
-				wall = maze.blocked(cell, step)
+				wall = maze.blocked(cell, step) and not maze.solid.has(cell) and not maze.solid.has(cell + step)
 				great = maze.ring_wall(cell, step)
 				here = maze.wall_thick(cell, step)
 			if start >= 0 and (not wall or great != kind or here != thick):
@@ -232,6 +235,41 @@ static func _runs(maze: Maze) -> Array:
 				kind = great
 				thick = here
 	return runs
+
+
+## The ramparts round the inside of rings (MazeStyle.rampart), as [middle of the
+## foot, size]: solid stone as high as the wall between rings, from the face of
+## that wall out over the rampart's cells to the face of the walls beyond, as
+## four sides, each broken by a slot (as narrow as a way through a wall a cell
+## long) where an entrance runs through it.
+static func _ramparts(maze: Maze) -> Array:
+	var walls: Array = []
+	for ring in range(1, maze.rings + 1):
+		var style: MazeStyle = maze.styles[ring - 1]
+		if style.rampart <= 0:
+			continue
+		var way: Array = maze.gates[ring - 1][0]
+		var thick := maze.wall_thick(way[0], way[1])
+		var slot := Maze.CELL - thick
+		var near := maze.ring_sizes[ring - 1] * Maze.CELL * 0.5 - thick * 0.5
+		var far := near + thick + style.rampart * Maze.CELL
+		for side: Vector2i in Maze.STEPS:
+			var out := Vector3(side.x, 0.0, side.y)
+			var along := Vector3(absf(out.z), 0.0, absf(out.x))
+			# (north and south sides run the whole way, corners and all; east and west between them)
+			var reach := far if side.y != 0 else near
+			var cuts: Array[float] = [-reach]
+			for gate: Array in maze.gates[ring - 1]:
+				if gate[1] == side:
+					var at: float = maze.world(gate[0]).dot(along)
+					cuts.append_array([at - slot * 0.5, at + slot * 0.5])
+			cuts.append(reach)
+			cuts.sort()
+			for i in range(0, cuts.size(), 2):
+				var long: float = cuts[i + 1] - cuts[i]
+				var middle := out * (near + far) * 0.5 + along * (cuts[i] + cuts[i + 1]) * 0.5
+				walls.append([middle, along * long + out.abs() * (far - near) + Vector3.UP * MazeBuilder.RING_HEIGHT])
+	return walls
 
 
 ## The walls either side of each narrow entrance (MazeStyle.doorway), as

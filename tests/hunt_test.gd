@@ -50,7 +50,13 @@ func _run() -> void:
 	var was_caught := [false]
 	world.caught.connect(func(_seat: int) -> void: was_caught[0] = true)
 	var player = world.player
+	# (3 m off it on an open side of its cell: in front of it might be in a wall)
 	var facing := Vector3(sin(world.griever.yaw), 0.0, cos(world.griever.yaw))
+	var griever_cell: Vector2i = world.maze.cell_at(world.griever.global_position)
+	for step: Vector2i in Maze.STEPS:
+		if not world.maze.blocked(griever_cell, step):
+			facing = Vector3(step.x, 0.0, step.y)
+			break
 	player.global_position = world.griever.global_position + facing * 3.0 + Vector3.UP * 0.1
 	player.velocity = Vector3.ZERO
 	for i in 60 * 15:

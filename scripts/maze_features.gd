@@ -96,7 +96,7 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 		# (in the rings, as their styles say: the clearing's walls are left bare, and
 		# so are the entrances)
 		var ring := plan.ring_of(cell)
-		if ring < 1 or ring > plan.rings or plan.entrances.has(cell):
+		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
 			continue
 		_style = plan.styles[ring - 1]
 		for step: Vector2i in Maze.STEPS:
@@ -106,7 +106,7 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 				# (or a vine hanging from the top of the wall)
 				if _rng.randf() < _style.wall_vines:
 					_taken[[cell, step]] = true
-					var top := MazeBuilder.RING_HEIGHT if plan.ring_wall(cell, step) else MazeBuilder.WALL_HEIGHT
+					var top := MazeBuilder.RING_HEIGHT if plan.ring_wall(cell, step) or plan.solid.has(cell + step) else MazeBuilder.WALL_HEIGHT
 					_vine(cell, step, WALL_VINE_OUT, _rng.randf_range(-0.35, 0.35) * Maze.CELL, top, VINE_CLEAR, false)
 				continue
 			var upper := _rng.randf() < _style.upper_terraces
@@ -128,7 +128,7 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 	for i in plan.size * plan.size:
 		var cell := Vector2i(i % plan.size, i / plan.size)
 		var ring := plan.ring_of(cell)
-		if ring < 1 or ring > plan.rings or plan.entrances.has(cell):
+		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
 			continue
 		_style = plan.styles[ring - 1]
 		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
