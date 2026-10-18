@@ -56,18 +56,22 @@ const LAND_TIME := 0.45
 const BARK_TIME := 0.4
 
 ## How big each kind is drawn (one unit is its own shoulder height, about 0.6).
-const SIZES := {Kind.BABOON: 1.35, Kind.ALPHA: 2.05}
+const SIZES := {Kind.BABOON: 1.2, Kind.ALPHA: 2.05}
 
 ## Each kind's build, in its own units: thickness of chest, belly and haunches;
 ## of the upper arm and forearm, thigh and shin; how big its head is, its fangs,
-## its mane; its tail; its coat, and its face.
+## its mane; how long each joint of its tail is; its coat (back, belly and inner
+## limbs, the mane, the rump and the patch on it), its skin, and its face (the
+## nose ridge and the cheek pads), the beard.
 const BUILDS := {
-	Kind.BABOON: {"chest": 0.15, "belly": 0.12, "haunch": 0.115, "arm": Vector2(0.052, 0.042), "leg": Vector2(0.07, 0.05),
-		"head": 1.0, "fang": 0.065, "mane": 0.55, "tail": "hook", "legs_long": 1.06,
-		"fur": Color(0.33, 0.315, 0.285), "dark": Color(0.17, 0.16, 0.15), "face": Color(0.12, 0.11, 0.11), "nose": Color(0.24, 0.1, 0.09), "cheek": Color(0.14, 0.13, 0.13)},
-	Kind.ALPHA: {"chest": 0.2, "belly": 0.155, "haunch": 0.13, "arm": Vector2(0.068, 0.056), "leg": Vector2(0.085, 0.06),
-		"head": 1.12, "fang": 0.1, "mane": 1.0, "tail": "stub", "legs_long": 1.0,
-		"fur": Color(0.25, 0.235, 0.21), "dark": Color(0.13, 0.12, 0.11), "face": Color(0.1, 0.09, 0.09), "nose": Color(0.86, 0.07, 0.06), "cheek": Color(0.2, 0.42, 0.98)},
+	Kind.BABOON: {"chest": 0.14, "belly": 0.105, "haunch": 0.105, "arm": Vector2(0.056, 0.044), "leg": Vector2(0.066, 0.047),
+		"head": 0.92, "fang": 0.06, "mane": 0.55, "tail_step": 0.075, "legs_long": 1.0, "muzzle": "dog",
+		"fur": Color(0.33, 0.31, 0.24), "belly_fur": Color(0.5, 0.47, 0.38), "mane_fur": Color(0.42, 0.39, 0.3), "rump": Color(0.45, 0.4, 0.35), "rump_patch": Color(0.0, 0.0, 0.0, 0.0),
+		"dark": Color(0.16, 0.15, 0.13), "face": Color(0.15, 0.13, 0.13), "nose": Color(0.15, 0.13, 0.13), "cheek": Color(0.15, 0.13, 0.13), "beard": Color(0.47, 0.44, 0.36)},
+	Kind.ALPHA: {"chest": 0.2, "belly": 0.15, "haunch": 0.13, "arm": Vector2(0.08, 0.062), "leg": Vector2(0.084, 0.058),
+		"head": 1.12, "fang": 0.1, "mane": 1.0, "tail_step": 0.032, "legs_long": 0.97, "muzzle": "mandrill",
+		"fur": Color(0.24, 0.22, 0.17), "belly_fur": Color(0.42, 0.39, 0.32), "mane_fur": Color(0.36, 0.32, 0.24), "rump": Color(0.52, 0.48, 0.44), "rump_patch": Color(0.36, 0.3, 0.55, 1.0),
+		"dark": Color(0.12, 0.11, 0.1), "face": Color(0.09, 0.08, 0.08), "nose": Color(0.85, 0.08, 0.07), "cheek": Color(0.22, 0.43, 0.95), "beard": Color(0.72, 0.66, 0.46)},
 }
 const EMBER := Color(1.0, 0.3, 0.05)
 const BONE := Color(0.86, 0.82, 0.7)
@@ -568,17 +572,16 @@ func _joints(p: Pose, gaze_dir: Vector3) -> Dictionary:
 	var at: Vector3 = j["tail_root"]
 	tail.append(at)
 	var swing := sin(_t * 1.7 + _phase * TAU) * 0.08 + clampf(_turn, -2.0, 2.0) * 0.05
-	if _build["tail"] == "stub":
-		var dir := (-fwd + up * (0.7 + p.tail_up * 0.5) + side * swing).normalized()
-		for k in 5:
-			at += dir * 0.022
-			tail.append(at)
-	else:
-		var dir := (-fwd * 0.6 + up * (1.0 + p.tail_up)).normalized()
-		for k in 5:
-			at += dir * 0.085 + side * swing * k * 0.012
-			tail.append(at)
-			dir = dir.lerp((Vector3.DOWN - fwd * 0.3 + side * swing).normalized(), 0.35 if k >= 1 else 0.15).normalized()
+	# Up and back from the rump in an arch, then broken and hanging.
+	var step: float = _build["tail_step"]
+	var dir := (-fwd * 0.55 + up * (1.0 + p.tail_up * 0.6)).normalized()
+	for k in 5:
+		at += dir * step + side * swing * k * step * 0.15
+		tail.append(at)
+		if k == 1:
+			dir = (-fwd * 0.9 + Vector3.DOWN * (0.35 - p.tail_up * 0.3)).normalized()
+		elif k >= 2:
+			dir = dir.lerp((Vector3.DOWN - fwd * 0.25).normalized(), 0.45).normalized()
 	j["tail"] = tail
 	return j
 

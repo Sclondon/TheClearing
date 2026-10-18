@@ -129,6 +129,21 @@ func _studio() -> void:
 	face = _face_of(baboon)
 	_look_from(face + Vector3(0.6, 0.1, 1.1), face)
 	await shot("07_baboon_face")
+	# Each alone, filling the frame: front, side, three-quarters.
+	alpha.look_at_point = Vector3.INF
+	baboon.look_at_point = Vector3.INF
+	for one: Baboon in [alpha, baboon]:
+		var other: Baboon = baboon if one == alpha else alpha
+		other.visible = false
+		var mid := one.global_position + Vector3.UP * 0.42 * one.size + one.global_basis.z * 0.12 * one.size
+		var name := "alpha" if one == alpha else "baboon"
+		_look_from(mid + one.global_basis.z * 2.6 * one.size + Vector3.UP * 0.25 * one.size, mid)
+		await shot("08_%s_front" % name)
+		_look_from(mid - one.global_basis.x * 3.4 * one.size + Vector3.UP * 0.1 * one.size, mid)
+		await shot("08_%s_side" % name)
+		_look_from(mid + (one.global_basis.z - one.global_basis.x).normalized() * 3.0 * one.size + Vector3.UP * 0.6 * one.size, mid)
+		await shot("08_%s_three_quarter" % name)
+		other.visible = true
 	baboon.queue_free()
 
 	# Each thing it does, caught in the middle.
