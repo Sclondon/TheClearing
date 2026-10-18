@@ -18,6 +18,9 @@ const STIFF := 0.7
 @export var width := 1.3
 ## How much longer the deck is than the gap (the sag).
 @export var slack := 1.06
+## The most it sags in the middle, metres, however long it is (a long one is
+## strung tighter).
+@export var most_sag := 1.5
 ## How heavy someone is, against the deck's own weight per point.
 @export var weight := 9.0
 
@@ -26,6 +29,7 @@ var _before := PackedVector3Array()
 var _planks: Array[AnimatableBody3D] = []
 var _rails: Array[MeshInstance3D] = []
 var _piece := 0.0
+var _age := 0.0
 
 static var _wood: StandardMaterial3D
 static var _hemp: StandardMaterial3D
@@ -41,11 +45,13 @@ func _ready() -> void:
 		_hemp.albedo_color = Color(0.42, 0.37, 0.27)
 		_hemp.roughness = 1.0
 		_hemp.metallic_specular = 0.0
-	_piece = from.distance_to(to) * slack / (POINTS - 1)
+	# (a shallow curve sags by about sqrt(3 / 8 * gap * extra length))
+	var gap := from.distance_to(to)
+	_piece = gap * minf(slack, 1.0 + 8.0 / 3.0 * pow(most_sag / maxf(gap, 0.01), 2.0)) / (POINTS - 1)
 	# Start it hanging in a shallow curve, so it does not drop into place.
 	for i in POINTS:
 		var t := float(i) / (POINTS - 1)
-		_points.append(from.lerp(to, t) + Vector3.DOWN * sin(t * PI) * from.distance_to(to) * 0.08)
+		_points.append(from.lerp(to, t) + Vector3.DOWN * sin(t * PI) * minf(gap * 0.08, most_sag))
 	_before = _points.duplicate()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(from.snappedf(0.01))
@@ -88,6 +94,11 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	# (in the editor it only hangs, as it was made)
 	if Engine.is_editor_hint():
+		return
+	# Hanging still with nobody near, it rests, once settled (see Rope).
+	_age += delta
+	var middle := POINTS / 2
+	if _age > Rope.SETTLE and (_points[middle] - _before[middle]).length_squared() < 0.000001 and not Rope.anyone_near(self, (from + to) * 0.5, from.distance_to(to) * 0.5 + Rope.WAKE):
 		return
 	var gravity := Vector3.DOWN * 9.8
 	var pull := []

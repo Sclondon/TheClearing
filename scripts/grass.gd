@@ -77,7 +77,9 @@ var height: Callable
 ## How far a pusher lays blades over, radians.
 @export var push_bend := 1.25
 ## Seconds a trail takes to stand back up.
-@export var recover := 8.0
+@export var recover := 3.0
+## How far a trail leans the blades over, radians.
+@export var trail_bend := 0.45
 ## Metres per trail texel.
 @export var trail_cell := 0.35
 
@@ -112,10 +114,11 @@ uniform float flutter = 0.1;
 uniform vec4 pushers[8];
 uniform int pusher_count = 0;
 uniform float push_bend = 1.25;
-uniform sampler2D trail : filter_nearest, repeat_disable;
+uniform sampler2D trail : filter_linear, repeat_disable;
 uniform vec4 trail_rect = vec4(0.0);
 uniform float now = 0.0;
 uniform float recover = 8.0;
+uniform float trail_bend = 0.45;
 
 uniform float lod_near = 10.0;
 uniform float fade_end = 44.0;
@@ -196,20 +199,21 @@ void vertex() {
 		float close = (1.0 - smoothstep(p.w * 0.35, p.w, dist)) * (1.0 - smoothstep(1.2, 2.2, abs(p.y - root.y)));
 		bend += away / max(dist, 0.001) * close * push_bend;
 	}
-	// Trails: flattened where something walked, standing back up over `recover` seconds.
+	// Trails: leant over where something walked, standing back up over `recover` seconds.
+	// (Only leant, not laid flat or shortened: laid flat, a path reads as mown.)
 	float laid = 0.0;
 	if (trail_rect.z > 0.0) {
 		vec2 at = (root.xz - trail_rect.xy) / trail_rect.zw;
 		if (at.x > 0.0 && at.y > 0.0 && at.x < 1.0 && at.y < 1.0) {
 			float stamp = textureLod(trail, at, 0.0).r;
 			laid = 1.0 - smoothstep(0.0, 1.0, (now - stamp) / recover);
-			bend += out_dir * laid * 1.3;
+			bend += out_dir * laid * trail_bend;
 		}
 	}
 
 	float angle = min(length(bend), 1.45);
 	vec2 dir = length(bend) > 0.0001 ? normalize(bend) : out_dir;
-	float h = blade_height * COLOR.g * (0.55 + 0.6 * own.y) * shown * (1.0 - 0.35 * laid);
+	float h = blade_height * COLOR.g * (0.55 + 0.6 * own.y) * shown;
 	// A blade bends along an arc of its own length (so it shortens as it lays over).
 	float a = max(angle, 0.0001);
 	float across = h * (1.0 - cos(a * t)) / a;
@@ -438,6 +442,7 @@ func apply_settings() -> void:
 		m.set_shader_parameter(&"flutter", flutter)
 		m.set_shader_parameter(&"push_bend", push_bend)
 		m.set_shader_parameter(&"recover", recover)
+		m.set_shader_parameter(&"trail_bend", trail_bend)
 		m.set_shader_parameter(&"lod_near", _preset.lod_near)
 		m.set_shader_parameter(&"fade_end", _preset.fade_end)
 		m.set_shader_parameter(&"keep_min", _preset.keep_min)

@@ -14,6 +14,12 @@ extends Node3D
 
 ## How many pieces it is made of.
 const PIECES := 16
+## How near (past its own length) someone must be for it to move when it is still.
+const WAKE := 12.0
+## Seconds it always moves for at first, to settle as it hangs.
+const SETTLE := 4.0
+
+var _age := 0.0
 
 @export var length := 5.0
 ## How quickly a swing dies away, per second.
@@ -125,6 +131,11 @@ func _physics_process(delta: float) -> void:
 	# (in the editor it only hangs, as it was made)
 	if Engine.is_editor_hint():
 		return
+	# Hanging still, with nobody on it or near it, it rests, once it has had time
+	# to settle. (A maze has a great many, and each is worked out point by point.)
+	_age += delta
+	if _age > SETTLE and load_at < 0.0 and (_points[PIECES] - _before[PIECES]).length_squared() < 0.000001 and not anyone_near(self, global_position, length + WAKE):
+		return
 	var piece := length / PIECES
 	var fall := Vector3.DOWN * gravity * delta * delta
 	var top := global_position
@@ -186,6 +197,15 @@ func _physics_process(delta: float) -> void:
 			_points[i] = a + along * stretch * light_a / (light_a + light_b)
 			_points[i + 1] = b - along * stretch * light_b / (light_a + light_b)
 	_draw()
+
+
+## Whether anyone who weighs on ropes and bridges (the group `bridge_weights`)
+## is within `reach` of `at`.
+static func anyone_near(node: Node, at: Vector3, reach: float) -> bool:
+	for body: Node in node.get_tree().get_nodes_in_group(&"bridge_weights"):
+		if (body as Node3D).global_position.distance_squared_to(at) < reach * reach:
+			return true
+	return false
 
 
 ## A point of the rope `away` along it from where he holds it, kept that far from him.

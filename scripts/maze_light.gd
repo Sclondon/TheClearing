@@ -26,14 +26,16 @@ static func put(parent: Node, internal := false) -> void:
 	environment.ambient_light_energy = 0.75
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.tonemap_white = 1.3
-	# The mist: thick with distance, and thicker still low down.
+	# The mist: thickening with distance, and a little more low down. (Light in the
+	# editor, which looks across the whole maze from high over it.)
+	var editing := Engine.is_editor_hint()
 	environment.fog_enabled = true
 	environment.fog_light_color = Color(0.66, 0.7, 0.69)
-	environment.fog_density = 0.009
+	environment.fog_density = 0.0012 if editing else 0.0045
 	environment.fog_sky_affect = 0.6
 	environment.fog_aerial_perspective = 0.4
 	environment.fog_height = 6.0
-	environment.fog_height_density = 0.01
+	environment.fog_height_density = 0.0 if editing else 0.004
 	# Glow round the bright (the light past the exit, the sky between the walls).
 	environment.glow_enabled = true
 	environment.glow_intensity = 0.6

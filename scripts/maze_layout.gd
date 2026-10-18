@@ -14,12 +14,15 @@ extends Node3D
 ## in it and for the way out. Walls only count where they stand on the grid's
 ## lines (every Maze.CELL metres, half a cell off the middle), as generated ones do.
 ##
-## The rings, their gates and the clearing come from the seed and `rings`.
+## The rings, their gates and the clearing come from the seed, `rings` and `styles`.
 
 ## Which maze to start from.
 @export var maze_seed := 1
 ## How many rings round the clearing.
 @export_range(1, 3) var rings := 1
+## How each ring is made, from the clearing out: its width, how wide its halls are
+## and its rules (MazeStyle). Empty: the game's own (MazeStyle.defaults()).
+@export var styles: Array[MazeStyle] = []
 ## Whether the game plays this one when it is in res://mazes/.
 @export var playable := true
 ## In the editor, whether it is lit and misted as in the game (off: the editor's
@@ -56,12 +59,12 @@ func _show_in_editor() -> void:
 	var open := get_tree().edited_scene_root
 	if open == null or not (open == self or open.is_ancestor_of(self)):
 		return
-	var size := Maze.ring_extent(rings + 1) + 80.0
+	var size := Maze.ring_extent(rings + 1, styles) + 80.0
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(size, size)
 	var ground := MeshInstance3D.new()
 	ground.mesh = plane
-	ground.material_override = MazeStone.ground(Maze.RINGS[0] * Maze.CELL * 0.5, Maze.ring_extent(rings) * 0.5, MazeBuilder.WALL_THICK)
+	ground.material_override = MazeStone.ground(Maze.CLEARING * Maze.CELL * 0.5, Maze.ring_extent(rings, styles) * 0.5, MazeBuilder.WALL_THICK)
 	add_child(ground, false, Node.INTERNAL_MODE_BACK)
 	_editor_shown.append(ground)
 	if game_light and open.find_children("*", "WorldEnvironment", true, true).is_empty():
@@ -74,7 +77,7 @@ func _show_in_editor() -> void:
 ## Lays out the maze for `maze_seed` and `rings`, in place of what is here.
 func generate() -> void:
 	clear()
-	lay_out(Maze.generate(maze_seed, rings))
+	lay_out(Maze.generate(maze_seed, rings, styles))
 
 
 ## Takes away every piece.
@@ -102,7 +105,7 @@ func pieces(kind: MazePiece.Kind) -> Array[MazePiece]:
 ## The maze as it now stands: the rings, clearing and gates of the seed, with
 ## the walls where the wall and pier pieces are.
 func plan() -> Maze:
-	var maze := Maze.generate(maze_seed, rings)
+	var maze := Maze.generate(maze_seed, rings, styles)
 	var blocks: Array[MazePiece] = pieces(MazePiece.Kind.WALL) + pieces(MazePiece.Kind.PIER)
 	maze.set_walls(func(cell: Vector2i, step: Vector2i) -> bool:
 		var on_line := maze.world(cell) + Vector3(step.x, 0.0, step.y) * Maze.CELL * 0.5 + Vector3.UP * 2.0
@@ -221,7 +224,7 @@ static func _runs(maze: Maze) -> Array:
 ## The outside wall of the next ring, which is not built yet: unbroken for now,
 ## so that past the gate there is open ground to the foot of the next wall.
 static func _next_ring(maze: Maze) -> Array:
-	var half := Maze.ring_extent(maze.rings + 1) * 0.5
+	var half := Maze.ring_extent(maze.rings + 1, maze.styles) * 0.5
 	var long := half * 2.0 + MazeBuilder.RING_THICK
 	var runs: Array = []
 	for side in [-1.0, 1.0]:
@@ -286,7 +289,8 @@ func _trees(maze: Maze) -> void:
 	rng.seed = maze.maze_seed
 	var edge := maze.clearing * Maze.CELL * 0.5 - MazeBuilder.RING_THICK * 0.5
 	var points: Array = []
-	for stand in 7:
+	# (a stand for each cell along a side, and as many trees out in the open)
+	for stand in maze.clearing:
 		# Somewhere along the wall, not in front of a gate (the middle of a side).
 		var side := rng.randi() % 4
 		var along := rng.randf_range(0.25, 0.95) * (1.0 if rng.randf() < 0.5 else -1.0) * edge
@@ -296,12 +300,12 @@ func _trees(maze: Maze) -> void:
 			var p := middle + Vector3(rng.randf_range(-6.0, 6.0), 0.0, rng.randf_range(-6.0, 6.0))
 			if maxf(absf(p.x), absf(p.z)) < edge - 3.0 and p.length() > 12.0:
 				points.append(p)
-	for i in 6:
+	for i in maze.clearing:
 		var p := Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.0, 1.0)) * (edge - 6.0)
 		if p.length() > 14.0:
 			points.append(p)
 	var built := maze.extent() * 0.5 + 6.0
-	var next := Maze.ring_extent(maze.rings + 1) * 0.5 - 6.0
+	var next := Maze.ring_extent(maze.rings + 1, maze.styles) * 0.5 - 6.0
 	for i in 60:
 		var side := rng.randi() % 4
 		points.append(_on_side(side, rng.randf_range(-next, next), rng.randf_range(built, next)))

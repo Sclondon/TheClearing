@@ -34,6 +34,9 @@ var _status: Label
 var _solo_code := ""
 var _preview_angle := 0.0
 var _preview_camera: Camera3D
+## Talking to the others in a room (see Voice), kept from round to round.
+var voice: Voice
+var _mic: Button
 
 
 func _ready() -> void:
@@ -45,6 +48,10 @@ func _ready() -> void:
 	Net.closed.connect(_on_closed)
 	Net.failed.connect(_on_failed)
 	Net.packet.connect(_on_packet)
+	voice = Voice.new()
+	voice.name = "Voice"
+	add_child(voice)
+	voice.changed.connect(_show_mic)
 	_show_preview()
 	show_title()
 
@@ -110,7 +117,6 @@ func show_lobby() -> void:
 		var text := "%s%s%s" % [runner(seat), "  (you)" if seat == Net.slot else "", "  away" if entry.get("away", false) else ""]
 		page.add_child(_label(text, 30, INK if seat != Net.slot else MOSS.lightened(0.35)))
 	page.add_child(_spacer(0.2))
-	page.add_child(_button("NEW LOOK", _new_look))
 	if Net.slot == 0:
 		page.add_child(_button("START", Net.start_game))
 	else:
@@ -142,6 +148,11 @@ func _show_hud() -> void:
 	if Net.active():
 		var code := _label("ROOM %s" % Net.code, 22, INK.darkened(0.25))
 		bar.add_child(code)
+	if Net.active() and voice.available():
+		_mic = _button("", voice.toggle_mic, 20, 120)
+		_mic.custom_minimum_size.y = 48
+		bar.add_child(_mic)
+		_show_mic()
 	var menu := _button("LEAVE", leave, 20, 110)
 	menu.custom_minimum_size.y = 48
 	bar.add_child(menu)
@@ -230,6 +241,7 @@ func _begin(players: Array, my_slot: int, online: bool, seed_value: int) -> void
 	world.name = "World"
 	add_child(world)
 	world.setup(seed_value, my_slot, players, online, Mazes.for_round(round_number))
+	voice.world = world
 	world.escaped.connect(_on_escaped)
 	world.caught.connect(func(_seat: int) -> void: _say("Caught! Back to the clearing."))
 	_show_hud()
@@ -265,7 +277,7 @@ func _process(delta: float) -> void:
 	if _preview_camera:
 		_preview_angle += delta * 0.05
 		var away := Vector3(sin(_preview_angle), 0.0, cos(_preview_angle))
-		_preview_camera.position = away * 150.0 + Vector3.UP * 150.0
+		_preview_camera.position = away * 260.0 + Vector3.UP * 240.0
 		_preview_camera.look_at(Vector3.UP * -20.0)
 	if world and _clock_label:
 		_clock_label.text = clock_text(world.out.get(world.slot, world.clock))
@@ -299,11 +311,6 @@ func _type_letter(letter: String) -> void:
 	_code_label.text = shown
 
 
-func _new_look() -> void:
-	look = Looks.pick()
-	Net.pick_look(look)
-
-
 # --- News -------------------------------------------------------------------
 
 func _on_escaped(seat: int, seconds: float) -> void:
@@ -313,6 +320,16 @@ func _on_escaped(seat: int, seconds: float) -> void:
 		_report(seconds)
 	if world.all_out():
 		_show_round_over()
+
+
+## The microphone button as the microphone is: on, off, being asked for, or refused.
+func _show_mic() -> void:
+	if _mic == null or not is_instance_valid(_mic):
+		return
+	var words := {"on": "MIC ON", "asking": "MIC...", "denied": "NO MIC", "none": "NO MIC"}
+	_mic.text = words.get(voice.state, "MIC OFF")
+	_mic.modulate = Color(0.75, 1.0, 0.7) if voice.state == "on" else Color.WHITE
+	_mic.tooltip_text = "Talk to the others near you (V)"
 
 
 func _on_room_changed() -> void:
@@ -374,6 +391,7 @@ func _clear_page() -> void:
 		_page.queue_free()
 		_page = null
 	_hud = null
+	_mic = null
 	_clock_label = null
 	_toast = null
 

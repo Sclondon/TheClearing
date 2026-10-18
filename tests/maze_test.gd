@@ -20,7 +20,7 @@ func _initialize() -> void:
 	var c := Maze.generate(Maze.seed_for("ABCD", 2))
 	check("same seed, same maze", a.east == b.east and a.south == b.south and a.exit == b.exit)
 	check("next round, new maze", a.east != c.east or a.south != c.south)
-	check("first ring only, for now", a.rings == 1 and a.size == Maze.RINGS[1])
+	check("first ring only, for now", a.rings == 1 and a.size == Maze.CLEARING + a.styles[0].width * 2)
 
 	for built in [1, 3]:
 		for seed_value in [1, 2, 3, 99, 12345]:
@@ -34,7 +34,10 @@ func _initialize() -> void:
 			check("%s: every cell reachable" % name, unreached == 0, "(%d not)" % unreached)
 			var path := maze.path_out(maze.cell_at(Vector3.ZERO))
 			check("%s: a way out from the middle" % name, path.size() > maze.clearing / 2 + 4 * built, "(%d cells)" % path.size())
-			# Every ring wall is shut but for the gates: 4 out of the clearing, 1 out of each ring after.
+			# Every ring wall is shut but for the gates: 4 out of the clearing (each as wide
+			# as the first ring's halls), 1 out of each ring after.
+			var span := maze.styles[0].span
+			var from_clearing := 0
 			var openings := 0
 			var open := 0
 			for i in maze.size * maze.size:
@@ -43,12 +46,27 @@ func _initialize() -> void:
 					if not maze.inside(cell + step):
 						continue
 					if maze.ring_wall(cell, step) and not maze.blocked(cell, step):
-						openings += 1
+						if maze.in_clearing(cell) or maze.in_clearing(cell + step):
+							from_clearing += 1
+						else:
+							openings += 1
 					if not maze.in_clearing(cell) and not maze.blocked(cell, step):
 						open += 1
-			check("%s: rings shut but for their gates" % name, openings == 4 + built - 1, "(%d)" % openings)
+			check("%s: rings shut but for their gates" % name, from_clearing >= 4 * span and from_clearing <= 4 * (span + 1) and openings == built - 1, "(%d from the clearing, %d after)" % [from_clearing, openings])
 			var ring_cells := maze.size * maze.size - maze.clearing * maze.clearing
-			check("%s: still a maze" % name, open < ring_cells * 1.2, "(%d open of %d cells)" % [open, ring_cells])
+			check("%s: still a maze" % name, open < ring_cells * 1.7, "(%d open of %d cells)" % [open, ring_cells])
+			# The first ring's halls are as wide as its style says: every cell in it opens
+			# on a neighbour both across and along.
+			var narrow := 0
+			for i in maze.size * maze.size:
+				var cell := Vector2i(i % maze.size, i / maze.size)
+				if maze.ring_of(cell) != 1:
+					continue
+				var across := not maze.blocked(cell, Vector2i(1, 0)) or not maze.blocked(cell, Vector2i(-1, 0))
+				var along := not maze.blocked(cell, Vector2i(0, 1)) or not maze.blocked(cell, Vector2i(0, -1))
+				if not (across and along):
+					narrow += 1
+			check("%s: wide halls in the first ring" % name, span < 2 or narrow == 0, "(%d cells in a narrow hall)" % narrow)
 			var middle := maze.size / 2
 			check("%s: clearing open" % name, not maze.blocked(Vector2i(middle, middle), Vector2i(1, 0)) and not maze.blocked(Vector2i(middle - 3, middle - 3), Vector2i(0, 1)))
 			var edge := maze.exit + maze.exit_side

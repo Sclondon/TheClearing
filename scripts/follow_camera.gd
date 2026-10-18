@@ -163,11 +163,14 @@ func _orbit(delta: float) -> void:
 
 	# Left alone while he is on the move, drift round behind him. (Not on a rope:
 	# there he goes back and forth, and the stick means what it meant when he
-	# took hold only for as long as the camera stays where it was.)
+	# took hold only for as long as the camera stays where it was. Only as much
+	# as he is going away from it, too: run sideways, and "sideways" is the
+	# camera's, so following that would turn it and him round and round.)
 	var flat := Vector3(target.velocity.x, 0.0, target.velocity.z)
 	if settle_speed > 0.0 and _since_look > 1.5 and flat.length() > 1.0 and target.state != Player.State.ROPE:
 		var behind := atan2(-flat.x, -flat.z)
-		_yaw = lerp_angle(_yaw, behind, 1.0 - exp(-settle_speed * delta))
+		var away := maxf(0.0, flat.normalized().dot(Vector3(-sin(_yaw), 0.0, -cos(_yaw))))
+		_yaw = lerp_angle(_yaw, behind, 1.0 - exp(-settle_speed * away * away * delta))
 
 	var player := target.visual_position
 	_focus = _focus.lerp(player, 1.0 - exp(-10.0 * delta))

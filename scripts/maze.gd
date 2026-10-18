@@ -7,9 +7,10 @@ extends RefCounted
 ## gate out of the ring inside it. It is only the plan: walls, the clearing, the
 ## gates. MazeBuilder (scripts/maze_builder.gd) puts it up in the world.
 ##
-## RINGS says how big the clearing and every ring will be. `rings` is how many of
-## them are built: the grid only runs to the outside of the last one built, and
-## the way out of that one is `exit`. (For now only the first ring is built.)
+## CLEARING says how big the clearing is, and each ring's MazeStyle (`styles`) how
+## deep the ring is and the rules its passages are made by. `rings` is how many
+## of them are built: the grid only runs to the outside of the last one built,
+## and the way out of that one is `exit`. (For now only the first ring is built.)
 ##
 ## The same seed always gives the same maze, which is how everyone in a room gets
 ## the same one without it being sent: the seed comes from the room's code and
@@ -22,13 +23,16 @@ extends RefCounted
 
 ## Metres across one cell, from the middle of one wall to the middle of the next.
 const CELL := 14.0
-## Cells across the clearing, and then across the outside of each ring, from the
-## middle out. All odd, so each has a middle cell.
-const RINGS: Array[int] = [7, 15, 23, 31]
+## Cells across the clearing (odd, so that it has a middle cell).
+const CLEARING := 21
 
-var size := 15
+var size := CLEARING
 ## Cells along a side of the clearing.
-var clearing := 7
+var clearing := CLEARING
+## How each ring is made, from the clearing out (MazeStyle), and cells across
+## the clearing and then across the outside of each ring (all odd).
+var styles: Array[MazeStyle] = []
+var ring_sizes: Array[int] = []
 ## How many rings are built.
 var rings := 1
 var maze_seed := 0
@@ -50,17 +54,26 @@ static func seed_for(code: String, round_number: int) -> int:
 	return hash("%s/%d" % [code, round_number]) & 0x7fffffff
 
 
-## Makes the maze for `seed_value`, with `built` rings round the clearing.
-## `loops` is the share of dead walls in each ring knocked through afterwards, so
-## that there is more than one way round.
-static func generate(seed_value: int, built := 1, loops := 0.06) -> Maze:
+## Makes the maze for `seed_value`, with `built` rings round the clearing, each
+## made as its style says (MazeStyle.defaults() if none are given).
+static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] = []) -> Maze:
 	var maze := Maze.new()
-	maze.rings = clampi(built, 1, RINGS.size() - 1)
-	maze.size = RINGS[maze.rings]
-	maze.clearing = RINGS[0]
+	maze.styles = ring_styles if not ring_styles.is_empty() else MazeStyle.defaults()
+	maze.ring_sizes = sizes_for(maze.styles)
+	maze.rings = clampi(built, 1, maze.styles.size())
+	maze.size = maze.ring_sizes[maze.rings]
+	maze.clearing = CLEARING
 	maze.maze_seed = seed_value
-	maze._carve(loops)
+	maze._carve()
 	return maze
+
+
+## Cells across the clearing and then across the outside of each ring of `ring_styles`.
+static func sizes_for(ring_styles: Array[MazeStyle]) -> Array[int]:
+	var sizes: Array[int] = [CLEARING]
+	for style in ring_styles:
+		sizes.append(sizes.back() + style.width * 2)
+	return sizes
 
 
 func index(cell: Vector2i) -> int:
@@ -72,15 +85,15 @@ func inside(cell: Vector2i) -> bool:
 
 
 ## Which ring a cell is in: 0 for the clearing, 1 for the first ring round it, and
-## so on (past the last of RINGS, RINGS.size()). Cells outside the grid are in the
+## so on (past the last ring, ring_sizes.size()). Cells outside the grid are in the
 ## rings that are not built yet.
 func ring_of(cell: Vector2i) -> int:
 	var middle := size / 2
 	var across := maxi(absi(cell.x - middle), absi(cell.y - middle)) * 2 + 1
-	for ring in RINGS.size():
-		if across <= RINGS[ring]:
+	for ring in ring_sizes.size():
+		if across <= ring_sizes[ring]:
 			return ring
-	return RINGS.size()
+	return ring_sizes.size()
 
 
 func in_clearing(cell: Vector2i) -> bool:
@@ -125,9 +138,11 @@ func extent() -> float:
 	return size * CELL
 
 
-## How far across a ring is (0, the clearing), built or not.
-static func ring_extent(ring: int) -> float:
-	return RINGS[clampi(ring, 0, RINGS.size() - 1)] * CELL
+## How far across a ring is (0, the clearing), built or not, with the rings of
+## `ring_styles` (MazeStyle.defaults() if none are given).
+static func ring_extent(ring: int, ring_styles: Array[MazeStyle] = []) -> float:
+	var sizes := sizes_for(ring_styles if not ring_styles.is_empty() else MazeStyle.defaults())
+	return sizes[clampi(ring, 0, sizes.size() - 1)] * CELL
 
 
 ## Whether a point in the world is out past the exit.
@@ -182,7 +197,7 @@ func _outward(cell: Vector2i) -> Vector2i:
 	return Vector2i(0, signi(off.y))
 
 
-func _carve(loops: float) -> void:
+func _carve() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = maze_seed
 	var count := size * size
@@ -215,7 +230,7 @@ func _carve(loops: float) -> void:
 	]
 	for ring in range(1, rings + 1):
 		gates.append(ways_in)
-		_carve_ring(ring, ways_in, visited, rng, loops)
+		_carve_ring(ring, ways_in, visited, rng)
 		_measure()
 		# The way on: the cell on the ring's outside furthest round the walls
 		# from the way in.
@@ -237,43 +252,114 @@ func _carve(loops: float) -> void:
 	exit_side = exits.back()[1]
 
 
-## Grows one ring's passages from behind its ways in (a depth-first walk, which
-## makes long winding passages), then knocks a few walls through for loops. The
-## walk stays in its ring: the walls between rings stand but for the gates.
-func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: RandomNumberGenerator, loops: float) -> void:
+## Grows one ring's passages from behind its ways in, by the ring's MazeStyle: over
+## blocks of `span` x `span` cells, whose inside walls all come down (so a hall is
+## `span` cells wide), each new block joined to one already reached. The walk stays
+## in its ring: the walls between rings stand but for the gates.
+func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: RandomNumberGenerator) -> void:
+	var style: MazeStyle = styles[ring - 1]
+	var blocks := _blocks(ring, style.span)
+	var block_of: Dictionary = blocks[0]
+	var cells_of: Dictionary = blocks[1]
+	for block: Vector2i in cells_of:
+		for cell: Vector2i in cells_of[block]:
+			visited[index(cell)] = 1
+			for s: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+				if block_of.get(cell + s, NO_BLOCK) == block:
+					_open(cell, s)
+	var reached := {}
+	var heading := {}
+	var active: Array[Vector2i] = []
 	for way: Array in ways_in:
 		var from: Vector2i = way[0]
 		var step: Vector2i = way[1]
-		_open(from, step)
-		var start: Vector2i = from + step
-		if visited[index(start)] == 1:
+		var block: Vector2i = block_of[from + step]
+		# (a gate from the clearing as wide as the hall it opens into; from a ring, one cell)
+		if ring == 1:
+			for cell: Vector2i in cells_of[block]:
+				if in_clearing(cell - step):
+					_open(cell, -step)
+		else:
+			_open(from, step)
+		if not reached.has(block):
+			reached[block] = true
+			heading[block] = step
+			active.append(block)
+	while not active.is_empty():
+		# The newest block mostly (long passages), sometimes an older one (a branch).
+		var at := active.size() - 1
+		if rng.randf() < style.branching:
+			at = rng.randi_range(0, active.size() - 1)
+		var block: Vector2i = active[at]
+		var choices: Array[Vector2i] = []
+		for s: Vector2i in STEPS:
+			if cells_of.has(block + s) and not reached.has(block + s):
+				choices.append(s)
+		if choices.is_empty():
+			active.remove_at(at)
 			continue
-		visited[index(start)] = 1
-		var stack: Array[Vector2i] = [start]
-		while not stack.is_empty():
-			var cell: Vector2i = stack.back()
-			var choices: Array[Vector2i] = []
-			for s: Vector2i in STEPS:
-				var next := cell + s
-				if inside(next) and ring_of(next) == ring and visited[index(next)] == 0:
-					choices.append(s)
-			if choices.is_empty():
-				stack.pop_back()
-				continue
-			var pick := choices[rng.randi_range(0, choices.size() - 1)]
-			_open(cell, pick)
-			visited[index(cell + pick)] = 1
-			stack.push_back(cell + pick)
+		var pick: Vector2i = choices[rng.randi_range(0, choices.size() - 1)]
+		var was: Vector2i = heading[block]
+		if rng.randf() < style.straight and was in choices:
+			pick = was
+		_join(block, block + pick, block_of, cells_of)
+		reached[block + pick] = true
+		heading[block + pick] = pick
+		active.append(block + pick)
 
-	var cells := 0
+	# A few walls between halls knocked through, for loops.
+	var all: Array = cells_of.keys()
+	for i in int(all.size() * style.loops):
+		var block: Vector2i = all[rng.randi_range(0, all.size() - 1)]
+		var s := Vector2i(1, 0) if rng.randf() < 0.5 else Vector2i(0, 1)
+		if cells_of.has(block + s):
+			_join(block, block + s, block_of, cells_of)
+
+
+const NO_BLOCK := Vector2i(-1000, -1000)
+
+
+## The blocks of a ring, as [{cell: block}, {block: [cells]}]. Blocks are counted
+## across the square of the ring from its outside corner; across its depth they
+## are `span` cells (the last one taking any cells left over), and so along the
+## sides of what it is round.
+func _blocks(ring: int, span: int) -> Array:
+	var outer: int = ring_sizes[ring]
+	var inner: int = ring_sizes[ring - 1]
+	var band := (outer - inner) / 2
+	var low := (size - outer) / 2
+	var block_of := {}
+	var cells_of := {}
 	for i in size * size:
-		if ring_of(Vector2i(i % size, i / size)) == ring:
-			cells += 1
-	for i in int(cells * loops):
-		var cell := Vector2i(rng.randi_range(0, size - 1), rng.randi_range(0, size - 1))
-		var step := Vector2i(1, 0) if rng.randf() < 0.5 else Vector2i(0, 1)
-		if ring_of(cell) == ring and ring_of(cell + step) == ring:
-			_open(cell, step)
+		var cell := Vector2i(i % size, i / size)
+		if ring_of(cell) != ring:
+			continue
+		var block := Vector2i(_block_on(cell.x - low, band, inner, span), _block_on(cell.y - low, band, inner, span))
+		block_of[cell] = block
+		if not cells_of.has(block):
+			cells_of[block] = []
+		(cells_of[block] as Array).append(cell)
+	return [block_of, cells_of]
+
+
+## Which block, counted across a ring's square, the cells `at` in from its outside
+## edge are in: `band` cells deep each side of `inner` cells.
+static func _block_on(at: int, band: int, inner: int, span: int) -> int:
+	var deep := maxi(band / span, 1)
+	var along := maxi(inner / span, 1)
+	if at < band:
+		return mini(at / span, deep - 1)
+	if at < band + inner:
+		return deep + mini((at - band) / span, along - 1)
+	return deep + along + mini((at - band - inner) / span, deep - 1)
+
+
+## Opens the whole side between two blocks next to each other.
+func _join(a: Vector2i, b: Vector2i, block_of: Dictionary, cells_of: Dictionary) -> void:
+	var s := b - a
+	for cell: Vector2i in cells_of[a]:
+		if block_of.get(cell + s, NO_BLOCK) == b:
+			_open(cell, s)
 
 
 ## Steps from the clearing to each cell, round the walls.

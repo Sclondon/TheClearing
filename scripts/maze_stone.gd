@@ -151,6 +151,10 @@ uniform float clearing_half = 10.0;
 uniform float maze_half = 50.0;
 uniform float cell = 8.0;
 uniform float wall_thick = 2.6;
+// Where walls stand, grown out by a strip at their foot (MazeStone.wall_feet), over
+// a square `feet_half` metres each way from the middle; none if 0.
+uniform sampler2D feet : filter_linear, repeat_disable;
+uniform float feet_half = 0.0;
 
 varying vec3 place;
 
@@ -180,8 +184,10 @@ void fragment() {
 	// with grass coming back along the foot of the walls, where nobody walks.
 	float in_maze = smoothstep(clearing_half - 0.6, clearing_half + 0.6, out_x) * (1.0 - smoothstep(maze_half - 0.2, maze_half + 0.4, out_x));
 
-	vec2 off = abs(fract(at / cell + 0.5) - 0.5) * cell;
-	float by_wall = smoothstep(1.4, 0.3, cell * 0.5 - wall_thick * 0.5 - max(off.x, off.y) + patches(at * 0.8) * 0.7);
+	float by_wall = 0.0;
+	if (feet_half > 0.0) {
+		by_wall = smoothstep(0.35, 0.75, texture(feet, at / (2.0 * feet_half) + 0.5).r + (patches(at * 0.8) - 0.5) * 0.45);
+	}
 	float tufts = patches(at * 1.7) * 0.6 + patches(at * 5.0) * 0.4 * clamp(0.6 / pixel, 0.0, 1.0);
 	float grassy = 1.0 - in_maze * (1.0 - smoothstep(0.55, 0.75, by_wall * 0.7 + tufts * 0.6));
 	float tone = 0.85 + 0.3 * patches(at * 0.35) + (tufts - 0.5) * 0.25;
@@ -221,7 +227,9 @@ static func wall(height: float, built := true) -> ShaderMaterial:
 	return material
 
 
-static func ground(clearing_half: float, maze_half: float, wall_thick: float) -> ShaderMaterial:
+## `walls`: the boxes (MazePieces) on the ground whose feet grass grows along, if
+## known (see wall_feet). Without them there is none.
+static func ground(clearing_half: float, maze_half: float, wall_thick: float, walls: Array[MazePiece] = []) -> ShaderMaterial:
 	if _ground == null:
 		_ground = Shader.new()
 		_ground.code = GROUND_SHADER
@@ -231,4 +239,33 @@ static func ground(clearing_half: float, maze_half: float, wall_thick: float) ->
 	material.set_shader_parameter(&"maze_half", maze_half)
 	material.set_shader_parameter(&"cell", Maze.CELL)
 	material.set_shader_parameter(&"wall_thick", wall_thick)
+	if not walls.is_empty():
+		var half := maze_half + 4.0
+		material.set_shader_parameter(&"feet", wall_feet(walls, half))
+		material.set_shader_parameter(&"feet_half", half)
 	return material
+
+
+## A map of the ground `half` metres each way from the middle, white along the foot
+## of each of `walls` standing on the ground (and under it), black elsewhere.
+static func wall_feet(walls: Array[MazePiece], half: float) -> ImageTexture:
+	const STRIP := 1.2
+	var texels := mini(ceili(half * 2.0), 1024)
+	var per_metre := texels / (half * 2.0)
+	var image := Image.create_empty(texels, texels, false, Image.FORMAT_L8)
+	for piece in walls:
+		var where := piece.box_transform()
+		if where.origin.y > 0.5:
+			continue
+		var size := piece.box_size() * 0.5
+		var area := Rect2(Vector2(where.origin.x, where.origin.z), Vector2.ZERO)
+		for corner: Vector3 in [Vector3(-size.x, 0, -size.z), Vector3(size.x, 0, -size.z), Vector3(-size.x, 0, size.z), Vector3(size.x, 0, size.z)]:
+			var p := where * corner
+			area = area.expand(Vector2(p.x, p.z))
+		area = area.grow(STRIP)
+		var from := ((area.position + Vector2(half, half)) * per_metre).floor()
+		var to := ((area.end + Vector2(half, half)) * per_metre).ceil()
+		var texel_area := Rect2i(Vector2i(from), Vector2i(to - from)).intersection(Rect2i(0, 0, texels, texels))
+		if texel_area.has_area():
+			image.fill_rect(texel_area, Color.WHITE)
+	return ImageTexture.create_from_image(image)

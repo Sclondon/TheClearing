@@ -250,7 +250,7 @@ static func _quad(tool: SurfaceTool, p0: Vector3, p1: Vector3, p2: Vector3, p3: 
 
 
 func _ground() -> void:
-	var size := Maze.ring_extent(maze.rings + 1) + 80.0
+	var size := Maze.ring_extent(maze.rings + 1, maze.styles) + 80.0
 	var body := StaticBody3D.new()
 	body.name = "Ground"
 	var shape := BoxShape3D.new()
@@ -263,7 +263,9 @@ func _ground() -> void:
 	plane.size = Vector2(size, size)
 	var visual := MeshInstance3D.new()
 	visual.mesh = plane
-	visual.material_override = MazeStone.ground(maze.clearing * Maze.CELL * 0.5, maze.extent() * 0.5, WALL_THICK)
+	# (grass grows back along the foot of each wall, where nobody walks)
+	var boxes: Array[MazePiece] = layout.pieces(MazePiece.Kind.WALL) + layout.pieces(MazePiece.Kind.PIER) + layout.pieces(MazePiece.Kind.TERRACE)
+	visual.material_override = MazeStone.ground(maze.clearing * Maze.CELL * 0.5, maze.extent() * 0.5, WALL_THICK, boxes)
 	body.add_child(visual)
 	add_child(body)
 
@@ -349,11 +351,16 @@ static func beacon_light() -> Node3D:
 ## under it and beyond, so its edge is not seen.
 func _grass() -> void:
 	var half := maze.clearing * Maze.CELL * 0.5 - RING_THICK * 0.5 - FOOT.x - 0.2
-	var footprints: Array[Rect2] = features.footprints
-	Grass.field(self, Rect2(-half, -half, half * 2.0, half * 2.0), 1.0, {
+	var field := Rect2(-half, -half, half * 2.0, half * 2.0)
+	# (only the terraces in the field: it is asked of every tuft)
+	var footprints: Array[Rect2] = []
+	for footprint: Rect2 in features.footprints:
+		if footprint.grow(0.25).intersects(field):
+			footprints.append(footprint.grow(0.25))
+	Grass.field(self, field, 1.0, {
 		"mask": func(p: Vector2) -> float:
 			for footprint: Rect2 in footprints:
-				if footprint.grow(0.25).has_point(p):
+				if footprint.has_point(p):
 					return 0.0
 			return 1.0,
 		"ground": Color(0.13, 0.2, 0.09),
