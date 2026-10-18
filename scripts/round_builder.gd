@@ -67,6 +67,8 @@ func _ready() -> void:
 			if key[0] == 1:
 				made.set_shader_parameter(&"tile_size", Wall.LOOKS[MazeBuilder.GREAT_LOOK][1] * MazeBuilder.GREAT_TILE_SCALE)
 			MazeBuilder.moss(made, plan.rings[key[1]].style if key[1] < plan.rings.size() else null)
+			if key[0] != 1 and key[1] < plan.rings.size():
+				made.set_shader_parameter(&"tile_size", Wall.LOOKS[MazeBuilder.MAZE_LOOK][1] * plan.rings[key[1]].style.wall_texture_scale)
 			materials[[key[0], key[1]]] = made
 	for key: Array in _parts:
 		var part: Array = _parts[key]

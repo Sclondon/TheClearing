@@ -50,6 +50,12 @@ extends Resource
 ## the walls' faces (0: none).
 @export_range(0.0, 8.0) var wall_moss_height := 1.2
 @export_range(0.0, 1.0) var wall_moss_patches := 0.12
+## How many times bigger than the concrete texture's own size it is laid on the
+## maze walls and their ledges (walls this high want it big; the great walls
+## between sections have their own, bigger still).
+@export_range(0.5, 12.0) var wall_texture_scale := 4.0
+## The share of wall faces with short grass along their foot, in runs of a few metres.
+@export_range(0.0, 1.0) var wall_grass_share := 0.25
 
 @export_group("Hallways")
 ## The chance a passage goes on straight when it can.

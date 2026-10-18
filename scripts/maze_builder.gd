@@ -166,7 +166,11 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 			if key[0] == GREAT_LOOK:
 				# (the great walls are so big that their concrete is drawn bigger too)
 				materials[kind].set_shader_parameter(&"tile_size", Wall.LOOKS[GREAT_LOOK][1] * GREAT_TILE_SCALE)
-			moss(materials[kind], maze.styles[key[2] - 1] if key[2] - 1 < maze.styles.size() else null)
+			var style: MazeStyle = maze.styles[key[2] - 1] if key[2] - 1 < maze.styles.size() else null
+			moss(materials[kind], style)
+			# (the maze walls' concrete laid on as big as the section says: MazeStyle.wall_texture_scale)
+			if style and key[0] != GREAT_LOOK:
+				materials[kind].set_shader_parameter(&"tile_size", Wall.LOOKS[key[0]][1] * style.wall_texture_scale)
 		var walls := MeshInstance3D.new()
 		walls.mesh = (chunks[key] as SurfaceTool).commit()
 		walls.material_override = materials[kind]
@@ -643,7 +647,8 @@ func _undergrowth(pieces: MazeLayout) -> void:
 		if ring < 1 or ring > maze.rings or maze.solid.has(cell) or maze.entrances.has(cell):
 			continue
 		var thick: float = maze.styles[ring - 1].plant_density
-		if thick <= 0.0:
+		var grassy: float = maze.styles[ring - 1].wall_grass_share
+		if thick <= 0.0 and grassy <= 0.0:
 			continue
 		for step: Vector2i in Maze.STEPS:
 			if not maze.blocked(cell, step):
@@ -655,6 +660,16 @@ func _undergrowth(pieces: MazeLayout) -> void:
 			var style: MazeStyle = maze.styles[ring - 1]
 			if style.mezzanine_height > 0.0 and not maze.ring_wall(cell, step) and maze.ring_of(cell + step) == ring and not maze.solid.has(cell + step):
 				face -= s * style.mezzanine_depth
+			# Short grass along the foot of some faces: a run of close clumps a few metres long.
+			if rng.randf() < grassy:
+				var from := rng.randf_range(-0.5, 0.2) * Maze.CELL
+				var to := minf(from + rng.randf_range(3.0, 10.0), Maze.CELL * 0.5)
+				var run := from
+				while run < to:
+					var at := face - s * rng.randf_range(0.15, 0.7) + side * run
+					if not _on_terrace(at):
+						undergrowth.add(Undergrowth.Kind.GRASS, _plant(at, rng, Undergrowth.Kind.GRASS))
+					run += rng.randf_range(0.55, 0.85)
 			var along := -Maze.CELL * 0.5
 			while along < Maze.CELL * 0.5:
 				along += rng.randf_range(0.7, 1.8)
@@ -697,7 +712,7 @@ func _undergrowth(pieces: MazeLayout) -> void:
 
 ## Where a plant of `kind` stands at `at` (on the ground there), turned and sized at random.
 func _plant(at: Vector3, rng: RandomNumberGenerator, kind: Undergrowth.Kind) -> Transform3D:
-	var sizes := {Undergrowth.Kind.FERN: Vector2(1.1, 2.0), Undergrowth.Kind.BUSH: Vector2(0.9, 1.8), Undergrowth.Kind.MOSS: Vector2(1.0, 2.4), Undergrowth.Kind.TUFT: Vector2(1.0, 1.7)}
+	var sizes := {Undergrowth.Kind.FERN: Vector2(1.1, 2.0), Undergrowth.Kind.BUSH: Vector2(0.9, 1.8), Undergrowth.Kind.MOSS: Vector2(1.0, 2.4), Undergrowth.Kind.TUFT: Vector2(1.0, 1.7), Undergrowth.Kind.GRASS: Vector2(0.8, 1.3)}
 	var range_of: Vector2 = sizes[kind]
 	var big := rng.randf_range(range_of.x, range_of.y)
 	at.y = maze.ground_height(at)

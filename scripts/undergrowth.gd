@@ -12,7 +12,7 @@ extends Node3D
 ## Where they go is MazeBuilder's to say (from the maze's styles), so every copy
 ## of the game in a room has the same.
 
-enum Kind { FERN, BUSH, MOSS, TUFT }
+enum Kind { FERN, BUSH, MOSS, TUFT, GRASS }
 
 const SQUARE := 40.0
 const FAR := 110.0
@@ -71,6 +71,7 @@ static func mesh(kind: Kind) -> ArrayMesh:
 			Kind.BUSH: _meshes[kind] = _bush(rng)
 			Kind.MOSS: _meshes[kind] = _moss(rng)
 			Kind.TUFT: _meshes[kind] = _tuft(rng)
+			Kind.GRASS: _meshes[kind] = _short_grass(rng)
 	return _meshes[kind]
 
 
@@ -163,6 +164,23 @@ static func _moss(rng: RandomNumberGenerator) -> ArrayMesh:
 			var k2 := (k + 1) % around
 			_tri(tool, points[r][k], points[r + 1][k], points[r + 1][k2], shade)
 			_tri(tool, points[r][k], points[r + 1][k2], points[r][k2], shade)
+	return tool.commit()
+
+
+## A clump of short grass, ankle high, about half a metre across: many fine
+## blades, the clumps set close in runs along the foot of a wall.
+static func _short_grass(rng: RandomNumberGenerator) -> ArrayMesh:
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for b in 34:
+		var turn := rng.randf() * TAU
+		var root := Vector3(cos(turn), 0.0, sin(turn)) * rng.randf_range(0.0, 0.38)
+		var lean := Vector3(cos(turn), 0.0, sin(turn)) * rng.randf_range(0.02, 0.1)
+		var high := rng.randf_range(0.18, 0.42)
+		var side := Vector3(-sin(turn + 1.3), 0.0, cos(turn + 1.3)) * 0.012
+		# (paler than the moss it grows by, so that it reads against it)
+		var colour := Color(0.24, 0.28, 0.13).lerp(Color(0.38, 0.4, 0.22), rng.randf())
+		_tri(tool, root - side, root + side, root + lean + Vector3.UP * high, colour)
 	return tool.commit()
 
 
