@@ -1,0 +1,6 @@
+# Chickens: the flock (look and behaviour), the bird's mesh, its shader, the model and its Blender script
+creatures/chicken/chicken.gdshader
+creatures/chicken/chicken_body.gd
+creatures/chicken/chicken_flock.gd
+creatures/chicken/models/chicken.glb
+creatures/chicken/tools/build_chicken.py
