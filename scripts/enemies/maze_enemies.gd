@@ -6,7 +6,7 @@ extends Node3D
 ## `populate(maze, seed)` puts Apophis and packs of mummies in the passages, out
 ## of the clearing and well away from it, and `add_hunters(style, seed)` the
 ## rest of what a ring's MazeStyle asks for (ghouls, centipedes, spiders,
-## abominations, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms: each kind's own
+## abominations, flesh mounds and amalgams, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms: each kind's own
 ## script is in scripts/enemies/, its look and motion in creatures/). The same maze and seed always give the
 ## same ones in the same places in the same order, so every machine in a room
 ## can build the same set without it being sent; then one machine (the host)
@@ -86,6 +86,7 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ##
 ## - Ghouls stand in dead ends, facing out. Centipedes lie in dead ends too.
 ## - Slime walls fill straight halls, set across them.
+## - Flesh mounds wait in halls, as abominations do; amalgams in any passage.
 ## - Spiders, abominations and bat colonies wait in any passage well out of the
 ##   clearing (a spider climbs the nearest high wall; bats roost on one).
 ## - Fish people lie each in a pool of its own in a hall (as slime walls do),
@@ -141,6 +142,18 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
 		taken.append(cell)
 		add(Abomination.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.flesh_mounds:
+		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		taken.append(cell)
+		var mound := MazeFleshMound.new()
+		mound.bodies = rng.randi_range(7, 8)
+		add(mound, cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.amalgams:
+		var cell := _far_from(taken, lairs, rng)
+		taken.append(cell)
+		var amalgam := MazeFleshMound.new()
+		amalgam.bodies = rng.randi_range(3, 4)
+		add(amalgam, cell, rng.randf_range(-PI, PI), rng.randi())
 	for i in style.bat_colonies:
 		var cell := _far_from(taken, lairs, rng)
 		taken.append(cell)
