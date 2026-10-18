@@ -24,12 +24,13 @@ const SNAKE_AHEAD := 20.0
 ## how far ahead (the big ones further off, like the snake).
 const HUNTERS := [
 	["GHOUL", "ghoul", AHEAD], ["CENTIPEDE", "centipede", SNAKE_AHEAD], ["SPIDER", "spider", AHEAD],
-	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
+	["MEAT BEAST", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD],
 	["BEETLES", "beetles", AHEAD],
 	["FISH PERSON", "fish_person", AHEAD],
 	["ANGEL", "angel", SNAKE_AHEAD],
 	["FROG", "frog", AHEAD], ["FROG SWARM", "frog_swarm", AHEAD],
+	["AMALGAM", "amalgam", AHEAD], ["ABOMINATION", "flesh_mound", SNAKE_AHEAD],
 ]
 
 var world: World
@@ -191,6 +192,10 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = MazeBaboon.troop(5)
 		"dogs":
 			made = MazeDog.pack_of(4, randi())
+		"amalgam":
+			made = [_flesh(3)]
+		"flesh_mound":
+			made = [_flesh(8)]
 		"aliens":
 			made = [Alien.new(), Alien.new()]
 		"beetles":
@@ -344,3 +349,10 @@ func _button(text: String, pressed: Callable) -> Button:
 		button.add_theme_stylebox_override(state, box)
 	button.pressed.connect(pressed)
 	return button
+
+
+## A flesh mound of `count` bodies (an amalgam, small; or the big one).
+func _flesh(count: int) -> MazeFleshMound:
+	var mound := MazeFleshMound.new()
+	mound.bodies = count
+	return mound

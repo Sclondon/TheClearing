@@ -1,0 +1,8 @@
+# The flesh mound: three scripts, two models, and the Blender script that makes the models
+# (it needs the character controller's boy: models/boy.glb, boy_lo.glb)
+creatures/flesh_mound/flesh_mound.gd
+creatures/flesh_mound/flesh_mound_look.gd
+creatures/flesh_mound/flesh_parts.gd
+creatures/flesh_mound/models/parts.glb
+creatures/flesh_mound/models/parts_lo.glb
+creatures/flesh_mound/tools/build_parts.py

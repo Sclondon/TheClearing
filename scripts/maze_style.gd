@@ -143,6 +143,11 @@ extends Resource
 @export_range(0, 3) var frogs := 1
 ## Swarms of small frogs, each in a muddy pool in a dead end.
 @export_range(0, 3) var frog_swarms := 1
+## Amalgams: three or four bodies grown together, that shamble and cartwheel (and
+## grow, absorbing whom they catch and merging when they meet).
+@export_range(0, 4) var amalgams := 2
+## Flesh mounds: many bodies grown together into a mound that nearly fills a hall.
+@export_range(0, 3) var flesh_mounds := 1
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
