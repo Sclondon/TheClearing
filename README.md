@@ -60,7 +60,9 @@ from the seed. Generate again replaces everything in the layout.
   meet; built of real blocks (each a chamfered slab a little proud or sunk, with joints between) out to 110 m
   and plain boxes beyond, in squares of 70 m so that what is off screen is not drawn, with plain boxes for shadows;
   a box for each piece to bump into. The next ring's outside wall stands
-  unbroken beyond the last ring built, with open ground up to it. The ground; stands of pines in the clearing
+  unbroken beyond the last ring built, with open ground up to it. The ground, and over the clearing its gentle
+  hills (`ClearingStyle`: a mesh and a heightmap to walk on, `MazeBuilder.hills`); stands of pines in the clearing
+  (none in its middle, dense woods in one corner)
   and a few past the last ring (GameCommon's pine-tree); real grass over the clearing (GameCommon's
   grass: knee-high blades that the wind moves and the players push aside); the light past the exit.
 - `scripts/maze_features.gd` (`MazeFeatures`): the ways up, chosen from the seed. Terraces of stone against the walls
@@ -128,6 +130,7 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 node tools/dev_relay.mjs <scareathon-v3/server> 3111      # local rooms (needs server/node_modules)
 sh tools/coop_test.sh                                     # two copies in one room against it
 "$G" --path . --resolution 720x1280 -s res://tools/shots.gd -- <folder>   # pictures to look at
+"$G" --path . --resolution 720x1280 -s res://tools/clearing_shots.gd -- <folder> [seed]   # the clearing: hills, woods
 "$G" --headless --path . --export-release "Web" build/index.html
 ```
 

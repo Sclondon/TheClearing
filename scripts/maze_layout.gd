@@ -25,6 +25,9 @@ extends Node3D
 ## its walls. Empty: the game's own (MazeStyle.defaults()), which Generate fills
 ## in here to be changed.
 @export var styles: Array[MazeStyle] = []
+## How the clearing is made (ClearingStyle): its level middle, its hills and its
+## woods. Empty: the game's own, which Generate fills in here to be changed.
+@export var clearing_style: ClearingStyle
 ## Whether the game plays this one when it is in res://mazes/.
 @export var playable := true
 ## In the editor, whether it is lit and misted as in the game (off: the editor's
@@ -69,6 +72,10 @@ func _show_in_editor() -> void:
 	ground.material_override = MazeStone.ground(Maze.CLEARING * Maze.CELL * 0.5, Maze.ring_extent(rings, styles) * 0.5, MazeBuilder.WALL_THICK)
 	add_child(ground, false, Node.INTERNAL_MODE_BACK)
 	_editor_shown.append(ground)
+	if clearing_style and clearing_style.hills > 0.0:
+		var field := MazeBuilder.hills(clearing_style, maze_seed, ground.material_override)
+		add_child(field, false, Node.INTERNAL_MODE_BACK)
+		_editor_shown.append(field)
 	if game_light and open.find_children("*", "WorldEnvironment", true, true).is_empty():
 		var before := get_child_count(true)
 		MazeLight.put(self, true)
@@ -82,7 +89,9 @@ func generate() -> void:
 	# (the game's own ring styles, filled in to be changed here, ring by ring)
 	if styles.is_empty():
 		styles = MazeStyle.defaults().duplicate()
-	lay_out(Maze.generate(maze_seed, rings, styles))
+	if clearing_style == null:
+		clearing_style = ClearingStyle.new()
+	lay_out(Maze.generate(maze_seed, rings, styles, clearing_style))
 
 
 ## Takes away every piece.
@@ -110,7 +119,7 @@ func pieces(kind: MazePiece.Kind) -> Array[MazePiece]:
 ## The maze as it now stands: the rings, clearing and gates of the seed, with
 ## the walls where the wall and pier pieces are.
 func plan() -> Maze:
-	var maze := Maze.generate(maze_seed, rings, styles)
+	var maze := Maze.generate(maze_seed, rings, styles, clearing_style)
 	var blocks: Array[MazePiece] = pieces(MazePiece.Kind.WALL) + pieces(MazePiece.Kind.PIER)
 	maze.set_walls(func(cell: Vector2i, step: Vector2i) -> bool:
 		var on_line := maze.world(cell) + Vector3(step.x, 0.0, step.y) * Maze.CELL * 0.5 + Vector3.UP * 2.0
@@ -125,6 +134,7 @@ func plan() -> Maze:
 func lay_out(maze: Maze) -> void:
 	maze_seed = maze.maze_seed
 	rings = maze.rings
+	clearing_style = maze.clearing_style
 	for run: Array in _runs(maze):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, Vector3(run[0].x, 0.0, run[0].z)), {"size": run[1], "great": run[2]})
 	for run: Array in _next_ring(maze):
@@ -397,8 +407,9 @@ func _trees(maze: Maze) -> void:
 	rng.seed = maze.maze_seed
 	var gate: Array = maze.gates[0][0]
 	var edge := maze.clearing * Maze.CELL * 0.5 - maze.wall_thick(gate[0], gate[1]) * 0.5
+	var look := maze.clearing_style
 	var points: Array = []
-	# (a stand for each cell along a side, and as many trees out in the open)
+	# (a stand for each cell along a side, and as many trees out in the open, none in the glade in the middle)
 	for stand in maze.clearing:
 		# Somewhere along the wall, not in front of a gate (the middle of a side).
 		var side := rng.randi() % 4
@@ -407,18 +418,30 @@ func _trees(maze: Maze) -> void:
 		var middle := _on_side(side, along, edge - into)
 		for i in rng.randi_range(3, 6):
 			var p := middle + Vector3(rng.randf_range(-6.0, 6.0), 0.0, rng.randf_range(-6.0, 6.0))
-			if maxf(absf(p.x), absf(p.z)) < edge - 3.0 and p.length() > 12.0:
+			if maxf(absf(p.x), absf(p.z)) < edge - 3.0 and p.length() > look.glade:
 				points.append(p)
 	for i in maze.clearing:
 		var p := Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.0, 1.0)) * (edge - 6.0)
-		if p.length() > 14.0:
+		if p.length() > look.glade:
 			points.append(p)
+	# Dense woods in one corner, thinning out towards their edge.
+	if look.woods > 0.0:
+		var corner := Vector3(1.0 if rng.randf() < 0.5 else -1.0, 0.0, 1.0 if rng.randf() < 0.5 else -1.0)
+		var steps := ceili(look.woods_reach / look.spacing)
+		for a in steps:
+			for b in steps:
+				var p := corner * (Vector3.ONE * (edge - 3.0) - (Vector3(a, 0.0, b) + Vector3(rng.randf(), 0.0, rng.randf()) * 0.8) * look.spacing)
+				var deep := 1.0 - (corner * edge - p).length() / look.woods_reach
+				if p.length() > look.glade and rng.randf() < look.woods * smoothstep(0.0, 0.35, deep):
+					points.append(p)
 	var built := maze.extent() * 0.5 + 6.0
 	var next := Maze.ring_extent(maze.rings + 1, maze.styles) * 0.5 - 6.0
 	for i in 60:
 		var side := rng.randi() % 4
 		points.append(_on_side(side, rng.randf_range(-next, next), rng.randf_range(built, next)))
 	for p: Vector3 in points:
+		# (on the hills, a little sunk so that no root stands out of a slope)
+		p.y = maze.ground_height(p) - 0.15
 		var big := rng.randf_range(0.8, 1.5)
 		_add(MazePiece.Kind.TREE, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * big), p), {})
 

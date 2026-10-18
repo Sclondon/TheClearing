@@ -33,6 +33,8 @@ var clearing := CLEARING
 ## the clearing and then across the outside of each ring (all odd).
 var styles: Array[MazeStyle] = []
 var ring_sizes: Array[int] = []
+## How the clearing is made: its hills and its woods (see ground_height).
+var clearing_style: ClearingStyle
 ## How many rings are built.
 var rings := 1
 var maze_seed := 0
@@ -62,9 +64,10 @@ static func seed_for(code: String, round_number: int) -> int:
 
 ## Makes the maze for `seed_value`, with `built` rings round the clearing, each
 ## made as its style says (MazeStyle.defaults() if none are given).
-static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] = []) -> Maze:
+static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] = [], clearing_look: ClearingStyle = null) -> Maze:
 	var maze := Maze.new()
 	maze.styles = ring_styles if not ring_styles.is_empty() else MazeStyle.defaults()
+	maze.clearing_style = clearing_look if clearing_look else ClearingStyle.new()
 	maze.ring_sizes = sizes_for(maze.styles)
 	maze.rings = clampi(built, 1, maze.styles.size())
 	maze.size = maze.ring_sizes[maze.rings]
@@ -139,6 +142,12 @@ func _thick_in(ring: int) -> float:
 	if ring < 1 or ring > styles.size():
 		return 0.0
 	return styles[ring - 1].wall_thick
+
+
+## How high the ground is at a point (its x and z): the clearing's gentle hills
+## (ClearingStyle.height_at); 0 everywhere else.
+func ground_height(point: Vector3) -> float:
+	return clearing_style.height_at(point.x, point.z, maze_seed)
 
 
 ## How high the wall on the `step` side of `cell` is: a wall between rings as

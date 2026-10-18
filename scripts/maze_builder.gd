@@ -267,7 +267,76 @@ func _ground() -> void:
 	var boxes: Array[MazePiece] = layout.pieces(MazePiece.Kind.WALL) + layout.pieces(MazePiece.Kind.PIER) + layout.pieces(MazePiece.Kind.TERRACE)
 	visual.material_override = MazeStone.ground(maze.clearing * Maze.CELL * 0.5, maze.extent() * 0.5, WALL_THICK, boxes)
 	body.add_child(visual)
+	# The clearing's hills over it, and a heightmap to walk on them.
+	if maze.clearing_style.hills > 0.0:
+		var field := hills(maze.clearing_style, maze.maze_seed, visual.material_override)
+		body.add_child(field)
+		var heights := HeightMapShape3D.new()
+		var across := field.get_meta(&"points") as int
+		heights.map_width = across
+		heights.map_depth = across
+		var data := PackedFloat32Array()
+		data.resize(across * across)
+		var half := (across - 1) * HILL_STEP * 0.5
+		for j in across:
+			for i in across:
+				# (in heightmap units: the shape is scaled up by HILL_STEP)
+				data[i + j * across] = maze.ground_height(Vector3(i * HILL_STEP - half, 0.0, j * HILL_STEP - half)) / HILL_STEP
+		heights.map_data = data
+		var on_hills := CollisionShape3D.new()
+		on_hills.shape = heights
+		on_hills.scale = Vector3.ONE * HILL_STEP
+		body.add_child(on_hills)
 	add_child(body)
+
+
+## Metres between the points of the clearing's ground over the hills.
+const HILL_STEP := 3.0
+## How far the drawn hills stand over the ground walked on (so that where they
+## are level they are not drawn into the flat ground under them).
+const HILL_LIFT := 0.03
+
+
+## The clearing's ground, over its hills (ClearingStyle.height_at), drawn in
+## `material`: a grid of points HILL_STEP apart (how many along a side is its
+## meta "points"), level with the flat ground at its edges.
+static func hills(look: ClearingStyle, seed_value: int, material: Material) -> MeshInstance3D:
+	var across := ceili(Maze.CLEARING * Maze.CELL / HILL_STEP) + 1
+	var half := (across - 1) * HILL_STEP * 0.5
+	var heights := PackedFloat32Array()
+	heights.resize(across * across)
+	for j in across:
+		for i in across:
+			heights[i + j * across] = look.height_at(i * HILL_STEP - half, j * HILL_STEP - half, seed_value)
+	var points := PackedVector3Array()
+	var normals := PackedVector3Array()
+	points.resize(across * across)
+	normals.resize(across * across)
+	for j in across:
+		for i in across:
+			var at := i + j * across
+			points[at] = Vector3(i * HILL_STEP - half, heights[at] + HILL_LIFT, j * HILL_STEP - half)
+			var dx := heights[mini(i + 1, across - 1) + j * across] - heights[maxi(i - 1, 0) + j * across]
+			var dz := heights[i + mini(j + 1, across - 1) * across] - heights[i + maxi(j - 1, 0) * across]
+			normals[at] = Vector3(-dx, 2.0 * HILL_STEP, -dz).normalized()
+	var order := PackedInt32Array()
+	for j in across - 1:
+		for i in across - 1:
+			var a := i + j * across
+			order.append_array([a, a + 1, a + across, a + 1, a + across + 1, a + across])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = points
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_INDEX] = order
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var shown := MeshInstance3D.new()
+	shown.name = "Hills"
+	shown.mesh = mesh
+	shown.material_override = material
+	shown.set_meta(&"points", across)
+	return shown
 
 
 ## The pines, each where a tree piece stands, as big as its scale: a MultiMesh for
@@ -364,6 +433,7 @@ func _grass() -> void:
 				if footprint.has_point(p):
 					return 0.0
 			return 1.0,
+		"height": func(p: Vector2) -> float: return maze.ground_height(Vector3(p.x, 0.0, p.y)) + HILL_LIFT,
 		"ground": Color(0.13, 0.2, 0.09),
 		# (knee high, dark and damp: the clearing is as grey as the rest)
 		"blade_height": 0.4,

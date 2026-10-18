@@ -180,6 +180,8 @@ uniform sampler2D feet : filter_linear_mipmap, repeat_disable;
 uniform float feet_half = 0.0;
 
 varying vec3 place;
+// Which way the ground faces, in the world (up but on the clearing's hills).
+varying vec3 ground_up;
 
 // Smooth noise, a number at random on every whole metre (of p) and eased between
 // them. (Read from a picture of numbers at random, drawn smoothly between its
@@ -193,6 +195,7 @@ float patches(vec2 p) {
 
 void vertex() {
 	place = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	ground_up = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
 // How a height laid over level ground (in metres) slopes, along x and z: from how
@@ -289,7 +292,7 @@ void fragment() {
 		still = slope_of(stir, across, down);
 	}
 	slope = mix(slope, still, pool);
-	vec3 up = normalize(vec3(-slope.x, 1.0, -slope.y));
+	vec3 up = normalize(ground_up + vec3(-slope.x, 0.0, -slope.y));
 
 	// The moss, and the clearing's grass beyond the maze.
 	// (in cushions: lighter on their tops, the dirt between them dark)

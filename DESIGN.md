@@ -57,7 +57,9 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
 
 ### The clearing
 
-- 41 cells across: about 574 m. Open grass, stands of pines round its edge.
+- 41 cells across: about 574 m. Open grass, stands of pines round its edge and dense woods in one corner (chosen by
+  the seed), but no trees within 95 m of the middle. The middle is level (70 m out); past it very gentle hills, up to
+  4 m, level again near the walls. All set by `ClearingStyle` (`scripts/clearing_style.gd`, `MazeLayout.clearing_style`).
 - Its wall is a special case, far thicker than the grid: about 54 m of solid stone (the first ring's `rampart`), 92
   m high (`inner_height`), twice the other walls between rings. Nothing grows or stands on it.
 - Four gates, one in the middle of each side, each a slot about 2 m wide (about three of him) running the whole way

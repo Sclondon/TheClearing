@@ -47,6 +47,22 @@ func _run() -> void:
 		tallest = maxf(tallest, piece.size.y)
 	check("the clearing's wall twice as high", is_equal_approx(tallest, MazeBuilder.RING_HEIGHT * 2.0), "(%.0f m)" % tallest)
 
+	# The clearing: no trees in the middle, gentle hills he stands on, level in the middle.
+	var nearest := INF
+	for piece in world.get_node("Maze").layout.pieces(MazePiece.Kind.TREE):
+		nearest = minf(nearest, Vector2(piece.position.x, piece.position.z).length())
+	check("no trees in the middle", nearest > maze.clearing_style.glade - 0.01, "(nearest %.0f m)" % nearest)
+	check("level in the middle", maze.ground_height(Vector3(20.0, 0.0, -30.0)) == 0.0)
+	var top := Vector3.ZERO
+	for i in 4000:
+		var p := Vector3(randf_range(-250.0, 250.0), 0.0, randf_range(-250.0, 250.0))
+		if maze.ground_height(p) > maze.ground_height(top):
+			top = p
+	world.put_player(top + Vector3.UP * (maze.ground_height(top) + 0.5), 0.0)
+	await frames(40)
+	check("stands on a hill", absf(player.global_position.y - maze.ground_height(top)) < 0.3 and maze.ground_height(top) > 1.0, "(%.2f m, the hill %.2f)" % [player.global_position.y, maze.ground_height(top)])
+	world.put_player(world.spawn(0), world.spawn_yaw(0))
+
 	var picture := ""
 	for arg in OS.get_cmdline_user_args():
 		if arg.ends_with(".png"):
