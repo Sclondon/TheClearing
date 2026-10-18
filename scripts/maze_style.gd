@@ -139,6 +139,10 @@ extends Resource
 @export_range(0, 4) var beetle_swarms := 2
 ## Fish people, each lurking in a pool of black water in a hall.
 @export_range(0, 6) var fish_people := 2
+## Giant toads, each squatting in a dead end.
+@export_range(0, 3) var frogs := 1
+## Swarms of small frogs, each in a muddy pool in a dead end.
+@export_range(0, 3) var frog_swarms := 1
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []

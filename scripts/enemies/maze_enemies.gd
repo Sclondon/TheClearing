@@ -6,7 +6,7 @@ extends Node3D
 ## `populate(maze, seed)` puts Apophis and packs of mummies in the passages, out
 ## of the clearing and well away from it, and `add_hunters(style, seed)` the
 ## rest of what a ring's MazeStyle asks for (ghouls, centipedes, spiders,
-## abominations, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels: each kind's own
+## abominations, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms: each kind's own
 ## script is in scripts/enemies/, its look and motion in creatures/). The same maze and seed always give the
 ## same ones in the same places in the same order, so every machine in a room
 ## can build the same set without it being sent; then one machine (the host)
@@ -94,6 +94,8 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ## - Beetle swarms wait in cracks at the foot of a wall, in a dead end and a
 ##   hall in turn.
 ## - Angels hang over the middle of a straight hall (where they see furthest).
+## - Giant toads squat in dead ends, facing out; a frog swarm's muddy pool is
+##   at the end of a dead end too.
 func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	var nav := MazeNav.new(maze)
 	var rng := RandomNumberGenerator.new()
@@ -168,6 +170,16 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		if along == Vector2i.ZERO:
 			along = Vector2i(0, 1)
 		add(MazeAngel.new(), cell, atan2(float(along.x), float(along.y)), rng.randi())
+	for i in style.frogs:
+		# (a giant toad squats in a dead end, facing out)
+		var cell := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(MazeFrog.new(), cell, _facing_out(cell), rng.randi())
+	for i in style.frog_swarms:
+		# (a muddy pool of frogs at the end of a dead end)
+		var cell := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(MazeFrogSwarm.new(), cell, _facing_out(cell), rng.randi())
 
 
 ## Puts a pack round `middle`: one to a cell within two steps of it, and two
