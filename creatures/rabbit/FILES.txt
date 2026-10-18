@@ -1,0 +1,16 @@
+# Rabbits, hares and jackalopes, and the rabbits' warrens: their look, every move and their sounds, for any game (no thinking)
+creatures/rabbit/rabbit.gd
+creatures/rabbit/rabbit_look.gd
+creatures/rabbit/rabbit_rig.gd
+creatures/rabbit/rabbit_warren.gd
+creatures/rabbit/models/rabbit.glb
+creatures/rabbit/models/rabbit_lo.glb
+creatures/rabbit/models/hare.glb
+creatures/rabbit/models/hare_lo.glb
+creatures/rabbit/models/jackalope.glb
+creatures/rabbit/models/jackalope_lo.glb
+creatures/rabbit/models/warren_mound.glb
+creatures/rabbit/models/warren_mound_lo.glb
+creatures/rabbit/models/warren_bank.glb
+creatures/rabbit/models/warren_bank_lo.glb
+creatures/rabbit/tools/build_rabbit.py
