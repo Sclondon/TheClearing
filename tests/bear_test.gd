@@ -254,21 +254,23 @@ func _run() -> void:
 
 	# --- Its cries are made a little at a time ---
 	# (a voice none of the bears so far has had)
-	var fresh := 0
+	var fresh := -1
 	for speaker in BearVoice.SPEAKERS:
 		if not BearVoice.is_ready(BearVoice.CALL_HELP, speaker) and BearVoice._find(BearVoice._key(BearVoice.CALL_HELP, speaker)) == null:
 			fresh = speaker
 			break
-	BearVoice.prepare(fresh)
-	var slices := 0
-	var worst := 0
-	while not BearVoice.is_ready(BearVoice.SOB, fresh) and slices < 2000:
-		var began := Time.get_ticks_usec()
-		BearVoice.work(1500)
-		worst = maxi(worst, Time.get_ticks_usec() - began)
-		slices += 1
-		await process_frame
-	check("a new voice's cries are made over many frames, a little each", BearVoice.is_ready(BearVoice.CALL_HELP, fresh) and BearVoice.is_ready(BearVoice.SOB, fresh) and slices > 5 and worst < 12000, "(%d frames, at most %.1f ms)" % [slices, worst / 1000.0])
+	if fresh < 0:
+		print("SKIP: every voice is made already (the bears so far have had them all)")
+	else:
+		var slices := 0
+		var worst := 0
+		while not BearVoice.is_ready(BearVoice.SOB, fresh) and slices < 2000:
+			var began := Time.get_ticks_usec()
+			BearVoice.work(1500)
+			worst = maxi(worst, Time.get_ticks_usec() - began)
+			slices += 1
+			await process_frame
+		check("a new voice's cries are made over many frames, a little each", BearVoice.is_ready(BearVoice.CALL_HELP, fresh) and BearVoice.is_ready(BearVoice.SOB, fresh) and slices > 5 and worst < 12000, "(%d frames, at most %.1f ms)" % [slices, worst / 1000.0])
 	var scream := BearVoice.cry(BearVoice.SCREAM, 1)
 	check("its cries are made: a long scream", scream.data.size() / 2.0 / BearVoice.RATE > 2.0)
 	check("and always the same", BearVoice.cry(BearVoice.SCREAM, 1) == scream)

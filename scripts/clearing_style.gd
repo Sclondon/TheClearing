@@ -132,6 +132,12 @@ var entrance_spots: Array = []
 ## Dragonflies over the marsh (Insects), about this many in all, in patches
 ## along its pools, perching on the bulrushes.
 @export_range(0, 120) var marsh_dragonflies := 36
+## Clouds of fireflies (Insects: FireflyField) at dusk and through the night: over the tall grass,
+## in the woods, over the marsh and out in the meadow.
+@export_range(0, 80) var firefly_clouds := 36
+## Griffinflies (MazeGriffinfly: giant dragonflies) hunting over the marsh; they buzz and knock
+## you down, never catch. None by default: the clearing is safe.
+@export_range(0, 4) var marsh_griffinflies := 0
 ## Clouds of moths out over the grass, in the evening and through the night (Insects).
 @export_range(0, 8) var dusk_moth_clouds := 3
 ## Packs of coyotes out in the meadow (Wildlife: tame, they stare, shadow, yip and

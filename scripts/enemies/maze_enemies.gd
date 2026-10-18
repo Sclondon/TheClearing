@@ -360,6 +360,33 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		taken.append(cell)
 		var along := _straight(cell)
 		add(MazeHydra.new(), cell, atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI), rng.randi())
+	for i in style.bears:
+		# (it prowls the halls: put in one, far from the rest)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeBear.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.dimetrodons:
+		# (it basks on the open ground of a hall, side on to the sun)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeDimetrodon.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.griffinfly_pairs:
+		# (a pair holds a stretch of halls: the first over a fish person's pool, if there is one)
+		var cell := _far_from(taken, some_halls, rng)
+		for enemy in enemies:
+			if i == 0 and enemy is MazeFishPerson:
+				cell = maze.cell_at(enemy.global_position)
+		taken.append(cell)
+		for k in 2:
+			add(MazeGriffinfly.new(), cell, rng.randf_range(-PI, PI), rng.randi(), Vector3(rng.randf_range(-3.0, 3.0), 0.0, rng.randf_range(-3.0, 3.0)))
+	# Out past the square maze: brachiosaurs in the desert and the wide round halls,
+	# and dimetrodons basking in the desert.
+	for spot: Vector3 in MazeBrachiosaurus.spots(maze, style.brachiosaurs, rng.randi()):
+		var cell := maze.cell_at(spot)
+		add(MazeBrachiosaurus.new(), cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell) - Vector3.UP * 0.05)
+	for spot: Vector3 in MazeBrachiosaurus.spots(maze, style.desert_dimetrodons, rng.randi()):
+		var cell := maze.cell_at(spot)
+		add(MazeDimetrodon.new(), cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell) - Vector3.UP * 0.05)
 	# (gibbons only where there are ledges and terraces for them: past the first section)
 	var high_halls: Array[Vector2i] = []
 	for cell in some_halls:
@@ -397,6 +424,15 @@ func add_wildlife(clearing: ClearingStyle, seed_value: int) -> void:
 			var spot := home + Vector3(rng.randf_range(-4.0, 4.0), 0.0, rng.randf_range(-4.0, 4.0))
 			var cell := maze.cell_at(spot)
 			add(one, cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell) + Vector3.UP * (maze.ground_height(spot) + 0.3))
+	# Griffinflies over the marsh (ClearingStyle: none by default, the clearing is safe).
+	var marsh := MazeGriffinfly.marsh_middle(maze)
+	for i in (clearing.marsh_griffinflies if marsh.is_finite() else 0):
+		var one := MazeGriffinfly.new()
+		one.keep_out_of_clearing = false
+		one.home_radius = 30.0
+		var spot := marsh + Vector3(rng.randf_range(-12.0, 12.0), 0.0, rng.randf_range(-12.0, 12.0))
+		var cell := maze.cell_at(spot)
+		add(one, cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell))
 
 
 ## Puts a pack round `middle`: one to a cell within two steps of it, and two

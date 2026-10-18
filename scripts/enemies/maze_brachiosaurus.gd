@@ -139,7 +139,7 @@ static func _round_point(ring: RoundMaze.Ring, row: int, j: int) -> Vector3:
 
 
 func _ready() -> void:
-	collision_layer = 0 if puppet else 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 1
 	# (a column for each leg, from above the ground to its belly: under it, between them, is open)
 	for leg: Vector2 in LEGS:
@@ -553,4 +553,4 @@ func _put(at: Vector3, facing: float) -> void:
 
 
 func _puppet_changed() -> void:
-	collision_layer = 0 if puppet else 4
+	collision_layer = PUPPET_LAYER if puppet else 4

@@ -386,6 +386,22 @@ ring has is its style's choice. The wall tops are a second level you can travel 
   hunter within 40 m. Climbing near their ways you are prey: one winds up shrieking and swings at you feet first; get
   down or away from the edges first.
 
+- **Screaming bear** (the user: "annihilation bears"; an original creature in that spirit): a huge bear starved to
+  the bone and changed, legs far too long, half its face bare skull with a clouded eye, no lips. It cries out with the
+  voice of the last thing it killed ("help!", "no, no, no!", sobbing; made in code, the same every time), which
+  carries far: you hear it long before you see it. It stalks slower than a run, calling; in a line within about 13 m
+  it rears and screams (about 2 s), then charges faster than a sprint, briefly, and swipes. Caught, you are mauled and
+  it takes your voice. Climb out of reach, break its sight, never go toward the voice.
+- **Brachiosaurus**: life size, 13 m tall, roaming the desert and the wide round halls and browsing at the walls; a
+  gentle landmark, dangerous only underfoot: each foot lifts slowly over a darkening spot where it will land, the
+  ground shakes near it, and whoever is on the spot is crushed. Walk under its belly or clear of the spots.
+- **Dimetrodon**: a 3.4 m sail-backed synapsid basking side on to the sun in wide halls and the desert, cold-blooded
+  (slow at night and in rain). Come near and it rises gaping and hissing, then lunges; it chases slower than a run.
+- **Griffinflies** (the user: "a giant dragonfly"): Meganeura 1.4 m across, four wings each beating on its own, in
+  pairs over a stretch of halls. One hangs in front of you at head height, warns for a second (legs out in a basket,
+  jaws open, wings clattering) and strikes through where you were: duck or step aside. Hit, you are knocked down, not
+  caught; two harrying someone alone catch them.
+
 ### The maze lives on its own (2026-10-18, Ecology)
 
 The user: "they should also interact with each other. We should have world game manager ... like a Rain World or
@@ -463,6 +479,9 @@ non hostile regular deer and elk and chicken as well. Some should be in the clea
   The clearing has a couple of flocks (ClearingStyle, "Wildlife"), the first pecking at the edge of the woods, all well
   away from the middle and the paths to the gates; a ring can have some in its halls too (MazeStyle, "Wildlife", none
   by default). Placed from the round's seed, so everyone in a room sees the same flocks.
+- **Fireflies** (the user: "fire flies"): at dusk and through the night clouds rise from the clearing's tall grass,
+  woods, marsh and meadow, and from the ivy and the walls' feet in the maze: cold yellow-green, three kinds each
+  blinking in its own rhythm (one in waves all together); they scatter from anyone running through and drift back.
 - **Insects** (added 2026-10-18: "moths and flys", "dragon flys"). Mostly atmosphere, and a tell or two:
   - **Moths**: pale, dusty moths fluttering erratically in clouds round every light in the mist: the angel's burning
     heart, fires and torches, the pale light past the exit; they blunder into the light and bounce off it, and a few

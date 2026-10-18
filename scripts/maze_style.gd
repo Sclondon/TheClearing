@@ -225,6 +225,20 @@ extends Resource
 ## (only of sections that have them): they call when they see you below (fetching
 ## other hunters) and knock down climbers.
 @export_range(0, 3) var gibbon_troops := 1
+## Screaming bears: each prowls the halls calling out in the voice of the last
+## thing it killed; it rears and screams, charges and swipes.
+@export_range(0, 2) var bears := 1
+## Brachiosaurs roaming out past the square sections: the desert's quarters and the
+## round sections with wide halls (read from the first section's style). Gentle; only
+## their feet are dangerous.
+@export_range(0, 8) var brachiosaurs := 4
+## Dimetrodons basking in the wide halls (cold-blooded ambushers, slow to chase).
+@export_range(0, 4) var dimetrodons := 1
+## Dimetrodons basking out in the desert's open ground (read from the first section's style).
+@export_range(0, 6) var desert_dimetrodons := 2
+## Pairs of griffinflies (MazeGriffinfly: giant dragonflies), each holding a stretch of
+## halls: they buzz and knock you down; two harrying someone alone catch them.
+@export_range(0, 4) var griffinfly_pairs := 1
 ## Murders of crows (Crows), each sitting along the wall tops over a hall: they
 ## follow whoever passes along the walls, and erupt cawing at anyone who runs,
 ## which calls the hunters.
@@ -242,6 +256,8 @@ extends Resource
 ## not among what hunts it).
 @export_range(0, 4) var wild_deer_herds := 1
 @export_range(0, 4) var wild_elk_herds := 1
+## Patches of fireflies at dusk and by night, at the foot of the ivy and the walls (Insects).
+@export_range(0, 60) var firefly_patches := 24
 ## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
 @export_range(0, 4) var tame_chicken_flocks := 0
 ## Pairs of ravens (Ravens) on the wall tops, which hunt nobody: omens, that fly

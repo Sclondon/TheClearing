@@ -50,7 +50,8 @@ const HUNTERS := [
 	["SPIDER MONKEYS", "spider_monkeys", AHEAD], ["LIZARD PEOPLE", "lizard_people", AHEAD],
 	["MASKED TRIBE", "tribe", AHEAD], ["DEINONYCHUS", "deinonychus", SNAKE_AHEAD],
 	["PTERODACTYL", "pterodactyl", AHEAD], ["SNAIL", "snail", SNAKE_AHEAD], ["HYDRA", "hydra", AHEAD],
-	["GIBBONS", "gibbons", AHEAD],
+	["GIBBONS", "gibbons", AHEAD], ["BEAR", "bear", SNAKE_AHEAD], ["BRACHIOSAURUS", "brachiosaurus", COLOSSUS_AHEAD],
+	["DIMETRODON", "dimetrodon", AHEAD], ["GRIFFINFLIES", "griffinflies", AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -337,6 +338,15 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 		"gibbons":
 			# (each finds its way up onto the ledges and wall tops near)
 			made = MazeGibbon.troop(4)
+		"bear":
+			made = [MazeBear.new()]
+		"brachiosaurus":
+			made = [MazeBrachiosaurus.new()]
+		"dimetrodon":
+			made = [MazeDimetrodon.new()]
+		"griffinflies":
+			# (a pair, hunting the halls round where they are put)
+			made = [MazeGriffinfly.new(), MazeGriffinfly.new()]
 		"ravens":
 			# (wildlife: on the walls round where they are put, not among the hunters)
 			world.birds.add_ravens_at(at)
@@ -383,6 +393,11 @@ func spawn_wildlife(kind: Wildlife.Kind) -> void:
 ## carcass, a patch of dragonflies.
 func spawn_insects(kind: InsectLook.Kind) -> void:
 	world.insects.put(kind, _ahead(7.0))
+
+
+## Puts a cloud of fireflies a few metres ahead of him, out whatever the hour.
+func spawn_fireflies() -> void:
+	world.insects.put_fireflies(_ahead(7.0))
 
 
 ## Takes away everything that hunts (the Griever World put in is only put to
@@ -645,6 +660,7 @@ const HEADINGS := {
 	"bats": "Birds and bugs", "beetles": "Birds and bugs",
 	"tame_chickens": "Tame animals",
 	"stegosaurus": "Prehistoric", "deinonychus": "Prehistoric", "pterodactyl": "Prehistoric",
+	"brachiosaurus": "Prehistoric", "dimetrodon": "Prehistoric", "griffinflies": "Birds and bugs",
 	"spider_monkeys": "Apes and monkeys", "gibbons": "Apes and monkeys", "baboons": "Apes and monkeys",
 }
 
@@ -689,6 +705,7 @@ func _spawn_page() -> Control:
 		row.call("Tame animals", String(one[0]).capitalize(), spawn_wildlife.bind(one[1]))
 	for one: Array in [["Moths", InsectLook.Kind.MOTH], ["Flies", InsectLook.Kind.FLY], ["Dragonflies", InsectLook.Kind.DRAGONFLY]]:
 		row.call("Birds and bugs", one[0], spawn_insects.bind(one[1]))
+	row.call("Birds and bugs", "Fireflies", spawn_fireflies)
 	row.call("Runners", "Runner", spawn_runner)
 	row.call("Runners", "Three runners", spawn_runners)
 	for one: Array in Loot.DEV:
