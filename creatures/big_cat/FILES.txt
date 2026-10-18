@@ -1,0 +1,11 @@
+# Big cats (a lynx and a black panther): their look, every move and their voices, for any game (no thinking). Needs godot/dog.
+creatures/big_cat/big_cat.gd
+creatures/big_cat/big_cat_look.gd
+creatures/big_cat/big_cat_rig.gd
+creatures/big_cat/example.gd
+creatures/big_cat/models/lynx.glb
+creatures/big_cat/models/lynx_lo.glb
+creatures/big_cat/models/panther.glb
+creatures/big_cat/models/panther_lo.glb
+creatures/big_cat/tools/.gdignore
+creatures/big_cat/tools/build_big_cat.py
