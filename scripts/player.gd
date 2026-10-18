@@ -96,6 +96,12 @@ const DIVE_IN_TAKES := 0.55
 ## player's copy in a networked game, say). (GameCommon only: not in Outside.)
 @export var takes_input := true
 
+## Asked first when the act button is pressed, with him: something of the game's
+## that wants the button (a thing lying at his feet to take into an inventory,
+## say) does what it does and returns true, and he does nothing more; false, and
+## he picks up, throws or uses as he would. (The Clearing: Loot.act.)
+var act_first: Callable
+
 ## While true, nothing from the keys, pads or touch reaches any Player or the
 ## camera: set it while a level loads or a menu is up. (GameCommon only: it
 ## stands in for Outside's `Loading.busy`.)
@@ -2202,6 +2208,8 @@ func _act() -> void:
 	if is_limp or state != State.FREE or pickup_progress < 1.0 or throw_progress < 1.0 or swing_progress < 1.0 or landing_progress < 1.0:
 		return
 	if _is_resting() or is_diving or flip_progress < 1.0 or is_spinning or cast_progress < 1.0:
+		return
+	if act_first.is_valid() and act_first.call(self):
 		return
 	if carried and carried.is_in_group(&"grapples"):
 		# A grappling hook is thrown at whatever there is to catch (see

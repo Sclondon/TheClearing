@@ -46,6 +46,7 @@ func _init() -> void:
 	hear_range = 11.0
 	memory = 8.0
 	pack = &"frog_swarms"
+	fears_fire = true
 	look_every = 0.25
 
 

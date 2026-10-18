@@ -8,6 +8,9 @@ extends Figure
 ## Their seat in the room.
 var slot := 0
 var escaped := false
+## What they have in their hand (shown there: Loot), for the rig to hold it as
+## the Player's does (a torch held up, a hook's coil).
+var carried: RigidBody3D
 
 var _target := Vector3.ZERO
 var _target_velocity := Vector3.ZERO

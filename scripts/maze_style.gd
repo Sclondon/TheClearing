@@ -186,6 +186,14 @@ extends Resource
 ## Swarms of imps, each a crack at the foot of a wall that dozens pour out of.
 @export_range(0, 3) var imp_swarms := 1
 
+@export_group("What lies about")
+## Things left lying in its halls to find (Loot): in the ends of halls first
+## (the most walls round them), then anywhere, never by its gates.
+@export_range(0, 20) var loot_items := 6
+## Camps left behind in its halls (cold fires, tallies scratched on the wall
+## beside them, often signs of a struggle).
+@export_range(0, 4) var abandoned_camps := 1
+
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
 
