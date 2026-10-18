@@ -1,8 +1,9 @@
 extends SceneTree
-## Pictures of the low plants (Undergrowth): a fern up close, and the boy walking
+## Pictures of the low plants (Undergrowth): a fern (or, with grass, the short
+## grass along the walls) up close, and the boy walking
 ## into a clump of them (they bend away from him, as the grass does).
 ##
-##     godot --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/fern_shots.gd -- <folder>
+##     godot --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/fern_shots.gd -- <folder> [grass]
 
 var main: Node
 
@@ -16,8 +17,12 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var folder := "user://fern_shots"
+	var kind := Undergrowth.Kind.FERN
 	for arg in OS.get_cmdline_user_args():
-		folder = arg
+		if arg == "grass":
+			kind = Undergrowth.Kind.GRASS
+		else:
+			folder = arg
 	DirAccess.make_dir_recursive_absolute(folder)
 	for i in 5:
 		await process_frame
@@ -29,7 +34,7 @@ func _run() -> void:
 	# (the fern nearest the middle of the clearing that has others round it)
 	var best := Vector3.INF
 	for key: Array in plants._placed:
-		if key[0] != Undergrowth.Kind.FERN:
+		if key[0] != kind:
 			continue
 		for where: Transform3D in plants._placed[key]:
 			if where.origin.length() < best.length():

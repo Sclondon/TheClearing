@@ -177,7 +177,7 @@ static func _short_grass(rng: RandomNumberGenerator) -> ArrayMesh:
 		var root := Vector3(cos(turn), 0.0, sin(turn)) * rng.randf_range(0.0, 0.38)
 		var lean := Vector3(cos(turn), 0.0, sin(turn)) * rng.randf_range(0.02, 0.1)
 		var high := rng.randf_range(0.18, 0.42)
-		var side := Vector3(-sin(turn + 1.3), 0.0, cos(turn + 1.3)) * 0.012
+		var side := Vector3(-sin(turn + 1.3), 0.0, cos(turn + 1.3)) * 0.022
 		# (paler than the moss it grows by, so that it reads against it)
 		var colour := Color(0.24, 0.28, 0.13).lerp(Color(0.38, 0.4, 0.22), rng.randf())
 		_tri(tool, root - side, root + side, root + lean + Vector3.UP * high, colour)
