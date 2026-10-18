@@ -20,6 +20,12 @@ const STONE := Color(0.13, 0.14, 0.13, 0.86)
 ## out in the maze, by the passages no more than `REACH` cells from him).
 const AHEAD := 28.0
 const REACH := 10
+## The other kinds the panel puts in (spawn_hunter): the button, and the kind.
+const HUNTERS := [
+	["GHOUL", "ghoul"], ["CENTIPEDE", "centipede"], ["SPIDER", "spider"],
+	["ABOMINATION", "abomination"], ["SLIME WALL", "slime"], ["BATS", "bats"],
+	["BABOONS", "baboons"], ["DOGS", "dogs"], ["ALIENS", "aliens"],
+]
 
 var world: World
 ## He cannot be caught.
@@ -67,7 +73,8 @@ func _init(in_world: World) -> void:
 	_panel.visible = false
 	add_child(_panel)
 	var grid := GridContainer.new()
-	grid.columns = 2
+	# (three across, so that it all fits on a phone held either way)
+	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	_panel.add_child(grid)
@@ -81,6 +88,8 @@ func _init(in_world: World) -> void:
 	grid.add_child(_button("+ PACK", spawn_pack))
 	grid.add_child(_button("+ SNAKE", spawn_snake))
 	grid.add_child(_button("+ GRIEVER", spawn_griever))
+	for one: Array in HUNTERS:
+		grid.add_child(_button("+ " + String(one[0]), spawn_hunter.bind(one[1])))
 	grid.add_child(_button("CLEAR ALL", clear))
 	grid.add_child(_button("TO GATE", to_gate))
 	grid.add_child(_button("TO MIDDLE", to_middle))
@@ -144,6 +153,37 @@ func spawn_griever() -> void:
 	_grievers.append(griever)
 	if frozen:
 		griever.process_mode = Node.PROCESS_MODE_DISABLED
+
+
+## Puts one of the other kinds in ahead of him (see HUNTERS): one creature, or
+## a whole pack for those that go about in packs, round the cell.
+func spawn_hunter(kind: String) -> void:
+	var cell := _ahead()
+	var made: Array = []
+	match kind:
+		"ghoul":
+			made = [MazeGhoul.new()]
+		"centipede":
+			made = [Centipede.new()]
+		"spider":
+			made = [MazeSpider.new()]
+		"abomination":
+			made = [Abomination.new()]
+		"slime":
+			made = [MazeSlimeWall.new()]
+		"bats":
+			made = [Bats.new()]
+		"baboons":
+			made = MazeBaboon.troop(5)
+		"dogs":
+			made = MazeDog.pack_of(4, randi())
+		"aliens":
+			made = [Alien.new(), Alien.new()]
+	for k in made.size():
+		var offset := Vector3.ZERO
+		if k > 0:
+			offset = Vector3(2.6, 0.0, 0.0).rotated(Vector3.UP, TAU * k / made.size())
+		_add(made[k], cell, offset)
 
 
 ## Takes away everything that hunts (the Griever World put in is only put to

@@ -85,6 +85,15 @@ func _run() -> void:
 	var cell: Vector2i = maze.cell_at(newest.global_position)
 	check("out in the maze, not the clearing", not maze.in_clearing(cell) and not maze.solid.has(cell), str(cell))
 	check("not far from him", newest.global_position.distance_to(player.global_position) < Maze.CELL * 12.0, "(%.0f m)" % newest.global_position.distance_to(player.global_position))
+	# Each of the other kinds, from its own button
+	for one: Array in world.dev.HUNTERS:
+		var had: int = world.enemies.enemies.size()
+		world.dev.spawn_hunter(one[1])
+		await frames(2)
+		var put: int = world.enemies.enemies.size() - had
+		var last = world.enemies.enemies.back()
+		check("+ %s" % one[0], put >= 1 and is_instance_valid(last) and last.is_inside_tree(), "(%d put in)" % put)
+	await frames(30)
 
 	world.dev.toggle_god()
 	var at: Vector3 = player.global_position
