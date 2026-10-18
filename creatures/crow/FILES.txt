@@ -1,0 +1,10 @@
+# Crows and ravens: the flock (look and behaviour, and the engine blue jays use), the corvids' mesh loader, their shader, the models (full and low) and the Blender script that builds all three corvids, and their sounds made in code
+creatures/crow/corvid.gdshader
+creatures/crow/corvid_body.gd
+creatures/crow/corvid_flock.gd
+creatures/crow/corvid_voice.gd
+creatures/crow/models/crow.glb
+creatures/crow/models/crow_lo.glb
+creatures/crow/models/raven.glb
+creatures/crow/models/raven_lo.glb
+creatures/crow/tools/build_corvids.py

@@ -102,6 +102,7 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ## - Chicken flocks forage in straight halls, where people must pass them.
 ## - Gargoyles are put in halls (a straight run of passage, walls both sides):
 ##   each crouches on a ledge over it, a terrace's edge or the wall's top.
+## - Murders of crows are put in halls and sit along the wall tops over them.
 ## - A herd of deer stands bunched in one straight hall; a bull elk holds
 ##   another, facing along it.
 ## - Gangs of imps are put round one cell and each climbs the nearest wall to
@@ -233,6 +234,11 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
 		taken.append(cell)
 		add(MazeGargoyle.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.crow_murders:
+		# (a murder sits on the wall tops over a hall, where people pass under it)
+		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(Crows.new(), cell, 0.0, rng.randi())
 	for i in style.imp_gangs:
 		# (each finds the nearest wall to where it is put and climbs it)
 		var gang: Array = MazeImp.gang(rng.randi_range(3, 4))
@@ -344,6 +350,10 @@ func unpack(data: PackedByteArray, offset := 0) -> void:
 
 func _on_caught(player: Node3D, enemy: MazeEnemy) -> void:
 	caught.emit(player, enemy)
+	# (crows near rise and wheel over the place)
+	for other in enemies:
+		if other is Crows and is_instance_valid(other):
+			(other as Crows).saw_catch(player.global_position)
 
 
 # A cell from `cells` as far by the passages as can be from all of `taken` (and from the clearing), with some chance in it.

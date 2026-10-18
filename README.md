@@ -101,16 +101,20 @@ from the seed. Generate again replaces everything in the layout.
   plan and placed from the seed by `MazeEnemies`; and the `Griever` (`griever*.gd`): a lump of wet meat on eight
   procedural robotic spider legs that plant on walls and ground, with a stinger. Then the newer kinds, each a thin
   `MazeEnemy` driving a creature from `creatures/` (installed from GameCommon): `MazeGhoul`, `Centipede`,
-  `MazeSpider`, `Abomination`, `MazeFleshMound` (amalgams and flesh mounds: one kind in sizes, that grow by absorbing whom they catch and by merging), `MazeSlimeWall`, `Bats`, `MazeBaboon`, `MazeDog`, `Alien`, `Beetles`, `MazeFishPerson` (it brings its own pool to lurk in), `MazeAngel` (it drifts over the halls and its gaze, which builds while you stay in its sight, takes you; `Ophan` is its look), `MazeFrog` (a giant toad) and `MazeFrogSwarm`, `MazeHarpy`, `MazeBoar`, `Chickens`, `MazeGargoyle` (which finds its own ledge over a hall, or sets a stone corbel into the wall to crouch on), `MazeDeer` (the watching herd), `MazeElk` (the territorial bull), `MazeImp` (gangs that perch on walls, ride you and slow you) and `MazeImpSwarm` (a crack dozens pour out of). How many of each a ring
+  `MazeSpider`, `Abomination`, `MazeFleshMound` (amalgams and flesh mounds: one kind in sizes, that grow by absorbing whom they catch and by merging), `MazeSlimeWall`, `Bats`, `MazeBaboon`, `MazeDog`, `Alien`, `Beetles`, `MazeFishPerson` (it brings its own pool to lurk in), `MazeAngel` (it drifts over the halls and its gaze, which builds while you stay in its sight, takes you; `Ophan` is its look), `MazeFrog` (a giant toad) and `MazeFrogSwarm`, `MazeHarpy`, `MazeBoar`, `Chickens`, `MazeGargoyle` (which finds its own ledge over a hall, or sets a stone corbel into the wall to crouch on), `MazeDeer` (the watching herd), `MazeElk` (the territorial bull), `MazeImp` (gangs that perch on walls, ride you and slow you), `MazeImpSwarm` (a crack dozens pour out of) and `Crows` (a murder on the wall tops that follows you along the walls and erupts cawing at a runner, calling the hunters; it wheels over anyone caught near it). How many of each a ring
   has is its `MazeStyle` ("What hunts it"); `World` asks `MazeEnemies` for the first ring's (`populate`, then
   `add_hunters`) and puts in a Griever; alone or as the host they are run there and their state goes to guests ten
   times a second (K_ENEMIES), where copies follow it. Caught, a player is put back in the clearing; out, nobody is
   hunted.
 - `scripts/wildlife/`: what lives in the clearing and hunts nobody. `TameChickens`: a tame ChickenFlock (with its
   sounds, ChickenVoice), placed by `TameChickens.populate` from the seed (ClearingStyle and MazeStyle, "Wildlife"),
-  scattered by anyone running through; each copy of the game runs its own (`World.wildlife`).
+  scattered by anyone running through; each copy of the game runs its own (`World.wildlife`). `Birds`
+  (`World.birds`): blue jays (`BlueJays`) in the pines at the edge of the woods, which scold anyone under their trees,
+  and a few crows in the treetops by the woods (ClearingStyle, "Wildlife"), and `Ravens` on the maze's walls
+  (MazeStyle, "Wildlife"), omens that fly ahead of you to sit over a hunter waiting there. `Perches` finds where
+  birds sit: wall-top edges and ledges by rays, branch tips of the pines from the trees' pieces.
 - `creatures/`: GameCommon's creatures, look and motion only (see each one's README): `ghoul`, `centipede`,
-  `giant_spider`, `abomination`, `flesh_mound` (needs the boy from the character controller), `slime_wall`, `bats`, `baboon`, `dog`, `alien`, `beetle_swarm`, `fish_person`, `angel`, `frog` (the giant toad and the frog swarm), `harpy`, `boar`, `chicken`, `gargoyle`, `deer`, `elk`, `imp`, `imp_swarm`. Change them here, then `kit.sh pull`
+  `giant_spider`, `abomination`, `flesh_mound` (needs the boy from the character controller), `slime_wall`, `bats`, `baboon`, `dog`, `alien`, `beetle_swarm`, `fish_person`, `angel`, `frog` (the giant toad and the frog swarm), `harpy`, `boar`, `chicken`, `gargoyle`, `deer`, `elk`, `imp`, `imp_swarm`, `crow` (CorvidFlock: crows and ravens, and the engine the jays use; `tools/build_corvids.py` builds all three birds), `blue_jay` (needs `crow`). Change them here, then `kit.sh pull`
   them back to GameCommon (`godot/<name>`, with `_` as `-`). Their models are built in Blender by their `tools/` scripts.
 - `scripts/wildlife.gd` (`Wildlife`): the animals that hunt nobody: herds of ordinary deer and elk grazing in the
   clearing's meadow (ClearingStyle, "Wildlife") and in the halls (MazeStyle, "Wildlife"), running off when someone
@@ -160,7 +164,7 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/enemy_test.gd     # Apophis and the mummies on their own
 "$G" --headless --path . -s res://tests/griever_test.gd   # the Griever on its own
 # each newer kind on its own (always with --audio-driver Dummy: some make sounds)
-for t in ghoul centipede spider abomination flesh_mound slime_wall bats baboon dog alien beetles fish_person angel frog frog_swarm harpy boar chicken gargoyle deer wildlife imp imp_swarm; do
+for t in ghoul centipede spider abomination flesh_mound slime_wall bats baboon dog alien beetles fish_person angel frog frog_swarm harpy boar chicken gargoyle deer wildlife imp imp_swarm crow; do
   "$G" --headless --audio-driver Dummy --path . -s res://tests/${t}_test.gd; done
 # pictures of each: tools/<kind>_shots.gd (windowed, 1280x720)
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/frog_shots.gd -- <folder> [toad|swarm|maze|all]   # the frogs
@@ -175,6 +179,7 @@ sh tools/coop_test.sh                                     # two copies in one ro
 "$G" --path . --resolution 1280x720 -s res://tools/clearing_shots.gd -- <folder> [seed]   # the clearing: hills, woods
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/deer_shots.gd -- <folder> [studio|strips|maze|clearing|all]   # deer and elk, gallop strips, the herd, wildlife
 "$G" --headless --audio-driver Dummy --path . -s res://tests/marsh_test.gd   # the marsh: water, sedges in it, the lane in
+"$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/crow_shots.gd -- <folder> [studio|beat|maze|clearing]   # crows, ravens, blue jays, the wingbeat
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/marsh_shots.gd -- <folder> [seed]   # the marsh, him in it
 "$G" --headless --path . --export-release "Web" build/index.html
 ```

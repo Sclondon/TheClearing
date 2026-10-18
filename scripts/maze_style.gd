@@ -160,6 +160,10 @@ extends Resource
 ## Gargoyles, each crouched as a statue on a ledge over a hall (a terrace's edge or a
 ## wall top), dropping on whoever passes beneath.
 @export_range(0, 4) var gargoyles := 2
+## Murders of crows (Crows), each sitting along the wall tops over a hall: they
+## follow whoever passes along the walls, and erupt cawing at anyone who runs,
+## which calls the hunters.
+@export_range(0, 4) var crow_murders := 2
 
 @export_group("Who else is in it")
 ## How many runners run the section's passages (MazeRunners, from the round's
@@ -181,6 +185,9 @@ extends Resource
 @export_group("Wildlife")
 ## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
 @export_range(0, 4) var tame_chicken_flocks := 0
+## Pairs of ravens (Ravens) on the wall tops, which hunt nobody: omens, that fly
+## ahead of whoever comes near to sit over a hunter waiting there.
+@export_range(0, 4) var raven_pairs := 2
 ## Gangs of tiny imps (three or four), each perched on a wall.
 @export_range(0, 4) var imp_gangs := 2
 ## Swarms of imps, each a crack at the foot of a wall that dozens pour out of.
