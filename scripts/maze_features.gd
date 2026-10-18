@@ -231,6 +231,80 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 			if _rng.randf() < _style.sewer_pipe_share:
 				_pipe(cell, step)
 
+	_levels(plan)
+
+
+## The levels of ledge over the first (MazeStyle.mezzanine_levels): along some
+## faces of the maze walls, each level over one that is there, shallower than it;
+## ivy from the edge of each down to the one under; rope bridges across halls
+## between ledges at the same level.
+func _levels(plan: Maze) -> void:
+	# [cell, step] -> how many levels its face has.
+	var levels := {}
+	for i in plan.size * plan.size:
+		var cell := Vector2i(i % plan.size, i / plan.size)
+		var ring := plan.ring_of(cell)
+		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
+			continue
+		_style = plan.styles[ring - 1]
+		if _style.mezzanine_height <= 0.0:
+			continue
+		for step: Vector2i in Maze.STEPS:
+			var beyond := cell + step
+			if not plan.blocked(cell, step) or plan.ring_of(beyond) != ring or plan.solid.has(beyond):
+				continue
+			var count := 1
+			while count < _style.mezzanine_levels and _rng.randf() < _style.mezzanine_upper_share:
+				count += 1
+			levels[[cell, step]] = count
+			var thick := _thick(cell, step)
+			var side := Vector2i(-step.y, step.x)
+			var room := {}
+			for way: int in [-1, 1]:
+				var meets := plan.blocked(cell, side * way)
+				room[way] = Maze.CELL * 0.5 - (thick * 0.5 if meets else 0.0)
+			var s := Vector3(step.x, 0.0, step.y)
+			var flat_side := Vector3(-s.z, 0.0, s.x)
+			var length: float = room[-1] + room[1]
+			var middle: float = (room[1] - room[-1]) * 0.5
+			for level in range(1, count):
+				var high := _level_height(level)
+				var deep := _level_depth(level)
+				var size := flat_side.abs() * length + s.abs() * deep + Vector3.UP * _style.mezzanine_thickness
+				_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(cell, step, deep * 0.5, middle) + Vector3.UP * (high - _style.mezzanine_thickness)), {"size": size})
+				# (ivy from its edge down onto the level under it, somewhere along it)
+				if _rng.randf() < _style.mezzanine_ivy_share:
+					var under := _level_height(level - 1)
+					var along := middle + _rng.randf_range(-0.3, 0.3) * length
+					_climb(_edge(cell, step, deep, along) + Vector3.UP * under, step, high - under, WALL_IVY * 0.6)
+	# Rope bridges across the halls between ledges at the same level.
+	for key: Array in levels:
+		var cell: Vector2i = key[0]
+		var step: Vector2i = key[1]
+		if step.x < 0 or step.y < 0:
+			continue
+		_style = plan.styles[plan.ring_of(cell) - 1]
+		var far := _far_side(cell, -step)
+		if far == NOWHERE or not levels.has([far, -step]):
+			continue
+		for level in mini(levels[key], levels[[far, -step]]):
+			if _rng.randf() >= _style.mezzanine_bridge_share:
+				continue
+			var along := _rng.randf_range(-0.3, 0.3) * Maze.CELL
+			var deep := _level_depth(level)
+			var high := _level_height(level)
+			_bridge(_edge(cell, step, deep, along) + Vector3.UP * high, _edge(far, -step, deep, -along) + Vector3.UP * high)
+
+
+## How high the top of level `level` is (0 the first), and how deep it is, by the
+## style of the ring being laid out.
+func _level_height(level: int) -> float:
+	return _style.mezzanine_height + level * _style.mezzanine_level_rise
+
+
+func _level_depth(level: int) -> float:
+	return maxf(_style.mezzanine_depth - level * _style.mezzanine_depth_step, 0.6)
+
 
 ## How far a pipe stands out of each face of its wall, and how deep and wide the
 ## platform under each mouth is (the ivy hangs from its edge).

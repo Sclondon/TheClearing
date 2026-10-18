@@ -6,6 +6,7 @@ extends RefCounted
 ##   scale3d=<0-1>  draw the 3D view at this share of the window's resolution
 ##   dev            god mode and the rest (DevTools); on anyway when run from the editor
 ##   start=middle   with dev, start in the middle of the clearing, not at a gate
+##   rings=<n>      build this many rings round the clearing (World.RINGS otherwise)
 
 static var _flags := {}
 static var _read := false

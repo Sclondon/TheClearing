@@ -19,7 +19,7 @@ extends Node3D
 ## Which maze to start from.
 @export var maze_seed := 1
 ## How many rings round the clearing.
-@export_range(1, 3) var rings := 1
+@export_range(1, 7) var rings := 1
 ## How each ring is made, from the clearing out (MazeStyle): its width, how wide
 ## its halls are, the rules of its passages and its entrances, and what is on
 ## its walls. Empty: the game's own (MazeStyle.defaults()), which Generate fills

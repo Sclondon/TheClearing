@@ -59,6 +59,21 @@ extends Resource
 ## How deep it stands out from the wall, and how thick it is, metres.
 @export_range(0.5, 4.0) var mezzanine_depth := 1.2
 @export_range(0.2, 2.0) var mezzanine_thickness := 0.6
+## How many levels of ledge there are, one over another (the first all along the
+## walls, the ones over it only along some: platforms), and how far apart they
+## are, metres.
+@export_range(1, 5) var mezzanine_levels := 1
+@export_range(3.0, 30.0) var mezzanine_level_rise := 8.0
+## Of the wall faces with a level, the share with the level over it too.
+@export_range(0.0, 1.0) var mezzanine_upper_share := 0.5
+## How much shallower each level is than the one under it, metres: so they step
+## back as they go up, and ivy hung from one's edge comes down onto the one under.
+@export_range(0.0, 1.5) var mezzanine_depth_step := 0.6
+## The share of wall faces with a level that have ivy up to the level over it.
+@export_range(0.0, 1.0) var mezzanine_ivy_share := 0.2
+## The share of halls with ledges at the same level both sides that have a rope
+## bridge across between them, at each level.
+@export_range(0.0, 1.0) var mezzanine_bridge_share := 0.0
 
 @export_group("Climbing")
 ## The share of wall faces with a terrace against them: steps of stone like those
@@ -185,6 +200,29 @@ static func avenues() -> MazeStyle:
 	return style
 
 
+## Galleries: the second section. Hallways and walls like the Avenues', but up
+## the walls levels of ledges step back one over another, the higher ones only
+## here and there (platforms), with ivy from each up to the next and rope bridges
+## across the hallways between them.
+static func galleries() -> MazeStyle:
+	var style := made(6, 2, 0.5, 0.0, 0.0)
+	style.maze_wall_diameter = 12.0
+	style.mezzanine_height = 8.0
+	style.mezzanine_depth = 2.4
+	style.mezzanine_levels = 3
+	style.mezzanine_level_rise = 8.0
+	style.mezzanine_upper_share = 0.55
+	style.mezzanine_depth_step = 0.6
+	style.mezzanine_ivy_share = 0.25
+	style.mezzanine_bridge_share = 0.2
+	style.terrace_share = 0.0
+	style.wall_top_bridge_share = 0.0
+	style.wall_ivy_share = 0.1
+	style.hanging_vine_share = 0.04
+	style.plant_density = 0.6
+	return style
+
+
 ## Warren: a close maze of single hallways that wind and fork, with terraces, ivy,
 ## vines and rope bridges to climb.
 static func warren() -> MazeStyle:
@@ -201,4 +239,4 @@ static func tangle() -> MazeStyle:
 static func defaults() -> Array[MazeStyle]:
 	if not chosen.is_empty():
 		return chosen
-	return [avenues(), warren(), tangle()]
+	return [avenues(), galleries(), warren(), tangle()]

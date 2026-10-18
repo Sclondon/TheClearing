@@ -17,6 +17,8 @@ signal caught(slot: int)
 const Flags := preload("res://scripts/flags.gd")
 const K_STATE := 83  # S
 const SEND_EVERY := 1.0 / 12.0
+## How many rings a generated maze has round the clearing (the flag rings=<n> for another number).
+const RINGS := 2
 ## The host's news of what hunts the maze: MazeEnemies.pack(), then the Griever's state.
 const K_ENEMIES := 69  # E
 const ENEMIES_EVERY := 0.1
@@ -69,7 +71,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 		builder.realize(laid_out)
 		maze = builder.maze
 	else:
-		maze = Maze.generate(seed_value)
+		maze = Maze.generate(seed_value, int(Flags.value("rings", str(RINGS))))
 		builder.build(maze)
 	start_at_gate = DevTools.enabled() and Flags.value("start") != "middle"
 
