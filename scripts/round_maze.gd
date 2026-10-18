@@ -48,6 +48,8 @@ var ways_in: Array[Vector2] = []
 var door := Vector2.ZERO
 var way_in := Vector2.RIGHT
 var desert_gates: Array[float] = []
+## What is in its quarters that are not desert (the forest, swamp and plains).
+var wilds: WildLands
 var noise_seed := 0
 var _noise: FastNoiseLite
 # Where the dunes are level: round the doors and the gates.
@@ -100,6 +102,7 @@ static func generate(maze: Maze, count: int) -> RoundMaze:
 	for side: Vector2 in [Vector2(0, -1), Vector2(1, 0), Vector2(0, 1), Vector2(-1, 0)]:
 		gates.append(fposmod(side.angle() + made._rng.randf_range(-0.3, 0.3), TAU))
 	made.desert_gates = gates.duplicate()
+	made.wilds = WildLands.make(made, maze.maze_seed)
 	for k in made.rings.size():
 		gates = made._carve(made.rings[k], gates, k == made.rings.size() - 1)
 	made.exit_angle = gates[0]
@@ -146,6 +149,15 @@ func desert_height(x: float, z: float) -> float:
 	# (ridged: sharp crests between broad hollows, as dunes)
 	var ridge := 1.0 - absf(_noise.get_noise_2d(x, z * 0.6))
 	return desert.dune_height * shown * ridge * ridge
+
+
+## How high the ground is at (x, z) in the desert ring: the dunes of its desert
+## quarters, the hummocks of a swamp and the hills of the plains (WildLands).
+func ground_at(x: float, z: float) -> float:
+	var dunes := desert_height(x, z)
+	if wilds == null:
+		return dunes
+	return dunes + wilds.ground_at(Vector2(x, z))
 
 
 ## The radius past which one has got out.

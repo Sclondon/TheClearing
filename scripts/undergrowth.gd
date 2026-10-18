@@ -36,12 +36,7 @@ func add(kind: Kind, where: Transform3D) -> void:
 
 ## Makes what has been added.
 func build() -> void:
-	if _material == null:
-		_material = StandardMaterial3D.new()
-		_material.vertex_color_use_as_albedo = true
-		_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-		_material.roughness = 1.0
-		_material.metallic_specular = 0.0
+	shared_material()
 	for key: Array in _placed:
 		var placed: Array = _placed[key]
 		var multi := MultiMesh.new()
@@ -60,6 +55,17 @@ func build() -> void:
 		if key[0] != Kind.BUSH:
 			shown.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(shown)
+
+
+## What every plant is drawn with (made once): its vertex colours, both sides.
+static func shared_material() -> StandardMaterial3D:
+	if _material == null:
+		_material = StandardMaterial3D.new()
+		_material.vertex_color_use_as_albedo = true
+		_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_material.roughness = 1.0
+		_material.metallic_specular = 0.0
+	return _material
 
 
 ## The mesh of a kind (made once).

@@ -313,6 +313,10 @@ func put_player(at: Vector3, yaw: float) -> void:
 	camera.snap()
 	for field: Grass in get_tree().get_nodes_in_group(Grass.FIELDS):
 		field.fill_near(at, 25.0)
+	# (and the desert ring's woods, swamp or plains round him, if he is put there)
+	var wilds := (get_node(^"Maze") as MazeBuilder).wilds
+	if wilds:
+		wilds.fill_near(at, 90.0)
 
 
 ## Where a seat starts: round the middle of the clearing, facing out (or in

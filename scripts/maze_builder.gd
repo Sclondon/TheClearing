@@ -57,6 +57,9 @@ var ground_material: ShaderMaterial
 var preview := false
 ## The round sections, if the maze has any.
 var round_sections: RoundBuilder
+## What is in the desert ring's forest, swamp and plains quarters, built near the
+## camera (Wilds), if it has any.
+var wilds: Wilds
 
 
 ## Builds the maze `plan`, laid out as it generates.
@@ -357,6 +360,13 @@ func _ground() -> void:
 		else:
 			material.set_shader_parameter(&"sand_laid", 1.0)
 			_sand_quarters()
+		material.set_shader_parameter(&"swamp_level", look.swamp_water_depth)
+		# (and the forest, swamp and plains quarters dressed, near the camera)
+		if not preview and not Engine.is_editor_hint() and maze.round_rings.wilds:
+			wilds = Wilds.new()
+			wilds.name = "Wilds"
+			add_child(wilds)
+			wilds.realize(maze.round_rings.wilds, material)
 	add_child(body)
 
 
