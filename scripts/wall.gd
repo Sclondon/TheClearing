@@ -69,6 +69,11 @@ uniform float moss_foot = 0.0;
 uniform float moss_patches = 0.0;
 uniform vec3 moss_dark : source_color = vec3(0.08, 0.1, 0.05);
 uniform vec3 moss_light : source_color = vec3(0.28, 0.31, 0.14);
+// The weathering of its edges and top (for a mesh made by WallMesh, which puts
+// how far each point is from its edges in UV and UV2): how far round they are,
+// metres, and how weathered (0: none, and none of its cost).
+uniform float edge_size = 0.0;
+uniform float edge_weathering = 0.0;
 
 varying vec3 at;
 varying vec3 facing;
@@ -140,6 +145,32 @@ void fragment() {
 	vec3 grime = colour * vec3(0.5, 0.48, 0.43) * (0.85 + 0.3 * grain);
 	colour = mix(colour, grime, clamp(stain * weathering * 2.2, 0.0, 1.0));
 	colour = mix(colour, colour * vec3(1.22, 1.22, 1.2) + vec3(0.04), lime * weathering * 0.6);
+
+	// Its edges and top, weathered: the worn rounding of each edge paler (the
+	// skin of the concrete rubbed off it), raggedly, with chips out of it here
+	// and there; grime under the top edge where the rain runs off it, in drips;
+	// and the faces very slightly uneven (a slow lean of the normal, below).
+	vec2 lean_face = vec2(0.0);
+	if (edge_weathering > 0.0 && UV2.x > 0.0) {
+		// (metres to the nearest edge across the face and up it: on a side, up is to its top)
+		vec2 from_edge = UV2 - abs(UV);
+		float nearest = min(from_edge.x, from_edge.y);
+		float side = 1.0 - smoothstep(0.55, 0.8, n.y);
+		float fine = 1.0 - smoothstep(0.01, 0.05, fwidth(metres.x));
+		float ragged = noise(metres / 0.4 + 60.0);
+		float worn = 1.0 - smoothstep(edge_size * (0.5 + ragged), edge_size * (1.3 + ragged * 1.8) + 0.03, nearest);
+		float chips = noise(metres / 0.13 + 80.0) * 0.7 + noise(metres / 0.05 + 3.0) * 0.3;
+		float chip = smoothstep(0.64, 0.7, chips) * (1.0 - smoothstep(edge_size * 0.7, edge_size * 2.2 + 0.05, nearest)) * fine;
+		colour = mix(colour, colour * 1.16 + vec3(0.025), worn * (1.0 - chip) * edge_weathering * 0.9);
+		colour *= 1.0 - chip * 0.4 * edge_weathering;
+		float reach = (0.5 + edge_size * 5.0) * (0.45 + noise(vec2(metres.x / 2.3, 7.0)) * 1.3);
+		float runoff = (1.0 - smoothstep(edge_size * 0.6, reach, from_edge.y)) * side * (0.4 + 0.6 * streaky);
+		colour = mix(colour, colour * vec3(0.56, 0.54, 0.5), clamp(runoff * edge_weathering * 1.2, 0.0, 0.7));
+		vec2 slow = metres / 3.2;
+		float here = noise(slow);
+		lean_face = vec2(noise(slow + vec2(0.2, 0.0)) - here, noise(slow + vec2(0.0, 0.2)) - here) * edge_weathering * 0.7;
+		lean_face += vec2(chips - 0.5, ragged - 0.5) * chip * 0.8;
+	}
 	colour *= tint.rgb;
 
 	// Moss: where it grows, how thick, and its cushions. It is in clumps a few
@@ -193,6 +224,7 @@ void fragment() {
 		// (an OpenGL normal map: red across, green up the picture)
 		bent = normalize(u_axis * t.x + v_axis * t.y + n * t.z);
 	}
+	bent = normalize(bent + (u_axis * lean_face.x + v_axis * lean_face.y));
 	if (moss > 0.0) {
 		// (the stone's bumps lost under it, and its own cushions in their place)
 		float lean = noise(metres / 0.055 + vec2(0.31, 0.0)) - noise(metres / 0.055 - vec2(0.31, 0.0));
@@ -274,6 +306,17 @@ void fragment() {
 	set(value):
 		weathering = value
 		_build()
+## How far round its top edges and corners are worn, metres (unevenly; 0: square).
+@export_range(0.0, 1.5, 0.01, "suffix:m") var edge_rounding := 0.14:
+	set(value):
+		edge_rounding = value
+		_build()
+## How weathered its edges and top are: grime run off the top, paler worn
+## corners with chips out of them, and its faces very slightly uneven.
+@export_range(0.0, 1.0, 0.01) var edge_weathering := 0.5:
+	set(value):
+		edge_weathering = value
+		_build()
 ## Multiplied over the texture.
 @export var tint := Color.WHITE:
 	set(value):
@@ -344,11 +387,10 @@ func _build() -> void:
 		_shape = _own_child("Shape", CollisionShape3D) as CollisionShape3D
 	var size := Vector3(width, height, depth)
 	var boxes := style_boxes(style, size)
-	var tool := SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var drawn := WallMesh.new()
 	for part: Array in boxes:
-		MazeBuilder.box(tool, part[0], part[1])
-	_mesh.mesh = tool.commit()
+		drawn.add_box(Transform3D.IDENTITY, part[0], part[1], edge_rounding)
+	_mesh.mesh = drawn.mesh()
 	_mesh.position = Vector3.ZERO
 	# A box to bump into for each part (the first is the one made before styles).
 	var shapes: Array[CollisionShape3D] = [_shape]
@@ -373,6 +415,8 @@ func _build() -> void:
 		material.shader = shader()
 		_mesh.material_override = material
 	_apply(material, texture, normal_map, roughness_map, roughness, tile_size, relief, tint, break_up, variation, weathering)
+	material.set_shader_parameter(&"edge_size", edge_rounding)
+	material.set_shader_parameter(&"edge_weathering", edge_weathering)
 
 
 ## The boxes a wall of `style`, `size` overall body (width along X, height,
@@ -417,6 +461,7 @@ func _fill_missing() -> void:
 	var defaults := {
 		"width": 14.0, "height": 34.0, "depth": 3.2, "style": Style.BASIC, "look": Look.CAST, "relief": 1.0, "roughness": 0.9,
 		"tile_size": 2.16, "break_up": 1.0, "variation": 0.22, "weathering": 0.35, "tint": Color.WHITE,
+		"edge_rounding": 0.14, "edge_weathering": 0.5,
 	}
 	for key: String in defaults:
 		if get(key) == null:

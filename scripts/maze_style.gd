@@ -54,6 +54,16 @@ extends Resource
 ## maze walls and their ledges (walls this high want it big; the great walls
 ## between sections have their own, bigger still).
 @export_range(0.5, 12.0) var wall_texture_scale := 4.0
+## How far round the maze walls' top edges and corners are worn, metres (more in
+## places, nearly sharp in others; 0: square). Their ledges half this.
+@export_range(0.0, 0.6, 0.01) var wall_edge_rounding := 0.14
+## The same for the border wall round its outside (and the clearing's, for the
+## first section): walls that big are worn rounder.
+@export_range(0.0, 1.5, 0.01) var border_wall_edge_rounding := 0.4
+## How weathered its walls are at their edges and tops: grime where the rain runs
+## off their top edges, paler worn corners with chips out of them, and faces
+## very slightly uneven (0: none).
+@export_range(0.0, 1.0, 0.01) var wall_weathering := 0.5
 ## The share of wall faces with short grass along their foot, in runs of a few metres.
 @export_range(0.0, 1.0) var wall_grass_share := 0.25
 
