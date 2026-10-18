@@ -1,0 +1,985 @@
+class_name CentipedeBody
+extends Node3D
+## A giant centipede, to look at and to move: its armoured body, its legs
+## rippling down both sides, its feelers and its poison claws, and how it
+## rears, strikes and coils. It does no thinking: whatever drives it moves
+## this node about and calls it to do things.
+##
+## WHERE IT IS. This node is where its head is, on the ground (its origin at
+## floor level, forward its +Z). Move it however you like (as a child of a
+## CharacterBody3D, or by setting its global transform each frame), and the
+## body follows: every part of it passes where the head passed, round the same
+## corners. Near a wall (anything on `wall_mask`) the body runs a little way up
+## the foot of it, and further up it round a tight corner, as a centipede goes
+## round a room's skirting; set `climb` to 0 to keep it flat.
+##
+## ITS LEGS walk by themselves from how far it has gone: a pair to each length
+## of it, each leg stepping in turn down the body in waves, quicker the faster
+## it goes. The last pair trail out behind. Lifted off the ground, they claw at
+## the air.
+##
+## WHAT IT CAN BE TOLD:
+## - `aim`: a point in the world it is interested in (INF for none). Its
+##   feelers reach for it and its head turns to it.
+## - `rear(amount)`: lifts the front of it (`rear_length` metres of it) up off
+##   the ground, 0 (flat) to 1 (`rear_height` metres up), feelers raised. With
+##   `look_about`, it sways its reared head from side to side, feeling the air.
+## - `strike(at)`: rears back high with its claws spread (WIND_UP,
+##   `wind_up` seconds: the warning), throws its head and front at `at`
+##   (POUNCE, no further than `pounce_reach`), lies there with its claws
+##   shut on where it was (HOLD), and draws back (RECOVER). `stage()` and
+##   `strikes_in()` say where it is in that, and `bites(a, b, radius)` whether
+##   the claws, as they go, have passed within `radius` of the line from `a`
+##   to `b` (a target's feet to its head, say): ask it every frame of POUNCE.
+## - `lay_straight()`, `lay_along(points)` and `lay_coil(radius, middle)` put
+##   its body straight down somewhere (behind the head as it is now), without
+##   walking it there: at the start, or when it is put somewhere new.
+##   `curl(radius, middle, seconds)` curls it up where it lies, as it comes to
+##   rest (hold it still meanwhile).
+##
+## LOOKS. After a Scolopendra: a domed, rimmed, grooved plate of red-brown
+## armour to each length, lapping over the next, pale soft skin between them
+## that shows as it bends; a redder shield of a head with a cluster of black
+## eyes each side, feelers of 22 tapering beads, and great curved poison claws
+## with black fangs; amber legs of six joints and a black claw each, the last
+## pair long and trailing. Four draws whatever its length: the plates (one
+## MultiMesh), its head, every leg joint, bead and claw (one MultiMesh of a
+## round tapering bar), and every claw tip, fang and eye (one of a cone). It
+## is lit with cel shading and a hard chitin gloss (CentipedeParts). Running,
+## its body bends from side to side (`undulate`). Further than `cull_distance` from the camera it is
+## hidden and its legs are not worked out, though its body still follows.
+##
+## SOUND. With `voice`, the dry clatter of its legs (louder the faster it goes)
+## and a chitter as it rears to strike, made here from noise.
+##
+## Example (see example.gd):
+##     var centipede := CentipedeBody.new()
+##     add_child(centipede)          # where its head is
+##     centipede.lay_straight()
+##     ...each frame: move it; centipede.aim = target.global_position
+##     if close: centipede.strike(target.global_position)
+
+## It has begun to throw itself at where it was told (the end of WIND_UP).
+signal pounced(at: Vector3)
+
+enum Stage { NONE, WIND_UP, POUNCE, HOLD, RECOVER }
+
+## How long it is, head to the tips of its trailing legs (metres), and how
+## many lengths (each with a pair of legs) its body is in.
+@export_range(4.0, 60.0) var length := 18.0
+@export_range(6, 48) var segments := 22
+## How wide its body is, and how high it rides (the middle of its body over the ground).
+@export var width := 1.3
+@export var ride := 0.6
+## How long a leg is (each of its two parts), and how far out its feet stand from the middle of its body.
+@export var leg_length := 0.8
+@export var foot_out := 1.55
+## How far one wave of steps carries it (metres): a leg steps once in this.
+@export var stride := 1.1
+## How much of it rears, and how high.
+@export var rear_length := 6.5
+@export var rear_height := 3.2
+## Seconds each part of a strike takes, and the furthest it throws its head.
+@export var wind_up := 0.55
+@export var pounce_time := 0.2
+@export var hold_time := 0.4
+@export var recover_time := 0.7
+@export var pounce_reach := 6.0
+## How far up a wall's foot it runs (0: never), and what counts as a wall.
+@export_range(0.0, 1.0) var climb := 1.0
+@export_flags_3d_physics var wall_mask := 1
+## How high up a wall it goes round a tight corner (metres).
+@export var corner_climb := 2.6
+## How far its body bends from side to side as it runs (metres; 0: not at all).
+@export var undulate := 0.22
+## Its colours: the shell on its back; the deeper, redder shell of its head, its
+## first length and its poison claws; the rims of its plates; its underside; the
+## soft skin between its plates; its legs; and the black of its claws and eyes.
+@export var shell := Color(0.12, 0.055, 0.04)
+@export var head_shell := Color(0.3, 0.11, 0.05)
+@export var rim := Color(0.4, 0.2, 0.1)
+@export var under := Color(0.46, 0.34, 0.2)
+@export var membrane := Color(0.66, 0.58, 0.44)
+@export var leg := Color(0.6, 0.42, 0.22)
+@export var tip := Color(0.04, 0.025, 0.02)
+@export var voice := true
+## Further than this from the camera it is hidden (0: never).
+@export var cull_distance := 110.0
+
+## What it is interested in, in the world (INF: nothing).
+var aim := Vector3.INF
+## Sways its reared head about, feeling the air.
+var look_about := false
+## The middle of each length of its body, head first, in the world (after the last frame drawn).
+var spine := PackedVector3Array()
+## Its head, as drawn: where the middle of it is, and which way it points.
+var head_at := Vector3.ZERO
+var head_way := Vector3.BACK
+
+var _rear := 0.0
+var _rear_to := 0.0
+var _strike_time := INF
+var _strike_at := Vector3.ZERO
+var _lunge := Vector3.ZERO
+var _jaw_was := Vector3.INF
+var _jaw_now := Vector3.INF
+var _claws_open := 0.0
+var _clock := 0.0
+var _gait := 0.0
+var _speed := 0.0
+var _last := Vector3.INF
+var _look_yaw := 0.0
+var _hidden := false
+# The path its head has taken, newest first: the ground under it, where the
+# middle of the body is from there (raised, and up a wall), and which way is up.
+var _trail_at := PackedVector3Array()
+var _trail_lift := PackedVector3Array()
+var _trail_up := PackedVector3Array()
+var _turn_was := Vector3.ZERO
+var _step := 0.25
+var _spacing := 0.7
+var _head_long := 1.1
+var _plates: MultiMeshInstance3D
+var _bars: MultiMeshInstance3D
+var _spikes: MultiMeshInstance3D
+var _spike_buffer := PackedFloat32Array()
+var _spike_count := 0
+var _bar_n := 0
+var _spike_n := 0
+var _travel := 0.0
+var _wiggle := 0.0
+## Where it was last coiled up (INF: it has moved off since), and how far its legs are tucked in under it.
+var _coiled_at := Vector3.INF
+var _tuck := 0.0
+var _head: MeshInstance3D
+var _plate_buffer := PackedFloat32Array()
+var _bar_buffer := PackedFloat32Array()
+var _bar_count := 0
+var _curl_from := PackedVector3Array()
+var _curl_to := PackedVector3Array()
+var _curl_time := 0.0
+var _curl_for := 0.0
+var _clatter: AudioStreamPlayer3D
+var _chitter: AudioStreamPlayer3D
+
+## How many beads each feeler is in, and how long it is.
+const FEELER_LINKS := 22
+const FEELER := 3.3
+## How long one wave of its side-to-side bending is (metres).
+const WAVE := 5.5
+## How far behind the leg in front each leg is in its step (a share of a step):
+## the waves of stepping that run down it.
+const WAVE_STEP := 0.085
+
+static var _clatter_stream: AudioStreamWAV
+static var _chitter_stream: AudioStreamWAV
+
+
+func _ready() -> void:
+	_spacing = (length - _head_long - leg_length * 1.6) / segments
+	_step = clampf(_spacing * 0.35, 0.12, 0.4)
+	spine.resize(segments + 1)
+	_build()
+	if _trail_at.is_empty():
+		lay_straight()
+
+
+# --- Telling it what to do ---
+
+## Lifts the front of it, 0 (flat on the ground) to 1 (as high as it goes).
+func rear(amount: float) -> void:
+	_rear_to = clampf(amount, 0.0, 1.2)
+
+
+## Rears back, claws spread, and throws itself at `at` (see the stages).
+func strike(at: Vector3) -> void:
+	if stage() != Stage.NONE:
+		return
+	_strike_at = at
+	_strike_time = 0.0
+	_jaw_was = Vector3.INF
+	if _chitter:
+		_chitter.play()
+
+
+func stage() -> Stage:
+	if _strike_time < wind_up:
+		return Stage.WIND_UP
+	if _strike_time < wind_up + pounce_time:
+		return Stage.POUNCE
+	if _strike_time < wind_up + pounce_time + hold_time:
+		return Stage.HOLD
+	if _strike_time < wind_up + pounce_time + hold_time + recover_time:
+		return Stage.RECOVER
+	return Stage.NONE
+
+
+## Seconds until it pounces, while it winds up.
+func strikes_in() -> float:
+	return wind_up - _strike_time
+
+
+## Moves where the strike will land (in WIND_UP: it follows its target round).
+func retarget(at: Vector3) -> void:
+	if stage() == Stage.WIND_UP:
+		_strike_at = at
+
+
+## Where its claws are now, in the world.
+func jaws() -> Vector3:
+	return head_at + head_way * _head_long * 0.62
+
+
+## Whether its claws, from where they were a frame ago to where they are, have
+## passed within `radius` of the line from `a` to `b`. Only while it pounces.
+func bites(a: Vector3, b: Vector3, radius: float) -> bool:
+	if stage() != Stage.POUNCE and stage() != Stage.HOLD or not _jaw_now.is_finite():
+		return false
+	var from := _jaw_was if _jaw_was.is_finite() else _jaw_now
+	var nearest := Geometry3D.get_closest_points_between_segments(from, _jaw_now, a, b)
+	return nearest[0].distance_to(nearest[1]) < radius
+
+
+## How thick it is (half its width), for anything that wants to keep out of it.
+func radius() -> float:
+	return width * 0.5
+
+
+# --- Putting it down ---
+
+## Lays its body straight out behind its head, as far as the walls let it
+## (then it turns aside along them).
+func lay_straight() -> void:
+	var back := -global_basis.z
+	back.y = 0.0
+	back = back.normalized() if back.length() > 0.01 else Vector3.BACK
+	var points := PackedVector3Array([global_position])
+	var at := global_position
+	var left := length + 2.0
+	while left > 0.0:
+		var hit := _ray(at + Vector3.UP * ride, at + Vector3.UP * ride + back * 3.0)
+		if not hit.is_empty() and (hit["position"] as Vector3).distance_to(at + Vector3.UP * ride) < width + 0.6:
+			var normal: Vector3 = hit["normal"]
+			back = Vector3(-normal.z, 0.0, normal.x) * signf(Vector3(-normal.z, 0.0, normal.x).dot(back) + 0.001)
+		at += back * 1.0
+		points.append(at)
+		left -= 1.0
+	lay_along(points)
+
+
+## Lays its body along `points` (head first, on the ground).
+func lay_along(points: PackedVector3Array) -> void:
+	_trail_at.clear()
+	_trail_lift.clear()
+	_trail_up.clear()
+	var k := 1
+	var at := points[0]
+	var count := int((length + 2.0) / _step) + 8
+	for i in count:
+		_keep(at, true)
+		if k < points.size():
+			var to := points[k] - at
+			while to.length() <= _step and k < points.size() - 1:
+				k += 1
+				to = points[k] - at
+			at += to.normalized() * minf(_step, to.length())
+		else:
+			at += (points[points.size() - 1] - points[maxi(points.size() - 2, 0)]).normalized() * _step
+	_trail_at.reverse()
+	_trail_lift.reverse()
+	_trail_up.reverse()
+	_curl_for = 0.0
+	_last = global_position
+	_turn_was = Vector3.ZERO
+	_strike_time = INF
+	_lunge = Vector3.ZERO
+	_draw(0.0)
+
+
+## Lays it coiled where it is: its body wound round in a ring of `radius`
+## metres behind its head (and inwards, if it is longer than the ring), as it
+## rests in a corner. The middle of the ring is off to its left, or at
+## `middle` if that is given (then the ring is as wide as the head is from it).
+func lay_coil(radius_of_ring := 2.8, middle := Vector3.INF) -> void:
+	lay_along(_coil_points(radius_of_ring, middle))
+	_coiled_at = global_position
+	_tuck = 1.0
+
+
+## Curls up where it lies, over `seconds`: its body wound in from where it is
+## to the coil `lay_coil` would lay. For when it has come to rest somewhere.
+## Hold it still meanwhile.
+func curl(radius_of_ring := 2.8, middle := Vector3.INF, seconds := 1.6) -> void:
+	var was := _trail_at.duplicate()
+	var was_lift := _trail_lift.duplicate()
+	var was_up := _trail_up.duplicate()
+	lay_coil(radius_of_ring, middle)
+	var count := mini(was.size(), _trail_at.size())
+	_curl_from = was.slice(0, count)
+	_curl_to = _trail_at.slice(0, count)
+	_trail_at = _curl_from.duplicate()
+	_trail_lift = was_lift.slice(0, count)
+	_trail_up = was_up.slice(0, count)
+	_curl_time = 0.0
+	_curl_for = maxf(seconds, 0.01)
+	_coiled_at = global_position
+	_tuck = 0.0
+
+
+func _coil_points(radius_of_ring: float, middle: Vector3) -> PackedVector3Array:
+	var forward := global_basis.z
+	forward.y = 0.0
+	forward = forward.normalized() if forward.length() > 0.01 else Vector3.BACK
+	var outer := radius_of_ring
+	if not middle.is_finite():
+		# (the head goes round the ring to its left: the middle of the ring is off to that side)
+		middle = global_position + Vector3(forward.z, 0.0, -forward.x) * radius_of_ring
+	else:
+		middle.y = global_position.y
+		outer = clampf(middle.distance_to(global_position), width, radius_of_ring * 1.3)
+	var start := atan2(global_position.x - middle.x, global_position.z - middle.z)
+	# (round to the left or the right, whichever way it faces round the ring)
+	var round_way := 1.0 if Vector3(sin(start + 0.1), 0.0, cos(start + 0.1)).dot(forward) > Vector3(sin(start - 0.1), 0.0, cos(start - 0.1)).dot(forward) else -1.0
+	var points := PackedVector3Array()
+	var gone := 0.0
+	var turn := 0.0
+	while gone < length + 2.0:
+		var r := maxf(outer - turn / TAU * width * 1.3, width * 0.75)
+		var angle := start - turn * round_way
+		points.append(middle + Vector3(sin(angle), 0.0, cos(angle)) * r)
+		turn += 0.3 / r
+		gone += 0.3
+	return points
+
+
+# --- Each frame ---
+
+func _process(delta: float) -> void:
+	_clock += delta
+	var here := global_position
+	var moved := 0.0
+	if _last.is_finite():
+		moved = Vector2(here.x - _last.x, here.z - _last.z).length()
+		_speed = lerpf(_speed, moved / maxf(delta, 0.0001), 1.0 - exp(-8.0 * delta))
+	_last = here
+	if moved > 3.0:
+		lay_straight()
+		return
+	_gait += moved / stride
+	_travel += moved
+	# Coiled at rest, it tucks its legs in under itself; moving off, it puts them out again.
+	if _coiled_at.is_finite() and global_position.distance_to(_coiled_at) > 0.5:
+		_coiled_at = Vector3.INF
+	_tuck = move_toward(_tuck, 1.0 if _coiled_at.is_finite() and _curl_time >= _curl_for * 0.6 else 0.0, delta * 1.5)
+	if moved < 0.002 * delta * 60.0:
+		# (standing, its legs still shift a little)
+		_gait += delta * 0.12
+	if _curl_time < _curl_for:
+		# Curling up: each place along it drawn round into the coil.
+		_curl_time += delta
+		var by := smoothstep(0.0, 1.0, _curl_time / _curl_for)
+		for k in _curl_to.size():
+			_trail_at[k] = _curl_from[k].lerp(_curl_to[k], by)
+		_gait += delta * 1.5
+	elif _trail_at.is_empty() or here.distance_to(_trail_at[0]) >= _step:
+		_keep(here, false)
+	_strike_time += delta
+	_strike(delta)
+	_rear = lerpf(_rear, _rear_to if stage() == Stage.NONE else _rear, 1.0 - exp(-4.0 * delta))
+	var hidden := cull_distance > 0.0 and _camera_far()
+	if hidden != _hidden:
+		_hidden = hidden
+		for part: Node3D in [_plates, _bars, _spikes, _head]:
+			part.visible = not hidden
+	if not hidden:
+		_draw(delta)
+	_sound()
+
+
+func _camera_far() -> bool:
+	var camera := get_viewport().get_camera_3d() if is_inside_tree() else null
+	return camera != null and camera.global_position.distance_to(global_position) > cull_distance + length
+
+
+# How the strike goes: rearing, the throw, lying there, drawing back.
+func _strike(delta: float) -> void:
+	var now := stage()
+	if now == Stage.NONE:
+		_lunge = _lunge.lerp(Vector3.ZERO, 1.0 - exp(-6.0 * delta))
+		_claws_open = lerpf(_claws_open, 0.25 if aim.is_finite() else 0.05, 1.0 - exp(-5.0 * delta))
+		return
+	match now:
+		Stage.WIND_UP:
+			_rear = lerpf(_rear, 1.1, 1.0 - exp(-9.0 * delta))
+			_claws_open = lerpf(_claws_open, 1.0, 1.0 - exp(-12.0 * delta))
+			_lunge = _lunge.lerp(-_forward() * 0.6, 1.0 - exp(-6.0 * delta))
+		Stage.POUNCE:
+			if _strike_time - delta < wind_up:
+				pounced.emit(_strike_at)
+			var by := (_strike_time - wind_up) / pounce_time
+			_rear = lerpf(1.1, 0.0, by)
+			_lunge = _throw() * by
+			_claws_open = 1.0 - smoothstep(0.6, 1.0, by)
+		Stage.HOLD:
+			_rear = 0.0
+			_lunge = _throw()
+			_claws_open = 0.0
+		Stage.RECOVER:
+			var by := (_strike_time - wind_up - pounce_time - hold_time) / recover_time
+			_rear = lerpf(0.0, _rear_to, by)
+			_lunge = _throw() * (1.0 - smoothstep(0.0, 1.0, by))
+
+
+# How far its head is thrown, from where it lies flat to where it was told (no further than it reaches).
+func _throw() -> Vector3:
+	var flat_head := global_position + Vector3.UP * ride + _forward() * _head_long * 0.5
+	var to := _strike_at + Vector3.UP * 0.3 - flat_head
+	if to.length() > pounce_reach:
+		to = to.normalized() * pounce_reach
+	return to
+
+
+func _forward() -> Vector3:
+	var f := global_basis.z
+	f.y = 0.0
+	return f.normalized() if f.length() > 0.01 else Vector3.BACK
+
+
+func _ray(from: Vector3, to: Vector3) -> Dictionary:
+	if not is_inside_tree():
+		return {}
+	var query := PhysicsRayQueryParameters3D.create(from, to, wall_mask)
+	query.collide_with_areas = false
+	var parent := get_parent()
+	if parent is CollisionObject3D:
+		query.exclude = [(parent as CollisionObject3D).get_rid()]
+	return get_world_3d().direct_space_state.intersect_ray(query)
+
+
+# Keeps a place on its trail (newest first, or, laying it out, oldest first),
+# working out how it lies there: raised off the ground by its legs, and, near
+# a wall, up the foot of it (higher round a corner).
+func _keep(at: Vector3, laying: bool) -> void:
+	var lift := Vector3.UP * ride
+	var up := Vector3.UP
+	if climb > 0.0 and is_inside_tree():
+		var newest := at if laying or _trail_at.is_empty() else _trail_at[0]
+		var going := (at - newest)
+		going.y = 0.0
+		var turn := 0.0
+		if going.length() > 0.01:
+			going = going.normalized()
+			if _turn_was != Vector3.ZERO:
+				turn = clampf(_turn_was.signed_angle_to(going, Vector3.UP) / maxf(_step, 0.01) * 0.5, -1.0, 1.0)
+			_turn_was = going
+		var ahead := going if going != Vector3.ZERO else _forward()
+		var side := Vector3(ahead.z, 0.0, -ahead.x)
+		var low := at + Vector3.UP * ride
+		var best := INF
+		var normal := Vector3.ZERO
+		for way: float in [1.0, -1.0]:
+			var hit := _ray(low, low + side * way * (width * 0.5 + 2.2))
+			if not hit.is_empty():
+				var d := low.distance_to(hit["position"])
+				var n: Vector3 = hit["normal"]
+				if d < best and absf(n.y) < 0.5:
+					best = d
+					normal = Vector3(n.x, 0.0, n.z).normalized()
+		if normal != Vector3.ZERO:
+			# Near enough the wall: up the foot of it a little; round a corner (turning, or
+			# with a wall coming up ahead), further.
+			var hug := 1.0 - smoothstep(width * 0.5 + 0.3, width * 0.5 + 2.2, best)
+			var cornering := clampf(absf(turn) * 2.0, 0.0, 1.0)
+			var front := _ray(low, low + ahead * 4.0)
+			if not front.is_empty() and absf((front["normal"] as Vector3).y) < 0.5:
+				cornering = maxf(cornering, 1.0 - low.distance_to(front["position"]) / 4.0)
+			var tilt := clampf(hug * (0.45 + cornering * 0.6), 0.0, 0.95) * climb
+			var height := (0.35 + corner_climb * cornering) * hug * climb
+			up = _turned(Vector3.UP, normal, tilt * 0.92).normalized()
+			# (on the wall, the middle of it stands off the face by its ride, not off the ground)
+			var toward := -normal * maxf(best - ride, 0.0) * tilt
+			lift = toward + Vector3.UP * (ride + height * tilt)
+		# (eased in from the last place kept, so that it rises and falls smoothly)
+		if not laying and not _trail_lift.is_empty():
+			lift = _trail_lift[0].lerp(lift, 0.3)
+			up = _turned(_trail_up[0], up, 0.3).normalized()
+	if laying:
+		_trail_at.append(at)
+		_trail_lift.append(lift)
+		_trail_up.append(up)
+		return
+	_trail_at.insert(0, at)
+	_trail_lift.insert(0, lift)
+	_trail_up.insert(0, up)
+	var most := int((length + 3.0) / _step) + 8
+	if _trail_at.size() > most:
+		_trail_at.resize(most)
+		_trail_lift.resize(most)
+		_trail_up.resize(most)
+
+
+# --- Drawing it ---
+
+func _draw(delta: float) -> void:
+	if _trail_at.is_empty():
+		return
+	var ease := 1.0 - exp(-12.0 * delta) if delta > 0.0 else 1.0
+	var count := segments + 1
+	var centres := PackedVector3Array()
+	var ups := PackedVector3Array()
+	centres.resize(count)
+	ups.resize(count)
+	# Along the trail: the head's middle at half a head's length back, then each
+	# length of it. Thrown forward in a strike, the whole of it slides on along its
+	# path, and that path runs on from the head straight to where it is thrown.
+	var forward := _forward()
+	var flat_lunge := Vector3(_lunge.x, 0.0, _lunge.z)
+	var thrown := flat_lunge.length()
+	# (drawn back as it winds up, it slides back along its own path instead)
+	var back := thrown if thrown > 0.01 and flat_lunge.dot(forward) < 0.0 else 0.0
+	var leads := thrown > 0.01 and back == 0.0
+	var a := global_position + flat_lunge if leads else global_position
+	var a_lift := _trail_lift[0]
+	var a_up := _trail_up[0]
+	var j := -1 if leads else 0
+	var b := global_position if j < 0 else _trail_at[0]
+	var part := a.distance_to(b)
+	var walked := 0.0
+	var trail := _trail_at.size()
+	var gaps := PackedFloat32Array()
+	gaps.resize(count)
+	for i in count:
+		var along := _head_long * 0.5 + (i - 0.5) * _spacing if i > 0 else _head_long * 0.3
+		gaps[i] = along - (_head_long * 0.5 + (i - 1.5) * _spacing if i > 1 else _head_long * 0.3) if i > 0 else 0.0
+		along += back
+		while along > walked + part and j < trail - 1:
+			walked += part
+			a = b
+			if j >= 0:
+				a_lift = _trail_lift[j]
+				a_up = _trail_up[j]
+			j += 1
+			b = _trail_at[j]
+			part = a.distance_to(b)
+		var share := clampf((along - walked) / maxf(part, 0.0001), 0.0, 1.0)
+		var k := maxi(j, 0)
+		centres[i] = a.lerp(b, share) + a_lift.lerp(_trail_lift[k], share)
+		ups[i] = a_up.lerp(_trail_up[k], share).normalized()
+	# Reared: the front of it curves up off the ground (and, thrown, comes down at
+	# the height it was thrown at). Then each length is drawn back to its proper
+	# distance from the one behind it, from the back forwards: it bends, it does
+	# not stretch, so the higher it rears the further back its head comes.
+	var across := Vector3(forward.z, 0.0, -forward.x)
+	var raised := PackedFloat32Array()
+	raised.resize(count)
+	if _rear > 0.01 or thrown > 0.01:
+		_look_yaw = lerpf(_look_yaw, sin(_clock * 1.3) * 0.9 + sin(_clock * 3.1) * 0.15 if look_about and stage() == Stage.NONE else 0.0, 1.0 - exp(-3.0 * delta) if delta > 0.0 else 1.0)
+		var last := 0
+		for i in count:
+			var along := i * _spacing
+			if along >= rear_length:
+				break
+			last = i
+			var share := 1.0 - along / rear_length
+			var eased := share * share * (3.0 - 2.0 * share)
+			var sway := across * sin(_look_yaw) * 1.4 * eased * eased * clampf(_rear, 0.0, 1.0)
+			var lift := Vector3.UP * (_rear * rear_height * eased + _lunge.y * eased * eased) + sway
+			centres[i] += lift
+			raised[i] = maxf(lift.y, 0.0)
+		for i in range(last, -1, -1):
+			if i + 1 >= count:
+				continue
+			var from := centres[i + 1]
+			var out := centres[i] - from
+			if out.length() > 0.001:
+				centres[i] = from + out.normalized() * gaps[i + 1]
+	# Running, it bends from side to side: a wave that stands still on the ground, which it slides through.
+	_wiggle = lerpf(_wiggle, clampf(_speed / 4.0, 0.0, 1.0), 1.0 - exp(-3.0 * delta) if delta > 0.0 else 1.0)
+	if _wiggle > 0.01 and undulate > 0.0:
+		var bent := centres.duplicate()
+		for i in count:
+			var along := i * _spacing
+			var run := bent[maxi(i - 1, 0)] - bent[mini(i + 1, count - 1)]
+			run.y = 0.0
+			if run.length() < 0.001:
+				continue
+			var side := Vector3(run.z, 0.0, -run.x).normalized()
+			centres[i] += side * undulate * _wiggle * smoothstep(0.8, 3.5, along) * sin(TAU * (_travel - along) / WAVE)
+	spine = centres
+	# The plates: each lies along the way the body runs there; the hindmost are
+	# smaller, and part a little (the soft skin shows between them).
+	var low := centres[0]
+	var high := centres[0]
+	for i in range(1, count):
+		var run := centres[i - 1] - centres[mini(i + 1, count - 1)] if i < count - 1 else centres[i - 1] - centres[i]
+		run = run.normalized() if run.length() > 0.001 else forward
+		var up := ups[i]
+		up = (up - run * up.dot(run)).normalized() if absf(up.dot(run)) < 0.98 else Vector3.UP
+		var side := up.cross(run).normalized()
+		var size := _size_at(i, count)
+		var share := float(i) / count
+		var long := _spacing * lerpf(1.0, 0.84, smoothstep(0.55, 1.0, share))
+		var basis := Basis(side * width * size, up * width * size, run * long)
+		_put(_plate_buffer, i - 1, 16, Transform3D(basis, centres[i]))
+		# (its instance colour: white, its alpha the head's tone, on the first length and a little on the second)
+		var o := (i - 1) * 16 + 12
+		_plate_buffer[o] = 1.0
+		_plate_buffer[o + 1] = 1.0
+		_plate_buffer[o + 2] = 1.0
+		_plate_buffer[o + 3] = 1.0 if i == 1 else 0.35 if i == 2 else 0.0
+		low = low.min(centres[i])
+		high = high.max(centres[i])
+	# The head.
+	var neck := centres[0] - centres[1]
+	var way := neck.normalized() if neck.length() > 0.01 else forward
+	if aim.is_finite() and stage() == Stage.NONE:
+		var to := (aim - centres[0]).normalized()
+		way = _turned(way, to, 0.45).normalized() if way.dot(to) > -0.2 else way
+	if _look_yaw != 0.0:
+		way = way.rotated(Vector3.UP, _look_yaw * 0.5 * clampf(_rear, 0.0, 1.0))
+	if stage() == Stage.POUNCE or stage() == Stage.HOLD:
+		way = _turned(way, _lunge.normalized(), 0.5).normalized() if _lunge.length() > 0.1 else way
+	head_way = _turned(head_way, way, ease).normalized() if delta > 0.0 else way
+	var head_up := (ups[0] - head_way * ups[0].dot(head_way))
+	head_up = head_up.normalized() if head_up.length() > 0.05 else Vector3.UP
+	var head_side := head_up.cross(head_way).normalized()
+	head_up = head_way.cross(head_side)
+	head_at = centres[0]
+	_head.global_transform = Transform3D(Basis(head_side * width * 1.05, head_up * width, head_way * _head_long), head_at)
+	_jaw_was = _jaw_now
+	_jaw_now = jaws()
+	_bar_n = 0
+	_spike_n = 0
+	_legs(centres, ups, raised, forward)
+	_head_parts(head_side, head_up)
+	var box := AABB(low, high - low).grow(foot_out + rear_height + FEELER)
+	_plates.multimesh.buffer = _plate_buffer
+	_bars.multimesh.buffer = _bar_buffer
+	_spikes.multimesh.buffer = _spike_buffer
+	_plates.custom_aabb = box
+	_bars.custom_aabb = box
+	_spikes.custom_aabb = box
+
+
+# How big a length of it is, against the middle: the hindmost few smaller, the first a little.
+func _size_at(i: int, count: int) -> float:
+	var share := float(i) / count
+	return lerpf(1.0, 0.66, smoothstep(0.78, 1.0, share)) * lerpf(0.9, 1.0, smoothstep(0.0, 0.1, share))
+
+
+# Every leg, each in six joints: a short hip joint out from under the plate,
+# two joints up to a knee held above its back, a long shin down, two joints of
+# foot, and a black claw. They step in waves that run from its head to its
+# tail, the two sides in turn: each foot planted while the body passes over
+# it, then lifted, swung forward and set down. The last pair trail behind.
+func _legs(centres: PackedVector3Array, ups: PackedVector3Array, raised: PackedFloat32Array, forward: Vector3) -> void:
+	var count := centres.size()
+	var stance := 0.5
+	var reach := stride * stance * 0.5
+	var lifting := clampf(_speed * 0.4 + 0.25, 0.0, 1.0)
+	for i in range(1, count):
+		var run := (centres[i - 1] - centres[mini(i + 1, count - 1)])
+		run = run.normalized() if run.length() > 0.001 else forward
+		var up := ups[i]
+		up = (up - run * up.dot(run)).normalized() if absf(up.dot(run)) < 0.98 else Vector3.UP
+		var side := up.cross(run).normalized()
+		var size := _size_at(i, count)
+		# How far this length is off the ground (reared): its legs draw in and claw at the air.
+		var airborne := clampf((raised[i] - 0.15) / 0.6, 0.0, 1.0)
+		for s: float in [1.0, -1.0]:
+			var hip := centres[i] + side * s * width * 0.4 * size - up * width * 0.1 * size
+			var coxa := hip + side * s * 0.22 * size - up * 0.05 * size
+			# (the wave runs from the head back: a leg steps a little after the one in front of it)
+			var cycle := fposmod(_gait - i * WAVE_STEP + (0.5 if s < 0.0 else 0.0), 1.0)
+			var fore := 0.0
+			var lifted := 0.0
+			if cycle < stance:
+				fore = lerpf(reach, -reach, cycle / stance)
+			else:
+				var t := (cycle - stance) / (1.0 - stance)
+				fore = lerpf(-reach, reach, t * t * (3.0 - 2.0 * t))
+				lifted = sin(PI * t) * 0.42 * size * lifting
+			# (the legs angle back, more towards the tail)
+			var rake := -0.15 - 0.3 * float(i) / count
+			var foot := centres[i] + side * s * foot_out * size - up * (ride - lifted) + run * (fore + rake)
+			var knee := coxa + (foot - coxa) * 0.36 + up * (0.62 * size + lifted * 0.35) + side * s * 0.04
+			if airborne > 0.0:
+				var flail := sin(_clock * 11.0 + i * 1.3 + s * 1.7) * 0.3
+				var folded_knee := coxa + side * s * 0.55 * size + up * 0.3 * size + run * (flail * 0.3)
+				var folded_foot := folded_knee - up * 0.75 * size + run * (flail - 0.2) - side * s * 0.1
+				knee = knee.lerp(folded_knee, airborne)
+				foot = foot.lerp(folded_foot, airborne)
+			if _tuck > 0.0:
+				var tucked_knee := coxa + side * s * 0.4 * size - up * 0.05 * size - run * 0.15
+				var tucked_foot := tucked_knee - up * 0.3 * size - side * s * 0.12 * size - run * 0.2
+				knee = knee.lerp(tucked_knee, _tuck)
+				foot = foot.lerp(tucked_foot, _tuck)
+			var femur := coxa.lerp(knee, 0.45) + up * 0.08 * size
+			var ankle := knee.lerp(foot, 0.6) + side * s * 0.08 * size + up * 0.04 * size
+			var tarsus := ankle.lerp(foot, 0.55) + side * s * 0.03 * size
+			var claw_way := (foot - tarsus).normalized()
+			_bar(hip, coxa, 0.08 * size, run, Color(0.0, 0.0, 0.0))
+			_bar(coxa, femur, 0.068 * size, run, Color(0.0, 0.0, 0.0))
+			_bar(femur, knee, 0.062 * size, run, Color(0.0, 0.0, 0.0))
+			_bar(knee, ankle, 0.052 * size, run, Color(0.0, 0.0, 0.0))
+			_bar(ankle, tarsus, 0.043 * size, run, Color(0.0, 0.0, 0.0))
+			_bar(tarsus, foot, 0.035 * size, run, Color(0.0, 0.6, 0.0))
+			_spike(foot - claw_way * 0.02, foot + claw_way * 0.16 * size, 0.032 * size, run, Color(0.0, 0.0, 1.0))
+	# The last pair: long and thick, held out behind like a pair of pincers, a little apart and stirring.
+	var tail := centres[count - 1]
+	var tail_run := (centres[count - 2] - tail).normalized() if (centres[count - 2] - tail).length() > 0.001 else forward
+	var tail_up := ups[count - 1]
+	var tail_side := tail_up.cross(tail_run).normalized()
+	var tail_size := _size_at(count - 1, count)
+	for s: float in [1.0, -1.0]:
+		var at := tail + tail_side * s * width * 0.3 * tail_size - tail_run * _spacing * 0.2 - tail_up * 0.05
+		var thick := 0.1 * tail_size
+		var stir := sin(_clock * 1.7 + s * 1.3) * 0.08
+		var joints := [[0.42, 0.34, 0.08], [0.5, 0.16, 0.05], [0.5, 0.02 + stir, 0.0], [0.42, -0.08 - stir, -0.06], [0.36, -0.12, -0.08]]
+		for joint: Array in joints:
+			var next: Vector3 = at - tail_run * joint[0] + tail_side * s * joint[1] + tail_up * joint[2]
+			_bar(at, next, thick, tail_up, Color(0.45, 0.0, 0.0, 0.0))
+			at = next
+			thick *= 0.82
+		var end_way := (at - tail).normalized()
+		_spike(at, at + end_way * 0.22, thick, tail_up, Color(0.0, 0.0, 1.0))
+
+
+# Its feelers, its eyes, the poison claws under its head and the small mouthparts between them.
+func _head_parts(head_side: Vector3, head_up: Vector3) -> void:
+	# The feelers: from the front corners of its head, up and out, each in many
+	# small beads, tapering, waving as they feel the air; reaching for what it is after.
+	var front := head_at + head_way * _head_long * 0.42 + head_up * width * 0.06
+	var link := FEELER / FEELER_LINKS
+	for s: float in [1.0, -1.0]:
+		var at := front + head_side * s * width * 0.2
+		var dir := (head_way + head_side * s * 0.4 + head_up * (0.55 + _rear * 0.3)).normalized()
+		var target := Vector3.INF
+		if aim.is_finite():
+			target = aim + Vector3.UP * 0.8 + head_side * s * 0.6
+		for k in FEELER_LINKS:
+			var along := float(k) / FEELER_LINKS
+			# (a slow wave runs out along each, and a quicker tremor near the tip)
+			var wave := sin(_clock * (2.6 + s * 0.3) - k * 0.35) * 0.06 + sin(_clock * 8.0 + k * 0.9 + s) * 0.03 * along
+			dir = (dir + head_side * s * wave + head_up * (wave * 0.7 - 0.012)).normalized()
+			if target.is_finite():
+				dir = _turned(dir, (target - at).normalized(), 0.06).normalized()
+			var next := at + dir * link
+			_bar(at, next, lerpf(0.026, 0.009, along), head_up, Color(0.3, 0.0, lerpf(0.0, 0.6, along), 0.4))
+			at = next
+	# Its eyes: four small black glossy domes each side, in a cluster behind the root of its feeler.
+	for s: float in [1.0, -1.0]:
+		for k in 4:
+			var spot := head_at + head_way * _head_long * (0.24 + 0.06 * (k % 2)) + head_side * s * width * (0.36 + 0.05 * (k / 2)) + head_up * width * 0.08
+			var out := (head_up + head_side * s * 0.6).normalized()
+			_spike(spot - out * 0.02, spot + out * 0.045, 0.038, head_way, Color(0.0, 0.0, 1.0))
+	# The poison claws: from under its head, a thick glossy base, then curving
+	# forward and in to meet in front of it, each ending in a black fang. Spread wide to strike.
+	var under_head := head_at - head_up * width * 0.13 + head_way * _head_long * 0.05
+	var spread := lerpf(0.05, 1.0, _claws_open)
+	for s: float in [1.0, -1.0]:
+		# (a swing outward that grows as they spread, then a curve that turns in, darkening to a black point)
+		var root := under_head + head_side * s * width * 0.24
+		var one := root + head_way * 0.36 + head_side * s * (0.08 + 0.26 * spread) - head_up * 0.05
+		var two := one + head_way * 0.26 + head_side * s * (0.04 + 0.1 * spread) - head_up * 0.01
+		var three := two + head_way * 0.2 - head_side * s * lerpf(0.1, 0.0, spread) + head_up * 0.01
+		var four := three + head_way * lerpf(0.06, 0.16, spread) - head_side * s * lerpf(0.18, 0.08, spread) - head_up * 0.02
+		var fang := four + (head_way * lerpf(-0.02, 0.06, spread) - head_side * s * 0.13 - head_up * 0.05)
+		_bar(root, one, 0.095, head_up, Color(1.0, 0.0, 0.0, 1.0))
+		_bar(one, two, 0.078, head_up, Color(1.0, 0.0, 0.0, 1.0))
+		_bar(two, three, 0.062, head_up, Color(1.0, 0.45, 0.0, 1.0))
+		_bar(three, four, 0.047, head_up, Color(1.0, 0.55, 0.0, 1.0))
+		_spike(four, fang, 0.034, head_up, Color(0.0, 0.0, 1.0))
+	# The mouthparts: two small jointed feelers of the mouth between the claws.
+	for s: float in [1.0, -1.0]:
+		var at := head_at + head_way * _head_long * 0.42 - head_up * width * 0.08 + head_side * s * width * 0.08
+		var twitch := sin(_clock * 5.0 + s * 2.0) * 0.04
+		var mid := at + head_way * 0.16 - head_up * 0.04 + head_side * s * (0.04 + twitch)
+		_bar(at, mid, 0.028, head_up, Color(0.2, 0.0, 0.0, 0.5))
+		_bar(mid, mid + head_way * 0.12 - head_side * s * 0.02 - head_up * 0.03, 0.022, head_up, Color(0.1, 0.5, 0.0, 0.5))
+
+
+func _bar(from: Vector3, to: Vector3, thick: float, side: Vector3, tint: Color) -> void:
+	# (each a little longer at both ends, so that the joints overlap and close)
+	var way := (to - from).normalized() if (to - from).length_squared() > 0.000001 else Vector3.UP
+	_put(_bar_buffer, _bar_n, 16, CentipedeParts.between(from - way * thick * 0.5, to + way * thick * 0.3, thick, side))
+	var o := _bar_n * 16 + 12
+	_bar_buffer[o] = tint.r
+	_bar_buffer[o + 1] = tint.g
+	_bar_buffer[o + 2] = tint.b
+	_bar_buffer[o + 3] = tint.a
+	_bar_n += 1
+
+
+func _spike(from: Vector3, to: Vector3, thick: float, side: Vector3, tint: Color) -> void:
+	_put(_spike_buffer, _spike_n, 16, CentipedeParts.between(from, to, thick, side))
+	var o := _spike_n * 16 + 12
+	_spike_buffer[o] = tint.r
+	_spike_buffer[o + 1] = tint.g
+	_spike_buffer[o + 2] = tint.b
+	_spike_buffer[o + 3] = tint.a
+	_spike_n += 1
+
+
+## `a` turned towards `b` by `weight` (both of a length of one); safe when they are nearly the same way or opposite.
+static func _turned(a: Vector3, b: Vector3, weight: float) -> Vector3:
+	var d := a.dot(b)
+	if d > 0.9995 or d < -0.9995:
+		var mixed := a.lerp(b, weight)
+		return mixed.normalized() if mixed.length_squared() > 0.000001 else a
+	return a.slerp(b, weight)
+
+
+static func _put(buffer: PackedFloat32Array, n: int, stride_of: int, t: Transform3D) -> void:
+	var o := n * stride_of
+	buffer[o] = t.basis.x.x
+	buffer[o + 1] = t.basis.y.x
+	buffer[o + 2] = t.basis.z.x
+	buffer[o + 3] = t.origin.x
+	buffer[o + 4] = t.basis.x.y
+	buffer[o + 5] = t.basis.y.y
+	buffer[o + 6] = t.basis.z.y
+	buffer[o + 7] = t.origin.y
+	buffer[o + 8] = t.basis.x.z
+	buffer[o + 9] = t.basis.y.z
+	buffer[o + 10] = t.basis.z.z
+	buffer[o + 11] = t.origin.z
+
+
+# --- What it is made of ---
+
+func _build() -> void:
+	var colours := {"shell": shell, "head_shell": head_shell, "rim": rim, "under": under, "membrane": membrane, "leg": leg, "tip": tip}
+	var plates := MultiMesh.new()
+	plates.transform_format = MultiMesh.TRANSFORM_3D
+	plates.use_colors = true
+	plates.mesh = CentipedeParts.plate()
+	plates.instance_count = segments
+	_plate_buffer.resize(segments * 16)
+	_plates = MultiMeshInstance3D.new()
+	_plates.name = "Plates"
+	_plates.multimesh = plates
+	_plates.material_override = CentipedeParts.material(colours, 0)
+	_plates.top_level = true
+	add_child(_plates)
+	_plates.global_transform = Transform3D.IDENTITY
+	_head = MeshInstance3D.new()
+	_head.name = "Head"
+	_head.mesh = CentipedeParts.head()
+	_head.material_override = CentipedeParts.material(colours, 1)
+	_head.top_level = true
+	add_child(_head)
+	# Bars: six to each leg, five to each trailing leg, the feelers, eyes, poison claws and mouthparts.
+	_bar_count = segments * 12 + 10 + FEELER_LINKS * 2 + 8 + 4
+	var bar_material := CentipedeParts.material(colours, 2)
+	_bars = _many(CentipedeParts.bar(), _bar_count, bar_material, "Legs")
+	_bar_buffer.resize(_bar_count * 16)
+	# Spikes: a claw to each leg, the tips of the trailing legs, the fangs, the eyes.
+	_spike_count = segments * 2 + 4 + 8
+	_spikes = _many(CentipedeParts.spike(), _spike_count, bar_material, "Claws")
+	_spike_buffer.resize(_spike_count * 16)
+	if voice:
+		_sounds()
+		_clatter = AudioStreamPlayer3D.new()
+		_clatter.stream = _clatter_stream
+		_clatter.unit_size = 6.0
+		_clatter.volume_db = -60.0
+		add_child(_clatter)
+		_chitter = AudioStreamPlayer3D.new()
+		_chitter.stream = _chitter_stream
+		_chitter.unit_size = 8.0
+		_chitter.volume_db = -4.0
+		add_child(_chitter)
+
+
+# A MultiMesh of `count` of `mesh`, with colours, drawn from the world' origin.
+func _many(mesh: Mesh, count: int, material: Material, called: String) -> MultiMeshInstance3D:
+	var multi := MultiMesh.new()
+	multi.transform_format = MultiMesh.TRANSFORM_3D
+	multi.use_colors = true
+	multi.mesh = mesh
+	multi.instance_count = count
+	var node := MultiMeshInstance3D.new()
+	node.name = called
+	node.multimesh = multi
+	node.material_override = material
+	node.top_level = true
+	add_child(node)
+	node.global_transform = Transform3D.IDENTITY
+	return node
+
+
+## How many triangles it is, and how many things are drawn for it.
+func cost() -> Dictionary:
+	var plate_tris := CentipedeParts.plate().surface_get_array_len(0) / 3
+	var head_tris := CentipedeParts.head().surface_get_array_len(0) / 3
+	var bar_tris := CentipedeParts.bar().surface_get_array_len(0) / 3
+	var spike_tris := CentipedeParts.spike().surface_get_array_len(0) / 3
+	return {"triangles": plate_tris * segments + head_tris + bar_tris * _bar_count + spike_tris * _spike_count, "draws": 4}
+
+
+# --- Its sound ---
+
+func _sound() -> void:
+	if _clatter == null:
+		return
+	var loud := clampf(_speed / 5.0, 0.0, 1.0) if not _hidden else 0.0
+	if loud < 0.02:
+		if _clatter.playing:
+			_clatter.stop()
+		return
+	if not _clatter.playing:
+		_clatter.play()
+	_clatter.volume_db = linear_to_db(loud * 0.9)
+	_clatter.pitch_scale = 0.75 + 0.4 * loud
+
+
+static func _sounds() -> void:
+	if _clatter_stream:
+		return
+	var rate := 22050
+	var chance := RandomNumberGenerator.new()
+	chance.seed = 71
+	# The clatter: dry ticks of many feet, thick and uneven.
+	var samples := PackedFloat32Array()
+	samples.resize(rate)
+	var ticks := 140
+	for t in ticks:
+		var at := chance.randi_range(0, samples.size() - 400)
+		var loud := chance.randf_range(0.2, 0.7)
+		var tone := chance.randf_range(0.25, 0.6)
+		var last := 0.0
+		for k in 360:
+			var noise := chance.randf_range(-1.0, 1.0)
+			last = lerpf(last, noise, tone)
+			samples[at + k] += last * loud * exp(-k / 40.0)
+	_clatter_stream = _wave(samples, rate, true)
+	# The chitter: a rattle that rises, quick ticks closer and closer together.
+	samples = PackedFloat32Array()
+	samples.resize(int(rate * 0.6))
+	var at := 0
+	var gap := 900.0
+	while at < samples.size() - 300:
+		var last := 0.0
+		for k in 300:
+			var noise := chance.randf_range(-1.0, 1.0)
+			last = lerpf(last, noise, 0.5)
+			samples[at + k] += last * 0.7 * exp(-k / 50.0)
+		at += int(gap)
+		gap = maxf(gap * 0.9, 180.0)
+	_chitter_stream = _wave(samples, rate, false)
+
+
+static func _wave(samples: PackedFloat32Array, rate: int, loops: bool) -> AudioStreamWAV:
+	var data := PackedByteArray()
+	data.resize(samples.size() * 2)
+	for n in samples.size():
+		data.encode_s16(n * 2, int(clampf(samples[n], -1.0, 1.0) * 32000.0))
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = rate
+	if loops:
+		stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		stream.loop_end = samples.size()
+	stream.data = data
+	return stream

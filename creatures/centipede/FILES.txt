@@ -1,0 +1,3 @@
+# The giant centipede: two scripts, no scenes, no models, no textures (everything is made in code)
+creatures/centipede/centipede_body.gd
+creatures/centipede/centipede_parts.gd
