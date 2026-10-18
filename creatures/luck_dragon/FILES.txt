@@ -1,0 +1,4 @@
+# The luck dragon: how it looks, moves and sounds (stands alone)
+creatures/luck_dragon/luck_dragon.gd
+creatures/luck_dragon/luck_dragon_look.gd
+creatures/luck_dragon/models/luck_dragon.glb
