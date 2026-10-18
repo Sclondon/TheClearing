@@ -247,6 +247,8 @@ func _begin(players: Array, my_slot: int, online: bool, seed_value: int) -> void
 		world.stepwise = true
 		world.building.connect(_loading_step)
 	await world.setup(seed_value, my_slot, players, online, Mazes.for_round(round_number))
+	if not testing:
+		_wake_up.call_deferred()
 	voice.world = world
 	world.escaped.connect(_on_escaped)
 	world.caught.connect(func(_seat: int) -> void: _say("Caught! Back to the clearing."))
@@ -289,6 +291,98 @@ func _loading_step(what: String) -> void:
 		return
 	_loading_label.text = what + "..."
 	_loading_bar.value = minf(_loading_bar.value + 1.0, LOADING_STAGES - 0.5)
+
+
+## The start of a round: he is asleep in the middle of the clearing, and we see
+## through his eyes as they open: a slit, a blink, wider, a blink, open, bleary
+## and then clear, looking up at the grey sky and the walls over him. Then he
+## sits up and gets to his feet, and the view comes back behind him.
+const EYELIDS := """
+shader_type canvas_item;
+// 0 shut, 1 wide open; how bleary (blurred and dim) what is seen is.
+uniform float open = 0.0;
+uniform float bleary = 1.0;
+uniform sampler2D seen : hint_screen_texture, filter_linear_mipmap;
+
+void fragment() {
+	vec2 p = (SCREEN_UV - 0.5) * vec2(SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x, 1.0);
+	// The opening between the lids: a wide almond, its top lid curving more than its bottom.
+	float lid = open * 0.62;
+	float top = lid * (1.0 - pow(abs(p.x) / 1.05, 2.0)) * 1.15;
+	float bottom = -lid * (1.0 - pow(abs(p.x) / 1.1, 2.0)) * 0.85;
+	float soft = 0.05 + 0.08 * bleary;
+	float shown = smoothstep(top, top - soft, p.y) * smoothstep(bottom, bottom + soft, p.y);
+	shown *= smoothstep(0.0, 0.08, open);
+	vec3 colour = textureLod(seen, SCREEN_UV, bleary * 4.0).rgb;
+	colour = mix(colour, vec3(dot(colour, vec3(0.33))), bleary * 0.5) * (1.0 - bleary * 0.35);
+	// (dark at the edges, as the lids and lashes shade it)
+	colour *= 1.0 - smoothstep(0.1, 0.65, length(p)) * 0.55;
+	COLOR = vec4(colour * shown, 1.0);
+}
+"""
+
+
+func _wake_up() -> void:
+	if world == null or world.player == null:
+		return
+	var player = world.player
+	# (asleep in the middle of the clearing: the shut eyes over it from the first frame)
+	var lids := ColorRect.new()
+	lids.set_anchors_preset(Control.PRESET_FULL_RECT)
+	lids.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shader := Shader.new()
+	shader.code = EYELIDS
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter(&"open", 0.0)
+	material.set_shader_parameter(&"bleary", 1.0)
+	lids.material = material
+	_ui.add_child(lids)
+	# (nothing of the HUD until he is up)
+	if _hud:
+		_hud.visible = false
+	world.put_player(world.spawn(world.slot, true), world.spawn_yaw(world.slot, true))
+	for i in 4:
+		await get_tree().physics_frame
+	if world == null:
+		lids.queue_free()
+		return
+	player.fall_asleep()
+	for i in 20:
+		await get_tree().process_frame
+	# Through his eyes: from his head, looking up past his shoulder at the sky and
+	# the top of the clearing's wall.
+	var eye := Camera3D.new()
+	eye.fov = 70.0
+	world.add_child(eye)
+	var head: Vector3 = (player.get_node(^"Rig") as CharacterRig)._head.global_position
+	var facing := Vector3(sin(player.facing_yaw), 0.0, cos(player.facing_yaw))
+	# (a little over the grass he lies in, so that it is the sky and the walls, with grass at the edges)
+	eye.global_position = head + Vector3.UP * 0.4
+	eye.look_at(eye.global_position + (facing * 0.42 + Vector3.UP).normalized() * 10.0)
+	eye.make_current()
+	var opening := create_tween()
+	for step: Array in [[0.28, 1.4], [0.04, 0.22], [0.55, 1.1], [0.18, 0.2], [1.0, 1.6]]:
+		opening.tween_property(material, ^"shader_parameter/open", step[0], step[1]).set_trans(Tween.TRANS_SINE)
+	opening.parallel().tween_property(material, ^"shader_parameter/bleary", 0.0, 2.2)
+	await opening.finished
+	if world == null or not is_instance_valid(eye):
+		lids.queue_free()
+		return
+	# He gets up; the view comes back down out of his eyes to behind him.
+	player.wake()
+	if _hud:
+		_hud.visible = true
+	lids.queue_free()
+	var from := eye.global_transform
+	var took := 0.0
+	while took < 1.8 and world and is_instance_valid(world.camera):
+		await get_tree().process_frame
+		took += get_process_delta_time()
+		eye.global_transform = from.interpolate_with(world.camera.global_transform, smoothstep(0.0, 1.0, took / 1.8))
+	if world and is_instance_valid(world.camera):
+		world.camera.make_current()
+	eye.queue_free()
 
 
 func _end_world() -> void:

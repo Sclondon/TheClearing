@@ -1312,6 +1312,15 @@ func sleep() -> void:
 	_begin_rest()
 
 
+## Asleep at once, lying curled on his side, without sitting down to it first
+## (for waking in the clearing at the start of a round).
+func fall_asleep() -> void:
+	sleep()
+	if rest == Rest.ASLEEP:
+		sit_progress = 1.0
+		lie_progress = 1.0
+
+
 ## Gets him up, from sitting or from sleep: `with_a_start` in a hurry.
 func wake(with_a_start := false) -> void:
 	if rest == Rest.UP:

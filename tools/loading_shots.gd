@@ -1,7 +1,7 @@
 extends SceneTree
 ## The loading screen (Main._loading_page) as Play shows it: pictures while the
-## round is being made, the stages it went through with how long each took, and
-## a picture once it is ready.
+## round is being made, the stages it went through with how long each took, a
+## picture once it is ready, and pictures as he wakes (Main._wake_up).
 ##
 ##     godot --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/loading_shots.gd -- <folder>
 
@@ -41,4 +41,10 @@ func _run() -> void:
 	for i in 30:
 		await process_frame
 	root.get_texture().get_image().save_png(folder + "/ready.png")
+	# (then waking: the eyes opening, and him getting up)
+	var woke := Time.get_ticks_msec()
+	for k in 8:
+		while Time.get_ticks_msec() - woke < 700 + k * 900:
+			await process_frame
+		root.get_texture().get_image().save_png("%s/waking_%d.png" % [folder, k])
 	quit()
