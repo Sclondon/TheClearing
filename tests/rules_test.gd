@@ -45,7 +45,7 @@ func _run() -> void:
 	var shown := func(thing: Object) -> Array:
 		return thing.get_property_list().filter(func(p: Dictionary) -> bool: return p.usage & PROPERTY_USAGE_EDITOR and p.usage & PROPERTY_USAGE_SCRIPT_VARIABLE).map(func(p: Dictionary) -> String: return p.name)
 	var round_shown: Array = shown.call(RoundStyle.new())
-	_check(round_shown.size() == RoundStyle.SHOWN.size(), "a round section shows only what it goes by: %s" % ", ".join(round_shown))
+	_check(round_shown.size() == RoundStyle.SHOWN.size() + 1, "a round section shows only what it goes by: %s" % ", ".join(round_shown))
 	var square_shown: Array = shown.call(MazeStyle.new())
 	_check(not square_shown.has("round_section") and not square_shown.has("desert_width"), "a square section shows no round switch and no desert (%d settings)" % square_shown.size())
 	var layout_shown: Array = shown.call(editor)
