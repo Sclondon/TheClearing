@@ -102,6 +102,29 @@ ring has is its style's choice. The wall tops are a second level you can travel 
 - **Mummies**, six kinds from Outside, in packs.
 - **The Griever**: a gelatinous lump of wet meat on eight robotic, procedurally animated spider legs that plant on
   walls and floor, with a stinger. It sees, hunts, winds up, strikes.
+- Added 2026-10-18 at the user's request ("models and animations specifically, and then as reusable components"):
+  each is a GameCommon creature (look and motion, `creatures/<name>/`) driven by a thin `MazeEnemy` here.
+  - **Ghoul** (after Zelda's ReDeads, from our mummies, no wraps): raw red, bare, a blank mask face. A statue in a
+    dead end until it sees someone; its wrenching shriek freezes anyone facing it for about 2 s; it rushes (faster
+    than a walk) and hug-grabs. Turn away or run at once and it is easy to get past.
+  - **Giant centipede**: rests coiled, hunts faster than a run (a sprint escapes), up the wall feet round corners,
+    rears as a warning and pounces with its claws.
+  - **Giant spider**: waits head down high on a wall, drops on a thread, charges in dashes, rears, lunges. Loses
+    a sprinter. Climbs back up to wait.
+  - **Meat abomination**: slow, never lets go, nearly fills a hall; lashes tendrils from a few metres after a
+    visible wind-up; touching it catches.
+  - **Slime wall**: see-through jelly full of skeletons that fills a hall wall to wall, below walking pace;
+    touching it catches (you are drawn in and tumble among the bones). Find another way round.
+  - **Bats**: a colony roosts on a wall; running or sprinting near wakes it. They catch nobody: they mob the
+    player and call every hunter within 45 m to them. Duck or stand still and they lose interest.
+  - **Demon baboons**: troops of a mandrill alpha and baboons. They bark, flank (some go where you are heading),
+    burst faster than a run and tire; a sprint escapes. Leap-grab.
+  - **Feral dogs**: packs that follow players' scent trails nose-down out of sight, bay and gallop on sight
+    (between a run and a sprint), lunge-bite. Climbing breaks the trail.
+  - **Aliens**: twos and threes that walk calmly and blink ahead of you when unwatched (a shimmering column
+    warns first; looking at it stops it), then raise a hand and catch you in a pale light.
+- How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
+  kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
 - With friends, the room's maker runs them; everyone else sees copies.
 
