@@ -111,6 +111,9 @@ extends Resource
 ## Pairs of aliens (each pack two or three).
 @export_range(0, 3) var alien_packs := 1
 @export_range(0, 3) var dog_packs := 1
+## Gargoyles, each crouched as a statue on a ledge over a hall (a terrace's edge or a
+## wall top), dropping on whoever passes beneath.
+@export_range(0, 4) var gargoyles := 2
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []

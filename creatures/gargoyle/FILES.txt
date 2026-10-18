@@ -1,0 +1,9 @@
+# The gargoyle: its motion and sounds, its shader, where its bones stand, the models, the stone's grain, and the Blender script that makes the models
+creatures/gargoyle/gargoyle.gd
+creatures/gargoyle/gargoyle_look.gd
+creatures/gargoyle/gargoyle_rest.gd
+creatures/gargoyle/models/gargoyle.glb
+creatures/gargoyle/models/gargoyle_lo.glb
+creatures/gargoyle/textures/gargoyle_stone.png
+creatures/gargoyle/tools/.gdignore
+creatures/gargoyle/tools/build_gargoyle.py
