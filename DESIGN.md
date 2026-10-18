@@ -124,6 +124,41 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     (between a run and a sprint), lunge-bite. Climbing breaks the trail.
   - **Aliens**: twos and threes that walk calmly and blink ahead of you when unwatched (a shimmering column
     warns first; looking at it stops it), then raise a hand and catch you in a pale light.
+  - **Beetles** (after Outside's scarabs): a swarm of several hundred glossy black beetles with an oily sheen
+    (ground beetles and dor beetles) waits in cracks at the foot of a wall, in a dead end or along a hall. When
+    someone comes down the hall they pour out and flood along the floor after them, lapping up the wall feet, a
+    little faster than a run and slower than a sprint. Those that reach you run up your legs; enough of them for
+    a moment and you are caught. Sprint away, or get up onto a terrace, the ivy or a vine (they climb no higher
+    than about a metre up a wall); when they get no nearer for a few seconds they stream home into the cracks.
+  - **Fish people** (deep ones, out of Innsmouth; the user asked 2026-10-18 for "a fish person enemy that uses the
+    character controller as a base"): tall, stooped, grey-green and scaled, a fish's head with glassy eyes and needle
+    teeth, gills, a fin down the back, webbed hands and feet. Each lies in a black pool of its own in a hall, sunk to
+    its eyes: a puddle with two eyes in it, if you look. Down there it hears only what is close or loud: walk softly
+    past along the far wall and it stays down; run near it, or step in its pool, and it rises and croaks, and its
+    croak brings up every other fish person within about 40 m. It shambles below a walk, but lopes faster than a run
+    in short bursts when it sees you near, then stands gulping for breath; a sprint or a corner loses it. It lunges
+    and grabs with both hands. It cannot stay out of the water: after half a minute, or once it has lost you, it goes
+    back to its pool and sinks.
+  - **Angel** (a "biblically accurate" one, after Ezekiel's ophanim and Isaiah's seraphim): three great wheels of
+    pale gold one within another, turning slowly, their rims full of real eyes that blink out of step, round a
+    burning white-gold heart half hidden by six wings. Huge (7 m across), silent, floating over the halls; the one
+    warm bright thing in the mist, lighting the walls round it. It drifts slowly and everyone passes under it, but
+    its eyes look every way, so there is no creeping past behind it. Being SEEN is the danger: while you stand in its
+    sight in the open its gaze builds on you over about four seconds (quicker near it), and everyone can see and hear
+    it build: every eye turns on you, the wheels stop, the wings before its face part, a cone of pale light reaches
+    down and pools at your feet, and a choir swells and rises. If it reaches the full you are drawn up into the light
+    and taken. Break its sight (a corner, a slot, onto the ivy) and the gaze falls away. One in the first ring.
+  - **Giant toad** (added at the user's request, "a frog enemy"): a huge warty toad, taller than the boy's chest,
+    squatting wet and still in a dead end, throat pulsing. Seen, it croaks (its throat a great bubble), turns on you
+    slowly and comes in great arcing leaps (slower than a run, on the whole). Near and facing you, it winds up for
+    about a second where you can see it (the throat swells, the mouth gapes), aims at your chest and holds that aim
+    for the last third of a second, and shoots a sticky tongue several metres. Step aside, duck under it, or be out of
+    reach; it misses, gulps and sits a moment.
+  - **Frog swarm**: dozens of small frogs (fist- to cat-sized) in a muddy pool in a dead end, a few sitting about its
+    edge. Come near and they pour out at you in hopping waves, leaping over each other, croaking in chorus. Those that
+    reach you leap on and cling, and the more there are the slower you go; enough of them for long enough and you are
+    caught. Outrun them, shake them off by running and jumping, or get up onto something (a terrace, the ivy): they
+    cannot hop that high, give up and go home.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
