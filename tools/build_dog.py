@@ -634,7 +634,7 @@ def parts(breed):
 
 def paint(breed, whole, part_of):
     """Vertex colours. On the coat: red, how open the surface is (low in
-    grooves and creases); green, scar; blue, how far it is the paler underside.
+    grooves and creases); blue, how far it is the paler underside (green is unused).
     On the other parts, their colours (see PART_COLOURS)."""
     layer = whole.verts.layers.float_color.new("Color")
     whole.verts.ensure_lookup_table()
@@ -643,6 +643,7 @@ def paint(breed, whole, part_of):
     furred = [part in ("coat", "jaw", "ears") for part in part_of]
     scars = scar_lines(breed)
     crest_first = part_of.index("crest")
+    across_uv = {}
     open_ = [1.0] * len(whole.verts)
     for vert in whole.verts:
         if not furred[vert.index] or not vert.link_edges:
@@ -675,16 +676,43 @@ def paint(breed, whole, part_of):
             continue
         if part in PART_COLOURS:
             vert[layer] = PART_COLOURS[part]
+            if part == "eyes":
+                # Where on the eye it is, from the front: for the pupil and the rim
+                side = 1.0 if p.x >= 0.0 else -1.0
+                at, radius = breed.eye
+                centre = breed.skull + V(side * at.x, at.y, at.z)
+                # (a dog's eyes look a little out to the side: so does the middle of its pupil)
+                local = Matrix.Rotation(side * 0.6, 3, "Y").inverted() @ (p - centre)
+                if local.z > 0.0:
+                    across_uv[vert.index] = (0.5 + local.x / (radius * 0.8) * 0.4, 0.5 + local.y / (radius * 0.62) * 0.4)
+                else:
+                    across_uv[vert.index] = (0.95, 0.95)
             continue
         shade = 1.0
         pale = 0.0
         scar = 0.0
         if furred[vert.index]:
+            # How far across the nearest scar it is, on which side of it (so that the
+            # shader can draw a smooth line through the middle of a triangle), and how
+            # far along it.
+            # Two numbers for the nearest scar: how far across the line of its nearest
+            # piece this is, on which side (so that, between two corners of a
+            # triangle, the shader finds where the line runs through it), and how far
+            # it truly is from the scar (to keep to the scar itself: that line runs on
+            # past its ends, and sides change between one scar and the next).
+            near = 1e9
             for line in scars:
                 for a, c in zip(line, line[1:]):
                     ac = c - a
                     t = min(max((p - a).dot(ac) / max(ac.length_squared, 1e-9), 0.0), 1.0)
-                    scar = max(scar, blend(0.0055, 0.0015, (a + ac * t - p).length))
+                    gap = (a + ac * t - p).length
+                    if gap < near:
+                        near = gap
+                        way = ac.normalized()
+                        off = (p - a) - way * (p - a).dot(way)
+                        side = way.cross(kit.from_blender(vert.normal)).dot(off)
+                        across = off.length if side >= 0.0 else -off.length
+                        across_uv[vert.index] = (0.5 + max(min(across * 10.0, 0.45), -0.45), 0.5 + min(gap * 10.0, 0.45))
             # (against how open the surface is in general: it is all a little rounded)
             shade = min(max(1.0 - (open_[vert.index] - middle) * 6.0, 0.0), 1.0)
             y, rx, ry = trunk_at(breed, p.z)
@@ -695,6 +723,13 @@ def paint(breed, whole, part_of):
             legs = blend(0.30, 0.12, p.y) * 0.45
             pale = max(belly, muzzle * 0.8, throat, legs)
         vert[layer] = (shade, scar, pale, 1.0)
+    # The second texture coordinates: across and along a scar on the coat (0.5 across is
+    # its middle line, a tenth either side is a centimetre), and on an eye, where on its
+    # front (0.5, 0.5 is the middle of the pupil). Anything else, far off (0.95).
+    second = whole.loops.layers.uv.new("UVMap2")
+    for face in whole.faces:
+        for loop in face.loops:
+            loop[second].uv = across_uv.get(loop.vert.index, (0.95, 0.95))
 
 
 def _bm_of(mesh):

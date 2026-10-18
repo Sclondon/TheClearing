@@ -84,7 +84,7 @@ var variant := 0
 ## Layers of fur stood off the coat (none on the low-poly model).
 var fur_shells := 2
 var coat_tint := Color.WHITE
-var mange := 0.3
+var mange := 0.2
 var eyeshine := 0.5
 ## The materials, by name (see DogLook.dress).
 var materials := {}

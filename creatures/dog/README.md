@@ -38,9 +38,9 @@ if dog.bite_hits(their_chest): ...
 - `dog.gd` (`Dog`): what a game drives.
 - `dog_rig.gd` (`DogRig`): poses the skeleton every frame.
 - `dog_look.gd` (`DogLook`): three shaders.
-  - Fur shells with creases, scars, mange and a paler underside, read from the model's vertex colours.
+  - Matted fur in soft clumps, with shells that fuzz its outline. Creases, mange and a paler underside come from the model's vertex colours. Scars are smooth raised hairless streaks, drawn from the model's second texture coordinates.
   - A crest that bristles.
-  - Vertex-coloured parts with glinting eyes.
+  - Vertex-coloured parts. The eyes have an iris, a dark rim, a pupil and eyeshine.
 - `models/dog_a.glb`, `dog_b.glb` and their `_lo` versions: built by `tools/build_dog.py` in Blender 4.3, which uses
   `tools/build_character.py` from `godot/character-controller`. Run it from the project root:
   `blender --background --python tools/build_dog.py`

@@ -58,7 +58,7 @@ const LAND_TIME := 0.34
 ## Multiplies the colours of its coat: one dog a little redder or darker than the next.
 @export var coat_tint := Color.WHITE
 ## How much of its coat is bare with mange, 0..1.
-@export_range(0.0, 1.0) var mange := 0.3
+@export_range(0.0, 1.0) var mange := 0.2
 ## How brightly its eyes give back the light.
 @export_range(0.0, 2.0) var eyeshine := 0.5
 ## Works out `velocity` from how it is moved (else the game sets it).
