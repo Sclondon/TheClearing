@@ -1,3 +1,4 @@
+@tool
 class_name RoundBuilder
 extends Node3D
 ## Puts up the round sections of a maze (RoundMaze): the great circular walls
@@ -64,7 +65,8 @@ func _ready() -> void:
 		var shown := MeshInstance3D.new()
 		shown.mesh = mesh
 		shown.material_override = great_material if key[0] == 1 else maze_material
-		shown.visibility_range_end = FAR
+		# (in the editor, seen from far over the whole maze, always)
+		shown.visibility_range_end = 0.0 if Engine.is_editor_hint() else FAR
 		add_child(shown)
 		var shape := ConcavePolygonShape3D.new()
 		shape.set_faces(part[0])

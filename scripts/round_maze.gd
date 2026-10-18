@@ -1,3 +1,4 @@
+@tool
 class_name RoundMaze
 extends RefCounted
 ## The round sections of the maze, outside the square ones (Maze): rings of

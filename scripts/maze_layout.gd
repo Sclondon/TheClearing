@@ -18,7 +18,8 @@ extends Node3D
 
 ## Which maze to start from.
 @export var maze_seed := 1
-## How many rings round the clearing.
+## How many rings round the clearing: the square ones first, then (past a moor)
+## the round ones (MazeStyle.round_section), shown as the game will build them.
 @export_range(1, 7) var rings := 1
 ## How each ring is made, from the clearing out (MazeStyle): its width, how wide
 ## its halls are, the rules of its passages and its entrances, and what is on
@@ -65,11 +66,21 @@ func _show_in_editor() -> void:
 	if open == null or not (open == self or open.is_ancestor_of(self)):
 		return
 	var size := Maze.ring_extent(rings + 1, styles) + 80.0
+	# (the round sections, past the moor, are not pieces: they are shown as the
+	# game will build them, from the seed and their styles)
+	var plan := Maze.generate(maze_seed, rings, styles, clearing_style)
+	var outer := plan.round_rings
+	if outer:
+		size = (outer.outermost() + 300.0) * 2.0
+		var sections := RoundBuilder.new()
+		sections.plan = outer
+		add_child(sections, false, Node.INTERNAL_MODE_BACK)
+		_editor_shown.append(sections)
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(size, size)
 	var ground := MeshInstance3D.new()
 	ground.mesh = plane
-	ground.material_override = MazeStone.ground(Maze.CLEARING * Maze.CELL * 0.5, Maze.ring_extent(rings, styles) * 0.5, MazeBuilder.WALL_THICK)
+	ground.material_override = MazeStone.ground(Maze.CLEARING * Maze.CELL * 0.5, plan.extent() * 0.5, MazeBuilder.WALL_THICK)
 	add_child(ground, false, Node.INTERNAL_MODE_BACK)
 	_editor_shown.append(ground)
 	if clearing_style and clearing_style.shaped():
@@ -87,11 +98,16 @@ func _show_in_editor() -> void:
 func generate() -> void:
 	clear()
 	# (the game's own ring styles, filled in to be changed here, ring by ring)
+	# (and any more rings than it has styles for, the game's own for those)
+	var own := MazeStyle.defaults()
 	if styles.is_empty():
-		styles = MazeStyle.defaults().duplicate()
+		styles = own.duplicate()
+	while styles.size() < mini(rings, own.size()):
+		styles.append(own[styles.size()])
 	if clearing_style == null:
 		clearing_style = ClearingStyle.new()
 	lay_out(Maze.generate(maze_seed, rings, styles, clearing_style))
+	_show_in_editor()
 
 
 ## Takes away every piece.
