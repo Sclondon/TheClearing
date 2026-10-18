@@ -1,0 +1,9 @@
+# The spider monkey: three scripts, two models, and the Blender script that makes the models
+creatures/spider_monkey/spider_monkey.gd
+creatures/spider_monkey/spider_monkey_look.gd
+creatures/spider_monkey/spider_monkey_vine.gd
+creatures/spider_monkey/models/spider_monkey.glb
+creatures/spider_monkey/models/spider_monkey_lo.glb
+creatures/spider_monkey/tools/build_spider_monkey.py
+creatures/spider_monkey/tools/rest_spider_monkey.json
+creatures/spider_monkey/tools/rest_joints.gd
