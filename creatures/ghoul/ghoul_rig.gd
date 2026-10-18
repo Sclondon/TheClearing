@@ -14,11 +14,13 @@ extends CharacterRig
 ##   toes turned out and scraping, its body rocking from side to side over each
 ##   foot and its arms swinging from the shoulders like weights on strings. It
 ##   leans towards what it is after, its head held up to look at it; near to,
-##   its arms come up to take hold.
-## - THE SCREAM: it straightens, throws its head right back so that its open
-##   mouth is to the sky, arches its back and spreads its arms down and out with
-##   the fingers splayed, and shudders all over while it shrieks (SCREAM_RISE,
-##   SCREAMING, SCREAM_FALL).
+##   its arms come up to take hold. Driven fast (a rush), its steps lengthen and
+##   lift and it leans into them.
+## - THE SCREAM: a heave in, the head jerked down (the gasp); then it throws its
+##   head right back so that its open mouth is to the sky, the chest thrust out
+##   and the back arched, its arms up and back beside its head, half bent, the
+##   hands clawed; and it convulses while it shrieks, a fast shiver through it
+##   all and jolts this way and that (SCREAM_RISE, SCREAMING, SCREAM_FALL).
 ## - THE GRAB: both arms are thrown up and wide as it leans in (REACH), then
 ##   brought round together in front of its chest (CLOSE: the moment it takes
 ##   hold, if anything is there); if it has someone (`held`), it clings to them
@@ -33,8 +35,8 @@ enum Stage { NONE, SCREAM_RISE, SCREAMING, SCREAM_FALL, REACH, CLOSE, HOLD, LET_
 
 ## Seconds each part of a scream and of a grab takes.
 const SCREAM_RISE := 0.3
-const SCREAMING := 0.85
-const SCREAM_FALL := 0.4
+const SCREAMING := 0.95
+const SCREAM_FALL := 0.45
 const REACH := 0.4
 const CLOSE := 0.18
 const HOLD := 1.1
@@ -55,6 +57,8 @@ var _doing := Act.NONE
 var _doing_time := INF
 var _wake := 0.0
 var _cycle := 0.0
+## The length of a whole cycle of its steps now (longer when it rushes).
+var _stride := STRIDE
 var _trod := false
 var _posed := false
 var _was_at := Vector3.INF
@@ -82,6 +86,9 @@ var _nodding := Vector2.ZERO
 var _twitch := 0.0
 var _twitch_way := 1.0
 var _twitch_in := 3.0
+## Screaming: the last jolt through it (fading), and when the next comes.
+var _jolt := Vector3.ZERO
+var _jolt_in := 0.0
 var _own_dust: Dust
 
 
@@ -182,20 +189,26 @@ func _pose_extra(delta: float) -> void:
 	# How far into each of the things it does, 0..1, rising and falling.
 	var scream := 0.0
 	var shudder := 0.0
+	var gasp := 0.0
 	var reach := 0.0
 	var closed := 0.0
 	var clinging := 0.0
 	if _doing == Act.SCREAM:
 		scream = smoothstep(0.0, SCREAM_RISE, t) * (1.0 - smoothstep(SCREAM_RISE + SCREAMING, act_length(Act.SCREAM), t))
-		shudder = smoothstep(SCREAM_RISE * 0.6, SCREAM_RISE, t) * (1.0 - smoothstep(SCREAM_RISE + SCREAMING - 0.1, SCREAM_RISE + SCREAMING + 0.15, t))
+		shudder = smoothstep(SCREAM_RISE * 0.6, SCREAM_RISE, t) * (1.0 - smoothstep(SCREAM_RISE + SCREAMING - 0.1, SCREAM_RISE + SCREAMING + 0.2, t))
+		# (the gasp before it: a heave in, the head jerked down and forward)
+		gasp = sin(PI * clampf(t / SCREAM_RISE, 0.0, 1.0)) * (1.0 - smoothstep(SCREAM_RISE * 0.7, SCREAM_RISE, t))
 	elif _doing == Act.GRAB:
 		var out := 1.0 - smoothstep(REACH + CLOSE + HOLD, act_length(Act.GRAB), t)
 		reach = smoothstep(0.0, REACH * 0.8, t) * out
 		closed = smoothstep(REACH, REACH + CLOSE, t) * out
 		clinging = closed * (1.0 if held else 0.0)
 
+	# Rushing (after a scream), its steps lengthen and lift, and it leans into them.
+	var rush := smoothstep(0.9, 1.9, going.length())
+	_stride = lerpf(STRIDE, STRIDE * 2.1, rush)
 	_tread(going, turned, go, delta)
-	_shape_steps(go)
+	_shape_steps(go, rush)
 
 	# --- The body ---
 	var swing_side := sin(_cycle * TAU)
@@ -210,23 +223,30 @@ func _pose_extra(delta: float) -> void:
 	_twitch = maxf(_twitch - delta * 1.4, 0.0)
 	var jerk := _twitch_way * pow(_twitch, 3.0) * 0.45 * (1.0 - scream)
 
-	var hunch := lerpf(0.2, 0.42, _wake) * (1.0 - scream) + 0.35 * reach - 0.1 * closed
-	var arch := 0.42 * scream
-	var tremble := Vector3(sin(_time * 53.0), sin(_time * 61.0 + 1.3), sin(_time * 47.0 + 2.1)) * shudder
+	var hunch := lerpf(0.2, 0.42, _wake) * (1.0 - scream) + 0.3 * rush + 0.35 * reach - 0.1 * closed + 0.25 * gasp
+	var arch := 0.6 * scream
+	# Screaming it convulses: a fast shiver through it all, and jolts, now one
+	# way and now the other, as if each breath were torn out of it.
+	_jolt_in -= delta
+	if shudder > 0.1 and _jolt_in <= 0.0:
+		_jolt_in = randf_range(0.07, 0.2)
+		_jolt = Vector3(randf_range(-1.0, 1.0), randf_range(0.4, 1.0), randf_range(-1.0, 1.0))
+	_jolt *= exp(-16.0 * delta)
+	var tremble := (Vector3(sin(_time * 53.0), sin(_time * 61.0 + 1.3), sin(_time * 47.0 + 2.1)) + _jolt * 2.2) * shudder
 	# (clinging, it grinds against them)
 	var grind := sin(_time * 9.0) * clinging
 	var bend := _wake * 0.06 + 0.04 * reach + 0.05 * scream
 	var height := _hip_height - bend - 0.008 * absf(swing_side) * go + 0.02 * scream - 0.03 * clinging
 	_hips.position = Vector3(_rocking.x * 0.12 + tremble.x * 0.004, height, 0.05 * reach + 0.06 * closed + 0.02 * grind - 0.03 * scream)
 	_hips.rotation = Vector3(hunch * 0.25 + _nodding.x - arch * 0.15 + 0.06 * grind, 0.0, -_rocking.x * 0.6 + tremble.z * 0.02)
-	_spine.rotation = Vector3(hunch * 0.35 - arch * 0.4 + tremble.y * 0.025, _rocking.x * 0.3, _rocking.x * 0.4)
-	_chest.rotation = Vector3(hunch * 0.45 - arch * 0.55 + tremble.x * 0.03 - 0.08 * grind, -_rocking.x * 0.2, _rocking.x * 0.3 + tremble.z * 0.03)
+	_spine.rotation = Vector3(hunch * 0.35 - arch * 0.4 + tremble.y * 0.03, _rocking.x * 0.3, _rocking.x * 0.4)
+	_chest.rotation = Vector3(hunch * 0.45 - arch * 0.6 + tremble.y * 0.045 - 0.08 * grind, -_rocking.x * 0.2, _rocking.x * 0.3 + tremble.z * 0.03)
 
 	# Its head: hanging asleep; held up to look at what it is after; thrown back to scream.
 	_watch_him(_hip_height + 0.5, Vector2(1.0, 0.6), 3.0, delta)
 	var look := _gaze * smoothstep(0.3, 0.8, _wake) * (1.0 - scream)
 	var bowed := lerpf(0.42, 0.05, _wake) - hunch * 0.9 - 0.3 * reach
-	var thrown := -1.15 * scream
+	var thrown := -1.2 * scream + 0.35 * gasp
 	_neck.rotation = Vector3(bowed * 0.45 + thrown * 0.4 + look.y * 0.4 + tremble.y * 0.04, look.x * 0.4, jerk * 0.4 - _rocking.x * 0.6)
 	_head.rotation = Vector3(bowed * 0.55 + thrown * 0.6 + look.y * 0.6 + tremble.x * 0.06 + 0.1 * grind, look.x * 0.6, jerk * 0.6 + tremble.z * 0.05 - _rocking.x * 0.5)
 
@@ -237,13 +257,13 @@ func _pose_extra(delta: float) -> void:
 
 ## Shapes the steps `_tread` takes into a shuffle: the foot barely lifted,
 ## turned out, its toes scraping, put down flat.
-func _shape_steps(go: float) -> void:
+func _shape_steps(go: float, rush: float) -> void:
 	for i in 2:
 		var side := 1.0 if i == 0 else -1.0
 		_foot_turn[i] = side * -0.22
 		if _foot_swing[i] >= 0.0:
 			var s := _foot_swing[i]
-			_foot_lift[i] = sin(PI * s) * 0.022
+			_foot_lift[i] = sin(PI * s) * lerpf(0.022, 0.08, rush)
 			_foot_toes[i] = -0.12 * sin(PI * s)
 			if s > 0.85 and s < 0.9:
 				_own_dust.puff(to_global(_foot_at[i] + Vector3(0.0, 0.02, 0.06)), Vector3.ZERO, 0.09 * global_basis.get_scale().y, 1)
@@ -269,22 +289,23 @@ func _arms(go: float, scream: float, shudder: float, tremble: Vector3, reach: fl
 		# After someone close: held out to take them.
 		var out := shoulder + Vector3(side * 0.1, -0.22 + 0.1 * side * sin(_time * 1.1), 0.55)
 		var goal := hanging.lerp(out, near * smoothstep(0.4, 0.9, _wake))
-		# Screaming: down and out, spread, shaking.
-		var spread := shoulder + Vector3(side * 0.56, -0.36, -0.06) + tremble * 0.012
+		# Screaming: up and back beside its head, half bent, clawing, shaking.
+		var spread := shoulder + Vector3(side * 0.34, 0.14, -0.2) + Vector3(tremble.x * side, tremble.y, tremble.z) * 0.03
 		goal = goal.lerp(spread, scream)
 		# Grabbing: up and wide, then round together in front of its chest.
-		var wide := shoulder + Vector3(side * 0.5, 0.1, 0.32)
-		# (a ring of arms: the hands meet in front, the elbows out wide)
-		var hug := shoulder + Vector3(-side * 0.13, -0.1, 0.42) + Vector3(0.0, 0.02, 0.0) * sin(_time * 9.0) * clinging
+		# (a ring of arms: the hands meet in front, the elbows out wide, as low as they are)
+		var low := clampf(mark.y - shoulder.y, -0.45, -0.1)
+		var wide := shoulder + Vector3(side * 0.5, 0.1 + (low + 0.1) * 0.5, 0.32)
+		var hug := shoulder + Vector3(-side * 0.13, low, 0.42) + Vector3(0.0, 0.02, 0.0) * sin(_time * 9.0) * clinging
 		goal = goal.lerp(wide, reach * (1.0 - closed)).lerp(hug, closed)
 		var stiff := 26.0 + 120.0 * maxf(maxf(reach, scream), closed)
 		_hand_follow(i, goal, stiff, 4.0 + 10.0 * maxf(reach, scream), delta)
-		var pole := Vector3(side * 0.6, -0.6, -0.6).lerp(Vector3(side * 0.9, 0.2, -0.4), maxf(reach, scream)).lerp(Vector3(side, 0.15, 0.0), closed)
+		var pole := Vector3(side * 0.6, -0.6, -0.6).lerp(Vector3(side * 0.9, 0.2, -0.4), reach).lerp(Vector3(side * 0.8, -0.7, 0.1), scream).lerp(Vector3(side, 0.15, 0.0), closed)
 		_hinge_arm(i, to_global(_hand_at[i]), (global_basis * pole).normalized())
-		var curl := lerpf(0.55, 0.35, _wake) * (1.0 - scream) + 0.05 * scream
+		var curl := lerpf(0.55, 0.35, _wake) * (1.0 - scream) + 0.75 * scream
 		curl = lerpf(curl, lerpf(0.15, 1.0, closed), reach)
-		var splay := lerpf(0.5, 0.8, _wake) + 0.8 * scream + 0.6 * reach * (1.0 - closed)
-		var wrist := lerpf(0.1, 0.25, _wake) - 0.6 * scream + 0.4 * reach + shudder * 0.15 * sin(_time * 40.0 + i)
+		var splay := lerpf(0.5, 0.8, _wake) + 0.7 * scream + 0.6 * reach * (1.0 - closed)
+		var wrist := lerpf(0.1, 0.25, _wake) - 0.75 * scream + 0.4 * reach + shudder * 0.2 * sin(_time * 40.0 + i)
 		_set_hand(i, curl, splay, wrist)
 
 
@@ -295,13 +316,13 @@ func _arms(go: float, scream: float, shudder: float, tremble: Vector3, reach: fl
 ## ground; one that steps is brought down already going back with the ground.
 func _tread(going: Vector3, turned: float, go: float, delta: float) -> void:
 	var speed := going.length()
-	_cycle = fposmod(_cycle + speed / STRIDE * delta, 1.0)
+	_cycle = fposmod(_cycle + speed / _stride * delta, 1.0)
 	var walking := (go > 0.15 or speed > 0.08) and speed > 0.02
 	var ahead := going / maxf(speed, 0.0001)
 	if walking and not _trod:
 		_cycle = 0.0 if _foot_at[0].dot(ahead) <= _foot_at[1].dot(ahead) else 0.5
 	_trod = walking
-	var tether := STRIDE * (1.0 - SWING) * 0.5 + 0.18
+	var tether := _stride * (1.0 - SWING) * 0.5 + 0.18
 	var width := _hip_width + 0.006
 	for i in 2:
 		var side := 1.0 if i == 0 else -1.0
@@ -314,12 +335,12 @@ func _tread(going: Vector3, turned: float, go: float, delta: float) -> void:
 		if stepping and not _foot_moving[i]:
 			_foot_began[i] = p
 			_foot_from[i] = _foot_at[i]
-			_foot_to[i] = home + ahead * STRIDE * (1.0 - SWING) * 0.5
+			_foot_to[i] = home + ahead * _stride * (1.0 - SWING) * 0.5
 		_foot_moving[i] = stepping
 		var s := (p - _foot_began[i]) / maxf(SWING - _foot_began[i], 0.0001)
 		_foot_swing[i] = s if stepping else -1.0
 		if stepping:
-			_foot_at[i] = _foot_from[i].lerp(_foot_to[i] + ahead * (SWING - p) * STRIDE, s * s * (3.0 - 2.0 * s))
+			_foot_at[i] = _foot_from[i].lerp(_foot_to[i] + ahead * (SWING - p) * _stride, s * s * (3.0 - 2.0 * s))
 	if not walking:
 		for i in 2:
 			var home := _standing(i)

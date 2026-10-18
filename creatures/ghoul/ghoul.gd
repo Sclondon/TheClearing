@@ -1,10 +1,11 @@
 class_name Ghoul
 extends Node3D
-## A ghoul: a mummy with nothing left on, after the ReDeads of Zelda. Grey,
-## starved, hunched, arms to its knees and a smooth mask of a face with round
-## holes for eyes and a mouth hanging open. It stands like a statue until it is
-## woken; then it shuffles, screams (a shriek that is meant to root whoever
-## hears it to the spot) and grabs, hugging them to it.
+## A ghoul: a mummy with nothing left on, after the ReDeads of Zelda. Raw,
+## dried red-brown flesh on a starved, hunched frame, arms to its knees, and a
+## skull under skin made into a mask: deep dark eyes under a heavy brow, a long
+## slack jaw with the mouth open low in it. It stands like a statue until it is
+## woken; then it shuffles, screams (a ragged shriek that is meant to root
+## whoever hears it to the spot), rushes, and grabs, hugging them to it.
 ##
 ## This is only how it looks, moves and sounds. It does no thinking: a game
 ## drives it. Put it where the creature is each frame and say how fast it is
@@ -181,34 +182,111 @@ func put(at: Vector3, yaw: float) -> void:
 		_rig.settle()
 
 
-## The shriek: a high, wavering scream over a rasp, rising and dying away. Made
-## once and shared.
+## The shriek, made once and shared: a ragged, human-ish scream torn out of a
+## dry throat. A choked gasp in first; then a strained voice (a train of
+## glottal pulses, each a little off in time and loudness, every other one weak
+## where the throat rattles) through the resonances of an open "aah", with as
+## much breath as voice in it, pushed until it distorts. Its pitch strains
+## upwards, wavers, and cracks (jumps up and falls back) more than once; it
+## sags at the end and dies in a rattle of slow clicks.
 static func shriek_sound() -> AudioStreamWAV:
 	if _shriek:
 		return _shriek
 	var rate := 22050
-	var length := 1.35
+	var length := 1.75
 	var count := int(rate * length)
-	var data := PackedByteArray()
-	data.resize(count * 2)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 13
+	var samples := PackedFloat32Array()
+	samples.resize(count)
+	var formants: Array[Band] = [Band.new(820.0, 4.0, rate), Band.new(1500.0, 5.0, rate), Band.new(2750.0, 6.0, rate), Band.new(3900.0, 5.0, rate)]
+	var gains := [1.0, 0.75, 0.5, 0.25]
+	var breath := Band.new(3200.0, 1.2, rate)
+	var gasp := Band.new(1400.0, 2.0, rate)
+	var low := 0.0
 	var phase := 0.0
-	var phase2 := 0.0
-	var rasp := 0.0
+	var pulse_gain := 1.0
+	var odd := false
+	var wander := 0.0
+	# Where its voice breaks: (when, how long, by how much)
+	var cracks := [Vector3(0.52, 0.07, 1.42), Vector3(0.83, 0.11, 1.6), Vector3(1.04, 0.05, 1.33), Vector3(1.19, 0.09, 0.62)]
+	var loudest := 0.0
 	for i in count:
 		var t := float(i) / rate
-		var swell := smoothstep(0.0, 0.12, t) * (1.0 - smoothstep(0.8, length, t))
-		# (it climbs, wavers, and sags at the end)
-		var pitch := 820.0 + 380.0 * smoothstep(0.0, 0.25, t) - 260.0 * smoothstep(0.7, length, t) + 45.0 * sin(t * TAU * 7.0) + 20.0 * sin(t * TAU * 13.0)
-		phase += TAU * pitch / rate
-		phase2 += TAU * pitch * 1.503 / rate
-		rasp = lerpf(rasp, rng.randf_range(-1.0, 1.0), 0.35)
-		var voice := sin(phase) * 0.45 + sin(phase * 2.0) * 0.18 + sin(phase2) * 0.2 + signf(sin(phase * 0.5)) * 0.07
-		var value := (voice * (0.75 + 0.25 * sin(t * TAU * 23.0)) + rasp * 0.35) * swell * 0.8
-		data.encode_s16(i * 2, int(clampf(value, -1.0, 1.0) * 32000.0))
+		var value := 0.0
+		# The gasp: air dragged in through a closing throat, and caught.
+		if t < 0.27:
+			var air := sin(PI * clampf((t - 0.02) / 0.22, 0.0, 1.0)) * 0.55
+			gasp.set_frequency(1100.0 + 2200.0 * t / 0.27, 2.0)
+			value += gasp.run(rng.randf_range(-1.0, 1.0)) * air
+		# The voice
+		var voice_in := smoothstep(0.26, 0.31, t) * (1.0 - smoothstep(1.28, 1.42, t))
+		var rattle := smoothstep(1.3, 1.42, t) * (1.0 - smoothstep(1.6, length, t))
+		wander = clampf(wander + rng.randf_range(-1.0, 1.0) * 0.08, -1.0, 1.0)
+		var pitch := 470.0 + 270.0 * smoothstep(0.27, 0.6, t) - 230.0 * smoothstep(0.95, 1.38, t)
+		pitch *= 1.0 + 0.07 * wander + 0.03 * sin(t * TAU * 5.3 + 2.0 * sin(t * TAU * 1.7))
+		for crack: Vector3 in cracks:
+			if t > crack.x and t < crack.x + crack.y:
+				pitch *= crack.z
+		# (the rattle: the voice gone, the throat clicking ever slower)
+		pitch = lerpf(pitch, lerpf(48.0, 17.0, smoothstep(1.4, length, t)), rattle)
+		var before := phase
+		phase += pitch / rate * (1.0 + rng.randf_range(-0.03, 0.03))
+		if floorf(phase) != floorf(before):
+			odd = not odd
+			pulse_gain = rng.randf_range(0.75, 1.05) * (0.55 if odd and t > 0.9 else 1.0)
+		var p := fposmod(phase, 1.0)
+		# (a glottal pulse: a sharp opening and a slower close, rich in overtones)
+		var pulse := (pow(1.0 - p, 4.0) * 2.0 - 0.4) * pulse_gain
+		var throat := 0.0
+		for k in formants.size():
+			throat += formants[k].run(pulse) * gains[k]
+		var noise := breath.run(rng.randf_range(-1.0, 1.0)) * (0.5 + 0.5 * (1.0 - p))
+		value += (throat * 2.2 + noise * 0.9) * voice_in
+		low = lerpf(low, pulse, 0.08)
+		value += (low * 0.7 + throat * 0.25) * rattle
+		# (pushed too hard for the throat: it tears)
+		value = tanh(value * 2.4)
+		samples[i] = value
+		loudest = maxf(loudest, absf(value))
+	var data := PackedByteArray()
+	data.resize(count * 2)
+	for i in count:
+		data.encode_s16(i * 2, int(clampf(samples[i] / maxf(loudest, 0.001), -1.0, 1.0) * 30000.0))
 	_shriek = AudioStreamWAV.new()
 	_shriek.format = AudioStreamWAV.FORMAT_16_BITS
 	_shriek.mix_rate = rate
 	_shriek.data = data
 	return _shriek
+
+
+## A resonant band-pass filter (a biquad), for the shriek.
+class Band:
+	var _b0 := 0.0
+	var _a1 := 0.0
+	var _a2 := 0.0
+	var _rate := 22050
+	var _x1 := 0.0
+	var _x2 := 0.0
+	var _y1 := 0.0
+	var _y2 := 0.0
+
+	func _init(frequency: float, q: float, rate: int) -> void:
+		_rate = rate
+		set_frequency(frequency, q)
+
+	func set_frequency(frequency: float, q: float) -> void:
+		var w := TAU * frequency / _rate
+		var alpha := sin(w) / (2.0 * q)
+		var a0 := 1.0 + alpha
+		_b0 = alpha / a0
+		_a1 = -2.0 * cos(w) / a0
+		_a2 = (1.0 - alpha) / a0
+
+	func run(x: float) -> float:
+		var y := _b0 * x - _b0 * _x2 - _a1 * _y1 - _a2 * _y2
+		_x2 = _x1
+		_x1 = x
+		_y2 = _y1
+		_y1 = y
+		return y

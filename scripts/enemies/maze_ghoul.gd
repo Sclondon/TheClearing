@@ -13,8 +13,9 @@ extends MazeEnemy
 ##   it throws its head back and shrieks, and everyone within `freeze_range`
 ##   who can see it and is not facing away is rooted to the spot, shuddering,
 ##   for `freeze_time` (see `paralyse`). It creeps on as it screams, and then
-##   lurches at them, quick for once, for `lurch_time`. It cannot scream again
-##   for `scream_every` seconds.
+##   rushes at them for `lurch_time`, faster than a walk (`lurch_speed`): who
+##   runs the moment they can move gets away; who is slow to is taken. It
+##   cannot scream again for `scream_every` seconds.
 ## - IT GRABS. Within `grab_distance` it throws its arms wide and hugs them shut;
 ##   `caught(player)` is emitted only if they close on someone (Ghoul.grab_hits).
 ##   Turn your back as it screams, or keep out of its sight, and it is easy to get past.
@@ -36,9 +37,11 @@ const SIZE := 1.6
 ## Its shuffle, and how slowly it creeps on while it screams, world units a second.
 @export var shuffle_speed := 1.0
 @export var creep_speed := 0.4
-## How fast, and for how long, it lurches at them after a scream.
-@export var lurch_speed := 2.6
-@export var lurch_time := 1.6
+## How fast, and for how long, it rushes at them after a scream: quicker than a
+## walk, slower than a run, so that whoever runs as soon as they can move gets
+## away, and whoever is slow to is taken.
+@export var lurch_speed := 3.6
+@export var lurch_time := 2.5
 ## It screams at whoever it is after once they are this near and in its sight;
 ## the scream holds anyone this near who can see it.
 @export var scream_range := 5.5

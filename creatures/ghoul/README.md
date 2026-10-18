@@ -1,8 +1,10 @@
 # Ghoul
 
-A mummy with nothing left on, after the ReDeads of Zelda: grey, starved and hunched, arms down to its knees, a
-smooth mask of a face with round holes for eyes and a mouth hanging open. It stands like a statue until it is
-woken; then it shuffles, screams (a shriek meant to root whoever hears it to the spot) and grabs, hugging them to it.
+A mummy with nothing left on, after the ReDeads of Zelda: raw, dried red-brown flesh over a starved, hunched
+frame, arms down to its knees, long bony fingers, and a skull under skin for a face, made into a mask: a heavy
+brow over deep dark eye holes, cheekbones over hollow cheeks, a long slack jaw with the mouth open low in it. It
+stands like a statue until it is woken; then it shuffles, screams (a ragged shriek meant to root whoever hears it
+to the spot) and grabs, hugging them to it.
 
 It is only the look, the motion and the shriek. It does no thinking: your game moves it and tells it when to act.
 Made for The Clearing (its `MazeGhoul` is the thinking that drives it there).
@@ -23,7 +25,7 @@ ghoul.put(spawn_point, spawn_yaw)
 # every frame, from your own body (a CharacterBody3D, a path follower...):
 ghoul.global_position = body_position
 ghoul.rotation.y = facing_yaw           # 0 faces +Z
-ghoul.velocity = body_velocity          # its feet step to this
+ghoul.velocity = body_velocity          # its feet step to this (fast, they rush)
 ghoul.awake = true                      # false: a statue
 ghoul.aim = target + Vector3.UP         # looks at it, and reaches for it when near (INF: nothing)
 
@@ -42,9 +44,16 @@ ghoul.held = true                       # it has them: it clings instead of hugg
 ## How it moves
 
 Asleep it is a statue that does not breathe; now and then its head jerks aside and slowly comes back. Awake it
-shuffles on stiff legs, feet scraping, rocking from side to side with its arms swinging like weights. The scream
-throws its head right back, arches its back and spreads its arms, shuddering. The grab throws both arms wide as it
-leans in, then brings them round into a ring in front of its chest.
+shuffles on stiff legs, feet scraping, rocking from side to side with its arms swinging like weights; driven
+faster it rushes, its steps long and lifted. The scream: a gasp, then the head thrown back, the chest out, the
+arms up and back beside its head with the hands clawed, convulsing. The grab throws both arms wide as it leans
+in, then brings them round into a ring in front of its chest, as low as what it aims at.
+
+## Sound
+
+`Ghoul.shriek_sound()` makes the shriek in code (nothing to load): a choked gasp, then a strained, cracking,
+breathy voice (jittered glottal pulses through the resonances of an "aah", a second voice beating against it,
+pushed into distortion), its pitch straining, wavering and breaking, ending in a rattle of slow clicks. 1.75 s.
 
 ## Model
 
@@ -53,10 +62,12 @@ bone names (so any rig for them can move it):
 
     blender --background --python creatures/ghoul/tools/build_ghoul.py [-- <folder for preview renders>]
 
-Four flat colours (skin, darker skin for the fingers, the dark in the holes, the rag), so four surfaces; about
-29k triangles (`ghoul_lo`: 5k). In The Clearing one in sight costs 13 draw calls, shadows included. Its shriek is made in code (`Ghoul.shriek_sound()`), nothing to load.
+The trunk, neck and arms are one fused surface (sloping shoulders, collarbones, ribs, tendons); the dark in its
+hollows is a second material chosen per face from how far the surface sinks in there. Three flat colours (skin,
+shade, the dark in the holes), so three surfaces; about 35k triangles (`ghoul_lo`: 7k). In The Clearing one in
+sight costs about 7 draw calls, shadows included.
 
 ## Try it
 
 `example.gd` on a Node3D: one on a flat floor going round a loop (statue, wake, shuffle up to a post, scream,
-grab it, walk back).
+rush, grab it, walk back).

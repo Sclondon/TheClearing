@@ -8,7 +8,9 @@ extends SceneTree
 ## standing in a dead end, one screaming at the boy, one taking him. Says how
 ## many draws a frame takes. Needs a real window (the engine draws nothing headless):
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/ghoul_shots.gd -- <folder> [model|maze]
+##     godot --audio-driver Dummy --path . --resolution 720x1280 -s res://tools/ghoul_shots.gd -- <folder> [model|maze|sound]
+##
+## (sound only writes the shriek to <folder>/shriek.wav, to listen to or look at.)
 
 var folder := "ghoul_shots"
 var only := ""
@@ -63,6 +65,11 @@ func look_head(direction: Vector3, distance: float) -> void:
 
 
 func _run() -> void:
+	if only == "sound":
+		Ghoul.shriek_sound().save_to_wav("%s/shriek.wav" % folder)
+		print("saved %s/shriek.wav" % folder)
+		quit()
+		return
 	if only != "maze":
 		await _model()
 	if only != "model":
@@ -208,6 +215,13 @@ func _maze() -> void:
 	keeper.position = maze.world(lair) + Vector3.UP * 0.05
 	keeper.rotation.y = atan2(along.x, along.z)
 	world.add_child(keeper)
+	# (a camera of our own, behind the boy, looking down the passage at it)
+	var behind := Camera3D.new()
+	world.add_child(behind)
+	behind.fov = 50.0
+	behind.global_position = boy.global_position + along * 5.0 + Vector3.UP * 3.0
+	behind.look_at(keeper.global_position + Vector3.UP * 1.8)
+	behind.make_current()
 	await wait(1.0)
 	await shot("z1_statue_in_its_dead_end")
 	var with_it := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
@@ -219,7 +233,8 @@ func _maze() -> void:
 	print("draws: %d with the ghoul in sight, %d with it hidden (+%d)" % [with_it, bare, with_it - bare])
 	boy.add_to_group(&"maze_players")
 	boy.global_position = maze.world(lair) + along * 9.0 + Vector3.UP * 0.1
-	world.camera.snap()
+	behind.global_position = boy.global_position + along * 4.5 + Vector3.UP * 2.6
+	behind.look_at(keeper.global_position + Vector3.UP * 1.6)
 	keeper.notice(boy)
 	await wait(12.0, func() -> bool: return keeper.figure.stage() == GhoulRig.Stage.SCREAMING)
 	await wait(0.2)
@@ -240,4 +255,5 @@ func _maze() -> void:
 	await wait(0.1)
 	await shot("z4_grab_side")
 	side.queue_free()
+	behind.queue_free()
 	world.camera.make_current()

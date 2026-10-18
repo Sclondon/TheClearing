@@ -7,7 +7,7 @@ extends SceneTree
 ## it does, and its scream holds whoever plays on its own machine; and
 ## `paralyse` takes a Player's input away and gives it back.
 ##
-##     godot --headless --path . -s res://tests/ghoul_test.gd
+##     godot --headless --audio-driver Dummy --path . -s res://tests/ghoul_test.gd
 ##
 ## Ends with PASSED or FAILED (and exits 0 or 1).
 
@@ -110,6 +110,36 @@ func clear() -> void:
 	caught.clear()
 
 
+## A stand-in walks up to a ghoul until it screams; held, it stands still for as
+## long as it is held and `late` seconds more, then runs off down the passage
+## as the boy does (4.4 m/s, a little while to get going). Says whether it was
+## caught, and how far apart they ended.
+func held_then_run(home: Vector3, late: float) -> Array:
+	clear()
+	var g := ghoul()
+	var who := dummy(home + out * 7.5, -out)
+	var free_at := INF
+	var speed := 0.0
+	var clock := 0.0
+	for i in 60 * 14:
+		await physics_frame
+		clock += 1.0 / 60.0
+		if who.holds > 0 and free_at == INF:
+			free_at = clock + who.held_for + late
+		if caught.has(who):
+			break
+		if free_at == INF:
+			# (walking slowly up to it until it screams)
+			who.global_position -= out * 1.0 / 60.0 if (who.global_position - g.global_position).length() > 4.5 else Vector3.ZERO
+		elif clock > free_at:
+			speed = minf(speed + 4.4 / 0.3 / 60.0, 4.4)
+			who.global_position += out * speed / 60.0
+			who.facing_yaw = atan2(out.x, out.z)
+	var result := [caught.has(who), g.global_position.distance_to(who.global_position)]
+	clear()
+	return result
+
+
 func _run() -> void:
 	find_lair(2)
 	print("lair %s, way out %s" % [lair, out])
@@ -159,6 +189,12 @@ func _run() -> void:
 	await wait(20.0, func() -> bool: return g.mode == MazeGhoul.Mode.STILL)
 	check("having forgotten them it goes home and stands", g.mode == MazeGhoul.Mode.STILL and g.global_position.distance_to(home) < 1.0, "(%s, %.2f m from home)" % [MazeGhoul.Mode.keys()[g.mode], g.global_position.distance_to(home)])
 	clear()
+
+	# Held by a scream: run the moment you can and you get away; be slow and you are taken.
+	var quick := await held_then_run(home, 0.0)
+	check("held by its scream, someone who runs as soon as they can gets away", not quick[0], "(%.1f m apart at the end)" % quick[1])
+	var slow := await held_then_run(home, 0.8)
+	check("but someone who stands there a moment longer is caught", slow[0], "(%.1f m apart at the end)" % slow[1])
 
 	# A puppet copy: follows the host, screams when it does, and holds its own machine's player.
 	g = ghoul()

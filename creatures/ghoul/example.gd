@@ -102,7 +102,8 @@ func _process(delta: float) -> void:
 			if not ghoul.busy():
 				_go("close")
 		"close":
-			going = to.normalized() * SPEED * 1.6
+			# (and then rushes)
+			going = to.normalized() * SPEED * 3.5
 			if to.length() < 1.6:
 				ghoul.grab()
 				_go("grab")
