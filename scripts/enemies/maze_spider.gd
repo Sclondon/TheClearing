@@ -189,7 +189,9 @@ func _should_drop() -> bool:
 
 
 func _drop() -> void:
-	_anchor = global_position + wall * 0.05
+	# (the thread is fixed to the wall where the tip of its back body was)
+	var tail := look.spinnerets()
+	_anchor = tail - wall * (tail - global_position).dot(wall) + wall * 0.05
 	_anchor_left = 999.0
 	_drop_from = global_position
 	_enter(Mode.DROP)

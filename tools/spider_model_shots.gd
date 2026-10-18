@@ -45,7 +45,8 @@ func wait_for(test: Callable, most := 30.0) -> void:
 func look(from: Vector3, distance: float, at_offset := Vector3.ZERO) -> void:
 	var spider: GiantSpider = example.spider
 	var body := spider.body
-	var target := body.origin + at_offset
+	# (`at_offset` in its own space too, at its size)
+	var target := body * (at_offset * spider.size)
 	camera.global_position = target + (body.basis.orthonormalized() * from.normalized()) * distance
 	camera.look_at(target, Vector3.UP if absf((camera.global_position - target).normalized().y) < 0.95 else Vector3.FORWARD)
 
@@ -67,8 +68,14 @@ func _run() -> void:
 	await shot("02_side")
 	look(Vector3(-0.8, 0.45, -0.9), 6.5)
 	await shot("03_three_quarter")
-	look(Vector3(0.0, 0.12, -1.0), 2.2, Vector3(0.0, -0.05, -0.4))
+	look(Vector3(0.12, 0.18, -1.0), 2.0, Vector3(0.0, -0.08, -0.55))
 	await shot("04_face")
+	look(Vector3(-0.5, 0.25, -1.0), 2.6, Vector3(0.0, 0.0, -0.45))
+	await shot("04b_face_three_quarter")
+	var foot: Vector3 = example.spider.legs.feet[1]
+	camera.global_position = foot + example.spider.body.basis.x * -1.2 + Vector3.UP * 0.5 + example.spider.body.basis.z * -0.6
+	camera.look_at(foot + Vector3.UP * 0.35)
+	await shot("07_leg")
 	look(Vector3(0.6, 1.0, 0.6), 7.0)
 	await shot("05_above")
 	look(Vector3(0.7, 0.25, 1.0), 6.0)

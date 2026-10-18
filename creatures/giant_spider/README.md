@@ -37,7 +37,7 @@ The node's position is the point on the surface under the middle of its body (wh
 Its speed is worked out from how the node moves. Set `exclude` to the RIDs its feet should not stand on (players),
 and `collision_mask` to what they should.
 
-Draws: front body (hide and eyes), back body, one MultiMesh for every leg part, one for the fangs, and the thread when
+Draws: front body (hide and eyes), back body, one MultiMesh for the leg parts, one for the feet, one for the fangs and claws, and the thread when
 shown. Nothing is built after `_ready`; per frame it casts two rays a leg. Hide it and set `process_mode` to disabled
 when nobody is near.
 

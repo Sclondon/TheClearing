@@ -34,7 +34,7 @@ extends Node3D
 ## player's body) in `exclude`.
 ##
 ## Draws: the front body (two: hide and eyes), the back body, every leg part
-## (one MultiMesh), the fangs, and the thread when there is one. Nothing is
+## (one MultiMesh), the feet (another), the fangs and claws, and the thread when there is one. Nothing is
 ## built after `_ready` but transforms. Set `process_mode` to disabled (and hide
 ## it) when nobody is near.
 ##
@@ -89,6 +89,7 @@ var _held := PackedVector3Array()
 var _ceph: MeshInstance3D
 var _abdomen: MeshInstance3D
 var _parts: MultiMeshInstance3D
+var _feet_parts: MultiMeshInstance3D
 var _fang_parts: MultiMeshInstance3D
 var _thread: MeshInstance3D
 
@@ -100,15 +101,19 @@ func _ready() -> void:
 	_abdomen = MeshInstance3D.new()
 	_abdomen.name = "Abdomen"
 	_abdomen.mesh = GiantSpiderLook.abdomen_mesh()
-	_parts = GiantSpiderLook.parts(GiantSpiderLook.segment_mesh(), 38, GiantSpiderLook.hide_material())
+	# (eight legs of four parts, the feelers' first parts, the jaws; then the
+	# feet and the feelers' tips; then the fangs and the claws)
+	_parts = GiantSpiderLook.parts(GiantSpiderLook.segment_mesh(), GiantSpiderLegs.COUNT * 4 + 4, GiantSpiderLook.hide_material())
 	_parts.name = "Legs"
-	_fang_parts = GiantSpiderLook.parts(GiantSpiderLook.fang_mesh(), 2, GiantSpiderLook.gloss_material())
+	_feet_parts = GiantSpiderLook.parts(GiantSpiderLook.foot_mesh(), GiantSpiderLegs.COUNT + 2, GiantSpiderLook.hide_material())
+	_feet_parts.name = "Feet"
+	_fang_parts = GiantSpiderLook.parts(GiantSpiderLook.fang_mesh(), 2 + GiantSpiderLegs.COUNT, GiantSpiderLook.gloss_material())
 	_fang_parts.name = "Fangs"
 	_thread = MeshInstance3D.new()
 	_thread.name = "Thread"
 	_thread.mesh = GiantSpiderLook.thread_mesh()
 	_thread.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	for part: GeometryInstance3D in [_ceph, _abdomen, _parts, _fang_parts, _thread]:
+	for part: GeometryInstance3D in [_ceph, _abdomen, _parts, _feet_parts, _fang_parts, _thread]:
 		part.top_level = true
 		part.extra_cull_margin = 3.0
 		add_child(part)
@@ -303,45 +308,59 @@ func _draw() -> void:
 	_abdomen.global_transform = Transform3D(body.basis * hang_back * Basis.from_scale(Vector3(breath, breath, 1.0) * size), waist)
 
 	var multi := _parts.multimesh
+	var feet := _feet_parts.multimesh
+	var gloss := _fang_parts.multimesh
 	var up := body.basis.y
 	var k := 0
 	for i in GiantSpiderLegs.COUNT:
+		# Hip, femur, tibia, metatarsus; then the tarsus with its pad, and a claw.
+		var ankle := legs.ankles[i]
+		var tarsus := ankle.lerp(legs.feet[i], 0.66)
 		multi.set_instance_transform(k, GiantSpiderLook.between(legs.hips[i], legs.roots[i], 0.12 * size, up))
 		multi.set_instance_transform(k + 1, GiantSpiderLook.between(legs.roots[i], legs.knees[i], 0.105 * size, up))
-		multi.set_instance_transform(k + 2, GiantSpiderLook.between(legs.knees[i], legs.ankles[i], 0.088 * size, up))
-		multi.set_instance_transform(k + 3, GiantSpiderLook.between(legs.ankles[i], legs.feet[i], 0.064 * size, up))
+		multi.set_instance_transform(k + 2, GiantSpiderLook.between(legs.knees[i], ankle, 0.09 * size, up))
+		multi.set_instance_transform(k + 3, GiantSpiderLook.between(ankle, tarsus, 0.068 * size, up))
 		k += 4
+		feet.set_instance_transform(i, GiantSpiderLook.between(tarsus, legs.feet[i], 0.058 * size, up))
+		var along := (legs.feet[i] - tarsus).normalized()
+		var hook := (-legs.normals[i] - along * along.dot(-legs.normals[i]))
+		hook = hook.normalized() if hook.length_squared() > 0.0001 else up
+		var long := 0.09 * size
+		var across := along.cross(hook)
+		gloss.set_instance_transform(2 + i, Transform3D(Basis(across * long * 0.6, along * long, hook * long), legs.feet[i] - along * 0.02 * size))
 	# The feelers: twitching, and turned towards what it looks at.
 	var look := Vector3.ZERO
 	if aim.is_finite():
 		look = body.basis.inverse() * (aim - body.origin)
 		look = look.normalized() * 0.25
-	for s in [-1.0, 1.0]:
-		var root := body * (Vector3(0.16 * s, -0.06, -0.48) * size)
+	for p in 2:
+		var s := -1.0 if p == 0 else 1.0
+		var root := body * (Vector3(0.2 * s, -0.08, -0.46) * size)
 		var twitch := Vector3(sin(_time * 4.1 + s) * 0.05, sin(_time * 6.3 + s * 2.0) * 0.08, 0.0)
-		var tip_local := Vector3(0.34 * s, -0.5 + _rear * 0.5, -0.95 - _rear * 0.2) + twitch + look
+		var tip_local := Vector3(0.36 * s, -0.52 + _rear * 0.55, -1.0 - _rear * 0.2) + twitch + look
 		var tip := body * (tip_local * size)
-		var solved := GiantSpiderLegs.two_bone(root, tip, 0.4 * size, 0.42 * size, up + body.basis * Vector3.FORWARD)
-		multi.set_instance_transform(k, GiantSpiderLook.between(root, solved[0], 0.075 * size, up))
-		multi.set_instance_transform(k + 1, GiantSpiderLook.between(solved[0], solved[1], 0.062 * size, up))
-		k += 2
-	# The jaws, and the fangs folded under them (or spread).
-	var fangs := _fang_parts.multimesh
+		var solved := GiantSpiderLegs.two_bone(root, tip, 0.42 * size, 0.42 * size, up + body.basis * Vector3.FORWARD)
+		multi.set_instance_transform(k, GiantSpiderLook.between(root, solved[0], 0.08 * size, up))
+		k += 1
+		feet.set_instance_transform(GiantSpiderLegs.COUNT + p, GiantSpiderLook.between(solved[0], solved[1], 0.075 * size, up))
+	# The jaws (two bulky, hairy chelicerae side by side under the eyes), and
+	# the fangs folded back under them, or spread.
 	for f in 2:
 		var s := -1.0 if f == 0 else 1.0
-		var base := body * (Vector3(0.1 * s, 0.02, -0.46) * size)
-		var tip := body * (Vector3(0.11 * s, -0.27 - _fangs * 0.05, -0.64 - _fangs * 0.06) * size)
-		multi.set_instance_transform(k, GiantSpiderLook.between(base, tip, 0.12 * size, up))
+		var base := body * (Vector3(0.115 * s, 0.0, -0.48) * size)
+		var tip := body * (Vector3(0.12 * s, -0.3 - _fangs * 0.04, -0.76 - _fangs * 0.06) * size)
+		multi.set_instance_transform(k, GiantSpiderLook.between(base, tip, 0.15 * size, body.basis.z))
+		multi.set_instance_color(k, Color(0.75, 0.75, 0.75))
 		k += 1
-		var closed := Vector3(-0.55 * s, -0.5, 0.55).normalized()
-		var spread := Vector3(0.35 * s, -0.75, -0.45).normalized()
+		var closed := Vector3(-0.5 * s, -0.75, 0.35).normalized()
+		var spread := Vector3(0.3 * s, -0.8, -0.45).normalized()
 		var dir := body.basis.orthonormalized() * closed.slerp(spread, _fangs)
 		var curl := body.basis.orthonormalized() * Vector3.BACK
 		curl = (curl - dir * curl.dot(dir)).normalized()
 		var across := dir.cross(curl)
-		var long := 0.3 * size
-		var fang := Transform3D(Basis(across * long, dir * long, curl * long), tip)
-		fangs.set_instance_transform(f, fang)
+		var long := 0.32 * size
+		var fang := Transform3D(Basis(across * long, dir * long, curl * long), tip + dir * 0.03 * size)
+		gloss.set_instance_transform(f, fang)
 		_fang_tips[f] = fang * GiantSpiderLook.FANG_TIP
 
 	# The thread.

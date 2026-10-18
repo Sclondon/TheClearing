@@ -8,9 +8,10 @@ class_name GiantSpiderLook
 ## - The back body (abdomen): a great hairy egg, slung from a narrow waist,
 ##   dark, with a ladder of pale chevrons down its back.
 ## - Every leg part, the feelers (pedipalps) and the jaws (chelicerae) are one
-##   shape, a tapered, hairy bar with a pale ring round its far end (the knee
-##   bands of a tarantula), drawn as one MultiMesh: a single draw however many
-##   parts there are. The fangs are a second MultiMesh of a curved spike.
+##   shape, a round, closed, hairy bar that swells at its root joint and has a
+##   lighter ring round its far end (a tarantula's banding), drawn as one MultiMesh;
+##   the feet (tarsi, with their pads of hair) a second; the fangs and the claws
+##   on the feet a third, of a curved glossy spike.
 ## - The silk thread is one thin cylinder, stretched.
 ##
 ## The hide is lit like the game's figures (hard bands of light, after
@@ -28,7 +29,7 @@ render_mode cull_disabled;
 // The pale of the fuzz round its edges, and how much of it there is.
 uniform vec3 fuzz : source_color = vec3(0.66, 0.62, 0.56);
 uniform float fuzz_gain = 1.0;
-uniform float wrap = 0.3;
+uniform float wrap = 0.45;
 
 varying vec3 tint;
 varying vec3 obj;
@@ -77,10 +78,11 @@ void fragment() {
 void light() {
 	float reach = clamp(ATTENUATION, 0.0, 1.0);
 	float facing = (dot(NORMAL, LIGHT) + wrap) / (1.0 + wrap);
-	float amount = facing * smoothstep(0.15, 0.6, reach);
-	float lit = cut(facing, 0.05) * smoothstep(0.1, 0.75, reach);
-	float core = cut(amount, 0.7);
-	DIFFUSE_LIGHT += (lit * 0.85 + core * 0.15) * LIGHT_COLOR / PI;
+	float shade = smoothstep(0.1, 0.75, reach);
+	// Three tones (shadow, half, full), so that round things read round.
+	float half_lit = cut(facing, 0.04) * shade;
+	float full = cut(facing, 0.45) * shade;
+	DIFFUSE_LIGHT += (half_lit * 0.55 + full * 0.45) * LIGHT_COLOR / PI;
 }
 """
 
@@ -105,7 +107,9 @@ void fragment() {
 	// The sky caught on its top, as a hard pale crescent.
 	vec3 sky_up = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
 	float sky = cut(dot(reflect(-VIEW, NORMAL), sky_up), 0.55);
-	EMISSION = glow * glow_gain + vec3(0.7, 0.72, 0.72) * sky * 0.35;
+	// And a catchlight: a hard white spot up and to one side, wherever it is seen from.
+	float catchlight = cut(dot(NORMAL, normalize(vec3(-0.35, 0.5, 0.8))), 0.94);
+	EMISSION = glow * glow_gain + vec3(0.7, 0.72, 0.72) * sky * 0.3 + vec3(0.95) * catchlight * 0.9;
 }
 
 void light() {
@@ -130,6 +134,8 @@ const ABDOMEN_RADII := Vector3(0.52, 0.44, 0.72)
 ## Where the silk comes out (back body's own space).
 const SPINNERETS := Vector3(0.0, 0.13, 1.36)
 const CEPH_RADII := Vector3(0.46, 0.25, 0.54)
+## Which way from the front body's middle its eye mound rises.
+const MOUND := Vector3(0.0, 0.7, -0.71)
 ## Where the far end of a fang is, in the fang mesh's own space.
 const FANG_TIP := Vector3(0.0, 1.0, 0.32)
 
@@ -140,6 +146,7 @@ static var _gloss: ShaderMaterial
 static var _ceph: ArrayMesh
 static var _abdomen: ArrayMesh
 static var _segment: ArrayMesh
+static var _foot: ArrayMesh
 static var _fang: ArrayMesh
 static var _thread: Mesh
 
@@ -170,7 +177,7 @@ static func ceph_mesh() -> ArrayMesh:
 		return _ceph
 	var swell := func(dir: Vector3) -> float:
 		# The eye mound at the front of the top, and a slight pinch at the back.
-		var mound := exp(-pow(dir.distance_to(Vector3(0.0, 0.62, -0.78).normalized()), 2.0) / 0.06) * 0.5
+		var mound := exp(-pow(dir.distance_to(MOUND), 2.0) / 0.035) * 0.75
 		var waist := exp(-pow(dir.distance_to(Vector3(0.0, 0.2, 1.0).normalized()), 2.0) / 0.08) * -0.12
 		return 1.0 + mound + waist
 	var marks := func(dir: Vector3) -> Color:
@@ -181,23 +188,25 @@ static func ceph_mesh() -> ArrayMesh:
 		var colour := DARK.lerp(PALE, maxf(grooves * 0.7, edge * 0.5))
 		return colour.lerp(DARKER, smoothstep(0.0, -0.6, dir.y))
 	var mesh := ArrayMesh.new()
-	_blob(mesh, Vector3.ZERO, CEPH_RADII, swell, marks, 420, 0.035, 11)
-	# The eyes: two big ones staring forward, three small on each side.
+	_blob(mesh, Vector3.ZERO, CEPH_RADII, swell, marks, 600, 0.028, 11)
+	# The eyes, as a wolf spider's or a tarantula's: on the mound, two big ones
+	# staring forward over a row of four small ones, and two more on top
+	# looking out to the sides. (Directions from the middle of the body, and
+	# each eye's size.)
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var eyes: Array[Vector4] = [
-		Vector4(-0.055, 0.0, -1.0, 0.052), Vector4(0.055, 0.0, -1.0, 0.052),
-		Vector4(-0.13, -0.08, -0.95, 0.03), Vector4(0.13, -0.08, -0.95, 0.03),
-		Vector4(-0.12, 0.08, -0.9, 0.026), Vector4(0.12, 0.08, -0.9, 0.026),
-		Vector4(-0.16, 0.02, -0.82, 0.024), Vector4(0.16, 0.02, -0.82, 0.024),
+		Vector4(-0.09, 0.6, -0.79, 0.05), Vector4(0.09, 0.6, -0.79, 0.05),
+		Vector4(-0.06, 0.47, -0.88, 0.03), Vector4(0.06, 0.47, -0.88, 0.03),
+		Vector4(-0.17, 0.48, -0.86, 0.027), Vector4(0.17, 0.48, -0.86, 0.027),
+		Vector4(-0.16, 0.74, -0.65, 0.034), Vector4(0.16, 0.74, -0.65, 0.034),
 	]
-	var mound_top := Vector3(0.0, 0.62, -0.78).normalized()
 	for eye in eyes:
-		# Set into the face of the mound (a point on it), looking the way it faces.
-		var dir := (mound_top + Vector3(eye.x * 3.0, eye.y, 0.0)).normalized()
-		dir = (dir + Vector3(0.0, -0.25, -0.35)).normalized()
+		# Set into the mound where that direction meets it, standing a little proud.
+		var dir := Vector3(eye.x, eye.y, eye.z).normalized()
 		var at: Vector3 = Vector3(dir.x * CEPH_RADII.x, dir.y * CEPH_RADII.y, dir.z * CEPH_RADII.z) * swell.call(dir)
-		_sphere(tool, at + dir * eye.w * 0.25, eye.w)
+		var out := Vector3(dir.x / CEPH_RADII.x, dir.y / CEPH_RADII.y, dir.z / CEPH_RADII.z).normalized()
+		_sphere(tool, at + out * eye.w * 0.35, eye.w)
 	tool.commit(mesh)
 	mesh.surface_set_material(0, hide_material())
 	mesh.surface_set_material(1, gloss_material())
@@ -221,58 +230,108 @@ static func abdomen_mesh() -> ArrayMesh:
 		var colour := DARKER.lerp(PALE, maxf(stripe * 0.75, midline))
 		return colour.lerp(Color(0.07, 0.065, 0.06), smoothstep(0.0, -0.7, dir.y))
 	var mesh := ArrayMesh.new()
-	_blob(mesh, ABDOMEN_MIDDLE, ABDOMEN_RADII, swell, marks, 1600, 0.06, 23)
+	_blob(mesh, ABDOMEN_MIDDLE, ABDOMEN_RADII, swell, marks, 2600, 0.045, 23)
 	mesh.surface_set_material(0, hide_material())
 	_abdomen = mesh
 	return mesh
 
 
-## Every leg part: a tapered, six-sided, hairy bar along +Y from 0 to 1,
-## radius 1 at its root, with a pale ring round its far end.
+## Every leg part: a round, hairy, closed bar along +Y from 0 to 1, radius 1
+## at its root. It swells at its root into the joint it hangs from (the knee's
+## bulge), narrows along its length, and has a lighter ring round its far end
+## (a tarantula's banding at each joint).
 static func segment_mesh() -> ArrayMesh:
 	if _segment != null:
 		return _segment
+	var band := DARK.lerp(PALE, 0.55)
+	_segment = _limb([
+		[-0.03, 0.0, DARK], [-0.01, 0.6, DARK], [0.03, 0.98, DARK], [0.09, 1.12, DARK], [0.17, 1.0, DARK],
+		[0.5, 0.9, DARK], [0.84, 0.78, DARK], [0.88, 0.84, band], [0.96, 0.8, band], [1.0, 0.6, DARK], [1.02, 0.0, DARK],
+	], 140, 0.0, 5)
+	return _segment
+
+
+## The last part of a leg (the tarsus): tapering to a blunt tip, with a
+## dense pad of hair underneath and round its end (the scopula). Its tip is
+## where the foot is (y = 1).
+static func foot_mesh() -> ArrayMesh:
+	if _foot != null:
+		return _foot
+	_foot = _limb([
+		[-0.03, 0.0, DARK], [0.0, 0.7, DARK], [0.08, 1.0, DARK], [0.5, 0.82, DARK],
+		[0.85, 0.62, DARKER], [0.97, 0.42, DARKER], [1.0, 0.0, DARKER],
+	], 90, 1.0, 9)
+	return _foot
+
+
+## A closed round bar from `rings` (height, radius, colour), with `hairs`
+## bristles along it, and (`tuft` > 0) a dense tuft of short hair round its
+## far half.
+static func _limb(rings: Array, hairs: int, tuft: float, seed_value: int) -> ArrayMesh:
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var sides := 8
-	# Rings along it: height, radius, colour.
-	var rings := [
-		[0.0, 0.8, DARK], [0.08, 1.0, DARK], [0.5, 0.92, DARK], [0.82, 0.8, DARK],
-		[0.86, 0.84, PALE], [0.95, 0.78, PALE], [1.0, 0.6, DARKER],
-	]
+	var sides := 12
 	for r in rings.size() - 1:
 		var a: Array = rings[r]
 		var b: Array = rings[r + 1]
+		# (the normal leans with the slope of the side, so the ends round off)
+		var slope_a := _slope(rings, r)
+		var slope_b := _slope(rings, r + 1)
 		for s in sides:
 			var t0 := TAU * s / sides
 			var t1 := TAU * (s + 1) / sides
-			var n0 := Vector3(cos(t0), 0.0, sin(t0))
-			var n1 := Vector3(cos(t1), 0.0, sin(t1))
-			var p00 := n0 * float(a[1]) + Vector3.UP * float(a[0])
-			var p01 := n1 * float(a[1]) + Vector3.UP * float(a[0])
-			var p10 := n0 * float(b[1]) + Vector3.UP * float(b[0])
-			var p11 := n1 * float(b[1]) + Vector3.UP * float(b[0])
-			_vert(tool, p00, n0, a[2])
-			_vert(tool, p11, n1, b[2])
-			_vert(tool, p01, n1, a[2])
-			_vert(tool, p00, n0, a[2])
-			_vert(tool, p10, n0, b[2])
-			_vert(tool, p11, n1, b[2])
+			var r0 := Vector3(cos(t0), 0.0, sin(t0))
+			var r1 := Vector3(cos(t1), 0.0, sin(t1))
+			var p00 := r0 * float(a[1]) + Vector3.UP * float(a[0])
+			var p01 := r1 * float(a[1]) + Vector3.UP * float(a[0])
+			var p10 := r0 * float(b[1]) + Vector3.UP * float(b[0])
+			var p11 := r1 * float(b[1]) + Vector3.UP * float(b[0])
+			var n00 := (r0 + Vector3.UP * slope_a).normalized()
+			var n01 := (r1 + Vector3.UP * slope_a).normalized()
+			var n10 := (r0 + Vector3.UP * slope_b).normalized()
+			var n11 := (r1 + Vector3.UP * slope_b).normalized()
+			_vert(tool, p00, n00, a[2])
+			_vert(tool, p11, n11, b[2])
+			_vert(tool, p01, n01, a[2])
+			_vert(tool, p00, n00, a[2])
+			_vert(tool, p10, n10, b[2])
+			_vert(tool, p11, n11, b[2])
 	# Bristles standing out of it, leaning towards its far end. (Across it, a
 	# unit is the part's thickness; along it, its length: so they are long
 	# across and short along.)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 5
-	for k in 120:
-		var y := rng.randf_range(0.04, 0.96)
+	rng.seed = seed_value
+	for k in hairs:
+		var y := rng.randf_range(0.05, 0.95)
 		var angle := rng.randf() * TAU
 		var radial := Vector3(cos(angle), 0.0, sin(angle))
-		var root := radial * 0.85 + Vector3.UP * y
+		var root := radial * 0.8 + Vector3.UP * y
 		var tip := radial * rng.randf_range(1.15, 1.45) + Vector3.UP * (y + rng.randf_range(0.03, 0.07))
 		var across := Vector3(-radial.z, 0.0, radial.x) * 0.07
 		_spike(tool, root, tip, across, Vector3.UP * 0.02, DARK, TIPS)
-	_segment = tool.commit()
-	return _segment
+	# The pad: many short hairs, close, pointing on past the tip and out.
+	for k in int(tuft * 160.0):
+		var y := rng.randf_range(0.45, 0.98)
+		var angle := rng.randf() * TAU
+		var radial := Vector3(cos(angle), 0.0, sin(angle))
+		var thick := lerpf(0.82, 0.3, (y - 0.45) / 0.55)
+		var root := radial * thick * 0.9 + Vector3.UP * y
+		var tip := radial * (thick + rng.randf_range(0.35, 0.6)) + Vector3.UP * (y + rng.randf_range(0.04, 0.09))
+		var across := Vector3(-radial.z, 0.0, radial.x) * 0.1
+		_spike(tool, root, tip, across, Vector3.UP * 0.02, DARKER, DARK.lerp(TIPS, 0.4))
+	return tool.commit()
+
+
+## How steeply ring `r` of a limb narrows (for its normals).
+static func _slope(rings: Array, r: int) -> float:
+	var before: Array = rings[maxi(r - 1, 0)]
+	var after: Array = rings[mini(r + 1, rings.size() - 1)]
+	var rise := float(after[0]) - float(before[0])
+	if absf(rise) < 0.0001:
+		return 0.0
+	# (dr/dy, read across a unit of thickness to a unit of length: a part is
+	# about ten times as long as it is thick)
+	return clampf(-(float(after[1]) - float(before[1])) / rise * 0.1, -3.0, 3.0)
 
 
 ## A fang: a curved black spike along +Y from 0 to 1, hooking towards +Z.

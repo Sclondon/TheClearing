@@ -86,7 +86,9 @@ func _physics_process(delta: float) -> void:
 		Phase.PERCH:
 			spider.heading = Vector3.DOWN
 			if phase_time > 2.5:
-				spider.anchor = at + Vector3.BACK * 0.1
+				# (fixed to the wall where the tip of its back body is)
+				var tail := spider.spinnerets()
+				spider.anchor = Vector3(tail.x, tail.y, WALL_Z + 0.05)
 				spider.hanging = true
 				_land = Vector3(0.0, 0.0, WALL_Z + 2.2)
 				_enter(Phase.DROP)
