@@ -158,7 +158,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	# (she is solid, as every creature is; she goes nowhere by bumping)
-	collision_layer = 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 1
 	floor_snap_length = 0.4
 	var shape := CapsuleShape3D.new()
@@ -835,7 +835,7 @@ func _put(at: Vector3, facing: float) -> void:
 
 func _puppet_changed() -> void:
 	# (solid either way: the boy bumps into her)
-	collision_layer = 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 1
 
 

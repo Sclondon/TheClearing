@@ -52,6 +52,9 @@ const HUNTERS := [
 	["PTERODACTYL", "pterodactyl", AHEAD], ["SNAIL", "snail", SNAKE_AHEAD], ["HYDRA", "hydra", AHEAD],
 	["GIBBONS", "gibbons", AHEAD], ["BEAR", "bear", SNAKE_AHEAD], ["BRACHIOSAURUS", "brachiosaurus", COLOSSUS_AHEAD],
 	["DIMETRODON", "dimetrodon", AHEAD], ["GRIFFINFLIES", "griffinflies", AHEAD],
+	["PSYCHIC CHILD", "psychic_child", AHEAD], ["LYNX", "lynx", AHEAD], ["PANTHER", "panther", SNAKE_AHEAD],
+	["WOLVES", "wolves", SNAKE_AHEAD], ["FOXES", "foxes", AHEAD], ["FROGS (POND)", "pond_frogs", AHEAD],
+	["RABBITS", "rabbits", AHEAD], ["HARES", "hares", AHEAD], ["JACKALOPE", "jackalope", AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -347,6 +350,33 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 		"griffinflies":
 			# (a pair, hunting the halls round where they are put)
 			made = [MazeGriffinfly.new(), MazeGriffinfly.new()]
+		"psychic_child":
+			made = [MazePsychicChild.new()]
+		"lynx":
+			var lynx := MazeLynx.new()
+			lynx.lie_up = false
+			made = [lynx]
+		"panther":
+			var panther := MazePanther.new()
+			panther.lie_up = false
+			made = [panther]
+		"wolves":
+			# (a pack of five; its den is where its leader is put)
+			made = MazeWolf.pack_of(5, randi())
+		"foxes":
+			made = MazeFox.pair_of(2, randi())
+		"pond_frogs":
+			made = [MazePondFrogs.new()]
+		"rabbits":
+			# (a warren and its colony where he is looking, its holes towards him)
+			MazeRabbit.add_colony(world.enemies, at - Vector3.UP * 0.05, _facing_him(at), RabbitWarren.Kind.MOUND, 5, randi(), true)
+			return
+		"hares":
+			# (a pair, that box now and then)
+			MazeHare.add_hares(world.enemies, at - Vector3.UP * 0.05, true, randi(), true)
+			return
+		"jackalope":
+			made = [MazeJackalope.new()]
 		"ravens":
 			# (wildlife: on the walls round where they are put, not among the hunters)
 			world.birds.add_ravens_at(at)
@@ -661,6 +691,8 @@ const HEADINGS := {
 	"tame_chickens": "Tame animals",
 	"stegosaurus": "Prehistoric", "deinonychus": "Prehistoric", "pterodactyl": "Prehistoric",
 	"brachiosaurus": "Prehistoric", "dimetrodon": "Prehistoric", "griffinflies": "Birds and bugs",
+	"foxes": "Tame animals", "pond_frogs": "Tame animals", "rabbits": "Tame animals", "hares": "Tame animals",
+	"jackalope": "Tame animals", "lynx": "Big cats", "panther": "Big cats",
 	"spider_monkeys": "Apes and monkeys", "gibbons": "Apes and monkeys", "baboons": "Apes and monkeys",
 }
 

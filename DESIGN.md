@@ -402,6 +402,23 @@ ring has is its style's choice. The wall tops are a second level you can travel 
   jaws open, wings clattering) and strikes through where you were: duck or step aside. Hit, you are knocked down, not
   caught; two harrying someone alone catch them.
 
+- **Psychic child** (the user: "not necessarily hostile but dangerous", then "should have telekinesis and protect you
+  from hostiles"): a small barefoot girl in a washed-out hospital smock, a blank mask face, drifting a hand's breadth
+  off the ground humming, debris circling her. She hunts nobody; come slowly and stay calm by her and she follows you.
+  Anything that comes after someone calm near her she takes hold of with her mind (arm out, the air warped, a
+  nosebleed): lifted, held, then killed, flung or shoved back by its size. Each hold costs her; several in a row, a
+  sprint near her, a bump or a loud thing frighten her, and after a warning (warp, racing debris, ringing, hands to
+  her head) she bursts: everyone within 10 m thrown, whoever is right by her caught. Then she sits drained.
+- **Lynx**: shy, it watches from the ledges and slips away, hunting the small animals; cornered or at its kill it
+  hisses, then swipes. **Black panthers**: stalkers on the ledges and from behind, strongest at night (eyeshine, a
+  low growl, the wiggle before the spring); face one and it hesitates and gives up; turn your back and it pounces;
+  run from it close and it chases briefly faster than a sprint.
+- **Grey wolves** (the user: "might as well add wolves"): packs of four to six with a den in a dead end, patrolling
+  in file, howling together at dusk and through the night (other packs answer). They hunt by endurance: a trot slower
+  than a run that never tires, others covering the side passages; they close in (low, snarling, a growl) only on the
+  slow, stopped, cornered or long-hunted, then one bursts and grabs. Climb, stand by a fire, reach the clearing, or
+  keep together: they wait for a straggler.
+
 ### The maze lives on its own (2026-10-18, Ecology)
 
 The user: "they should also interact with each other. We should have world game manager ... like a Rain World or
@@ -452,6 +469,7 @@ catch nobody and are nothing to be afraid of, which makes the ones that are wron
 MazeStyle, "Wildlife". Each machine runs its own copy from the round's seed, frightened by the same players, so they
 agree.
 ## Wildlife
+- **Foxes, frogs, rabbits, hares and jackalopes** (2026-10-18, the user: "regular frogs ... foxes", "rabbits, hares,  jackalopes"): the life of the place and what the hunters eat. Red foxes follow at a distance, sit and watch, slip  away, carry off things lying about and pounce for the small things (tame ones in the meadow). Frogs sing round the  marsh and little ponds at dusk and in rain and plop into the water as you come near. Rabbits graze round their  warrens and bolt down the holes, thumping; hares lie flat, then explode away jinking; the rare jackalope stares,  and butts whoever comes too near (knocked down, not caught).
 
 Not everything in the clearing and the maze is a threat. Added 2026-10-18 at the user's request ("there should be
 non hostile regular deer and elk and chicken as well. Some should be in the clearing"):

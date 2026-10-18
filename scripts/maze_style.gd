@@ -239,6 +239,23 @@ extends Resource
 ## Pairs of griffinflies (MazeGriffinfly: giant dragonflies), each holding a stretch of
 ## halls: they buzz and knock you down; two harrying someone alone catch them.
 @export_range(0, 4) var griffinfly_pairs := 1
+## Psychic children (MazePsychicChild), each drifting about the halls: they hunt
+## nobody, watch over whoever is calm near them (taking hold of what comes after
+## them with their minds), and burst when they are frightened.
+@export_range(0, 3) var psychic_children := 1
+## Lynx (MazeLynx): shy small-game hunters that watch from the ledges over the halls
+## and slip away; dangerous only cornered or at a kill.
+@export_range(0, 4) var lynxes := 2
+## Black panthers (MazePanther): solitary stalkers that lie up on ledges and come on
+## from above or behind, strongest at night; face them, don't run.
+@export_range(0, 3) var panthers := 1
+## Packs of grey wolves (four to six each, a breeding pair at their head), each with
+## its den in a dead end: they patrol in file, howl at dusk and through the night, and
+## hunt by endurance (a trot slower than a run that never tires).
+@export_range(0, 3) var wolf_packs := 1
+## Jackalopes (MazeJackalope): a hare with antlers that stares instead of hiding, and
+## butts whoever comes too near.
+@export_range(0, 2) var jackalopes := 1
 ## Murders of crows (Crows), each sitting along the wall tops over a hall: they
 ## follow whoever passes along the walls, and erupt cawing at anyone who runs,
 ## which calls the hunters.
@@ -256,6 +273,18 @@ extends Resource
 ## not among what hunts it).
 @export_range(0, 4) var wild_deer_herds := 1
 @export_range(0, 4) var wild_elk_herds := 1
+## Colonies of ordinary frogs (MazePondFrogs, a dozen or so) round a little pond of
+## their own in a hall: they sing at dusk and in the rain, go quiet and plop into the
+## water as you come near. Prey for the hunters.
+@export_range(0, 6) var frog_ponds := 2
+## Red foxes (MazeFox), alone or a pair: curious, they follow at a distance, sit and
+## watch, slip away, carry off things lying about, and hunt the small things.
+@export_range(0, 4) var fox_pairs := 2
+## Rabbit warrens (MazeRabbit): a bank of burrows at the foot of a wall in a hall, its
+## colony grazing in front of it; they thump and bolt down their holes at anyone near.
+@export_range(0, 4) var rabbit_warrens := 1
+## Brown hares (MazeHare) lying up in the halls, every other one a pair that box.
+@export_range(0, 4) var hares := 1
 ## Patches of fireflies at dusk and by night, at the foot of the ivy and the walls (Insects).
 @export_range(0, 60) var firefly_patches := 24
 ## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.

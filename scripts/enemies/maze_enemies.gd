@@ -379,6 +379,50 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		taken.append(cell)
 		for k in 2:
 			add(MazeGriffinfly.new(), cell, rng.randf_range(-PI, PI), rng.randi(), Vector3(rng.randf_range(-3.0, 3.0), 0.0, rng.randf_range(-3.0, 3.0)))
+	for i in style.psychic_children:
+		# (she drifts about a hall, where people pass her)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazePsychicChild.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.lynxes:
+		# (a lynx lies up on the ledge over a hall)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeLynx.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.panthers:
+		# (a panther lies up on the ledge over a hall, far from the rest)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazePanther.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.wolf_packs:
+		# (each a den in a dead end, the pack round it: the leader in the den)
+		var den := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		_add_pack(MazeWolf.pack_of(rng.randi_range(4, 6), rng.randi()), den, nav, rng, taken)
+	for i in style.frog_ponds:
+		# (a pond of frogs in a hall or a dead end, where people pass it)
+		var cell := _far_from(taken, halls + ends if not (halls + ends).is_empty() else lairs, rng)
+		taken.append(cell)
+		var pond := MazePondFrogs.new()
+		pond.frogs = rng.randi_range(9, 14)
+		pond.pond_radius = rng.randf_range(1.4, 2.2)
+		add(pond, cell, 0.0, rng.randi())
+	for i in style.fox_pairs:
+		_add_pack(MazeFox.pair_of(1 if rng.randf() < 0.5 else 2, rng.randi()), _far_from(taken, lairs, rng), nav, rng, taken)
+	for i in style.rabbit_warrens:
+		# (a bank of burrows at the foot of a wall in a hall, its colony grazing in front of it)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var bank := MazeRabbit.bank_in_hall(maze, cell, rng)
+		MazeRabbit.add_colony(self, bank[0], bank[1], RabbitWarren.Kind.BANK, rng.randi_range(3, 5), rng.randi())
+	for i in style.hares:
+		# (lying up in a hall; every other one a pair that box)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		MazeHare.add_hares(self, maze.world(cell), i % 2 == 1, rng.randi())
+	for i in style.jackalopes:
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeJackalope.new(), cell, rng.randf_range(-PI, PI), rng.randi())
 	# Out past the square maze: brachiosaurs in the desert and the wide round halls,
 	# and dimetrodons basking in the desert.
 	for spot: Vector3 in MazeBrachiosaurus.spots(maze, style.brachiosaurs, rng.randi()):
@@ -424,6 +468,30 @@ func add_wildlife(clearing: ClearingStyle, seed_value: int) -> void:
 			var spot := home + Vector3(rng.randf_range(-4.0, 4.0), 0.0, rng.randf_range(-4.0, 4.0))
 			var cell := maze.cell_at(spot)
 			add(one, cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell) + Vector3.UP * (maze.ground_height(spot) + 0.3))
+	# Frogs along the marsh's pools, the meadow's foxes, its rabbit warrens and hares.
+	for one: Array in MazePondFrogs.marsh_colonies(maze, clearing.marsh_frog_colonies, rng):
+		var frogs := MazePondFrogs.new()
+		frogs.banks = one[1]
+		frogs.frogs = (one[1] as Array).size()
+		var at: Vector3 = one[0]
+		var cell := maze.cell_at(at)
+		add(frogs, cell, 0.0, rng.randi(), at - maze.world(cell) - Vector3.UP * 0.05)
+	for i in clearing.foxes:
+		var round_about := rng.randf_range(0.0, TAU)
+		var home := Vector3(cos(round_about), 0.0, sin(round_about)) * rng.randf_range(110.0, 180.0)
+		home.y = maze.ground_height(home)
+		for one in MazeFox.pair_of(1 if rng.randf() < 0.6 else 2, rng.randi()):
+			one.tame = true
+			one.keep_out_of_clearing = false
+			one.home = home
+			var spot := home + Vector3(rng.randf_range(-3.0, 3.0), 0.0, rng.randf_range(-3.0, 3.0))
+			var cell := maze.cell_at(spot)
+			add(one, cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell) + Vector3.UP * (maze.ground_height(spot) + 0.3))
+	for spot: Array in MazeRabbit.clearing_spots(maze, clearing.rabbit_warrens, rng):
+		MazeRabbit.add_colony(self, spot[0], spot[1], RabbitWarren.Kind.MOUND, rng.randi_range(4, 6), rng.randi(), true)
+	var meadow := MazeHare.clearing_spots(maze, clearing.hares, rng)
+	for i in meadow.size():
+		MazeHare.add_hares(self, meadow[i], i % 2 == 1, rng.randi(), true)
 	# Griffinflies over the marsh (ClearingStyle: none by default, the clearing is safe).
 	var marsh := MazeGriffinfly.marsh_middle(maze)
 	for i in (clearing.marsh_griffinflies if marsh.is_finite() else 0):
@@ -508,25 +576,55 @@ func set_targets(players: Array) -> void:
 		enemy.targets = players
 
 
-## All their states, for the host to send: a count, then MazeEnemy.STATE_SIZE bytes each.
+## How many of those asleep (far from everyone: World._sleep_far) go in each
+## `pack`, in turn: the rest of them, and the dead, every time.
+const ASLEEP_EACH := 24
+
+var _asleep_next := 0
+
+
+## Their states, for the host to send: a count (two bytes), then for each its
+## number (two bytes) and MazeEnemy.STATE_SIZE bytes. Every one awake (near
+## someone) and every dead one goes in each time; of those asleep, ASLEEP_EACH
+## at a time in turn, so that a big maze's news stays small.
 func pack() -> PackedByteArray:
-	var data := PackedByteArray()
-	data.resize(1 + enemies.size() * MazeEnemy.STATE_SIZE)
-	data[0] = enemies.size()
+	var chosen: Array[int] = []
+	var asleep: Array[int] = []
 	for i in enemies.size():
-		var one := enemies[i].state_bytes()
+		if enemies[i].process_mode == Node.PROCESS_MODE_DISABLED and not enemies[i].dead:
+			asleep.append(i)
+		else:
+			chosen.append(i)
+	for k in mini(ASLEEP_EACH, asleep.size()):
+		chosen.append(asleep[(_asleep_next + k) % asleep.size()])
+	_asleep_next += ASLEEP_EACH
+	var each := 2 + MazeEnemy.STATE_SIZE
+	var data := PackedByteArray()
+	data.resize(2 + chosen.size() * each)
+	data.encode_u16(0, chosen.size())
+	for k in chosen.size():
+		var one := enemies[chosen[k]].state_bytes()
+		data.encode_u16(2 + k * each, chosen[k])
 		for b in one.size():
-			data[1 + i * MazeEnemy.STATE_SIZE + b] = one[b]
+			data[4 + k * each + b] = one[b]
 	return data
 
 
-## Hears what `pack` made (from `offset` in `data`).
-func unpack(data: PackedByteArray, offset := 0) -> void:
-	if data.size() <= offset:
-		return
-	var count := mini(data[offset], enemies.size())
-	for i in count:
-		enemies[i].from_bytes(data, offset + 1 + i * MazeEnemy.STATE_SIZE)
+## Hears what `pack` made (from `offset` in `data`). Gives where in `data` what
+## follows it begins.
+func unpack(data: PackedByteArray, offset := 0) -> int:
+	if data.size() < offset + 2:
+		return offset
+	var each := 2 + MazeEnemy.STATE_SIZE
+	var count := data.decode_u16(offset)
+	for k in count:
+		var at := offset + 2 + k * each
+		if data.size() < at + each:
+			break
+		var index := data.decode_u16(at)
+		if index < enemies.size():
+			enemies[index].from_bytes(data, at + 2)
+	return offset + 2 + count * each
 
 
 func _on_caught(player: Node3D, enemy: MazeEnemy) -> void:

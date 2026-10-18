@@ -138,6 +138,15 @@ var entrance_spots: Array = []
 ## Griffinflies (MazeGriffinfly: giant dragonflies) hunting over the marsh; they buzz and knock
 ## you down, never catch. None by default: the clearing is safe.
 @export_range(0, 4) var marsh_griffinflies := 0
+## Colonies of frogs along the edges of the marsh's pools (MazePondFrogs).
+@export_range(0, 12) var marsh_frog_colonies := 6
+## Tame foxes (one or a pair each) out in the meadow (MazeFox, tame): they follow at a
+## distance, sit and watch, slip away, and pounce for mice in the grass.
+@export_range(0, 3) var foxes := 1
+## Rabbit warrens out in the meadow (MazeRabbit: hummocks, a colony of four to six each).
+@export_range(0, 6) var rabbit_warrens := 2
+## Brown hares lying up in the open meadow (MazeHare; every other one a pair that box).
+@export_range(0, 6) var hares := 2
 ## Clouds of moths out over the grass, in the evening and through the night (Insects).
 @export_range(0, 8) var dusk_moth_clouds := 3
 ## Packs of coyotes out in the meadow (Wildlife: tame, they stare, shadow, yip and

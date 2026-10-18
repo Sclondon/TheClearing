@@ -473,8 +473,7 @@ func _on_packet(from: int, kind: int, data: PackedByteArray) -> void:
 			Vector3(data.decode_float(13), data.decode_float(17), data.decode_float(21)),
 			data.decode_float(25), data[29] == 1)
 	elif kind == K_ENEMIES and not Net.is_host:
-		enemies.unpack(data, 0)
-		var at := 1 + MazeEnemy.STATE_SIZE * enemies.enemies.size()
+		var at := enemies.unpack(data, 0)
 		if data.size() >= at + Griever.STATE_SIZE:
 			griever.from_bytes(data, at)
 	elif kind == K_RUNNERS and not Net.is_host:
