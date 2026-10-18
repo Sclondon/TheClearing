@@ -13,7 +13,7 @@ rise that goes hips first until it stands bent double, a jerky held-and-snatched
 fours far too fast.
 
 It is only the look, the motion and the sounds. It does no thinking: your game moves it and says when it rises,
-calls, drops and grabs. Made for The Clearing (its `MazeSkinwalker`, hidden among coyote packs).
+calls, drops and grabs. Made for Warren (its `MazeSkinwalker`, hidden among coyote packs).
 
 ## Needs
 

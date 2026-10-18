@@ -1,7 +1,7 @@
 class_name MummyChildRig
 extends MummyRig
 ## The child's way of moving (`Mummy.Kind.CHILD`, models/enemies/mummy_child.glb).
-## (In The Clearing: Outside's `_burst` and `_burst_pace` are `_spurt` and `_spurt_pace`
+## (In Warren: Outside's `_burst` and `_burst_pace` are `_spurt` and `_spurt_pace`
 ## here, as GameCommon's CharacterRig has a `_burst` of its own.)
 ##
 ## - It scuttles. It goes in bursts, each as long as it happens to be and not

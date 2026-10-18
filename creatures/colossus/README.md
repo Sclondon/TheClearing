@@ -9,7 +9,7 @@ whatever is under it (the tops of walls), on its hands and feet, its elbows and 
 slung low between; every hand or foot put down comes down with a thud that shakes the ground, dust rolling off and
 stones raining down. It hunts with one finger: holds it over what it wants, its shadow growing on the ground,
 slowly presses it down, grinds, lifts, and tries again where they ran. It can rear up and lean on the top of
-something high to look over it. Made 2026-10-18 for The Clearing (its `MazeColossus` crawls over the first ring),
+something high to look over it. Made 2026-10-18 for Warren (its `MazeColossus` crawls over the first ring),
 as a creature any game can use: it is only the look, the motion and the sound.
 
 - `creatures/colossus/colossus.gd` (`class_name Colossus`, a `Node3D`): the motion, all procedural (no animations).

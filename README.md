@@ -1,4 +1,4 @@
-# The Clearing
+# Warren
 
 A maze game for the Scareathon arcade, after *The Maze Runner* and *Labyrinth*. You and up to three friends
 wake in a wide grassy clearing walled in by a maze that was not built for people: grey stone walls 34 m
@@ -15,7 +15,7 @@ What the game is meant to be (pillars, art direction, the maze's rules, enemies,
 [DESIGN.md](DESIGN.md); this file is how it is built and run.
 
 Godot 4.7, GL Compatibility, landscape first (it also fills a portrait window). Web build in `build/`, served at
-https://sclondon.github.io/TheClearing/build/.
+https://sclondon.github.io/Warren/build/.
 
 ## Playing
 

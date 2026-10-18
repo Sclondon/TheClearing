@@ -7,7 +7,7 @@ stands like a statue until it is woken; then it shuffles, screams (a ragged shri
 to the spot) and grabs, hugging them to it.
 
 It is only the look, the motion and the shriek. It does no thinking: your game moves it and tells it when to act.
-Made for The Clearing (its `MazeGhoul` is the thinking that drives it there).
+Made for Warren (its `MazeGhoul` is the thinking that drives it there).
 
 ## Needs
 

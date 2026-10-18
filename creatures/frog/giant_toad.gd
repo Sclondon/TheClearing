@@ -12,7 +12,7 @@ extends Node3D
 ## Muddy olive and brown with darker blotches, a pale cream belly. The model
 ## is a unit long from snout to rump (creatures/frog/models/toad.glb, built in
 ## Blender by tools/build_frogs.py); scale this node to make it as big as you
-## want (The Clearing's is 2.8 m long and stands as high as a man's chest).
+## want (Warren's is 2.8 m long and stands as high as a man's chest).
 ## One skinned mesh (one draw) and, when it is out, the tongue (two more).
 ##
 ## HOW IT MOVES. Move the node (`global_position`) and turn it (its Y rotation;

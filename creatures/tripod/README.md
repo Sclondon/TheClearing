@@ -9,7 +9,7 @@ joints and a cable along each, ending in feet of three claws. A heat ray on a jo
 brow: a finned emitter like a camera with a horn, its lens deep in it. Four cable tentacles and a clawed grasper
 hanging under it. Red weed draped over the hood and trailing off its rim and its legs. Lit in hard bands (cel
 shading) like the rest of a misty, Inside-like world. Everything it does is animated in code: no clips.
-Made for The Clearing (its tripod). The component has no thinking; it makes its own sounds, in code.
+Made for Warren (its tripod). The component has no thinking; it makes its own sounds, in code.
 
 ## Using it
 

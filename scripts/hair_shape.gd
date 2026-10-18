@@ -8,7 +8,7 @@ class_name HairShape
 ## Each style is one more option of a slot of its own, `locks`, added to a figure
 ## as `boy_locks__<name>`: a look shows it with {"parts": {"locks": "<name>"}}.
 ## It is skinned to the head as the model's hair is, and coloured as hair.
-## Every style is kept, to be looked at side by side (The Clearing's
+## Every style is kept, to be looked at side by side (Warren's
 ## tools/hair_sheet.gd); STYLES says what each is.
 
 ## [name, label, {"count": locks, "length": metres, "width": metres, "lift": how far

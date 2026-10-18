@@ -6,7 +6,7 @@ creeps on its belly and leaves a trail of slime that dries, and it lashes at
 things with tendrils of meat. This is the look and the motion only. Your game
 moves it and decides when it lashes.
 
-Made for The Clearing (scripts/enemies/abomination.gd is its hunter there).
+Made for Warren (scripts/enemies/abomination.gd is its hunter there).
 
 ## Files
 

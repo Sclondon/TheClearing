@@ -99,7 +99,7 @@ const DIVE_IN_TAKES := 0.55
 ## Asked first when the act button is pressed, with him: something of the game's
 ## that wants the button (a thing lying at his feet to take into an inventory,
 ## say) does what it does and returns true, and he does nothing more; false, and
-## he picks up, throws or uses as he would. (The Clearing: Loot.act.)
+## he picks up, throws or uses as he would. (Warren: Loot.act.)
 var act_first: Callable
 
 ## While true, nothing from the keys, pads or touch reaches any Player or the
@@ -115,7 +115,7 @@ static var input_blocked := false
 ## has him sprint at once, at any push of the stick past a walk.
 @export var sprint_speed := 5.6
 @export var sprint_delay := 0.8
-## Whether a full push held for `sprint_delay` sprints by itself. (The Clearing: off,
+## Whether a full push held for `sprint_delay` sprints by itself. (Warren: off,
 ## sprint is a button of its own. GameCommon and Outside: on.)
 @export var auto_sprint := true
 @export var push_speed := 1.15

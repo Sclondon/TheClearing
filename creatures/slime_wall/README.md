@@ -8,7 +8,7 @@ gone lies at the bottom. It sags, its foot spreads, its front heaves as it goes,
 beads of slime run down it, and it leaves a wet trail that dries. Built in code: no models, no textures. Godot 4.7,
 works on GL Compatibility (reads the screen and depth textures).
 
-Made for The Clearing (as an enemy there, `scripts/enemies/maze_slime_wall.gd`); this is only the look and motion.
+Made for Warren (as an enemy there, `scripts/enemies/maze_slime_wall.gd`); this is only the look and motion.
 
 ## Use
 

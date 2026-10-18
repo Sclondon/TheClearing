@@ -1,7 +1,7 @@
 # Bats (Godot 4.7)
 
 A colony of big bats: how they look and how they fly, and nothing about what they mean in a game. Made 2026-10-18
-for The Clearing (where they are the maze's alarm: `scripts/enemies/bats.gd` there). No scenes and no textures:
+for Warren (where they are the maze's alarm: `scripts/enemies/bats.gd` there). No scenes and no textures:
 `creatures/bats/bat_colony.gd` (`class_name BatColony`), `bat_body.gd` (`BatBody`: the mesh and material; the
 wings, legs and tail made in code), `bat.gdshader`, and `models/bat_body.glb`, the body and head (about a thousand
 triangles), built in Blender 4.3 by `tools/build_bat.py`:

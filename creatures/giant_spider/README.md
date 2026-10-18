@@ -45,4 +45,4 @@ when nobody is near.
 on its thread, and rears and strikes at the post, over and over.
 
 Files: `giant_spider.gd` (GiantSpider), `giant_spider_legs.gd` (GiantSpiderLegs), `giant_spider_look.gd`
-(GiantSpiderLook: meshes and shaders). Made for The Clearing (its `MazeSpider` drives it as an ambusher).
+(GiantSpiderLook: meshes and shaders). Made for Warren (its `MazeSpider` drives it as an ambusher).

@@ -1,4 +1,4 @@
-# The imp: three scripts and two models (the Blender script that makes them is in The Clearing, creatures/imp/tools/)
+# The imp: three scripts and two models (the Blender script that makes them is in Warren, creatures/imp/tools/)
 creatures/imp/imp.gd
 creatures/imp/imp_look.gd
 creatures/imp/imp_ride.gd

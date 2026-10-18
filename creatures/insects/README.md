@@ -1,12 +1,12 @@
 # Insects (Godot 4.7)
 
 Small flying insects as swarms: moths, flies and dragonflies, how they look and how they fly, and nothing about what
-they mean in a game. Made 2026-10-18 for The Clearing (where moths gather round its lights, flies round anything of
+they mean in a game. Made 2026-10-18 for Warren (where moths gather round its lights, flies round anything of
 meat and wherever someone was caught, and dragonflies hunt over the marsh: `scripts/wildlife/insects.gd` there). No
 scenes and no textures: `creatures/insects/insect_swarm.gd` (`class_name InsectSwarm`), `insect_look.gd`
 (`InsectLook`: the meshes and materials), `insect.gdshader`, and `models/insects.glb` (the three insects, a few hundred
 triangles each) and `models/carcass.glb` (a dead deer for flies to gather on), built in Blender 4.3 by
-`tools/build_insects.py` (kept in The Clearing):
+`tools/build_insects.py` (kept in Warren):
 
 ```
 blender --background --python creatures/insects/tools/build_insects.py
@@ -94,7 +94,7 @@ is `InsectLook.WINGS` (the shader's uniforms); the colours and patterns are in t
 
 One draw call per swarm (one MultiMesh), no shadow. Further than `active_range` from the camera (or with `active`
 off) a swarm is not drawn and does no work at all: a game can put down dozens and pay only for the few in view.
-Otherwise every insect is moved each frame in one loop and written to the MultiMesh in one piece: in The Clearing,
+Otherwise every insect is moved each frame in one loop and written to the MultiMesh in one piece: in Warren,
 about 0.1 ms a frame for 20-30 insects on a desktop (`cost` and `InsectSwarm.cost_total` say, in microseconds). A
 moth is about 750 triangles, a fly 540, a dragonfly 640. Seeded by `swarm_seed`: two machines that make the same swarm
 get the same insects (they drift apart in the details, which no one can tell).

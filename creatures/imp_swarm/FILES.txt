@@ -1,4 +1,4 @@
-# The imp swarm: a script, its shader and its model (built by The Clearing's creatures/imp/tools/build_imp.py)
+# The imp swarm: a script, its shader and its model (built by Warren's creatures/imp/tools/build_imp.py)
 creatures/imp_swarm/imp_swarm.gd
 creatures/imp_swarm/imp_swarm.gdshader
 creatures/imp_swarm/models/imp_swarm.glb

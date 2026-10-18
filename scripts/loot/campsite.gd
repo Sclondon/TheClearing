@@ -1,7 +1,7 @@
 class_name Campsite
 extends Node3D
 ## A camp: somewhere people stopped, out in the open or in a hall between walls
-## (The Clearing: placed by Loot; see its DESIGN.md, "Camps"). Built round its
+## (Warren: placed by Loot; see its DESIGN.md, "Camps"). Built round its
 ## fire, where this node stands, from the models in props/models/
 ## (props/tools/build_props.py):
 ##
@@ -22,7 +22,7 @@ extends Node3D
 ##     camp.position = where
 ##     add_child(camp)
 ##
-## A lit camp is in the group `fire_wards` with a `ward_radius` (The Clearing's
+## A lit camp is in the group `fire_wards` with a `ward_radius` (Warren's
 ## FireWard: what fears fire keeps off it). Everything is placed from
 ## `seed_value`, so every copy of a game builds the same camp.
 
@@ -38,7 +38,7 @@ var kind := Kind.ABANDONED
 var seed_value := 0
 ## In a hall between walls (tallies on the wall, not a post; struggles more often), or in the open.
 var in_maze := false
-## How high the ground is at a point (its x and z): any Callable(Vector3) -> float (The Clearing: Maze.ground_height). Unset, level with the camp.
+## How high the ground is at a point (its x and z): any Callable(Vector3) -> float (Warren: Maze.ground_height). Unset, level with the camp.
 var ground: Callable
 ## Signs of a struggle (abandoned camps only).
 var struggle := false
@@ -46,9 +46,9 @@ var struggle := false
 var lit := false
 ## FireWard: how far off what fears fire is kept (while it burns).
 var ward_radius := 0.0
-## Where its things lie that are worth taking (in its own space; The Clearing: Loot puts what it found there).
+## Where its things lie that are worth taking (in its own space; Warren: Loot puts what it found there).
 var stash: Array[Vector3] = []
-## Where someone sits round its fire, facing it, in its own space (The Clearing: Loot sits Campers there).
+## Where someone sits round its fire, facing it, in its own space (Warren: Loot sits Campers there).
 var seats: Array[Transform3D] = []
 ## Where someone lies asleep by its fire (on its bedrolls laid out).
 var beds: Array[Transform3D] = []

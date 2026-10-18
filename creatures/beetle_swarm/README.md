@@ -3,7 +3,7 @@
 A swarm of beetles: a glossy black carpet of several hundred that pours out of cracks at the foot of a wall (or a
 hole in the floor), floods along the ground, runs up the feet of walls and over anything low, and goes for a point;
 those that reach it run up the legs of whoever stands there. How they look and move, and nothing about what they mean
-in a game. Made 2026-10-18 for The Clearing (where they hunt the maze: `scripts/enemies/beetles.gd` there), from
+in a game. Made 2026-10-18 for Warren (where they hunt the maze: `scripts/enemies/beetles.gd` there), from
 Outside's scarab swarm (`scripts/scarab_swarm.gd`, `scripts/scarab.gd`, `tools/build_khepri.py` in Outside).
 
 No scenes and no textures: `creatures/beetle_swarm/beetle_swarm.gd` (`class_name BeetleSwarm`),
@@ -90,8 +90,8 @@ One draw for all of them (one MultiMesh, no shadow; both kinds in one mesh, each
 plus one small mesh per crack. Asleep, nothing. Out, every beetle near the target (2.5 m) or home is worked out every
 frame, and the rest in full one frame in `stagger` (3), only carrying on as they were in between; the ground is a
 grid of 0.25 m squares, each found with one ray down the first time a beetle comes to it (at most 32 rays a frame)
-and remembered. Measured in The Clearing (desktop, GDScript): 520 beetles flooding a hall about 0.9 ms a frame, 520
-with 70 on someone and the rest round them about 1.1 ms. Use fewer on phones (The Clearing uses 300 there).
+and remembered. Measured in Warren (desktop, GDScript): 520 beetles flooding a hall about 0.9 ms a frame, 520
+with 70 on someone and the rest round them about 1.1 ms. Use fewer on phones (Warren uses 300 there).
 Seeded by `swarm_seed`, so two machines that make the same swarm get the same beetles.
 
 ## What it needs from a game

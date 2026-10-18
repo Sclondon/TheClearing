@@ -3,7 +3,7 @@
 A half-starved hunting dog, a mastiff crossed with a lurcher. It has a sighthound's frame (deep narrow chest, tucked-up
 loin, long legs) under a mastiff's broad head. Its ribs, hip bones and spine show, it is scarred, one ear is cut short,
 and its coat is matted dark grey-brown and bare in patches. Everything it does is animated in code on its own skeleton:
-no clips. Made for The Clearing (its tracking dog packs). The component has no thinking and no sound.
+no clips. Made for Warren (its tracking dog packs). The component has no thinking and no sound.
 
 ## Using it
 
