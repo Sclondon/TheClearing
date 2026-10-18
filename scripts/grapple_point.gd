@@ -4,7 +4,10 @@ extends Marker3D
 ## beam, the top of a post, a branch, a ring let into a wall. Put one where the
 ## hook is to bite, and the rope will hang from there. It is in the group
 ## `grapple_points`, and anything else in that group will do as well (any
-## Node3D: it is where the node is that the hook goes).
+## Node3D: it is where the node is that the hook goes). The hook finds them with
+## NearIndex, so they are taken to stay where they are put. (Many spots made by
+## a level's generator are better as one GrappleSpots, which draws them all at
+## once and is a node for all of them.)
 ##
 ## A level marks them in one of three ways:
 ##     add_child(GrapplePoint.new())            # with its position set, like any node

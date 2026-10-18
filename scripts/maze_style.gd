@@ -118,6 +118,27 @@ extends Resource
 @export_range(0.0, 0.5) var sewer_pipe_share := 0.0
 @export_range(0.2, 0.9) var sewer_pipe_height := 0.62
 
+@export_group("Grappling hook spots")
+## Places made for the grappling hook to catch (GrappleSpots), each marked in
+## iron so that a route up can be seen from below and planned. The share of maze
+## wall faces with a route up them: stone corbels sticking out of the wall one
+## above another, an iron ring hanging from the end of each, from the ground (or
+## the highest ledge along the face) to the top of the wall, where a last ring
+## hangs from the cornice. Throw at the ring above, climb, pull up onto the
+## corbel, throw at the next.
+@export_range(0.0, 1.0) var grapple_route_share := 0.03
+## How far apart the corbels of a route are, at most, metres (the hook reaches 13).
+@export_range(3.0, 11.0) var grapple_route_rise := 6.5
+## The share of ledge edges (each level of the mezzanine along a face, each
+## terrace, the platform under each sewer pipe's mouth) with an iron ring at
+## their lip: the hook would catch the lip anyway; the ring shows where.
+@export_range(0.0, 1.0) var grapple_ring_share := 0.2
+## The share of maze wall faces with an iron hook or an old pipe sticking out of
+## them high over the hall, to swing from; how high (grapple swing height range)
+## over the ground or the highest ledge along the face, metres.
+@export_range(0.0, 1.0) var grapple_swing_share := 0.04
+@export var grapple_swing_height_range := Vector2(7.0, 10.5)
+
 @export_group("Plants")
 ## How thickly ferns, moss and tufts of grass grow along the foot of its walls (0
 ## none, 1 all along every wall).

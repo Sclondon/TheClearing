@@ -6,8 +6,9 @@ extends GrappleHook
 ## made to catch where the maze gives it something to catch: the lip of any
 ## ledge in reach (a mezzanine, a terrace, the platform under a sewer pipe, the
 ## top of a buttress), found by feeling for it with rays, as well as anything in
-## the group `grapple_points`. Out of reach of the wall tops, by design: it is a
-## way up to the ledges, not over the walls.
+## the group `grapple_points`, the hook spots (GrappleSpots) and vines (GrappleHook's
+## own). Out of reach of the wall tops, by design (it is a way up to the ledges,
+## not over the walls), but where a route of hook spots goes up to one.
 ##
 ## Lying about it is the coil of rope with the grapnel on it (props/models/hook.glb);
 ## in his hand, GrappleHook's own coil. Its rope frays: after `bites` catches it
@@ -36,6 +37,8 @@ var _ledge: Marker3D
 var _still := 0.0
 var _aloft := 0.0
 var _fraying := false
+## How good the lip `_find_ledge` last found is (as GrappleHook.best_score).
+var _ledge_score := INF
 
 
 func _ready() -> void:
@@ -155,13 +158,18 @@ func held_by(who: Node3D) -> void:
 
 
 ## What the hook would catch: the lip of the nearest ledge in reach in front of
-## him (see `_find_ledge`), or else the nearest grapple point (GrappleHook's way).
+## him (see `_find_ledge`), or what GrappleHook would (a spot made for it, a
+## vine, a grapple point), whichever is the better. (The spots and vines count
+## a little nearer than they are: one is chosen over a lip about as far off.)
 func find_target(who: Player) -> Node3D:
+	var other := super(who)
+	var other_score := best_score
 	var edge := _find_ledge(who)
-	if edge.is_finite():
+	if edge.is_finite() and _ledge_score < other_score:
 		_ledge.global_position = edge
+		best_score = _ledge_score
 		return _ledge
-	return super(who)
+	return other
 
 
 ## Feels for a ledge's lip in front of `who` that the hook would catch: rays
@@ -224,6 +232,7 @@ func _find_ledge(who: Player) -> Vector3:
 			least = score
 			best = point
 			break
+	_ledge_score = least
 	return best
 
 

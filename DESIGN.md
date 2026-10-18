@@ -105,6 +105,27 @@ Terraces of stone against the walls (steps for a giant: 6.5 m and 13 m), ivy to 
 to the wall top, vines to catch with a jump and swing on, rope bridges across halls and between wall tops. Which a
 ring has is its style's choice. The wall tops are a second level you can travel along.
 
+**Grappling hook spots** (added 2026-10-18 at the user's request: "we should also have grappling hook spots"). Places
+made for the grappling hook to catch, in rusty iron dark against the concrete, so that a way up can be seen from below
+and planned (`GrappleSpots`, `MazePiece.Kind.ANCHOR`, laid out by `MazeFeatures` from MazeStyle "Grappling hook spots"):
+
+- **Routes** (grapple route share, of the maze wall faces nothing else is on): stone corbels up a bare wall, one every
+  6.5 m at most (grapple route rise), by turns either side of a line, an iron ring hanging from the end of each, from
+  the ground (or the highest ledge along the face) to the wall's top, where a last ring hangs from the cornice. Throw
+  at the ring above, climb, pull up onto the corbel, throw at the next. (So the hook can now take you to a wall top,
+  but only up one of these.)
+- **Rings at the lips of ledges** (grapple ring share): each level of the mezzanine along a face, terraces, the
+  platforms under the sewer pipes, the strung vines' buttresses. The hook catches any lip anyway; the ring shows where.
+- **Hooks and pipes to swing from** (grapple swing share, and how high over the floor): an iron hook or an old pipe out
+  of a wall over the hall.
+
+Held, the hook marks what it would catch, and the next few things in reach faintly. It prefers a spot (or a vine) to
+the bare lip of a ledge about as far off. It is also thrown at **vines**: at a hanging vine (in reach, out of reach of
+a jump) it wraps round it about 3 m over his hands, he is hauled in up its line (quickly, slowing at the last) and
+takes hold of the vine there, swinging on with a little of the haul's speed, the hook wound back in; then it is any
+vine. At a vine strung across a hall it wraps round that, and its rope hangs from there to climb. Every copy of the game
+lays out the same spots from the seed; a hooked vine swings on each player's own machine (as any vine does).
+
 ## Players
 
 - Move, look, jump, and everything Outside's boy can do: sprint (its own button), duck, slide, roll, climb a ledge,
@@ -424,7 +445,9 @@ what hunts the maze. A spear buys a moment; a torch keeps the small things off; 
 
 - **Grappling hook.** Out of your hand with the act button at the lip of a ledge in reach above you (a mezzanine, a
   terrace, the platform under a sewer pipe, a buttress's top: any ledge's edge the hook can feel for, up to about 13
-  m: never the wall tops, which stay out of reach), or at anything marked as a grapple point. It bites, you swing on
+  m: never the wall tops, which stay out of reach but by the routes of hook spots), at a hook spot (rings, hooks and
+  pipes: "Ways up"), at a vine (wrapped round it, you are hauled in to it and hold it), or at anything marked as a
+  grapple point. It bites, you swing on
   its rope and climb it, and at the top pull yourself over the lip. A big new way up, but its rope frays: six catches
   and it parts.
 - **Backpack.** Worn as soon as it is taken: room for four things instead of two. Full, it slows you a little.
@@ -499,7 +522,9 @@ ladders hung are seen by all. A guest's spear asks the maker to stagger what it 
   Ropes and bridges rest with `Rope.rest` and one `Rope.Waker` starts those near anyone; ivy waits for one
   `IvyClimb.Grower`.
 - Never loop over a big group (ropes, ladders) every step to find what is near: ask `NearIndex.near`. The boy's
-  controller did that, so every runner cost ~4 ms and three made the frame rate fall to single figures.
+  controller did that, so every runner cost ~4 ms and three made the frame rate fall to single figures. (The
+  grappling hook's search, every third frame while it is held, asks it for grapple points, `GrappleSpots`
+  squares, vines and strung vines; the spots are one MultiMesh per look per 48 m square and never process.)
 - Never work out a whole-maze `MazeNav.field` in a loop: each is a walk of every cell, and only the last 96 are kept
   (the hunters share them). Walk only the few cells needed instead.
 - `tools/frame_split.gd` (frame time and every processing script, per place) and `tools/runner_costs.gd` measure these.

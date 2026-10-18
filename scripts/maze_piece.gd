@@ -2,7 +2,7 @@
 class_name MazePiece
 extends Node3D
 ## One piece of a maze laid out by MazeLayout: a run of wall, a pier, a terrace,
-## a patch of ivy, a vine, a rope bridge, a tree, a sewer pipe or the light past the exit. In
+## a patch of ivy, a vine, a rope bridge, a tree, a sewer pipe, a grappling hook spot or the light past the exit. In
 ## the editor each shows itself as it will be, and can be moved, turned, resized,
 ## copied or deleted by hand; in the game MazeBuilder.realize makes the real thing
 ## from it (the walls merged into a few meshes, the ivy an IvyClimb, and so on)
@@ -16,9 +16,11 @@ extends Node3D
 ## the middle of its floor. A bridge runs from
 ## its origin to its child `End` (move that to move the far end), and so does a
 ## vine strung across a hall (a strand). A tree stands
-## at its origin, as big as its scale.
+## at its origin, as big as its scale. A grappling hook spot (an anchor: an iron
+## ring, hook or pipe, GrappleSpots) is where the hook bites, its +Z out of the
+## wall it is on.
 
-enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE }
+enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, ANCHOR }
 
 @export var kind := Kind.WALL:
 	set(value):
@@ -48,6 +50,11 @@ enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE }
 @export var width := 1.8:
 	set(value):
 		width = value
+		_refresh()
+## What a grappling hook spot is (GrappleSpots.Look: a ring, a hook or a pipe).
+@export_enum("Ring", "Hook", "Pipe") var anchor := 0:
+	set(value):
+		anchor = value
 		_refresh()
 
 var _shown: Node3D
@@ -157,6 +164,13 @@ func _refresh() -> void:
 			pipe.length = length
 			pipe.wall = width
 			_shown = pipe
+		Kind.ANCHOR:
+			var spot := MeshInstance3D.new()
+			spot.mesh = GrappleSpots.mesh_of(anchor)
+			spot.material_override = GrappleSpots.material()
+			# (as big as it is: undo the node's scale)
+			spot.scale = Vector3.ONE / scale.abs().max(Vector3.ONE * 0.001)
+			_shown = spot
 	if _shown:
 		# (shown, but not part of the scene: it is made again whenever it is opened)
 		add_child(_shown, false, Node.INTERNAL_MODE_BACK)

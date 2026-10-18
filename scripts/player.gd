@@ -207,6 +207,12 @@ static var input_blocked := false
 @export var cast_time := 0.62
 @export var reel_time := 0.7
 @export var grapple_lift := 0.55
+## Hooked round a hanging vine, how fast he is hauled in up its line (m/s), and
+## how near the vine (along the line, metres) he takes hold of the vine itself.
+@export var grapple_haul_speed := 6.5
+@export var grapple_haul_end := 0.6
+## And the most swing he takes hold of the vine with, m/s.
+@export var grapple_haul_swing := 3.2
 
 @export_group("Landing")
 ## Coming down faster than these (m/s) he lands on three points, goes sprawling,
@@ -1783,6 +1789,24 @@ func take_rope(rope: Rope, at: float, hook: Node3D) -> bool:
 	return true
 
 
+## Hauled in up a hook's line to the vine it is wrapped round: he takes hold of
+## the vine there, bringing the speed of the haul to it, and the hook comes
+## away to be wound in. On the vine he is as on any (swinging, climbing, leaping off).
+func _onto_vine() -> void:
+	var vine := _grapple.get(&"wrapped") as Rope
+	var along: float = _grapple.get(&"wrap_at")
+	# (what of the haul he brings to it is how fast he was going across, eased:
+	# the jerk of taking hold takes up the rest)
+	var going := _rope.velocity_at(_rope_at)
+	var speed := Vector3(going.x, 0.0, going.z).limit_length(grapple_haul_swing)
+	_drop_rope()
+	if not is_instance_valid(vine):
+		state = State.FREE
+		velocity = speed
+		return
+	_hold_rope(vine, along + 0.35, speed)
+
+
 ## On a rope. The stick throws his weight about: with the swing it builds it,
 ## against it checks it. Act (held) climbs, duck lets him down it and off the
 ## end, and jump leaps off with whatever swing it has. (Where there is only left
@@ -1816,18 +1840,27 @@ func _climb_rope(input: Vector2, delta: float) -> void:
 		return
 	_rope_act = _rope_act or not _is_act_held()
 	var climb := 0.0
-	if _rope_act and _is_act_held():
-		climb -= rope_speed
-	if _is_duck_held() and _state_time > 0.15:
-		climb += rope_slide_speed
-	if move_mode == MoveMode.SIDE_SCROLL:
-		climb += input.y * rope_speed
+	# (hooked round a vine, he is hauled in up the line to it, whatever he does)
+	var hauled: bool = is_instance_valid(_grapple) and _grapple.get(&"hauling") == true
+	if hauled:
+		# (quickly taken up, and slowing over the last of it, into his hands)
+		climb = -grapple_haul_speed * smoothstep(0.0, 0.18, _state_time) * clampf((_rope_at - grapple_haul_end) / 1.5 + 0.35, 0.35, 1.0)
+		if _rope_at <= grapple_haul_end:
+			_onto_vine()
+			return
+	else:
+		if _rope_act and _is_act_held():
+			climb -= rope_speed
+		if _is_duck_held() and _state_time > 0.15:
+			climb += rope_slide_speed
+		if move_mode == MoveMode.SIDE_SCROLL:
+			climb += input.y * rope_speed
 	var at := clampf(_rope_at + climb * delta, 0.4, _rope.length - 0.1)
 	if climb > 0.0 and _rope_at + climb * delta > _rope.length - 0.1 and _take_time < 0.0:
 		# (he has let himself down off the end of it)
 		_leave_rope()
 		return
-	if climb < 0.0 and at <= 0.4 and _rope_top_out(lean):
+	if climb < 0.0 and at <= 0.4 and not hauled and _rope_top_out(lean):
 		return
 	if _take_time >= 0.0:
 		at = _taken_up(at, delta)
@@ -1856,9 +1889,9 @@ func _climb_rope(input: Vector2, delta: float) -> void:
 				_rope.push(at, -normal * into * 1.5)
 			to = global_position + hit.get_travel()
 	# (climbing is hand over hand; let down it, the rope runs through his hands)
-	if climb <= rope_speed * 1.01 and _take_time < 0.0:
+	if climb <= rope_speed * 1.01 and _take_time < 0.0 and not hauled:
 		rope_travel -= at - _rope_at
-	if _take_time >= 0.0:
+	if _take_time >= 0.0 or hauled:
 		_rope.take_in(at)
 	else:
 		_rope.load_at = at
