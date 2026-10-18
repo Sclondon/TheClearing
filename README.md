@@ -68,6 +68,12 @@ from the seed. Generate again replaces everything in the layout.
   (none in its middle, dense woods in one corner)
   and a few past the last ring (GameCommon's pine-tree); real grass over the clearing (GameCommon's
   grass: knee-high blades that the wind moves and the players push aside); the light past the exit.
+- `scripts/marsh.gd` (`Marsh`): the marsh in front of the clearing's flooded entrance. How it lies is
+  `ClearingStyle`'s (the marsh settings; `height_at`, `marsh_wet_at`, `marsh_depth_at`, `marsh_lane_at`); `Marsh`
+  builds it: its own ground a point a metre (the hills' coarse ground, `ClearingStyle.coarse_height_at`, sunk out of
+  sight under it) with a heightmap to walk on, one `Pool` of water over all of it at `ClearingStyle.MARSH_LEVEL`
+  (so he wades and swims in it), sedges and reeds as two more grass fields, and bulrushes and lily pads in
+  MultiMeshes by squares, drawn only near. `MazeBuilder._pond` adds it.
 - `scripts/maze_features.gd` (`MazeFeatures`): the ways up, chosen from the seed. Terraces of stone against the walls
   like steps for something huge (a lower one 6.5 m up and 3 m deep, often an upper one at 13 m set back above
   it), with climbable ivy up their faces (`scripts/ivy_climb.gd`, `IvyClimb`, a `Ladder`) and sometimes on up to the
@@ -168,6 +174,8 @@ sh tools/coop_test.sh                                     # two copies in one ro
 "$G" --path . --resolution 1280x720 -s res://tools/shots.gd -- <folder>   # pictures to look at
 "$G" --path . --resolution 1280x720 -s res://tools/clearing_shots.gd -- <folder> [seed]   # the clearing: hills, woods
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/deer_shots.gd -- <folder> [studio|strips|maze|clearing|all]   # deer and elk, gallop strips, the herd, wildlife
+"$G" --headless --audio-driver Dummy --path . -s res://tests/marsh_test.gd   # the marsh: water, sedges in it, the lane in
+"$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/marsh_shots.gd -- <folder> [seed]   # the marsh, him in it
 "$G" --headless --path . --export-release "Web" build/index.html
 ```
 

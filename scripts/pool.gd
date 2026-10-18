@@ -12,8 +12,12 @@ extends Node3D
 ## How wide, deep (downwards) and long the water is.
 @export var size := Vector3(6.0, 3.0, 6.0)
 
-## What draws it. Its colours, foam, swell and the rest are set on this.
+## What draws it. Its colours, foam, swell and the rest are set on this. It is
+## made when the pool goes into the world: until then it is null, so set what
+## it should look like in `look` instead.
 var water: Water
+## Settings for the Water ({property: value}), put on it as it is made.
+var look := {}
 
 
 func _ready() -> void:
@@ -21,6 +25,8 @@ func _ready() -> void:
 	water = Water.new()
 	water.size = size
 	water.banded = Settings.world_banded
+	for setting: String in look:
+		water.set(setting, look[setting])
 	add_child(water)
 	get_tree().node_added.connect(_notice)
 	_look_through.call_deferred(get_tree().root)
