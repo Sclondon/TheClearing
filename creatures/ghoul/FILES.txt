@@ -1,0 +1,8 @@
+# The ghoul: how it looks, moves and sounds (needs godot/character-controller installed too)
+creatures/ghoul/ghoul.gd
+creatures/ghoul/ghoul_rig.gd
+creatures/ghoul/models/ghoul.glb
+creatures/ghoul/models/ghoul_lo.glb
+# The model, built from code in Blender (with the character controller's tools/build_character.py)
+creatures/ghoul/tools/build_ghoul.py
+creatures/ghoul/tools/.gdignore
