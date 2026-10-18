@@ -13,10 +13,10 @@ const MOVE_SECONDS := 14.0
 ## middle of a door this thick, so far back); the doors are as deep as the wall.
 const THICK := 3.0
 const BACK := 2.5
-## How far each door goes past the middle of the way, closed (so that they
-## close tight), and stays in the wall's side, open.
+## How far each door goes past the middle of the way, closed (so that they close
+## tight), and how far back into the wall's side past the doorway it goes, open.
 const OVERLAP := 0.3
-const HIDDEN := 0.6
+const CLEAR := 0.1
 
 ## 0 open, 1 shut.
 var shut := 0.0
@@ -83,7 +83,9 @@ static func put(parent: Node3D, maze: Maze) -> ClearingGates:
 			shown.material_override = material
 			door.add_child(shown)
 			var shut_at := middle + across * way * (half * 0.5 - OVERLAP)
-			var open_at := shut_at + across * way * (half - HIDDEN)
+			# (open, all of it back in the wall's side, clear of the doorway: it slides its
+			# whole width and a little more)
+			var open_at := shut_at + across * way * (half + CLEAR)
 			door.position = open_at
 			gates.add_child(door)
 			gates._doors.append([door, open_at, shut_at])
