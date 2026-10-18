@@ -17,6 +17,9 @@ extends Resource
 ## A cell is Maze.CELL (14 m) across, from the middle of one wall to the next.
 
 @export_group("Size")
+## Round: rings of passages between circular walls (see RoundMaze), not square.
+## The round sections come after the square ones, out past a moor.
+@export var round_section := false
 ## How deep the section's maze is, in cells, from the border wall round its inside
 ## to the one round its outside (on each side). The border wall's extra thickness
 ## (border wall thickness cells) is on top of this.
@@ -256,8 +259,41 @@ static func tangle() -> MazeStyle:
 	return made(4, 1, 0.3, 0.5, 0.2)
 
 
+## Spokes: the first round section, past the moor. Hallways two cells wide, long
+## and straight, round and out like the spokes and rims of a wheel.
+static func spokes() -> MazeStyle:
+	var style := made(4, 2, 0.6, 0.0, 0.05)
+	style.round_section = true
+	style.maze_wall_diameter = 4.0
+	return style
+
+
+## Whorl: single hallways that wind round and fork.
+static func whorl() -> MazeStyle:
+	var style := made(5, 1, 0.3, 0.3, 0.06)
+	style.round_section = true
+	return style
+
+
+## Thicket: single hallways that branch often and loop back on themselves.
+static func thicket() -> MazeStyle:
+	var style := made(5, 1, 0.1, 0.5, 0.18)
+	style.round_section = true
+	return style
+
+
+## The Labyrinth: the last section, single hallways that wind and dead-end, under
+## the highest walls of all.
+static func labyrinth() -> MazeStyle:
+	var style := made(6, 1, 0.0, 0.1, 0.03)
+	style.round_section = true
+	style.maze_wall_height = 46.0
+	style.section_border_wall_height = 60.0
+	return style
+
+
 ## The styles of the sections, from the clearing out, when a maze is not given its own.
 static func defaults() -> Array[MazeStyle]:
 	if not chosen.is_empty():
 		return chosen
-	return [avenues(), galleries(), warren(), tangle()]
+	return [avenues(), galleries(), warren(), spokes(), whorl(), thicket(), labyrinth()]

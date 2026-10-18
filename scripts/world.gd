@@ -18,7 +18,7 @@ const Flags := preload("res://scripts/flags.gd")
 const K_STATE := 83  # S
 const SEND_EVERY := 1.0 / 12.0
 ## How many rings a generated maze has round the clearing (the flag rings=<n> for another number).
-const RINGS := 2
+const RINGS := 7
 ## The host's news of what hunts the maze: MazeEnemies.pack(), then the Griever's state.
 const K_ENEMIES := 69  # E
 const ENEMIES_EVERY := 0.1
@@ -97,7 +97,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 			player.global_position = spawn(seat)
 			# (the grass round him there now; the rest as the camera comes near it)
 			for field: Grass in get_tree().get_nodes_in_group(Grass.FIELDS):
-				field.fill_near(player.global_position, 40.0)
+				field.fill_near(player.global_position, 25.0)
 			player.rotation.y = spawn_yaw(seat)
 			Looks.apply(player.get_node("Rig") as CharacterRig, look)
 			# (sprinting is a button of its own here, and an all-out run after The Maze Runner)
@@ -263,7 +263,7 @@ func put_player(at: Vector3, yaw: float) -> void:
 	player.facing_yaw = yaw
 	camera.snap()
 	for field: Grass in get_tree().get_nodes_in_group(Grass.FIELDS):
-		field.fill_near(at, 40.0)
+		field.fill_near(at, 25.0)
 
 
 ## Where a seat starts: round the middle of the clearing, facing out (or in

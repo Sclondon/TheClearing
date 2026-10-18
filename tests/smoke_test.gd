@@ -82,7 +82,12 @@ func _run() -> void:
 	# Out past the exit.
 	var path: Array = maze.path_out(maze.cell_at(Vector3.ZERO))
 	check("a way out", path.size() > 10, "(%d cells)" % path.size())
-	player.global_position = maze.world(maze.exit + maze.exit_side * 2) + Vector3.UP * 0.2
+	if maze.round_rings:
+		# (past the way out of the last round section)
+		var a: float = maze.round_rings.exit_angle
+		player.global_position = Vector3(cos(a), 0.0, sin(a)) * (maze.round_rings.outermost() + 8.0) + Vector3.UP * 0.2
+	else:
+		player.global_position = maze.world(maze.exit + maze.exit_side * 2) + Vector3.UP * 0.2
 	await frames(10)
 	check("got out", world.out.has(0))
 	check("round over", world.all_out())

@@ -35,6 +35,8 @@ var styles: Array[MazeStyle] = []
 var ring_sizes: Array[int] = []
 ## How the clearing is made: its hills and its woods (see ground_height).
 var clearing_style: ClearingStyle
+## The round sections outside the square ones, if any were built (RoundMaze).
+var round_rings: RoundMaze
 ## How many rings are built.
 var rings := 1
 var maze_seed := 0
@@ -69,7 +71,12 @@ static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] 
 	maze.styles = ring_styles if not ring_styles.is_empty() else MazeStyle.defaults()
 	maze.clearing_style = clearing_look if clearing_look else ClearingStyle.new()
 	maze.ring_sizes = sizes_for(maze.styles)
-	maze.rings = clampi(built, 1, maze.styles.size())
+	# (the square sections are the first, up to the first round one; the round ones
+	# are RoundMaze's, outside them)
+	var square := 0
+	while square < maze.styles.size() and not maze.styles[square].round_section:
+		square += 1
+	maze.rings = clampi(built, 1, maxi(square, 1))
 	maze.size = maze.ring_sizes[maze.rings]
 	maze.clearing = CLEARING
 	maze.maze_seed = seed_value
@@ -82,6 +89,9 @@ static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] 
 		var at := maze.world(way[0])
 		var face := Vector2(at.x, at.z) + out * (CELL * 0.5 - maze.wall_thick(way[0], step) * 0.5)
 		maze.clearing_style.entrance_spots.append([face, -out])
+	var round_count := mini(built, maze.styles.size()) - maze.rings
+	if round_count > 0 and maze.rings == square:
+		maze.round_rings = RoundMaze.generate(maze, round_count)
 	return maze
 
 
@@ -225,6 +235,8 @@ static func ring_extent(ring: int, ring_styles: Array[MazeStyle] = []) -> float:
 
 ## Whether a point in the world is out past the exit.
 func escaped(point: Vector3) -> bool:
+	if round_rings:
+		return round_rings.escaped(point)
 	return absf(point.x) > extent() * 0.5 + 1.0 or absf(point.z) > extent() * 0.5 + 1.0
 
 

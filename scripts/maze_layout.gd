@@ -140,7 +140,9 @@ func lay_out(maze: Maze) -> void:
 	clearing_style = maze.clearing_style
 	for run: Array in _runs(maze):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, Vector3(run[0].x, 0.0, run[0].z)), {"size": run[1], "great": run[2]})
-	for run: Array in _next_ring(maze):
+	# (the wall round the next ring, unbuilt, when the maze stops here; round
+	# sections past the moor are RoundBuilder's)
+	for run: Array in ([] if maze.round_rings else _next_ring(maze)):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, Vector3(run[0].x, 0.0, run[0].z)), {"size": run[1], "great": true})
 	for great in [false, true]:
 		for pier: Array in _piers(maze, great):
@@ -154,7 +156,8 @@ func lay_out(maze: Maze) -> void:
 		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1], "ledge": true})
 	MazeFeatures.lay_out(self, maze)
 	_trees(maze)
-	_add(MazePiece.Kind.BEACON, Transform3D(Basis.IDENTITY, maze.world(maze.exit + maze.exit_side * 2)), {})
+	if not maze.round_rings:
+		_add(MazePiece.Kind.BEACON, Transform3D(Basis.IDENTITY, maze.world(maze.exit + maze.exit_side * 2)), {})
 
 
 ## Adds a piece of `kind` at `where`, with `settings` (property: value).
@@ -503,9 +506,18 @@ func _trees(maze: Maze) -> void:
 	points = points.filter(func(p: Vector3) -> bool: return not look.kept_clear(Vector2(p.x, p.z)))
 	var built := maze.extent() * 0.5 + 6.0
 	var next := Maze.ring_extent(maze.rings + 1, maze.styles) * 0.5 - 6.0
-	for i in 60:
-		var side := rng.randi() % 4
-		points.append(_on_side(side, rng.randf_range(-next, next), rng.randf_range(built, next)))
+	if maze.round_rings:
+		# (pines over the moor, between the square maze and the first circle)
+		var moor := maze.round_rings.inner_radius - 12.0
+		for i in 220:
+			var turn := rng.randf() * TAU
+			var p := Vector3(cos(turn), 0.0, sin(turn)) * rng.randf_range(built, moor)
+			if maxf(absf(p.x), absf(p.z)) > built:
+				points.append(p)
+	else:
+		for i in 60:
+			var side := rng.randi() % 4
+			points.append(_on_side(side, rng.randf_range(-next, next), rng.randf_range(built, next)))
 	for p: Vector3 in points:
 		# (on the hills, a little sunk so that no root stands out of a slope)
 		p.y = maze.ground_height(p) - 0.15

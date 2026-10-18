@@ -291,6 +291,13 @@ func to_middle() -> void:
 
 ## In the last cell before the way out, facing it.
 func to_exit() -> void:
+	var outer: RoundMaze = world.maze.round_rings
+	if outer:
+		# (in the last cell before the way out of the last circle, facing it)
+		var a := outer.exit_angle
+		var out_way := Vector3(cos(a), 0.0, sin(a))
+		world.put_player(out_way * (outer.outermost() - Maze.CELL * 0.5) + Vector3.UP * 0.05, atan2(out_way.x, out_way.z))
+		return
 	var out := Vector3(world.maze.exit_side.x, 0.0, world.maze.exit_side.y)
 	world.put_player(world.maze.world(world.maze.exit) - out * 3.0 + Vector3.UP * 0.05, atan2(out.x, out.z))
 

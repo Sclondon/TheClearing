@@ -37,4 +37,13 @@ func _initialize() -> void:
 	lap.call("trees")
 	builder._undergrowth(layout)
 	lap.call("undergrowth")
+	if maze.round_rings:
+		var sections := RoundBuilder.new()
+		sections.plan = maze.round_rings
+		builder.add_child(sections)
+		lap.call("round sections")
+	var enemies := MazeEnemies.new()
+	builder.add_child(enemies)
+	enemies.populate(maze, 1234)
+	lap.call("enemies (%d)" % enemies.get_child_count())
 	quit()

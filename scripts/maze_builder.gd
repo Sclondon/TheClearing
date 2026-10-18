@@ -52,6 +52,8 @@ var features: MazeFeatures
 var undergrowth: Undergrowth
 ## The ground's material (MazeStone.ground), for the weather to wet.
 var ground_material: ShaderMaterial
+## The round sections, if the maze has any.
+var round_sections: RoundBuilder
 
 
 ## Builds the maze `plan`, laid out as it generates.
@@ -71,8 +73,10 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 	maze = plan if plan else pieces.plan()
 	var body := StaticBody3D.new()
 	body.name = "Walls"
-	add_child(body)
+	# (its shapes all put in before it goes into the world: put in one by one
+	# after, each would have the physics make the body over again)
 	_walls(body, pieces)
+	add_child(body)
 	features = MazeFeatures.new()
 	features.name = "Features"
 	add_child(features)
@@ -82,6 +86,13 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 	_pond()
 	_trees(pieces)
 	_undergrowth(pieces)
+	# The round sections outside the square ones, past the moor.
+	if maze.round_rings:
+		round_sections = RoundBuilder.new()
+		round_sections.name = "Round"
+		round_sections.plan = maze.round_rings
+		add_child(round_sections)
+		beacon = round_sections.beacon
 	for piece in pieces.pieces(MazePiece.Kind.BEACON):
 		beacon = beacon_light()
 		beacon.name = "Beacon"
@@ -277,6 +288,8 @@ static func _quad(tool: SurfaceTool, p0: Vector3, p1: Vector3, p2: Vector3, p3: 
 
 func _ground() -> void:
 	var size := Maze.ring_extent(maze.rings + 1, maze.styles) + 80.0
+	if maze.round_rings:
+		size = (maze.round_rings.outermost() + 300.0) * 2.0
 	var body := StaticBody3D.new()
 	body.name = "Ground"
 	# (grass grows back along the foot of each wall, where nobody walks)
