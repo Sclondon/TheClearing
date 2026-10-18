@@ -118,6 +118,7 @@ uniform vec3 glint : source_color = vec3(0.95, 1.0, 0.9);
 // How fast it clouds, per metre looked through (and the sludge, how deep it lies
 // and how thick it is); how much it bends what is behind.
 uniform float density = 0.22;
+uniform float clear_depth = 1.1;
 uniform float sludge_depth = 0.9;
 uniform float sludge_density = 1.4;
 uniform float bend = 0.06;
@@ -181,7 +182,8 @@ void fragment() {
 		low = through;
 	}
 	low = min(low, through);
-	float murk = 1.0 - exp(-density * (through + 0.3));
+	// (the first metre or so is nearly clear; past it, it clouds by `density`)
+	float murk = 1.0 - exp(-(density * max(through - clear_depth, 0.0) + 0.06 * min(through, clear_depth) + 0.02));
 	float silt = 1.0 - exp(-sludge_density * low);
 	vec3 behind = textureLod(screen_tex, uv, 0.0).rgb;
 	// Deep in it, things go green and dark; near the top, the light comes down through it.
@@ -203,7 +205,7 @@ void fragment() {
 	// Wet glints: small, sharp, broken up.
 	float spec = pow(max(dot(reflect(-view, nv), sky), 0.0), 90.0);
 	float wet = smoothstep(0.5, 0.65, noise3(local_pos * 4.0 + vec3(0.0, t * 0.08, 0.0)));
-	col = mix(col, glint, smoothstep(0.3, 0.5, spec) * wet);
+	col = mix(col, glint, smoothstep(0.3, 0.5, spec) * wet * smoothstep(0.15, 0.45, facing));
 	// Slime running down it.
 	float streak = smoothstep(0.66, 0.82, noise3(vec3(local_pos.x * 3.0, local_pos.y * 0.2 + t * 0.12, local_pos.z * 3.0)));
 	col = mix(col, skin * 0.95, streak * 0.14 * (1.0 - murk * 0.5));
@@ -271,16 +273,30 @@ mat3 turn(vec3 axis, float angle) {
 void vertex() {
 	vec3 share = vec3(UV2.x, UV.x, UV2.y);
 	float own = COLOR.a;
-	erosion = UV.y;
-	vec3 axis = normalize(vec3(hash1(own * 13.1) - 0.5, hash1(own * 7.3) - 0.5, hash1(own * 3.7) - 0.5) + vec3(0.001));
-	// (the pieces settled at the bottom hardly stir)
-	float settled = smoothstep(-0.55, -0.8, share.y);
-	float speed = mix(0.04 + 0.1 * hash1(own * 5.1), 0.008, settled);
+	// (a piece against a face says so with its eating-away below zero, and how
+	// far in from the face it lies, in metres, in place of its depth: + the front)
+	bool on_face = UV.y < 0.0;
+	erosion = abs(UV.y);
 	float t = TIME;
-	mat3 r = turn(axis, own * 6.2831 + t * speed * (hash1(own * 2.9) > 0.5 ? 1.0 : -1.0));
-	vec3 drift = (1.0 - settled) * vec3(sin(t * 0.13 + own * 20.0), 0.6 * sin(t * 0.11 + own * 31.0), sin(t * 0.09 + own * 17.0));
 	vec3 room = max(half_size - vec3(0.9, 0.8, 1.0) * content_scale, vec3(0.15));
-	vec3 middle = vec3(0.0, half_size.y, 0.0) + clamp(share + drift * 0.05, vec3(-1.0), vec3(1.0)) * room;
+	mat3 r;
+	vec3 middle;
+	if (on_face) {
+		// Against a face it lies as it is, rocking a little and drifting along the face.
+		r = turn(vec3(0.0, 0.0, 1.0), sin(t * 0.23 + own * 20.0) * 0.1);
+		vec2 along = vec2(sin(t * 0.07 + own * 13.0), 0.5 * sin(t * 0.05 + own * 29.0)) * 0.03;
+		vec2 across = clamp(share.xy + along, vec2(-1.0), vec2(1.0)) * max(half_size.xy - vec2(1.1, 0.9) * content_scale, vec2(0.15));
+		float side = share.z < 0.0 ? -1.0 : 1.0;
+		middle = vec3(across.x, half_size.y + across.y, side * max(half_size.z - abs(share.z), 0.1));
+	} else {
+		vec3 axis = normalize(vec3(hash1(own * 13.1) - 0.5, hash1(own * 7.3) - 0.5, hash1(own * 3.7) - 0.5) + vec3(0.001));
+		// (the pieces settled at the bottom hardly stir)
+		float settled = smoothstep(-0.55, -0.8, share.y);
+		float speed = mix(0.04 + 0.1 * hash1(own * 5.1), 0.008, settled);
+		r = turn(axis, own * 6.2831 + t * speed * (hash1(own * 2.9) > 0.5 ? 1.0 : -1.0));
+		vec3 drift = (1.0 - settled) * vec3(sin(t * 0.13 + own * 20.0), 0.6 * sin(t * 0.11 + own * 31.0), sin(t * 0.09 + own * 17.0));
+		middle = vec3(0.0, half_size.y, 0.0) + clamp(share + drift * 0.05, vec3(-1.0), vec3(1.0)) * room;
+	}
 	vec3 p = middle + r * (VERTEX * content_scale);
 	float up = clamp(p.y / (2.0 * half_size.y), 0.0, 1.0);
 	p.z += sway * up * up + surge * 0.15 * up;
@@ -683,6 +699,7 @@ static func contents(seed_value: int, count := 18) -> ArrayMesh:
 		else:
 			var size := rng.randf_range(0.02, 0.06)
 			made.box(Vector3.ZERO, Vector3(size, size * rng.randf_range(0.3, 1.0), size * rng.randf_range(0.5, 1.5)), Basis.from_euler(Vector3(rng.randf() * 3.0, rng.randf() * 3.0, 0.0)), [OLD_BONE, LEATHER, RUST, SHIRT, Color(0.2, 0.18, 0.1)][k % 5])
+	_against_faces(made, rng)
 	return made.mesh()
 
 
@@ -873,3 +890,114 @@ static func _blade(made: Pieces) -> void:
 	made.box(Vector3(0, 0.6, 0), Vector3(0.012, 0.09, 0.006), Basis(Vector3.FORWARD, 0.0) * Basis.from_scale(Vector3(1, 1, 1)), RUST)
 	made.box(Vector3(0, -0.07, 0), Vector3(0.16, 0.025, 0.03), Basis.IDENTITY, RUST.darkened(0.25))
 	made.tube(PackedVector3Array([Vector3(0, -0.08, 0), Vector3(0, -0.22, 0)]), PackedFloat32Array([0.016]), LEATHER, 6, true)
+
+
+## Puts a piece against a face: `side` 1 the front, -1 the back; `inset` how
+## far in from it (metres; about zero pokes out of it), `across` and `up` where
+## on the face (-1..1), and `turned` how it lies, as it is built (it is not
+## tumbled by the shader, only rocked).
+static func _on_face(made: Pieces, rng: RandomNumberGenerator, side: float, inset: float, across: float, up: float, turned: Basis) -> void:
+	made.share = Vector3(across, up, side * maxf(inset, 0.001))
+	made.own = rng.randf()
+	made.eaten = -rng.randf_range(0.05, 0.45) - 0.001
+	made.place = Transform3D(turned, Vector3.ZERO)
+
+
+## What is seen best of it: bodies just inside its faces, under a thin skin of
+## jelly; two great beasts' bones; bones and an arm poking out; hands pressed
+## against the inside of the front.
+static func _against_faces(made: Pieces, rng: RandomNumberGenerator) -> void:
+	# Twelve people, seven at the front and five at the back, spread across it, each as it fell.
+	var slots := [-0.85, -0.57, -0.28, 0.0, 0.28, 0.57, 0.85]
+	for k in range(6, 0, -1):
+		var j := rng.randi_range(0, k)
+		var swap: float = slots[k]
+		slots[k] = slots[j]
+		slots[j] = swap
+	for k in 12:
+		var side := 1.0 if k < 7 else -1.0
+		var across: float = slots[k % 7] + rng.randf_range(-0.08, 0.08)
+		if side < 0.0:
+			across = -across * 0.8
+		var lean := Basis(Vector3.BACK, rng.randf_range(-1.3, 1.3)) * Basis(Vector3.UP, rng.randf_range(-0.5, 0.5))
+		_on_face(made, rng, side, rng.randf_range(0.3, 1.0), across, rng.randf_range(-0.45, 0.5), lean)
+		_skeleton(made, rng, k % 4 != 3)
+	# A great beast against the back, and the long spine of something against the front.
+	_on_face(made, rng, -1.0, 1.0, rng.randf_range(-0.3, 0.3), rng.randf_range(-0.2, 0.2), Basis(Vector3.BACK, rng.randf_range(-0.3, 0.3)))
+	_big_beast(made)
+	_on_face(made, rng, 1.0, 0.75, rng.randf_range(-0.4, 0.4), rng.randf_range(0.3, 0.6), Basis(Vector3.BACK, rng.randf_range(-0.5, 0.5)))
+	_long_spine(made)
+	# Bones poking out of it: two at the front, one at the back; and an arm reaching out of the front.
+	for k in 3:
+		var side := 1.0 if k < 2 else -1.0
+		_on_face(made, rng, side, 0.05, rng.randf_range(-0.85, 0.85), rng.randf_range(-0.6, 0.7), Basis(Vector3.RIGHT, side * rng.randf_range(1.1, 1.4)) * Basis(Vector3.BACK, rng.randf_range(-0.6, 0.6)))
+		_long_bone(made, Vector3(0, -0.24, 0), Vector3(0, 0.24, 0), 0.022, OLD_BONE)
+	_on_face(made, rng, 1.0, 0.2, rng.randf_range(-0.6, 0.6), rng.randf_range(-0.3, 0.3), Basis(Vector3.RIGHT, PI * 0.5 + 0.25) * Basis(Vector3.UP, rng.randf_range(-0.4, 0.4)))
+	_arm(made, Vector3.ZERO, Basis.IDENTITY, BONE, 0.35)
+	_on_face(made, rng, -1.0, 0.1, rng.randf_range(-0.7, 0.7), rng.randf_range(0.0, 0.6), Basis(Vector3.UP, PI))
+	_skull(made, Vector3.ZERO, Basis.IDENTITY, OLD_BONE, false)
+	# Hands pressed flat against the inside of the front, a little way apart.
+	var at_x := rng.randf_range(-0.5, 0.5)
+	var at_y := rng.randf_range(-0.35, 0.1)
+	for k in 2:
+		_on_face(made, rng, 1.0, 0.06, at_x + (k - 0.5) * 0.06, at_y + k * 0.03, Basis(Vector3.BACK, (k - 0.5) * 0.5) * Basis(Vector3.RIGHT, -PI * 0.5))
+		made.eaten = -0.02
+		_hand(made, Vector3.ZERO, Basis.IDENTITY, BONE, 0.1)
+
+
+## The bones of something as big as a horse: a long arched spine with spines
+## along its top, ribs hung from it, a long skull, and its legs trailing.
+static func _big_beast(made: Pieces) -> void:
+	var color := OLD_BONE
+	var spine := PackedVector3Array()
+	for k in 16:
+		var x := lerpf(-1.4, 1.5, float(k) / 15.0)
+		spine.append(Vector3(x, 0.12 * sin(float(k) / 15.0 * PI), 0.0))
+	made.tube(spine, PackedFloat32Array([0.05]), color, 6, true)
+	for k in 22:
+		var x := lerpf(-1.3, 1.45, float(k) / 21.0)
+		var y := 0.12 * sin((x + 1.4) / 2.9 * PI)
+		made.box(Vector3(x, y + 0.05, 0.0), Vector3(0.07, 0.09, 0.09), Basis.IDENTITY, color)
+		made.box(Vector3(x, y + 0.14, 0.0), Vector3(0.025, 0.2 * (1.0 - absf(x) * 0.35), 0.03), Basis(Vector3.BACK, 0.25), color)
+	for k in 9:
+		var x := lerpf(-0.9, 0.55, float(k) / 8.0)
+		var r := 0.38 + 0.18 * sin(float(k + 1) / 9.0 * PI)
+		for s in [-1.0, 1.0]:
+			var points := PackedVector3Array()
+			for j in 9:
+				var phi := float(j) / 8.0 * PI * 0.85
+				points.append(Vector3(x + float(j) * 0.012, 0.1 - r * (1.0 - cos(phi)) * 1.1, s * r * sin(phi)))
+			made.tube(points, PackedFloat32Array([0.022, 0.02, 0.016]), color, 5, false)
+	# The skull, long, at the front end, hung low.
+	var head := Vector3(-1.75, -0.12, 0.0)
+	made.ellipsoid(head, Vector3(0.24, 0.15, 0.13), Basis(Vector3.BACK, -0.4), color, 6, 9)
+	made.tube(PackedVector3Array([head + Vector3(-0.1, -0.05, 0.0), head + Vector3(-0.4, -0.2, 0.0), head + Vector3(-0.62, -0.32, 0.0)]), PackedFloat32Array([0.11, 0.08, 0.06]), color, 7, true)
+	made.tube(PackedVector3Array([head + Vector3(0.12, -0.12, 0.0), head + Vector3(-0.25, -0.33, 0.0), head + Vector3(-0.55, -0.43, 0.0)]), PackedFloat32Array([0.04, 0.035, 0.03]), color, 5, true)
+	for s in [-1.0, 1.0]:
+		made.ellipsoid(head + Vector3(-0.08, 0.04, s * 0.11), Vector3(0.05, 0.04, 0.025), Basis.IDENTITY, DARK, 3, 6)
+	for k in 7:
+		made.box(head + Vector3(-0.2 - k * 0.055, -0.27 - k * 0.022, 0.0), Vector3(0.025, 0.05, 0.05), Basis.IDENTITY, Color(0.86, 0.8, 0.64))
+	# Its legs, trailing.
+	for leg in [[-0.8, 1.0], [-0.8, -1.0], [1.2, 1.0], [1.2, -1.0]]:
+		var top := Vector3(leg[0], -0.15, leg[1] * 0.25)
+		var knee := top + Vector3(0.2 * leg[1], -0.75, 0.15 * leg[1])
+		var hoof := knee + Vector3(-0.15, -0.7, 0.05 * leg[1])
+		_long_bone(made, top, knee, 0.04, color)
+		_long_bone(made, knee, hoof, 0.03, color)
+
+
+## The spine of something long, a snake or worse: a winding run of vertebrae with short ribs.
+static func _long_spine(made: Pieces) -> void:
+	var points := PackedVector3Array()
+	for k in 30:
+		var t := float(k) / 29.0
+		points.append(Vector3(lerpf(-1.8, 1.8, t), 0.35 * sin(t * TAU * 1.2), 0.08 * sin(t * 9.0)))
+	made.tube(points, PackedFloat32Array([0.035]), OLD_BONE, 6, true)
+	for k in range(1, 29):
+		var at := points[k]
+		var along := (points[k + 1] - points[k - 1]).normalized()
+		var side := along.cross(Vector3.BACK).normalized()
+		made.box(at, Vector3(0.06, 0.07, 0.07), Basis.IDENTITY, OLD_BONE)
+		for s in [-1.0, 1.0]:
+			made.tube(PackedVector3Array([at, at + side * s * 0.12 + Vector3(0, 0, 0.1), at + side * s * 0.2 + Vector3(0, 0, 0.18)]), PackedFloat32Array([0.012, 0.009, 0.006]), OLD_BONE, 4, false)
+	made.ellipsoid(points[0] + Vector3(-0.12, 0.0, 0.0), Vector3(0.16, 0.09, 0.1), Basis.IDENTITY, OLD_BONE, 5, 8)

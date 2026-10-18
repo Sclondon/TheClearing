@@ -208,6 +208,15 @@ func _maze() -> void:
 	look(mid - along * 11.0 + across * 6.0 + Vector3.UP * 4.0, mid + Vector3.UP * 3.0, 60.0)
 	await wait(0.2)
 	await shot("m2_close_in_the_hall")
+	print("contents: %d vertices" % slime.creature._contents.mesh.surface_get_array_len(0))
+	# From where he will mostly see it: 15 m off, the game camera's height, 5 m behind him.
+	var front: Vector3 = slime.global_position - along * 15.0
+	look(front - along * 5.0 + Vector3.UP * 2.4, slime.global_position + Vector3.UP * 3.5, 62.0)
+	await wait(0.2)
+	await shot("m6_play_distance_15m")
+	look(slime.global_position - along * 10.0 + across * 2.0 + Vector3.UP * 2.0, slime.global_position + Vector3.UP * 3.5, 62.0)
+	await wait(0.2)
+	await shot("m7_play_distance_10m")
 	slime.notice(boy)
 	look(boy.global_position - along * 5.0 + across * 1.5 + Vector3.UP * 2.0, boy.global_position + along * 12.0 + Vector3.UP * 2.5, 62.0)
 	await wait(6.0)

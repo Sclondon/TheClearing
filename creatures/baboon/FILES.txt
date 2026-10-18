@@ -1,3 +1,11 @@
-# The baboon: two scripts, no scenes, no models, no textures (all made in code)
+# The baboon: two scripts, four models, and the Blender script that makes the models
 creatures/baboon/baboon.gd
 creatures/baboon/baboon_look.gd
+creatures/baboon/models/mandrill.glb
+creatures/baboon/models/mandrill_lo.glb
+creatures/baboon/models/baboon.glb
+creatures/baboon/models/baboon_lo.glb
+creatures/baboon/tools/build_baboon.py
+creatures/baboon/tools/rest_joints.gd
+creatures/baboon/tools/rest_alpha.json
+creatures/baboon/tools/rest_baboon.json
