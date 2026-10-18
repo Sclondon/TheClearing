@@ -1,0 +1,12 @@
+# A feral dog: its look and every move, for any game (no sound, no thinking)
+creatures/dog/dog.gd
+creatures/dog/dog_rig.gd
+creatures/dog/dog_look.gd
+creatures/dog/models/dog_a.glb
+creatures/dog/models/dog_b.glb
+creatures/dog/models/dog_a_lo.glb
+creatures/dog/models/dog_b_lo.glb
+creatures/dog/example.gd
+creatures/dog/README.md
+# The models, built from code in Blender (needs tools/build_character.py from godot/character-controller)
+tools/build_dog.py
