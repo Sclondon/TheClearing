@@ -171,27 +171,10 @@ extends Resource
 ## Gargoyles, each crouched as a statue on a ledge over a hall (a terrace's edge or a
 ## wall top), dropping on whoever passes beneath.
 @export_range(0, 4) var gargoyles := 2
-
-@export_group("Who else is in it")
-## How many runners run the section's passages (MazeRunners, from the round's
-## seed): other boys, driven by the computer, who know their section. They lead
-## anyone who comes up to them to its gate out, draw what hunts away, and are
-## hunted themselves. Each one poses a whole boy, so keep it small.
-@export_range(0, 6) var runners := 2
 ## Herds of deer (four or five each, one of them wrong), standing in the halls.
 @export_range(0, 3) var deer_herds := 1
 ## Bull elk, each holding a stretch of halls as his own.
 @export_range(0, 3) var elk := 1
-
-@export_group("Wildlife")
-## Herds of ordinary deer in the halls (Wildlife: peaceful, they run from you;
-## not among what hunts it).
-@export_range(0, 4) var wild_deer_herds := 1
-@export_range(0, 4) var wild_elk_herds := 1
-
-@export_group("Wildlife")
-## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
-@export_range(0, 4) var tame_chicken_flocks := 0
 ## Gangs of tiny imps (three or four), each perched on a wall.
 @export_range(0, 4) var imp_gangs := 2
 ## Swarms of imps, each a crack at the foot of a wall that dozens pour out of.
@@ -206,6 +189,21 @@ extends Resource
 ## Skinwalkers, each hidden among a pack of coyotes as one of them (one more
 ## pack is put in for any there is no pack for).
 @export_range(0, 2) var skinwalkers := 1
+
+@export_group("Who else is in it")
+## How many runners run the section's passages (MazeRunners, from the round's
+## seed): other boys, driven by the computer, who know their section. They lead
+## anyone who comes up to them to its gate out, draw what hunts away, and are
+## hunted themselves. Each one poses a whole boy, so keep it small.
+@export_range(0, 6) var runners := 2
+
+@export_group("Wildlife")
+## Herds of ordinary deer in the halls (Wildlife: peaceful, they run from you;
+## not among what hunts it).
+@export_range(0, 4) var wild_deer_herds := 1
+@export_range(0, 4) var wild_elk_herds := 1
+## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
+@export_range(0, 4) var tame_chicken_flocks := 0
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
