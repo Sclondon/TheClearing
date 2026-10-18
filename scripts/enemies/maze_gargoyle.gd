@@ -208,6 +208,9 @@ func _enter(next: Mode) -> void:
 		_snarls += 1
 		if look:
 			look.snarl()
+			# (grit and pebbles shaken off the ledge, falling into the hall: seen
+			# and heard by someone who is not looking up)
+			look.crumble(STIR_TIME)
 
 
 ## Looks for someone passing under its ledge (or, on the ground, coming near).
@@ -582,6 +585,33 @@ func _overgrown(spot: Vector3) -> bool:
 	return false
 
 
+## The material of the wall at `at` (its face, `out` from it): the very one the
+## maze's builder drew it with (laid on in the world's space, so a corbel of it
+## runs on from the wall without a seam), or, with none found, the same look.
+func _wall_material(at: Vector3, out: Vector3) -> Material:
+	var space := get_world_3d().direct_space_state
+	var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(at + out * 1.0, at - out * 0.5, 1, [get_rid()]))
+	if not hit.is_empty() and hit["collider"] is Node:
+		var point: Vector3 = hit["position"]
+		for node: Node in (hit["collider"] as Node).find_children("*", "MeshInstance3D", true, false):
+			var mesh := node as MeshInstance3D
+			if mesh.material_override and (mesh.global_transform * mesh.get_aabb()).grow(0.3).has_point(point):
+				return mesh.material_override
+	var hall := maze.cell_at(at + out * 1.0)
+	var step := Vector2i(roundi(-out.x), roundi(-out.z))
+	return Wall.material_for(Wall.Look.SLABS if maze.ring_wall(hall, step) else Wall.Look.CAST, true)
+
+
+## Adds a four-cornered face, wound to face `normal` (Godot's front faces are clockwise).
+static func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, normal: Vector3) -> void:
+	var corners := [a, b, c, d]
+	if (b - a).cross(c - a).dot(normal) > 0.0:
+		corners = [a, d, c, b]
+	for i: int in [0, 1, 2, 0, 2, 3]:
+		st.set_normal(normal)
+		st.add_vertex(corners[i])
+
+
 ## A number 0..1 of its own for each way it looks (the same on every machine).
 func _hashed(face: Vector3) -> float:
 	return fposmod(sin(float(_rng.seed % 9973) * 12.9898 + face.x * 78.233 + face.z * 37.719) * 43758.5453, 1.0)
@@ -595,23 +625,39 @@ func _build_corbel(at: Vector3, out: Vector3, top: float) -> void:
 	holder.top_level = true
 	add_child(holder)
 	holder.global_transform = Transform3D(Basis.looking_at(-out, Vector3.UP), Vector3(at.x, top, at.z))
-	# (of the same concrete as the wall it juts from: precast slabs between rings, cast within them)
-	var hall := maze.cell_at(at + out * 1.0)
-	var step := Vector2i(roundi(-out.x), roundi(-out.z))
-	var material := Wall.material_for(Wall.Look.SLABS if maze.ring_wall(hall, step) else Wall.Look.CAST, true, Color(0.72, 0.72, 0.72))
-	# (each step: width, height, depth, from the top down)
+	# Its sides and top are drawn with the wall's own material, so they are lit
+	# and weathered as the wall is. Its undersides with a copy of it without the
+	# relief: the walls' normal maps are imported without their blue channel, so
+	# the relief turns a face over (the walls have no undersides to show it, but
+	# a corbel's would glare white from below as if lit by the sky).
+	var material := _wall_material(at, out)
+	var under := material.duplicate() as Material
+	if under is ShaderMaterial:
+		(under as ShaderMaterial).set_shader_parameter(&"has_normal", false)
+	# (each step: width, height, depth out of the wall, from the top down; sunk
+	# 0.15 m into the wall)
 	var steps: Array[Vector3] = [Vector3(1.9, 0.45, CORBEL_DEPTH), Vector3(1.4, 0.5, CORBEL_DEPTH * 0.72), Vector3(0.95, 0.5, CORBEL_DEPTH * 0.45), Vector3(0.6, 0.45, CORBEL_DEPTH * 0.22)]
+	var faces := SurfaceTool.new()
+	faces.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var undersides := SurfaceTool.new()
+	undersides.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var down := 0.0
 	for size in steps:
-		var box := MeshInstance3D.new()
-		var mesh := BoxMesh.new()
-		mesh.size = size + Vector3(0.0, 0.0, 0.3)
-		box.mesh = mesh
-		box.material_override = material
-		# (sunk 0.3 m into the wall)
-		box.position = Vector3(0.0, -down - size.y * 0.5, size.z * 0.5 - 0.15)
-		holder.add_child(box)
+		var lo := Vector3(-size.x * 0.5, -down - size.y, -0.15)
+		var hi := Vector3(size.x * 0.5, -down, size.z)
+		_quad(faces, Vector3(lo.x, hi.y, lo.z), Vector3(hi.x, hi.y, lo.z), Vector3(hi.x, hi.y, hi.z), Vector3(lo.x, hi.y, hi.z), Vector3.UP)
+		_quad(faces, Vector3(lo.x, lo.y, hi.z), Vector3(hi.x, lo.y, hi.z), Vector3(hi.x, hi.y, hi.z), Vector3(lo.x, hi.y, hi.z), Vector3.BACK)
+		_quad(faces, Vector3(lo.x, lo.y, lo.z), Vector3(lo.x, lo.y, hi.z), Vector3(lo.x, hi.y, hi.z), Vector3(lo.x, hi.y, lo.z), Vector3.LEFT)
+		_quad(faces, Vector3(hi.x, lo.y, lo.z), Vector3(hi.x, lo.y, hi.z), Vector3(hi.x, hi.y, hi.z), Vector3(hi.x, hi.y, lo.z), Vector3.RIGHT)
+		_quad(undersides, Vector3(lo.x, lo.y, lo.z), Vector3(hi.x, lo.y, lo.z), Vector3(hi.x, lo.y, hi.z), Vector3(lo.x, lo.y, hi.z), Vector3.DOWN)
 		down += size.y
+	var mesh := faces.commit()
+	undersides.commit(mesh)
+	mesh.surface_set_material(0, material)
+	mesh.surface_set_material(1, under)
+	var stone := MeshInstance3D.new()
+	stone.mesh = mesh
+	holder.add_child(stone)
 	var body := StaticBody3D.new()
 	body.collision_layer = 1
 	body.collision_mask = 0
@@ -710,6 +756,8 @@ func _heard_changed(_was: int, now: int, _first: bool) -> void:
 	_mode_time = 0.0
 	if now == Mode.GATHER and look:
 		look.gather(GATHER_TIME)
+	if now == Mode.STIR and look and not _on_ground_perch:
+		look.crumble(STIR_TIME)
 
 
 ## As a puppet: off the ground it is put where it is heard to be (gravity has
