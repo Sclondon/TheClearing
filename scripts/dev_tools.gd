@@ -42,6 +42,7 @@ var _panel: PanelContainer
 var _god_button: Button
 var _freeze_button: Button
 var _kind_button: Button
+var _weather_button: Button
 var _kind := 0
 var _gate := 0
 ## Grievers put in here (the one World puts in is world.griever).
@@ -101,6 +102,8 @@ func _init(in_world: World) -> void:
 	grid.add_child(_button("TO EXIT", to_exit))
 	grid.add_child(_button("TO DUSK", to_hour.bind(DayCycle.SUNSET - 0.4)))
 	grid.add_child(_button("TO DAWN", to_hour.bind(DayCycle.DAWN - 0.4)))
+	_weather_button = _button("", next_weather)
+	grid.add_child(_weather_button)
 	grid.add_child(_button("CLOSE", toggle))
 	_show()
 
@@ -279,6 +282,13 @@ func to_exit() -> void:
 	world.put_player(world.maze.world(world.maze.exit) - out * 3.0 + Vector3.UP * 0.05, atan2(out.x, out.z))
 
 
+## The weather: as the spells have it, or always overcast, cloudy or raining.
+func next_weather() -> void:
+	if world.weather:
+		world.weather.forced = world.weather.forced + 1 if world.weather.forced < Weather.Kind.RAIN else -1
+	_show()
+
+
 ## On to `hour` o'clock (a little before sunset, or dawn, to see the gates go).
 func to_hour(hour: float) -> void:
 	if world.day:
@@ -312,6 +322,8 @@ func _show() -> void:
 	_god_button.modulate = Color(0.75, 1.0, 0.7) if god else Color.WHITE
 	_freeze_button.text = "UNFREEZE" if frozen else "FREEZE"
 	_kind_button.text = String(Mummy.Kind.keys()[_kind])
+	var forced: int = world.weather.forced if world.weather else -1
+	_weather_button.text = "WEATHER: " + ("SPELLS" if forced < 0 else String(Weather.Kind.keys()[forced]))
 
 
 func _button(text: String, pressed: Callable) -> Button:

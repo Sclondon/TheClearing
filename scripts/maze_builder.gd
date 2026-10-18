@@ -50,6 +50,8 @@ var beacon: Node3D
 var features: MazeFeatures
 ## The ferns, bushes, moss and tufts of grass.
 var undergrowth: Undergrowth
+## The ground's material (MazeStone.ground), for the weather to wet.
+var ground_material: ShaderMaterial
 
 
 ## Builds the maze `plan`, laid out as it generates.
@@ -279,7 +281,8 @@ func _ground() -> void:
 	body.name = "Ground"
 	# (grass grows back along the foot of each wall, where nobody walks)
 	var boxes: Array[MazePiece] = layout.pieces(MazePiece.Kind.WALL) + layout.pieces(MazePiece.Kind.PIER) + layout.pieces(MazePiece.Kind.TERRACE)
-	var material := MazeStone.ground(maze.clearing * Maze.CELL * 0.5, maze.extent() * 0.5, WALL_THICK, boxes)
+	ground_material = MazeStone.ground(maze.clearing * Maze.CELL * 0.5, maze.extent() * 0.5, WALL_THICK, boxes)
+	var material := ground_material
 	# Flat ground everywhere, or with a hole for the clearing where its ground is
 	# shaped (it may go down below level, into the pond).
 	var shaped := maze.clearing_style.shaped()

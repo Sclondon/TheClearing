@@ -45,6 +45,7 @@ var dev: DevTools
 ## The hour, the light with it, and the doors of the clearing (put once the walls stand).
 var day: DayCycle
 var gates: ClearingGates
+var weather: Weather
 ## Everyone starts in front of a gate instead of in the middle (with dev tools on,
 ## unless the flag `start=middle` is given).
 var start_at_gate := false
@@ -81,6 +82,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	day = DayCycle.put(self)
 	day.dawn.connect(_shut_gates.bind(false))
 	day.sunset.connect(_shut_gates.bind(true))
+	weather = Weather.put(self, seed_value, day, builder.ground_material)
 	_put_gates()
 
 	for entry: Dictionary in players:

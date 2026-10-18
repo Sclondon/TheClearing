@@ -30,6 +30,11 @@ const MOON_HIGH := 45.0
 var hour := 7.0
 ## Seconds of play since the round began (set ahead by DevTools).
 var seconds := 0.0
+## How light it is, 1 by day to 0 at night (for the clouds and the like).
+var daylight := 1.0
+## How gloomy the weather makes it (Weather): 0 the overcast of every day, 1 the
+## dark of heavy rain: dimmer, the sky darker, the mist thicker.
+var gloom := 0.0
 
 var _sun: DirectionalLight3D
 var _environment: Environment
@@ -59,7 +64,7 @@ func _ready() -> void:
 		_day = {
 			"top": _sky.sky_top_color, "horizon": _sky.sky_horizon_color,
 			"ground": _sky.ground_horizon_color, "fog": _environment.fog_light_color,
-			"ambient": _environment.ambient_light_energy,
+			"ambient": _environment.ambient_light_energy, "fog_density": _environment.fog_density,
 		}
 	if _sun:
 		_day["sun"] = _sun.light_energy
@@ -125,6 +130,8 @@ func _apply() -> void:
 	# How light it is: 1 by day, 0 at night, through dawn and dusk; and how near
 	# the sun is to setting or rising (for a little warmth then).
 	var light := smoothstep(-0.25, 0.3, up)
+	daylight = light
+	var storm := Color(0.3, 0.32, 0.33)
 	var low := clampf(1.0 - absf(up) / 0.35, 0.0, 1.0) * smoothstep(-0.2, 0.0, up)
 	if _sun:
 		var turn := 25.0 + (hour - 12.0) * 9.0
@@ -134,13 +141,15 @@ func _apply() -> void:
 		var warm := Color(1.0, 0.78, 0.6)
 		var by_day: Color = (_day["sun_colour"] as Color).lerp(warm, low * 0.6)
 		_sun.light_color = moon.lerp(by_day, light)
-		_sun.light_energy = lerpf(0.32, _day["sun"], light) * lerpf(1.0, 0.75, low)
+		_sun.light_energy = lerpf(0.32, _day["sun"], light) * lerpf(1.0, 0.75, low) * (1.0 - gloom * 0.6)
 	if _environment:
 		var night_top := Color(0.09, 0.11, 0.15)
 		var night_horizon := Color(0.17, 0.2, 0.24)
 		var dusk_horizon := Color(0.62, 0.52, 0.47)
-		_sky.sky_top_color = night_top.lerp(_day["top"], light)
-		_sky.sky_horizon_color = night_horizon.lerp((_day["horizon"] as Color).lerp(dusk_horizon, low * 0.5), light)
+		_sky.sky_top_color = night_top.lerp((_day["top"] as Color).lerp(storm, gloom * 0.6), light)
+		var grey := Color(0.46, 0.48, 0.49)
+		_sky.sky_horizon_color = night_horizon.lerp((_day["horizon"] as Color).lerp(dusk_horizon, low * 0.5).lerp(grey, gloom * 0.5), light)
 		_sky.ground_horizon_color = night_horizon.lerp(_day["ground"], light)
-		_environment.fog_light_color = Color(0.15, 0.18, 0.22).lerp((_day["fog"] as Color).lerp(dusk_horizon, low * 0.35), light)
-		_environment.ambient_light_energy = lerpf(0.55, _day["ambient"], light)
+		_environment.fog_light_color = Color(0.15, 0.18, 0.22).lerp((_day["fog"] as Color).lerp(dusk_horizon, low * 0.35).lerp(grey, gloom * 0.5), light)
+		_environment.ambient_light_energy = lerpf(0.55, _day["ambient"], light) * (1.0 - gloom * 0.25)
+		_environment.fog_density = _day["fog_density"] * (1.0 + gloom * 0.9)
