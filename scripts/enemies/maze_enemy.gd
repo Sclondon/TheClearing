@@ -125,9 +125,13 @@ func _catch(player: Node3D) -> void:
 
 ## Looks about (every `look_every` seconds) and settles who it is after.
 func _sense(delta: float) -> void:
-	for player: Node3D in _spared.keys():
+	# (untyped: a player who has left the room may already be freed)
+	for player: Variant in _spared.keys():
+		if not is_instance_valid(player):
+			_spared.erase(player)
+			continue
 		_spared[player] -= delta
-		if _spared[player] <= 0.0 or not is_instance_valid(player):
+		if _spared[player] <= 0.0:
 			_spared.erase(player)
 	_forget -= delta
 	if quarry and not huntable(quarry):

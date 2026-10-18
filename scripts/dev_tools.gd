@@ -41,9 +41,9 @@ var _grievers: Array[Griever] = []
 static func enabled() -> bool:
 	if Flags.value("dev") != "":
 		return true
-	# (run from the editor: it passes the game these, which tests and tools run with -s never have)
-	var args := OS.get_cmdline_args()
-	return OS.has_feature("editor") and ("--editor-pid" in args or "--remote-debug" in args)
+	# (run from the editor: its debugger is attached, and the game often sits in its Game
+	# tab; tests and tools run with -s have neither)
+	return EngineDebugger.is_active() or Engine.is_embedded_in_editor()
 
 
 func _init(in_world: World) -> void:
