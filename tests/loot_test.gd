@@ -264,15 +264,251 @@ func _run() -> void:
 	loot.use_slot(loot.slots.find(int(map.get(&"loot_id"))))
 	check("read, and used up", read[0] and not loot.slots.has(int(map.get(&"loot_id"))))
 
+	# --- Fighting back: a stick, a bat and a sword swung; a gun fired ---
+	await _weapons(world, maze, player, loot, hall)
+	await _rarity(world, maze, loot)
+
 	# --- The dev panel's buttons ---
 	var before: int = loot.items.size()
 	for one: Array in loot.DEV:
 		loot.dev_drop(one[1])
 	await frames(5)
-	check("the dev panel puts each in", loot.items.size() >= before + 7 and loot.camps.size() >= 10, "(%d more, %d camps)" % [loot.items.size() - before, loot.camps.size()])
+	check("the dev panel puts each in", loot.items.size() >= before + 14 and loot.camps.size() >= 10, "(%d more, %d camps)" % [loot.items.size() - before, loot.camps.size()])
 
 	print("%s: %d failed" % ["PASSED" if failures == 0 else "FAILED", failures])
 	quit(1 if failures else 0)
+
+
+## Each weapon taken, swung or fired at a hunter in a hall; what it does to it.
+func _weapons(world, maze: Maze, player: Player, loot, hall: Array) -> void:
+	var along: Vector3 = hall[1]
+	var yaw := atan2(along.x, along.z)
+	for one: Array in [[LootItem.Kind.STICK, "stick"], [LootItem.Kind.BAT, "bat"], [LootItem.Kind.SWORD, "sword"]]:
+		_empty(loot)
+		world.put_player(hall[0], yaw)
+		await frames(6)
+		var weapon := _bring(loot, one[0], player, world)
+		weapon.set(&"uses", 5 if one[0] != LootItem.Kind.SWORD else 0)
+		loot.act(player)
+		await frames(40)
+		check("a %s is taken into a slot" % one[1], loot.slots.has(int(weapon.get(&"loot_id"))))
+		loot.draw(loot.slots.find(int(weapon.get(&"loot_id"))))
+		await frames(4)
+		check("the %s in both his hands (a bat's hold)" % one[1], player.carried == weapon and weapon.is_in_group(&"bats"))
+		var ghoul := _still_hunter(world, maze, player, along, 1.5)
+		await frames(3)
+		var from := ghoul.global_position
+		player.facing_yaw = yaw
+		player._act()
+		var swung := player.swing_progress < 1.0
+		var hit := false
+		for i in 60:
+			await physics_frame
+			if Stagger.on(ghoul):
+				hit = true
+				break
+		await frames(30)
+		var shoved := ghoul.global_position.distance_to(from)
+		check("the %s is swung (act), with its swing" % one[1], swung and is_equal_approx(player.swing_time, LootItem.MELEE[one[0]]["swing"]))
+		check("the %s hits the ghoul and staggers it" % one[1], hit, "(shoved %.2f m)" % shoved)
+		check("the %s's blow shoves it back as hard as it should" % one[1], shoved > (1.5 if one[0] == LootItem.Kind.BAT else 0.3), "(%.2f m)" % shoved)
+		if one[0] != LootItem.Kind.SWORD:
+			check("the %s wears with the blow" % one[1], int(weapon.get(&"uses")) == 4)
+		else:
+			check("the sword does not wear", int(weapon.get(&"uses")) == 0 and weapon.get(&"loot_state") == LootItem.State.HAND)
+		if one[0] == LootItem.Kind.STICK:
+			# (struck again at once, it is only knocked on: no holding it down by beating it)
+			for i in 300:
+				await physics_frame
+				if not Stagger.on(ghoul):
+					break
+			check("the stagger wears off", not Stagger.on(ghoul))
+			weapon.set(&"uses", 1)
+			# (stepped up to it again, and at it before it has got its feet)
+			world.put_player(ghoul.global_position - along * 1.3, yaw)
+			await frames(1)
+			player.facing_yaw = yaw
+			player._act()
+			await frames(40)
+			check("struck again just after, it is only knocked on", not Stagger.on(ghoul) or ghoul.get_node(^"Stagger").get(&"_seconds") < 0.5)
+			check("and a stick snaps at last", loot.hand == -1 and not loot.slots.has(int(weapon.get(&"loot_id"))) and weapon.get(&"loot_state") == LootItem.State.SPENT and player.carried == null)
+		ghoul.queue_free()
+		world.enemies.enemies.erase(ghoul)
+		await frames(2)
+
+	# A revolver with two rounds in it and none spare.
+	_empty(loot)
+	world.put_player(hall[0], yaw)
+	await frames(6)
+	var gun := _bring(loot, LootItem.Kind.REVOLVER, player, world)
+	gun.set(&"uses", 2)
+	loot.act(player)
+	await frames(40)
+	loot.draw(loot.slots.find(int(gun.get(&"loot_id"))))
+	await frames(4)
+	check("a revolver in his hand", player.carried == gun and gun.is_in_group(&"guns"))
+	check("the HUD shows its rounds", loot.ammo_text().begins_with("2 / 6"), "(%s)" % loot.ammo_text())
+	var target := _still_hunter(world, maze, player, along, 8.0)
+	# (one that hears it from further down the hall, after nobody)
+	var listener := MazeGhoul.new()
+	listener.keep_out_of_clearing = false
+	var far: Vector3 = hall[0] - along * 6.0
+	world.enemies.add(listener, maze.cell_at(far), 0.0, 9, far - maze.world(maze.cell_at(far)))
+	# (kept from looking about for itself: only the shot can tell it he is there)
+	listener.set_physics_process(false)
+	await frames(5)
+	listener._spared.clear()
+	listener.quarry = null
+	listener._forget = 0.0
+	player.facing_yaw = yaw
+	player._act()
+	var fired := false
+	for i in 60:
+		await physics_frame
+		if int(gun.get(&"uses")) == 1:
+			fired = true
+			break
+	check("act brings it up and fires: a round is used", fired and player.gun_raise > 0.5)
+	await frames(2)
+	check("the shot fells the ghoul", Stagger.felled(target) and not target.is_in_group(&"maze_enemies"))
+	check("the shot is loud: a hunter near hears it and comes", listener.hunting() and listener.quarry == player)
+	listener.queue_free()
+	world.enemies.enemies.erase(listener)
+	await frames(Stagger.FALLS * 60 + Stagger.LIES * 60 + Stagger.SINKS * 60 + 20)
+	check("felled, it sinks away and is gone", not target.visible and not target.can_process(), "(%s, %s, %s)" % [target.visible, target.can_process(), Stagger.on(target)])
+	# Fired again at nothing, and then empty: it clicks.
+	await frames(90)
+	player._act()
+	await frames(60)
+	check("a second shot: the gun is empty", int(gun.get(&"uses")) == 0)
+	var told := [""]
+	loot.said.connect(func(text: String) -> void: told[0] = text)
+	await frames(90)
+	player._act()
+	await frames(40)
+	check("empty, with no rounds: it clicks", int(gun.get(&"uses")) == 0 and told[0].begins_with("CLICK"), "(%s)" % told[0])
+	# A box of rounds, taken: into his pocket (no slot), and the empty gun is loaded from it.
+	var box := _bring(loot, LootItem.Kind.ROUNDS, player, world)
+	box.set(&"uses", 3)
+	var slots_before: Array = loot.slots.duplicate()
+	loot.act(player)
+	await frames(40)
+	check("a box of rounds takes no slot", loot.slots == slots_before and box.get(&"loot_state") == LootItem.State.SPENT)
+	await frames(150)
+	check("the empty gun is loaded from it", int(gun.get(&"uses")) == 3 and int(loot.ammo[LootItem.Kind.ROUNDS]) == 0, "(%d in it, %d spare)" % [int(gun.get(&"uses")), int(loot.ammo[LootItem.Kind.ROUNDS])])
+
+	# A shotgun at something past its reach to fell: staggered, not felled. And
+	# one the size of the snake is never felled.
+	_empty(loot)
+	world.put_player(hall[0], yaw)
+	await frames(6)
+	var shotgun := _bring(loot, LootItem.Kind.SHOTGUN, player, world)
+	shotgun.set(&"uses", 2)
+	loot.act(player)
+	await frames(40)
+	loot.draw(loot.slots.find(int(shotgun.get(&"loot_id"))))
+	await frames(4)
+	check("a shotgun is held in both hands", player.carried == shotgun and bool(shotgun.get(&"two_handed")))
+	var distant := _still_hunter(world, maze, player, along, 16.0)
+	await frames(3)
+	player.facing_yaw = yaw
+	player._act()
+	await frames(50)
+	check("a shotgun's shot past its reach staggers and does not fell", int(shotgun.get(&"uses")) == 1 and Stagger.on(distant) and not Stagger.felled(distant))
+	var swarm := Beetles.new()
+	var snake := Apophis.new()
+	check("the swarms and the great are not felled by a bullet", not loot.can_fell(swarm) and not loot.can_fell(snake) and loot.can_fell(distant))
+	swarm.free()
+	snake.free()
+	distant.queue_free()
+	world.enemies.enemies.erase(distant)
+
+	# The room: a guest's felled hunter is felled here too; a friend's shot is seen.
+	var theirs := _still_hunter(world, maze, player, along, 5.0)
+	await frames(3)
+	loot.hear({"loot": "felled", "enemy": world.enemies.enemies.find(theirs), "push": [along.x, along.z]}, 0)
+	check("felled by someone else's shot: felled here", Stagger.felled(theirs))
+	loot.hear({"loot": "shot", "seat": 1, "id": int(gun.get(&"loot_id")), "kind": LootItem.Kind.REVOLVER, "from": [0, 1, 0], "to": [0, 1, 10], "uses": 2}, 1)
+	check("a friend's shot is heard of: what is left in their gun with it", int(gun.get(&"uses")) == 2)
+	await frames(Stagger.FALLS * 60 + Stagger.LIES * 60 + Stagger.SINKS * 60 + 20)
+	world.enemies.enemies.erase(theirs)
+	_empty(loot)
+
+
+## Rarity, by the rules and the seed: none where the rules say none, every one
+## where they say all, rare by default (guns rarer than swords, rounds rarer than
+## guns), and the same seed the same.
+func _rarity(world, maze: Maze, loot) -> void:
+	var none := MazeStyle.new()
+	none.gun_chance = 0.0
+	none.ammo_chance = 0.0
+	var every := MazeStyle.new()
+	every.gun_chance = 1.0
+	var plain := MazeStyle.new()
+	var r := RandomNumberGenerator.new()
+	r.seed = 7
+	var counts := {}
+	for i in 4000:
+		var kind: int = loot._roll(loot.maze_mix(plain), plain, r)
+		counts[kind] = int(counts.get(kind, 0)) + 1
+	var guns: int = counts.get(LootItem.Kind.REVOLVER, 0) + counts.get(LootItem.Kind.SHOTGUN, 0)
+	var boxes: int = counts.get(LootItem.Kind.ROUNDS, 0) + counts.get(LootItem.Kind.SHELLS, 0)
+	var sticks: int = counts.get(LootItem.Kind.STICK, 0)
+	var swords: int = counts.get(LootItem.Kind.SWORD, 0)
+	check("by default guns are rare (a few in a hundred), rounds rarer", guns > 60 and guns < 260 and boxes < guns and boxes > 20, "(%d guns, %d boxes in 4000)" % [guns, boxes])
+	check("sticks common, swords less so", sticks > swords * 2 and swords > 0, "(%d sticks, %d swords)" % [sticks, swords])
+	var any := false
+	for i in 500:
+		if loot._roll(loot.maze_mix(none), none, r) in [LootItem.Kind.REVOLVER, LootItem.Kind.SHOTGUN, LootItem.Kind.ROUNDS, LootItem.Kind.SHELLS]:
+			any = true
+	check("a section whose rules say no guns has none", not any)
+	# A whole section laid out by rules that say every thing is a gun; twice from one seed.
+	every.abandoned_camps = 0
+	every.loot_items = 6
+	var laid := []
+	for twice in 2:
+		var other = loot.get_script().new()
+		other.world = world
+		other.maze = maze
+		other.set_physics_process(false)
+		world.add_child(other)
+		other._rng.seed = 1234
+		other._populate_ring(1, every)
+		var kinds := []
+		for id: int in other.items:
+			var item: Node3D = other.items[id]
+			kinds.append([item.get(&"kind"), item.get(&"uses"), item.global_position.snapped(Vector3.ONE * 0.01)])
+		laid.append(kinds)
+		other.queue_free()
+	var all_guns: bool = laid[0].size() == 6
+	for k: Array in laid[0]:
+		if not k[0] in LootItem.GUNS or int(k[1]) < 1 or int(k[1]) > 3:
+			all_guns = false
+	check("a section whose rules say all guns: guns, a few rounds in each", all_guns, "(%s)" % str(laid[0]))
+	check("and the same seed lays them out the same", laid[0] == laid[1])
+	await frames(2)
+
+
+## A ghoul `distance` ahead of him along `way`, made to stand still (and let him alone) for a test.
+func _still_hunter(world, maze: Maze, player: Player, way: Vector3, distance: float) -> MazeEnemy:
+	var ghoul := MazeGhoul.new()
+	ghoul.keep_out_of_clearing = false
+	var at := player.global_position + way * distance
+	world.enemies.add(ghoul, maze.cell_at(at), atan2(-way.x, -way.z), 5, at - maze.world(maze.cell_at(at)))
+	ghoul.set_physics_process(false)
+	return ghoul
+
+
+## Empties his hand and pockets.
+func _empty(loot) -> void:
+	if loot.hand >= 0:
+		loot.stow()
+	for i in loot.slots.size():
+		if loot.slots[i] >= 0:
+			loot._spend(loot.slots[i], false)
+			loot.slots[i] = -1
+	loot.ammo[LootItem.Kind.ROUNDS] = 0
+	loot.ammo[LootItem.Kind.SHELLS] = 0
 
 
 ## Puts a new one of `kind` at his feet (a dev drop, numbered as one).

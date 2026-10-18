@@ -194,7 +194,9 @@ func toggle_god() -> void:
 func toggle_freeze() -> void:
 	frozen = not frozen
 	for hunter in _hunters():
-		hunter.process_mode = Node.PROCESS_MODE_DISABLED if frozen else Node.PROCESS_MODE_INHERIT
+		# (one felled by a shot stays gone)
+		if is_instance_valid(hunter) and not hunter.has_meta(&"felled"):
+			hunter.process_mode = Node.PROCESS_MODE_DISABLED if frozen else Node.PROCESS_MODE_INHERIT
 	_show()
 
 

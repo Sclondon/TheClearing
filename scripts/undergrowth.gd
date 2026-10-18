@@ -12,13 +12,14 @@ extends Node3D
 ## Where they go is MazeBuilder's to say (from the maze's styles), so every copy
 ## of the game in a room has the same.
 
-enum Kind { FERN, BUSH, MOSS, TUFT }
+enum Kind { FERN, BUSH, MOSS, TUFT, GRASS }
 
 const SQUARE := 40.0
 const FAR := 110.0
 
 static var _meshes := {}
-static var _material: StandardMaterial3D
+static var _material: ShaderMaterial
+static var _fern_material: ShaderMaterial
 
 ## [kind, square] -> [Transform3D]
 var _placed := {}
@@ -36,12 +37,8 @@ func add(kind: Kind, where: Transform3D) -> void:
 
 ## Makes what has been added.
 func build() -> void:
-	if _material == null:
-		_material = StandardMaterial3D.new()
-		_material.vertex_color_use_as_albedo = true
-		_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-		_material.roughness = 1.0
-		_material.metallic_specular = 0.0
+	shared_material()
+	set_process(true)
 	for key: Array in _placed:
 		var placed: Array = _placed[key]
 		var multi := MultiMesh.new()
@@ -52,7 +49,7 @@ func build() -> void:
 			multi.set_instance_transform(i, placed[i])
 		var shown := MultiMeshInstance3D.new()
 		shown.multimesh = multi
-		shown.material_override = _material
+		shown.material_override = _fern_material if key[0] == Kind.FERN else _material
 		shown.visibility_range_end = FAR
 		shown.visibility_range_end_margin = 15.0
 		shown.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
@@ -60,6 +57,16 @@ func build() -> void:
 		if key[0] != Kind.BUSH:
 			shown.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(shown)
+
+
+## The material plants of `kind` are drawn with (shared by every patch, here
+## and in the desert ring's quarters: Wilds): the fern shader for ferns, the
+## plant shader (sway, and pushed aside) for the rest.
+static func shared_material(kind := Kind.BUSH) -> ShaderMaterial:
+	if _material == null:
+		_material = _shaded(PLANT)
+		_fern_material = _shaded(FERN)
+	return _fern_material if kind == Kind.FERN else _material
 
 
 ## The mesh of a kind (made once).
@@ -72,11 +79,14 @@ static func mesh(kind: Kind) -> ArrayMesh:
 			Kind.BUSH: _meshes[kind] = _bush(rng)
 			Kind.MOSS: _meshes[kind] = _moss(rng)
 			Kind.TUFT: _meshes[kind] = _tuft(rng)
+			Kind.GRASS: _meshes[kind] = _short_grass(rng)
 	return _meshes[kind]
 
 
-## A fern about a metre high: fronds arching out from the middle, each a stem with
-## leaflets either side that shorten towards its tip.
+## A fern about a metre high: fronds arching out from the middle and over. Each
+## frond is a card folded along its stem (its two halves drooping a little), on
+## which the fern shader draws the stem and its leaflets (FERN: see there what
+## the card's UV, UV2 and colour carry).
 static func _fern(rng: RandomNumberGenerator) -> ArrayMesh:
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -87,19 +97,34 @@ static func _fern(rng: RandomNumberGenerator) -> ArrayMesh:
 		var side := out.cross(Vector3.UP).normalized()
 		var long := rng.randf_range(0.8, 1.25)
 		var rise := rng.randf_range(0.7, 1.1)
+		var reach := 0.24 * long
 		var steps := 10
-		var last := Vector3.ZERO
+		# (up and out, then over and down at the tip: its stem, and how far along it each point is)
+		var stem: Array[Vector3] = [Vector3.ZERO]
+		var along: Array[float] = [0.0]
 		for s in steps:
 			var t := (s + 1) / float(steps)
-			# (up and out, then over and down at the tip)
 			var at := out * long * t + Vector3.UP * long * rise * (t * (1.3 - t))
-			var dark := Color(0.13, 0.2, 0.09).lerp(Color(0.24, 0.32, 0.14), t)
-			var reach := 0.22 * (1.0 - t * 0.8) * long
-			var droop := Vector3.DOWN * reach * 0.35
-			for way in [-1.0, 1.0]:
-				var tip: Vector3 = at + side * way * reach + droop + out * reach * 0.3
-				_tri(tool, last, at, tip, dark)
-			last = at
+			along.append(along.back() + at.distance_to(stem.back()))
+			stem.append(at)
+		var length: float = along.back()
+		var colour := Color(0.15, 0.22, 0.1).lerp(Color(0.21, 0.29, 0.13), rng.randf())
+		colour.a = reach * 0.5
+		var droop := Vector3.DOWN * reach * 0.3
+		for s in steps:
+			var rows: Array = []
+			for k in [s, s + 1]:
+				var at: Vector3 = stem[k]
+				rows.append([at - side * reach + droop, at, at + side * reach + droop])
+			for half in 2:
+				var corners := [[rows[0][half], -1.0 + half, along[s]], [rows[0][half + 1], half * 1.0, along[s]],
+					[rows[1][half + 1], half * 1.0, along[s + 1]], [rows[1][half], -1.0 + half, along[s + 1]]]
+				for c: int in [0, 1, 2, 0, 2, 3]:
+					tool.set_color(colour)
+					tool.set_normal((Vector3.UP + out * 0.3).normalized())
+					tool.set_uv(Vector2(corners[c][2], corners[c][1]))
+					tool.set_uv2(Vector2(1.0, length))
+					tool.add_vertex(corners[c][0])
 	return tool.commit()
 
 
@@ -150,6 +175,23 @@ static func _moss(rng: RandomNumberGenerator) -> ArrayMesh:
 	return tool.commit()
 
 
+## A clump of short grass, ankle high, about half a metre across: many fine
+## blades, the clumps set close in runs along the foot of a wall.
+static func _short_grass(rng: RandomNumberGenerator) -> ArrayMesh:
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for b in 34:
+		var turn := rng.randf() * TAU
+		var root := Vector3(cos(turn), 0.0, sin(turn)) * rng.randf_range(0.0, 0.38)
+		var lean := Vector3(cos(turn), 0.0, sin(turn)) * rng.randf_range(0.02, 0.1)
+		var high := rng.randf_range(0.18, 0.42)
+		var side := Vector3(-sin(turn + 1.3), 0.0, cos(turn + 1.3)) * 0.022
+		# (paler than the moss it grows by, so that it reads against it)
+		var colour := Color(0.24, 0.28, 0.13).lerp(Color(0.38, 0.4, 0.22), rng.randf())
+		_tri(tool, root - side, root + side, root + lean + Vector3.UP * high, colour)
+	return tool.commit()
+
+
 ## A tuft of coarse grass, knee high: tapered blades leaning out.
 static func _tuft(rng: RandomNumberGenerator) -> ArrayMesh:
 	var tool := SurfaceTool.new()
@@ -178,3 +220,148 @@ static func _tri(tool: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, colour: 
 		tool.set_color(colour)
 		tool.set_normal(normal)
 		tool.add_vertex(p)
+
+
+## The low plants' shader (bushes, tufts, moss): their own colours, a little sway
+## in the wind, more towards their tops, and pushed aside and down where anyone
+## (Grass.PUSHERS, the nearest MAX_PUSHERS to the camera) goes through them, as
+## the grass is. The bending is all in the vertex shader: nothing to work out per plant.
+const PLANT := """
+shader_type spatial;
+render_mode cull_disabled, specular_disabled;
+
+uniform vec4 pushers[8];
+uniform int pusher_count = 0;
+uniform float sway = 0.03;
+
+#include "res://scripts/plant_push.gdshaderinc"
+
+void vertex() {
+	VERTEX += bent(MODEL_MATRIX, VERTEX, max(VERTEX.y, 0.0), sway, TIME);
+}
+
+void fragment() {
+	ALBEDO = COLOR.rgb;
+	ROUGHNESS = 1.0;
+	if (!FRONT_FACING) {
+		NORMAL = -NORMAL;
+	}
+}
+"""
+
+## Ferns: each frond a folded card along its arch (UV: metres along it, and -1..1
+## across; UV2: 1, and its length; the colour's alpha, half its widest reach in
+## metres, halved), and on it the frond drawn as the pines' needles are: a stem
+## up its middle, leaflets either side slanting towards its tip, each with notched
+## edges, longest a third of the way along and shortening to the tip; all cut out
+## of the card (alpha scissor). Darker at the stem, paler at the leaflets' tips,
+## each a shade of its own. Far off, where a leaflet would be too small to see,
+## the frond's outline filled in instead, so it neither shimmers nor thins away.
+## Sways, and is pushed aside, as the other plants are.
+const FERN := """
+shader_type spatial;
+render_mode cull_disabled, specular_disabled;
+
+// Metres between leaflets along a frond, and between the notches along a leaflet.
+const float PINNA = 0.065;
+const float NOTCH = 0.014;
+
+uniform vec4 pushers[8];
+uniform int pusher_count = 0;
+uniform float sway = 0.05;
+
+varying float half_width;
+
+#include "res://scripts/plant_push.gdshaderinc"
+
+float hash(float n) {
+	return fract(sin(n * 12.9898) * 43758.5453);
+}
+
+// How far the leaflets reach, 0..1 of the widest, `s` of the way along the frond:
+// short at its foot, longest a third of the way up, to a point at its tip.
+float outline(float s) {
+	return pow(max(sin(PI * (0.06 + 0.94 * clamp(s, 0.0, 1.0))), 0.0), 0.75) * (1.0 - 0.25 * s);
+}
+
+void vertex() {
+	half_width = COLOR.a * 2.0;
+	float s = UV.x / max(UV2.y, 0.01);
+	// (the frond bends more out towards its tip; a vertex's own height says little on a frond that arches over)
+	VERTEX += bent(MODEL_MATRIX, VERTEX, s * UV2.y * 0.7, sway, TIME);
+}
+
+void fragment() {
+	float x = UV.x;
+	float s = x / max(UV2.y, 0.01);
+	float hw = max(half_width, 0.04);
+	float out_m = abs(UV.y) * hw;
+	float side = UV.y < 0.0 ? 1.0 : 0.0;
+	float reach = outline(s) * hw;
+
+	// The leaflet this is on: they leave the stem slanted towards the tip, the two
+	// sides staggered. (`across` is metres from its middle; `into` how far out along it.)
+	float u = x - out_m * 0.7 + side * PINNA * 0.5;
+	float index = floor(u / PINNA) + side * 211.0;
+	float r = hash(index);
+	float across = (fract(u / PINNA) - 0.5) * PINNA;
+	float into = clamp(out_m / max(reach, 0.01), 0.0, 1.0);
+	// (broad at the stem, narrowing to a rounded tip; its edge notched)
+	float notches = 0.78 + 0.22 * abs(sin(out_m / NOTCH * PI + r * 3.0));
+	float wide = PINNA * 0.3 * (1.0 - into * into * 0.75) * notches;
+	float px = fwidth(x / PINNA);
+	float leaflet = (1.0 - smoothstep(wide - 0.002, wide + 0.002 + fwidth(across), abs(across))) * step(out_m, reach * mix(0.85, 1.0, r));
+	float stem = (1.0 - smoothstep(0.004, 0.004 + fwidth(out_m), out_m)) * step(s, 0.98);
+	float near_cover = max(leaflet, stem);
+	// Far off: the outline filled in.
+	float coarse = clamp(px * 1.4 - 0.5, 0.0, 1.0);
+	float cover = mix(near_cover, step(out_m, reach * 0.85), coarse);
+	ALPHA = clamp(cover, 0.0, 1.0);
+	ALPHA_SCISSOR_THRESHOLD = 0.5;
+
+	vec3 colour = COLOR.rgb;
+	colour *= mix(0.7, 1.25, into) * (0.88 + 0.24 * r);
+	colour = mix(colour, vec3(0.1, 0.11, 0.05), stem * (1.0 - coarse) * 0.7);
+	ALBEDO = colour;
+	ROUGHNESS = 1.0;
+	// (lit the same from both sides)
+	if (!FRONT_FACING) {
+		NORMAL = -NORMAL;
+	}
+}
+"""
+
+
+static func _shaded(code: String) -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = code
+	var made := ShaderMaterial.new()
+	made.shader = shader
+	return made
+
+
+## Who is going through the plants: the nearest Grass.MAX_PUSHERS of the grass's
+## pushers to the camera, to both shaders, once a frame (they are shared by every
+## patch of plants).
+static var _pushed_frame := -1
+
+
+func _process(_delta: float) -> void:
+	var frame := Engine.get_process_frames()
+	if frame == _pushed_frame or _material == null:
+		return
+	_pushed_frame = frame
+	var camera := get_viewport().get_camera_3d()
+	var found: Array = get_tree().get_nodes_in_group(Grass.PUSHERS).filter(func(n: Node) -> bool: return n is Node3D and n.is_inside_tree())
+	if camera and found.size() > Grass.MAX_PUSHERS:
+		var eye := camera.global_position
+		found.sort_custom(func(a: Node3D, b: Node3D) -> bool: return a.global_position.distance_squared_to(eye) < b.global_position.distance_squared_to(eye))
+	var packed := PackedVector4Array()
+	packed.resize(Grass.MAX_PUSHERS)
+	var n := mini(found.size(), Grass.MAX_PUSHERS)
+	for i in n:
+		var at: Vector3 = (found[i] as Node3D).global_position
+		packed[i] = Vector4(at.x, at.y, at.z, (found[i] as Node).get_meta(&"grass_radius", 0.7))
+	for made: ShaderMaterial in [_material, _fern_material]:
+		made.set_shader_parameter(&"pushers", packed)
+		made.set_shader_parameter(&"pusher_count", n)

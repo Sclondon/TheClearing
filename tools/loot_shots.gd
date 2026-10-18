@@ -3,10 +3,12 @@ extends SceneTree
 ## behind in the clearing seen from the boy's height; a camp with runners round
 ## its fire at dusk; its smoke seen from far across the clearing; each thing
 ## lying in the grass (all together, and each close); the boy with a torch in a
-## hall at night; on the grappling hook's rope; throwing the spear; and the
-## inventory on the screen. Needs a real window:
+## hall at night; on the grappling hook's rope; throwing the spear; the
+## inventory on the screen; (w) a stick, a bat and a sword held and swung; (g)
+## the guns held and fired, a ghoul shot, the rounds on the HUD; (l) the weapons
+## lying in a hall; (r) a friend in the room with a bat and a shotgun. Needs a real window:
 ##
-##     godot --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/loot_shots.gd -- <folder> [only]
+##     godot --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/loot_shots.gd -- <folder> [only: 1 1c 2 3 4 5 6 7 8 w g l r]
 
 var main: Node
 var folder := "loot_shots"
@@ -343,6 +345,135 @@ func _run() -> void:
 		loot.map_read.emit(8.0)
 		await wait(0.3)
 		await shot("8b_map_scrap", true)
+
+	# w. Each weapon: held, and swung (wound up, and coming round).
+	if wanted("w"):
+		world.day.set_hour(13.0)
+		var kinds := [[LootItem.Kind.STICK, "stick"], [LootItem.Kind.BAT, "bat"], [LootItem.Kind.SWORD, "sword"]]
+		for i in kinds.size():
+			empty_pockets()
+			world.put_player(start, atan2(along.x, along.z))
+			await take(kinds[i][0], 850000 + i)
+			loot.draw(loot.slots.find(850000 + i))
+			world.put_player(start, atan2(along.x, along.z))
+			await wait(0.8)
+			var him := player.global_position
+			frame(him + side * 2.7 + along * 1.4 + Vector3.UP * 1.15, him + Vector3.UP * 0.75 + along * 0.3)
+			await shot("w%d_%s_held" % [i, kinds[i][1]])
+			player.facing_yaw = atan2(along.x, along.z)
+			player._act()
+			var swing: float = LootItem.MELEE[kinds[i][0]]["swing"]
+			await wait(swing * 0.22)
+			await shot("w%d_%s_wind_up" % [i, kinds[i][1]])
+			await wait(swing * 0.3)
+			await shot("w%d_%s_swung" % [i, kinds[i][1]])
+			await wait(0.8)
+
+	# g. The guns: held, and brought up and fired (the flash); and a ghoul felled by a shot.
+	if wanted("g"):
+		world.day.set_hour(13.0)
+		var guns := [[LootItem.Kind.REVOLVER, "revolver"], [LootItem.Kind.SHOTGUN, "shotgun"]]
+		for i in guns.size():
+			empty_pockets()
+			world.put_player(start, atan2(along.x, along.z))
+			loot._place(guns[i][0], player.global_position + Vector3(0.4, 0.05, 0.0), 0.0, 860000 + i).set(&"uses", 2)
+			loot.act(player)
+			await wait(0.7)
+			loot.draw(loot.slots.find(860000 + i))
+			world.put_player(start, atan2(along.x, along.z))
+			await wait(0.8)
+			var him := player.global_position
+			frame(him + side * 2.6 + along * 1.2 + Vector3.UP * 1.15, him + Vector3.UP * 0.8 + along * 0.4)
+			await shot("g%d_%s_held" % [i, guns[i][1]])
+			player.facing_yaw = atan2(along.x, along.z)
+			player._act()
+			for k in 90:
+				await physics_frame
+				if int(loot._item(860000 + i).get(&"uses")) < 2:
+					break
+			await shot("g%d_%s_fired" % [i, guns[i][1]], true)
+			await wait(1.6)
+		# A ghoul down the hall, shot with the revolver: going over.
+		var ghoul := MazeGhoul.new()
+		ghoul.keep_out_of_clearing = false
+		var at := start + along * 7.0
+		world.enemies.add(ghoul, maze.cell_at(at), atan2(-along.x, -along.z), 3, at - maze.world(maze.cell_at(at)))
+		ghoul.set_physics_process(false)
+		empty_pockets()
+		world.put_player(start, atan2(along.x, along.z))
+		loot._place(LootItem.Kind.REVOLVER, player.global_position + Vector3(0.4, 0.05, 0.0), 0.0, 860010).set(&"uses", 3)
+		loot.act(player)
+		await wait(0.7)
+		loot.draw(loot.slots.find(860010))
+		await wait(0.6)
+		player.facing_yaw = atan2(along.x, along.z)
+		player._act()
+		for k in 90:
+			await physics_frame
+			if Stagger.felled(ghoul):
+				break
+		var him := player.global_position
+		frame(him - along * 2.2 + side * 1.8 + Vector3.UP * 1.7, him + along * 6.0 + Vector3.UP * 0.8)
+		await shot("g2_ghoul_shot")
+		await wait(0.9)
+		await shot("g3_ghoul_down")
+		# The HUD while he holds it: its rounds and his spare ones.
+		loot.ammo[LootItem.Kind.ROUNDS] = 3
+		loot.changed.emit()
+		world.camera.make_current()
+		world.camera.snap()
+		await wait(1.0)
+		await shot("g4_gun_hud", true)
+
+	# l. What there is to fight with, lying in the mud of a hall.
+	if wanted("l"):
+		empty_pockets()
+		world.day.set_hour(11.0)
+		var kinds := [LootItem.Kind.STICK, LootItem.Kind.BAT, LootItem.Kind.SWORD, LootItem.Kind.REVOLVER, LootItem.Kind.SHOTGUN, LootItem.Kind.ROUNDS, LootItem.Kind.SHELLS]
+		var spot := start + along * 3.0
+		var made: Array = []
+		for i in kinds.size():
+			var at := spot + side * ((i - 3) * 0.75) + along * ((i % 2) * 0.5)
+			at.y = maze.ground_height(at) + 0.02
+			made.append(loot._place(kinds[i], at, 0.4 + i * 0.7, 870000 + i))
+		world.put_player(start - along * 6.0, atan2(along.x, along.z))
+		await wait(1.0)
+		frame(spot - along * 3.4 + Vector3.UP * 2.2, spot + Vector3.UP * 0.05)
+		await shot("l_weapons_lying")
+		for i in made.size():
+			var at: Vector3 = made[i].global_position
+			frame(at + Vector3(0.45, 0.55, 0.75), at + Vector3.UP * 0.04)
+			await shot("l%d_%s" % [i, String(LootItem.SHORT[kinds[i]]).to_lower()])
+
+	# r. A friend (a RemotePlayer, as the room shows them) with a bat, swinging it,
+	# and with a shotgun, firing it: what the room's news makes of them.
+	if wanted("r"):
+		empty_pockets()
+		world.day.set_hour(13.0)
+		world.put_player(start - along * 4.0, atan2(along.x, along.z))
+		var other := RemotePlayer.new()
+		world.add_child(other)
+		other.hear(start + side * 1.5, Vector3.ZERO, atan2(along.x, along.z), true)
+		world.remotes[1] = other
+		Looks.apply(other.rig, Looks.decode("", 1))
+		loot._place(LootItem.Kind.BAT, start + side * 3.0, 0.0, 880000)
+		loot.hear({"loot": "hand", "id": 880000, "seat": 1, "lit": false, "fuel": 0.0, "uses": 10}, 1)
+		await wait(0.8)
+		var him := other.global_position
+		frame(him + side * 2.8 + along * 1.4 + Vector3.UP * 1.15, him + Vector3.UP * 0.75)
+		await shot("r0_friend_bat")
+		loot.hear({"loot": "swing", "seat": 1}, 1)
+		await wait(0.33)
+		await shot("r1_friend_swinging")
+		await wait(0.6)
+		loot._place(LootItem.Kind.SHOTGUN, start + side * 3.5, 0.0, 880001)
+		loot.hear({"loot": "hand", "id": 880001, "seat": 1, "lit": false, "fuel": 0.0, "uses": 2}, 1)
+		await wait(0.5)
+		var muzzle: Vector3 = him + Vector3.UP * 1.0 + along * 0.6
+		loot.hear({"loot": "shot", "seat": 1, "id": 880001, "kind": LootItem.Kind.SHOTGUN, "from": [muzzle.x, muzzle.y, muzzle.z],
+			"to": [muzzle.x + along.x * 20.0, muzzle.y, muzzle.z + along.z * 20.0], "uses": 1}, 1)
+		await wait(0.3)
+		await shot("r2_friend_firing")
 
 	print("done")
 	quit()

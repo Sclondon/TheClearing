@@ -16,8 +16,9 @@ own), seen and lit like *Inside*. A secret cart in the Scareathon arcade (code *
 
 1. **Built for something bigger.** The maze dwarfs you. Walls are huge, high, thick and damp; gaps through them are
    slots you squeeze through; the clearing is vast. Scale is the main feeling.
-2. **Quiet dread, not combat.** You cannot fight what hunts the maze. You run, hide, climb and get out. Being caught
-   costs you ground (back to the clearing), not the game.
+2. **Quiet dread, not combat.** You run, hide, climb and get out. You can fight back a little (a stick, a bat, a
+   sword, and rarely a gun with a round or two: "Fighting back"), but it only ever buys a moment or one less thing
+   after you; you never clear the maze. Being caught costs you ground (back to the clearing), not the game.
 3. **Together, close by.** Friends in a room run the same maze, hear each other only when near, and lose each other
    round corners.
 4. **Every maze new, every maze fair.** Mazes are generated from rules, a fresh one each round, the same for everyone
@@ -75,11 +76,34 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
   seed, some broken, some leant over) and lily pads and a scum of duckweed on the
   open water. All of it bends round whoever pushes through. Wading slows him (the deeper, the slower), he splashes
   going in and leaves rings. A lane in from the gate has nothing deep and nothing standing in it: the way in is wet
-  but open.
+  but open. The gate itself is flooded (the user, 2026-10-18: "you have to wade through"): in front of it, from the
+  wall's foot about 70 m along and 40 m out, water to his knees or waist (`marsh_flood_*`) with no dry way across,
+  and on through the gate's slot in the wall into a pond across the hall beyond (Ponds). Wading, never swimming.
+  Schools of small fish in its water dart off from whoever wades near (`FishSchool`).
 - Its wall is a special case, far thicker than the grid, with its own controls (ClearingStyle, "Clearing wall"):
   by default 3 cells of solid stone (about 54 m) and 92 m high, twice the other walls between rings. Nothing grows or stands on it.
 - Four gates, one in the middle of each side, each a slot about 2 m wide (about three of him) running the whole way
   through that wall. Every gate leads on into the maze: none is a dead end.
+
+### The desert ring's quarters
+
+Past the square sections, the desert ring is cut into four quarters by great walls from the square's corners, each
+its own biome (`DesertStyle.Biome`, matched to the clearing's entrance on its side). Each is dressed (added
+2026-10-18, the user: "why are the plains, swamp and forest empty?"), all of it by `DesertStyle` rules editable in the
+maze editor (groups Forest, Swamp, Plains), nothing in the way within `keep_clear_radius` of a quarter's door or gate:
+
+- **Desert:** Outside's sand in dunes.
+- **Forest:** dense, dark woods of the game's pines (a tree every 6 m or so, open glades), ferns, bushes and moss under
+  them, fallen logs, a few mossy boulders, on a dark floor of needles. Misty and dim, after Inside.
+- **Swamp:** one sheet of still water, knee deep at most, over the middle of the quarter, hummocks of wet ground
+  standing up through it cut by winding channels; dry boggy ground round its edges; sedges all over, reeds and
+  bulrushes at the water's edge, lily pads, grey dead and drowned trees, and low banks of mist.
+- **Plains:** wide grass over low hills, boulders, and outcrops of great rocks (the biggest as high as a house).
+
+`WildLands` (scripts/wild_lands.gd) works out where everything is from the seed, in squares of 64 m; `Wilds`
+(scripts/wilds.gd) builds only the squares near the camera (MultiMeshes, shapes put in before their body enters the
+world, seen only out to the mist) and lets far ones go, since each quarter is some sixty hectares. Trunks, logs and
+rocks are bumped into; the swamp's and plains' ground is walked on (Maze.ground_height knows it).
 
 ### Ring styles
 
@@ -98,6 +122,28 @@ terraces, rope bridges, ivy to the top, vines on terraces, wall-top bridges and 
 
 Because walls are thick, any opening one cell long through a wall is itself a slot (cell minus wall thickness):
 that is how the gates become slots.
+
+### Round sections
+
+Past the desert, three round sections (`RoundStyle`, `MazeLayout.round_sections`), each with a **layout**:
+- **Maze** (ring 5, Spokes): passages grown between circular walls (`RoundMaze`).
+- **Rotating doors** (ring 6, Turnstiles): halls round between circles of wall. Each circle is broken by doorways,
+  and in each a great slab turns on a pivot under a lintel. You get through by timing it: either side of an
+  edge-on door is a gap. The doors are moving bodies that shove you, turned by the round's clock (`World.clock`) so
+  everyone sees the same thing. Their turns are spread so some door in every circle is always nearly open.
+  Settings: circles, doors per circle, seconds per half turn, gap width.
+- **Tunnel** (ring 7, Bore): one wide roofed tunnel all the way round, from the gates in to the way out. It is
+  dim, lined in dark stone that the mist does not lighten, and lit only by slots across its roof (faint shafts and
+  pale patches on the floor). Settings: width, height, skylight spacing.
+
+### Standing water
+
+Ponds and flooded halls (`scripts/ponds.gd`, MazeStyle "Water"): a share of hall cells has standing water, a pond
+lying in the hall or a stretch of hall flooded from wall to wall, from puddle-deep to his waist, a few deep enough to
+swim; the ground goes down under it, so he wades and swims. Laid out as pond pieces (editable by hand), kept clear of
+walls, ledges and terraces. Grey, still, overcast water; schools of small dark fish in some that dart off as he wades
+near. Cheap: one sheet of water per area of ponds, fish in one MultiMesh per school, and water and fish far from the
+camera do nothing.
 
 ### Ways up
 
@@ -557,8 +603,8 @@ non hostile regular deer and elk and chicken as well. Some should be in the clea
 
 Added 2026-10-18 at the user's request ("there should be grappling hooks, backpacks, spears, torches to find, and
 other abandoned loot through the clearing, and abandoned (or occupied) campsites"). Others were here before you, and
-left things behind. **They are tools to get away with, never weapons** (pillar 2): nothing found kills, or even hurts,
-what hunts the maze. A spear buys a moment; a torch keeps the small things off; a flare sends them looking elsewhere.
+left things behind. **They are tools to get away with** (pillar 2): a spear buys a moment; a torch keeps the small
+things off; a flare sends them looking elsewhere. (What there is to fight with came later: "Fighting back", below.)
 
 - **Grappling hook.** Out of your hand with the act button at the lip of a ledge in reach above you (a mezzanine, a
   terrace, the platform under a sewer pipe, a buttress's top: any ledge's edge the hook can feel for, up to about 13
@@ -601,6 +647,41 @@ the camps. Placed from the round's seed: everyone in a room finds the same thing
 holds is seen in their hand; what is dropped or thrown is seen to fall and lie; torches lit and out, campfires lit and
 ladders hung are seen by all. A guest's spear asks the maker to stagger what it hit.
 
+## Fighting back
+
+Added 2026-10-18 at the user's request ("sticks, bats and swords to use, and rarely guns and very little ammo"). They
+lie about with the rest (taken, held, dropped and shared the same way) and are held in both hands, as Outside's boy
+holds a bat. With one in your hand and something that hunts within seven metres, the act button fights instead of
+taking what is at your feet.
+
+- **Stick.** A branch broken off a tree. Common. Swung (act), it staggers the first thing that hunts in front of you
+  for about a second, barely shoving it, and snaps after three to six blows that land.
+- **Bat.** An old baseball bat. Staggers for two seconds and knocks it well back (four metres or so); splits after a
+  dozen or more blows.
+- **Sword.** An old straight sword, rare. The best: staggers for three and a half seconds, cuts through everything in
+  its sweep, never breaks.
+- A blow cannot hold a hunter down: one still reeling, or come out of it within a second and a half, is only knocked
+  on a little. The swarms are not hit by a blow, nor by a shot.
+- **Revolver** (six rounds) and **shotgun** (two, held in both hands): rare, and found with only one to three rounds
+  in them. Act brings it up and fires. A shot fells what it hits for good (it goes over, lies, sinks into the ground
+  and is gone for the round) if it is one of the ordinary hunters and near enough (the revolver 30 m, the shotgun's
+  spread 11 m); the great and the unnatural (the snake, the colossus, the tripod, the angel, the gargoyle, the slime
+  wall, the flesh mounds, the meat beast, the centipede, the skinwalker, the Griever) and anything further off are
+  only staggered for five seconds. A shot is loud: everything that hunts within 90 m comes to see where it was, and
+  within 40 m it knows who fired.
+- **Rounds** and **shells**: a box of two to four, rarer still than the guns. Taken, they go loose in your pocket (no
+  slot) and load an empty gun of their kind; the HUD shows what is in the gun and what is spare while you hold it.
+  Empty, with nothing spare, it clicks.
+
+**Where (the rules):** MazeStyle "What lies about": stick, bat and sword weights against the rest of what lies in its
+halls (3, 2, 1 by default; no swords in the first section, more in the third), `gun_chance` (each thing is a gun 4% of
+the time; 3% in the first section, 6% in the third), `shotgun_share`, `rounds_in_gun` (1 to 3), `ammo_chance` (2.5%)
+and `rounds_per_box` (2 to 4). ClearingStyle: three sticks and a bat in the clearing, a 15% chance of a gun lying
+somewhere in it and 8% of a box, and their own small chances by the camps. Camps left behind also have sticks and bats.
+
+**Together:** a swing is seen by all; a shot is seen and heard by all where it was; rounds left in a gun go with it.
+The maker staggers and fells (a guest asks), and everyone sees the felled one fall.
+
 ## Camps
 
 - **Left behind** (three in the clearing, one in each square section's halls): a cold ring of stones round a bed of
@@ -615,6 +696,26 @@ ladders hung are seen by all. A guest's spear asks the maker to stagger what it 
   shirts. Come up and one looks up and points you to what is worth taking lying near the camp (or beckons you in to
   the fire if there is nothing). Nothing hunts in the clearing, so they are never hunted there.
 - The ground round a camp in the clearing is trodden: the grass worn thin, raggedly, never bare.
+
+## Signs of life, and the sewers
+
+Added 2026-10-18 at the user's request ("vents and sewer props on the walls and floor", "Zone 1 set up with signs of
+abandoned life: camps, boxes and barrels, wires hanging above in the vines"). `MazeProps` (`scripts/maze_props.gd`)
+lays them out from the seed as PROP and WIRE pieces (editable in the maze editor, in Props and Wires), by each
+section's MazeStyle:
+
+- **Sewers** (every square section, fewest further out): old vents high on the walls (louvred or round, some great
+  ducts), barred culverts at their feet with a puddle in front, small pipes with a rust stain down the wall and a
+  puddle under them (some dripping), drain grates by the walls and manhole covers out in the halls (now and then
+  pushed half off the black shaft).
+- **Signs of life** (the Avenues): three camps left; heaps of boxes and barrels against the walls (solid, some
+  stacked, a barrel fallen over); old black cables strung high across the halls, in among the strung vines and
+  hanging beside the hanging ones, some snapped with their ends hanging, now and then a dead lamp; cables looped
+  along walls on brackets.
+- All weathered and dull, kept clear of the ways up (ivy, terraces, pipes), the gates and each other; the camps and
+  what lies about keep off the heaps. Drawn as a MultiMesh a kind per 140 m square (cables merged into one mesh a
+  square), gone past 110 to 160 m; nothing processes (drips fall in their shader). `tests/props_test.gd`,
+  `tools/props_shots.gd`.
 
 ## Playing together
 
@@ -648,6 +749,8 @@ ladders hung are seen by all. A guest's spear asks the maker to stagger what it 
 - Rings 2 and 3 (styles exist; not built or played yet), and what changes between rings beyond the style.
 - Moving walls, doors that shut at night, a day/night cycle.
 - A map, sound and music, player names. (A map scrap shows the way for a moment; there is no map.)
+- Fighting back: a kill on a guest's copy is drawn falling only when the maker says so (a moment late); felled hunters
+  are not put back during the round; the runners do not pick up weapons.
 - Loot: a knife, a canteen or a whistle (thought of, not made); the hunters do not use the rope ladders; a friend's
   grappling hook rope is not seen by others (only them on it); the runners in the maze do not yet stop at camps (the
   ones at camps stay there).

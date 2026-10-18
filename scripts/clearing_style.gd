@@ -87,6 +87,14 @@ enum Entrance {
 ## many); and lily pads on the open water.
 @export_range(0.0, 1.0) var marsh_reeds := 0.5
 @export_range(0.0, 1.0) var marsh_lily_pads := 0.5
+## The way in to its gate flooded: water from the foot of the wall out into
+## the marsh, as deep as this (metres: to his knees or waist, so he wades, and
+## never swims), this wide along the wall and this far out (metres), with no
+## dry way across it; and on through the gate's slot in the wall into the hall
+## beyond (Ponds). 0 deep: no flooded way.
+@export_range(0.0, 0.95) var marsh_flood_depth := 0.7
+@export_range(10.0, 200.0) var marsh_flood_width := 70.0
+@export_range(5.0, 120.0) var marsh_flood_reach := 42.0
 
 ## How high the marsh's water stands (under the level ground round it), metres.
 const MARSH_LEVEL := -0.25
@@ -147,6 +155,10 @@ var entrance_spots: Array = []
 @export_range(0, 6) var rabbit_warrens := 2
 ## Brown hares lying up in the open meadow (MazeHare; every other one a pair that box).
 @export_range(0, 6) var hares := 2
+## Schools of small fish in the marsh's water (FishSchool), and how many fish in
+## each: they dart off from whoever wades near.
+@export_range(0, 20) var marsh_fish_schools := 9
+@export_range(1, 40) var marsh_fish_per_school := 14
 ## Clouds of moths out over the grass, in the evening and through the night (Insects).
 @export_range(0, 8) var dusk_moth_clouds := 3
 ## Packs of coyotes out in the meadow (Wildlife: tame, they stare, shadow, yip and
@@ -165,6 +177,22 @@ var entrance_spots: Array = []
 @export_range(0, 6) var loot_flares := 1
 @export_range(0, 6) var loot_maps := 1
 @export_range(0, 6) var loot_ladders := 1
+## Things to fight with: sticks (common, weak, they snap), bats (they knock a
+## hunter back), swords (the best; none in the clearing by default).
+@export_range(0, 8) var loot_sticks := 3
+@export_range(0, 6) var loot_bats := 1
+@export_range(0, 6) var loot_swords := 0
+## The chance a gun lies somewhere in the clearing this round (a shotgun
+## `shotgun_share` of the time, with `rounds_in_gun` in it), and that a box of
+## rounds does (`rounds_per_box` in it). Rare, and rarer.
+@export_range(0.0, 1.0, 0.01) var gun_chance := 0.15
+@export_range(0.0, 1.0, 0.05) var shotgun_share := 0.3
+@export var rounds_in_gun := Vector2i(1, 3)
+@export_range(0.0, 1.0, 0.01) var ammo_chance := 0.08
+@export var rounds_per_box := Vector2i(2, 4)
+## The chance anything left lying by a camp in the clearing is a gun, or a box of rounds.
+@export_range(0.0, 1.0, 0.005) var camp_gun_chance := 0.03
+@export_range(0.0, 1.0, 0.005) var camp_ammo_chance := 0.02
 ## Camps (Campsite): left behind (a cold fire, a thing or two by it), and with
 ## runners resting at them round a fire whose smoke is seen from afar (the first
 ## at the edge of the woods).
@@ -204,9 +232,18 @@ func _set(property: StringName, value: Variant) -> bool:
 ## How high the ground is at (x, z), for a maze made from `seed_value`: 0 at the
 ## middle, at the foot of the clearing's walls and everywhere past them.
 func height_at(x: float, z: float, seed_value: int) -> float:
+	var height := _unflooded_height_at(x, z, seed_value)
+	# (the flooded way in to the marsh's gate: under water to his knees or waist)
+	var flood := marsh_flood_at(Vector2(x, z), seed_value)
+	if flood > 0.0:
+		height = lerpf(height, MARSH_LEVEL - marsh_flood_depth_at(Vector2(x, z), seed_value), flood)
+	return height
+
+
+func _unflooded_height_at(x: float, z: float, seed_value: int) -> float:
 	var hill := _hill_at(x, z, seed_value)
 	# (the marsh: hummocks round its water, blended into the field at its edge)
-	var wet := marsh_wet_at(Vector2(x, z), seed_value)
+	var wet := _marsh_wet_at(Vector2(x, z), seed_value)
 	if wet > 0.0:
 		return lerpf(hill, MARSH_LEVEL + _marsh_lie(Vector2(x, z), wet, seed_value), wet)
 	# (the tall grass in a hollow of its own, level at the foot of the wall)
@@ -265,8 +302,66 @@ func marsh_rect() -> Rect2:
 
 
 ## How far into the marsh `point` (x, z) is: 1 well inside it, falling to 0 at
-## its ragged edge and just out from the foot of the wall.
+## its ragged edge and just out from the foot of the wall (but for the flooded
+## way in to its gate, which is wet to the wall).
 func marsh_wet_at(point: Vector2, seed_value: int) -> float:
+	return maxf(_marsh_wet_at(point, seed_value), marsh_flood_at(point, seed_value))
+
+
+## How far behind the face of the clearing's wall the flooded way in to the
+## marsh's gate goes on (the hills' ground under the wall, and the slot through it).
+const FLOOD_BEHIND := 8.0
+
+
+## How far into the flooded way in to the marsh's gate `point` (x, z) is: 1 in
+## it, 0 out of it, raggedly between. It lies in front of the gate, from the
+## foot of the wall (and on under it) out into the marsh.
+func marsh_flood_at(point: Vector2, seed_value: int) -> float:
+	if marsh_flood_depth <= 0.0:
+		return 0.0
+	var way := entrance(Entrance.MARSH)
+	if way.is_empty():
+		return 0.0
+	var from_gate: Vector2 = point - way[0]
+	var out := from_gate.dot(way[1])
+	if out < -FLOOD_BEHIND:
+		return 0.0
+	var along := absf(from_gate.dot((way[1] as Vector2).orthogonal()))
+	var oval := Vector2(along / (marsh_flood_width * 0.5), maxf(out, 0.0) / marsh_flood_reach).length()
+	if oval > 1.3:
+		return 0.0
+	var ragged := _marsh_noise(seed_value).get_noise_2d(point.x / 13.0 + 140.0, point.y / 13.0 - 60.0) * 0.18
+	return smoothstep(1.05, 0.8, oval + ragged)
+
+
+## How deep the water of the flooded way is over its ground at `point` (x, z):
+## the flood depth at the wall and through its gate, a little shallower here
+## and there further out.
+func marsh_flood_depth_at(point: Vector2, seed_value: int) -> float:
+	var way := entrance(Entrance.MARSH)
+	if way.is_empty():
+		return marsh_flood_depth
+	var out := (point - (way[0] as Vector2)).dot(way[1])
+	var lie := _marsh_noise(seed_value).get_noise_2d(point.x / 7.0 - 90.0, point.y / 7.0 + 35.0) * 0.5 + 0.5
+	return marsh_flood_depth * lerpf(1.0, 0.7 + 0.3 * lie, smoothstep(10.0, 22.0, out))
+
+
+## The square (x, z) the flooded way lies over in front of the gate, from the
+## wall's face (and FLOOD_BEHIND under it) out (empty if there is none).
+func marsh_flood_rect() -> Rect2:
+	var way := entrance(Entrance.MARSH)
+	if way.is_empty() or marsh_flood_depth <= 0.0:
+		return Rect2()
+	var gate: Vector2 = way[0]
+	var inward: Vector2 = way[1]
+	var side := inward.orthogonal() * marsh_flood_width * 0.5 * 1.3
+	var rect := Rect2(gate - inward * FLOOD_BEHIND, Vector2.ZERO)
+	for corner: Vector2 in [gate - inward * FLOOD_BEHIND + side, gate - inward * FLOOD_BEHIND - side, gate + inward * marsh_flood_reach * 1.3 + side, gate + inward * marsh_flood_reach * 1.3 - side]:
+		rect = rect.expand(corner)
+	return rect
+
+
+func _marsh_wet_at(point: Vector2, seed_value: int) -> float:
 	var way := entrance(Entrance.MARSH)
 	if way.is_empty():
 		return 0.0

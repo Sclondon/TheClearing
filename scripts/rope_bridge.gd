@@ -28,6 +28,11 @@ var _points := PackedVector3Array()
 var _before := PackedVector3Array()
 var _planks: Array[AnimatableBody3D] = []
 var _rails: Array[MeshInstance3D] = []
+var _posts: Array[MeshInstance3D] = []
+## How far the posts at its corners stand over the deck's ends (a little past the hand
+## ropes, which are tied to their tops) and are sunk into the ledge, metres.
+const POST_HIGH := 1.1
+const POST_SUNK := 0.25
 var _piece := 0.0
 
 static var _wood: StandardMaterial3D
@@ -92,6 +97,25 @@ func _ready() -> void:
 			rail.visibility_range_end = Rope.SEEN
 			add_child(rail)
 			_rails.append(rail)
+	# A post at each corner, set into the ledge, that the hand rope and the rope
+	# under the planks are tied to (its ends do not move, so neither do they).
+	var side := (to - from).cross(Vector3.UP).normalized()
+	for end: Vector3 in [from, to]:
+		for out: float in [0.5, -0.5]:
+			var post := MeshInstance3D.new()
+			var pole := CylinderMesh.new()
+			pole.top_radius = 0.055
+			pole.bottom_radius = 0.07
+			pole.height = POST_HIGH + POST_SUNK
+			pole.radial_segments = 6
+			pole.rings = 1
+			post.mesh = pole
+			post.material_override = _wood
+			post.top_level = true
+			post.visibility_range_end = Rope.SEEN
+			add_child(post)
+			post.global_position = end + side * width * out + Vector3.UP * (POST_HIGH - POST_SUNK) * 0.5
+			_posts.append(post)
 	_lay()
 
 

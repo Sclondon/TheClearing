@@ -9,6 +9,8 @@ var main: Node
 
 
 func _initialize() -> void:
+	# (the game's own rules, not the maze editor's)
+	MazeStyle.chosen = MazeStyle.defaults()
 	main = load("res://main.tscn").instantiate()
 	main.testing = true
 	root.add_child(main)
@@ -18,6 +20,8 @@ func _initialize() -> void:
 func _run() -> void:
 	var args := OS.get_cmdline_user_args()
 	var folder: String = args[0] if args.size() > 0 else "user://round_shots"
+	# (only=<biome>: only that quarter's pictures)
+	var only: String = args[1].trim_prefix("only=") if args.size() > 1 else ""
 	DirAccess.make_dir_recursive_absolute(folder)
 	for i in 5:
 		await process_frame
@@ -50,10 +54,12 @@ func _run() -> void:
 	camera.fov = 70.0
 	camera.position = Vector3(0.0, 2400.0, 900.0)
 	camera.look_at(Vector3.ZERO)
-	await _shot(folder + "/above.png")
+	if only == "":
+		await _shot(folder + "/above.png")
 	camera.position = Vector3(plan.outermost() * 0.7, 300.0, plan.outermost() * 0.7)
 	camera.look_at(Vector3(plan.outermost() * 0.9, 0.0, 0.0))
-	await _shot(folder + "/above_rings.png")
+	if only == "":
+		await _shot(folder + "/above_rings.png")
 	world.weather.get_node("Clouds").visible = true
 	env.fog_density = fog
 	env.fog_height_density = fog_height
@@ -64,28 +70,78 @@ func _run() -> void:
 		var way := plan.ways_in[q]
 		var out := Vector3(way.x, 0.0, way.y)
 		var gap := Vector3(plan.doors[q].x, 0.0, plan.doors[q].y) + out * 14.0
+		var name: String = DesertStyle.Biome.keys()[plan.desert.biome_of(DesertStyle.quarter_at(gap.x, gap.z))].to_lower()
+		if only != "" and name != only:
+			continue
 		gap.y = maze.ground_height(gap)
 		world.put_player(gap, 0.0)
 		for i in 10:
 			await physics_frame
 		camera.position = gap + Vector3.UP * 1.7
 		camera.look_at(gap + out * 40.0 + Vector3.UP * 4.0)
-		var name: String = DesertStyle.Biome.keys()[plan.desert.biome_of(DesertStyle.quarter_at(gap.x, gap.z))].to_lower()
-		await _shot("%s/quarter_%s.png" % [folder, name])
+		await _shot("%s/quarter_%s.png" % [folder, name], 60)
+		# (and from well inside it, looking on out and then across it)
+		var inside := Vector3(plan.doors[q].x, 0.0, plan.doors[q].y) + out * 200.0
+		inside.y = maze.ground_height(inside)
+		world.put_player(inside, 0.0)
+		for i in 10:
+			await physics_frame
+		camera.position = inside + Vector3.UP * 1.7
+		camera.look_at(inside + out * 40.0 + Vector3.UP * 3.0)
+		await _shot("%s/quarter_%s_inside.png" % [folder, name], 90)
+		camera.look_at(inside + Vector3(-out.z, 0.0, out.x) * 40.0 + Vector3.UP * 3.0)
+		await _shot("%s/quarter_%s_across.png" % [folder, name], 60)
 	# A hallway in each round section: in the middle of a cell of its middle row.
-	for k in plan.rings.size():
+	for k in (plan.rings.size() if only == "" else 0):
 		var ring: RoundMaze.Ring = plan.rings[k]
 		var row: Array = ring.rows[ring.rows.size() / 2]
 		var a := RoundMaze.angle_of(3, row[2]) + RoundMaze.angle_of(1, row[2]) * 0.5
 		var r: float = (row[0] + row[1]) * 0.5
 		camera.position = RoundBuilder.at(a, r) + Vector3.UP * 1.7
 		camera.look_at(RoundBuilder.at(a + 0.08, r) + Vector3.UP * 6.0)
-		await _shot("%s/ring%d.png" % [folder, maze.rings + k + 1])
+		await _shot("%s/ring%d.png" % [folder, maze.rings + k + 2])
+		var ring_number: int = maze.rings + k + 2
+		match ring.layout:
+			RoundStyle.Layout.ROTATING_DOORS:
+				# (the first door of its middle circle, from the hall inside it, part
+				# open and edge on; and along the hall, the doors turning)
+				var c := ring.door_radii.size() / 2
+				var door: Array = ring.doors[c * (ring.style as RoundStyle).door_count]
+				var da: float = door[1]
+				var dr: float = ring.door_radii[c]
+				var inside_r: float = (ring.rows[c][0] + ring.rows[c][1]) * 0.5
+				var built: RoundBuilder = world.get_node("Maze/Round")
+				var style := ring.style as RoundStyle
+				for turn: Array in [["part", 0.25], ["open", 0.5]]:
+					var t := fposmod((PI * float(turn[1]) - door[2]) * door[3], PI) * style.door_turn_seconds / PI
+					built.set_doors_at(t)
+					camera.position = RoundBuilder.at(da + 0.004, dr - 16.0) + Vector3.UP * 1.7
+					camera.look_at(RoundBuilder.at(da, dr) + Vector3.UP * 13.0)
+					await _shot("%s/ring%d_door_%s.png" % [folder, ring_number, turn[0]])
+				built.set_doors_at(fposmod((PI * 0.3 - door[2]) * door[3], PI) * style.door_turn_seconds / PI)
+				camera.position = RoundBuilder.at(da - 34.0 / dr, dr - 8.0) + Vector3.UP * 1.7
+				camera.look_at(RoundBuilder.at(da + 0.003, dr - 2.0) + Vector3.UP * 7.0)
+				await _shot("%s/ring%d_doors_along.png" % [folder, ring_number])
+				built.time_fixed = -1.0
+			RoundStyle.Layout.TUNNEL:
+				# (along it from its middle, and in through a gate from the doors)
+				var mid: float = (ring.inner + ring.outer) * 0.5
+				var ta := plan.exit_angle + 0.3
+				camera.position = RoundBuilder.at(ta, mid) + Vector3.UP * 1.7
+				camera.look_at(RoundBuilder.at(ta + 0.04, mid - 3.0) + Vector3.UP * 3.0)
+				await _shot("%s/ring%d_tunnel.png" % [folder, ring_number])
+				var g: float = ring.gates_in[0]
+				camera.position = RoundBuilder.at(g, ring.inner - 14.0) + Vector3.UP * 1.7
+				camera.look_at(RoundBuilder.at(g, ring.inner + 6.0) + Vector3.UP * 3.0)
+				await _shot("%s/ring%d_tunnel_way_in.png" % [folder, ring_number])
+				camera.position = RoundBuilder.at(plan.exit_angle + 0.02, mid) + Vector3.UP * 1.7
+				camera.look_at(RoundBuilder.at(plan.exit_angle, ring.outer) + Vector3.UP * 3.0)
+				await _shot("%s/ring%d_tunnel_way_out.png" % [folder, ring_number])
 	quit()
 
 
-func _shot(path: String) -> void:
-	for i in 20:
+func _shot(path: String, frames := 20) -> void:
+	for i in frames:
 		await process_frame
 	root.get_texture().get_image().save_png(path)
 	print("saved ", path)

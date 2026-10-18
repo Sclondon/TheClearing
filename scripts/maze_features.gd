@@ -217,7 +217,9 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 			_climb(_edge(cell, -step, BUTTRESS.y, along), -step, high, BUTTRESS.x * 0.8)
 			var a := _edge(cell, -step, BUTTRESS.y, along) + Vector3.UP * high
 			# (along that wall runs the other way)
-			var b := _edge(far, step, 0.05, -along + _rng.randf_range(-3.0, 3.0)) + Vector3.UP * (high + _rng.randf_range(-1.5, 1.5))
+			# (on its own length of that wall, not past it where the next cell may be open:
+			# tied to the wall, not to the air)
+			var b := _edge(far, step, 0.05, clampf(-along + _rng.randf_range(-3.0, 3.0), -Maze.CELL * 0.5 + 1.5, Maze.CELL * 0.5 - 1.5)) + Vector3.UP * (high + _rng.randf_range(-1.5, 1.5))
 			_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b})
 
 	# Sewer pipes through the maze walls, high up, between halls on both sides.

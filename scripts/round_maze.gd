@@ -18,6 +18,8 @@ extends RefCounted
 const GATES := 3
 ## How wide the gap of a gate through a great wall is, metres.
 const GATE_WIDE := 8.0
+## (spreads the doors' turns evenly, however many there are)
+const GOLDEN := 0.6180339887
 
 class Ring:
 	var style: MazeStyle
@@ -34,6 +36,17 @@ class Ring:
 	var gates_out: Array[float] = []
 	## Each cell's neighbours (cell -> Array[Vector2i]), worked out once.
 	var links := {}
+	## What it is (RoundStyle.Layout): a maze, circles of rotating doors, or a tunnel.
+	var layout := 0
+	## Its rotating doors (ROTATING_DOORS): the radius of each circle of them (the
+	## middle of its wall, between two rows), how wide each doorway is and how
+	## thick and long its door, and each door: [circle, angle round, its turn at
+	## time 0, which way it turns (1 or -1)].
+	var door_radii: Array[float] = []
+	var doorway := 0.0
+	var door_thick := 0.0
+	var door_long := 0.0
+	var doors: Array = []
 
 ## The middle of the great wall the moor ends at (the first circle).
 var inner_radius := 0.0
@@ -48,6 +61,8 @@ var ways_in: Array[Vector2] = []
 var door := Vector2.ZERO
 var way_in := Vector2.RIGHT
 var desert_gates: Array[float] = []
+## What is in its quarters that are not desert (the forest, swamp and plains).
+var wilds: WildLands
 var noise_seed := 0
 var _noise: FastNoiseLite
 # Where the dunes are level: round the doors and the gates.
@@ -83,8 +98,18 @@ static func generate(maze: Maze, count: int) -> RoundMaze:
 		var ring := Ring.new()
 		ring.style = style
 		ring.inner = radius
+		ring.layout = (style as RoundStyle).layout if style is RoundStyle else RoundStyle.Layout.MAZE
 		var wide := Maze.CELL * style.hallway_diameter_cells
 		var row_count := maxi(style.section_width_cells / style.hallway_diameter_cells, 1)
+		match ring.layout:
+			RoundStyle.Layout.ROTATING_DOORS:
+				# (a row for each hall round between the circles of doors)
+				row_count = (style as RoundStyle).door_circles + 1
+				wide = Maze.CELL * style.section_width_cells / row_count
+			RoundStyle.Layout.TUNNEL:
+				# (one row: the tunnel, wall middle to wall middle)
+				row_count = 1
+				wide = (style as RoundStyle).tunnel_width + MazeBuilder.RING_THICK
 		var r := radius
 		for i in row_count:
 			var cells := maxi(roundi(TAU * (r + wide * 0.5) / wide), 8)
@@ -100,6 +125,7 @@ static func generate(maze: Maze, count: int) -> RoundMaze:
 	for side: Vector2 in [Vector2(0, -1), Vector2(1, 0), Vector2(0, 1), Vector2(-1, 0)]:
 		gates.append(fposmod(side.angle() + made._rng.randf_range(-0.3, 0.3), TAU))
 	made.desert_gates = gates.duplicate()
+	made.wilds = WildLands.make(made, maze.maze_seed)
 	for k in made.rings.size():
 		gates = made._carve(made.rings[k], gates, k == made.rings.size() - 1)
 	made.exit_angle = gates[0]
@@ -146,6 +172,15 @@ func desert_height(x: float, z: float) -> float:
 	# (ridged: sharp crests between broad hollows, as dunes)
 	var ridge := 1.0 - absf(_noise.get_noise_2d(x, z * 0.6))
 	return desert.dune_height * shown * ridge * ridge
+
+
+## How high the ground is at (x, z) in the desert ring: the dunes of its desert
+## quarters, the hummocks of a swamp and the hills of the plains (WildLands).
+func ground_at(x: float, z: float) -> float:
+	var dunes := desert_height(x, z)
+	if wilds == null:
+		return dunes
+	return dunes + wilds.ground_at(Vector2(x, z))
 
 
 ## The radius past which one has got out.
@@ -209,6 +244,8 @@ func _neighbours(ring: Ring, cell: Vector2i) -> Array[Vector2i]:
 ## the newest cell, going on the way it went), from gates spaced round its
 ## inside; then knocks through its loop share; then picks its ways out.
 func _carve(ring: Ring, gates: Array[float], last: bool) -> Array[float]:
+	if ring.layout != RoundStyle.Layout.MAZE:
+		return _open_up(ring, gates, last)
 	var style := ring.style
 	var inside: int = ring.rows[0][2]
 	ring.gates_in = gates
@@ -252,15 +289,65 @@ func _carve(ring: Ring, gates: Array[float], last: bool) -> Array[float]:
 			ring.open[_key(cell, other)] = true
 	# (no wall between cells across the gap of a gate: the gap would be shut)
 	_clear_gaps(ring, 0, ring.gates_in)
-	# The ways out: into the next section, or (the last) out of the maze.
-	# (each in the middle of a cell of the last row)
+	_ways_out(ring, last)
+	_clear_gaps(ring, ring.rows.size() - 1, ring.gates_out)
+	return ring.gates_out
+
+
+# The ways out of `ring`: into the next section, or (the last) out of the maze.
+# (each in the middle of a cell of the last row)
+func _ways_out(ring: Ring, last: bool) -> void:
 	var outside: int = ring.rows.back()[2]
 	var out_start := _rng.randi() % outside
 	for g in (1 if last else GATES):
 		var j := posmod(out_start + g * outside / GATES, outside)
 		ring.gates_out.append((angle_of(j, outside) + angle_of(j + 1, outside)) * 0.5)
-	_clear_gaps(ring, ring.rows.size() - 1, ring.gates_out)
+
+
+## A section that is not a maze (rotating doors, or a tunnel): nothing walls its
+## cells apart (the doors open, in time, between its halls); its doors placed;
+## its ways out picked.
+func _open_up(ring: Ring, gates: Array[float], last: bool) -> Array[float]:
+	ring.gates_in = gates
+	for i in ring.rows.size():
+		for j in ring.rows[i][2]:
+			for next: Vector2i in _neighbours(ring, Vector2i(i, j)):
+				ring.open[_key(Vector2i(i, j), next)] = true
+	if ring.layout == RoundStyle.Layout.ROTATING_DOORS:
+		var style := ring.style as RoundStyle
+		ring.door_thick = clampf(style.maze_wall_diameter * 0.5, 0.8, 2.0)
+		ring.doorway = style.door_gap_width * 2.0 + ring.door_thick
+		# (a little short of the doorway, so that shut it clears the wall's ends)
+		ring.door_long = ring.doorway - 0.3
+		for c in ring.rows.size() - 1:
+			ring.door_radii.append(ring.rows[c][1])
+			# (each circle's doorways evenly round it, from a start of its own; its doors
+			# all turning the same way, the next circle's the other, their turns spread
+			# evenly over a half turn, so that one of them is always near open)
+			var spread := _rng.randf() * PI
+			var start := _rng.randf() * TAU
+			var way := 1 if c % 2 == 0 else -1
+			for n in style.door_count:
+				ring.doors.append([c, fposmod(start + TAU * n / style.door_count, TAU), fposmod(spread + n * GOLDEN * PI, PI), way])
+	_ways_out(ring, last)
 	return ring.gates_out
+
+
+## How far door `n` of `ring` has turned at `time` (seconds of the round, the
+## same on every machine), radians from shut (along its circle): edge on (open)
+## at a half turn, and so every half turn.
+static func door_turn(ring: Ring, n: int, time: float) -> float:
+	var door: Array = ring.doors[n]
+	var style := ring.style as RoundStyle
+	return fposmod(door[2] + door[3] * PI * time / style.door_turn_seconds, TAU)
+
+
+## How wide the way through is either side of door `n` of `ring` at `time`,
+## metres: from the wall's end to as far across the doorway as the door reaches.
+static func door_gap(ring: Ring, n: int, time: float) -> float:
+	var turn := door_turn(ring, n, time)
+	var reach := ring.door_long * 0.5 * absf(cos(turn)) + ring.door_thick * 0.5 * absf(sin(turn))
+	return maxf(ring.doorway * 0.5 - reach, 0.0)
 
 
 ## Joins the cells of row `i` either side of any wall between them that would

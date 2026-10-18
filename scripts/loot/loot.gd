@@ -30,12 +30,24 @@ extends Node3D
 ## in front of him, it is fed to the dog (`feed`). A dog fed meat (hungry, or
 ## twice) is the friend of whoever gave it (MazeDog.feed).
 ##
+## FIGHTING BACK (DESIGN.md: "Fighting back"). A stick, a bat or a sword is held
+## as a bat is (Player swings it with the act button; `swing_hits` sees what it
+## meets as it comes round: a stagger and a shove, its own; a stick or a bat
+## wears and breaks). A revolver or a shotgun is fired (Player._fire calls
+## LootItem.fire, which comes to `gun_fire`): `shoot` finds what it hits, which is
+## felled (Stagger.fell) or staggered; `noise` brings what hunts to it. Rounds
+## left in a gun go with it (LootItem.uses); boxes of rounds go loose into
+## `ammo` and load an empty gun (`_reload`). How rare each is is the sections'
+## rules (`_roll`, `_arm`, `maze_mix`).
+##
 ## In the room: who has what in their hand, what is dropped or thrown (and where
 ## it comes to rest), torches lit and out, camps lit, ladders hung and things
 ## used up are all told to everyone (K_JSON {"loot": ...}), passed on by the
 ## host as the rest of the room's news is. A spear's stagger and a flare's lure
 ## work where the hunters are run (alone, or on the host): a guest's spear asks
-## the host to stagger what it hit.
+## the host to stagger what it hit. So do a guest's blows and shots; a swing and
+## a shot are seen (and a shot heard) by everyone ("swing", "shot"), and a hunter
+## felled is felled on every copy ("felled", from the host).
 
 ## Said to the HUD: the inventory or what is in reach has changed.
 signal changed
@@ -74,21 +86,42 @@ const LADDER_DROP := Vector2(2.4, 16.0)
 ## The dev panel's buttons: what it puts in ahead of him.
 const DEV := [
 	["+ HOOK", "hook"], ["+ BACKPACK", "backpack"], ["+ SPEAR", "spear"], ["+ TORCH", "torch"], ["+ FLARE", "flare"],
-	["+ MAP", "map"], ["+ LADDER", "ladder"], ["+ MEAT", "meat"], ["+ CARCASS", "carcass"],
+	["+ MAP", "map"], ["+ LADDER", "ladder"], ["+ STICK", "stick"], ["+ BAT", "bat"], ["+ SWORD", "sword"],
+	["+ REVOLVER", "revolver"], ["+ SHOTGUN", "shotgun"], ["+ ROUNDS", "rounds"], ["+ SHELLS", "shells"],
+	["+ MEAT", "meat"], ["+ CARCASS", "carcass"],
 	["+ CAMP", "camp"], ["+ CAMP (LIT)", "camp_lit"],
 ]
 const DEV_KINDS := {
 	"hook": LootItem.Kind.HOOK, "backpack": LootItem.Kind.BACKPACK, "spear": LootItem.Kind.SPEAR,
 	"torch": LootItem.Kind.TORCH, "flare": LootItem.Kind.FLARE, "map": LootItem.Kind.MAP, "ladder": LootItem.Kind.LADDER,
-	"meat": LootItem.Kind.MEAT,
+	"stick": LootItem.Kind.STICK, "bat": LootItem.Kind.BAT, "sword": LootItem.Kind.SWORD,
+	"revolver": LootItem.Kind.REVOLVER, "shotgun": LootItem.Kind.SHOTGUN, "rounds": LootItem.Kind.ROUNDS,
+	"shells": LootItem.Kind.SHELLS, "meat": LootItem.Kind.MEAT,
 }
 ## What a camp left behind has lying by it, and what is lying in the maze's
 ## halls, by how likely each is (kind, weight). (Now and then a camp's meat,
-## hung up and forgotten.)
+## hung up and forgotten.) The maze's weapons are weighed in by each section's
+## style (MazeStyle: stick, bat and sword weights), and guns and boxes of rounds
+## by its chances (`_roll`).
 const CAMP_MIX := [[LootItem.Kind.TORCH, 3], [LootItem.Kind.FLARE, 2], [LootItem.Kind.MAP, 2], [LootItem.Kind.SPEAR, 2],
-	[LootItem.Kind.LADDER, 1], [LootItem.Kind.HOOK, 1], [LootItem.Kind.MEAT, 1]]
+	[LootItem.Kind.LADDER, 1], [LootItem.Kind.HOOK, 1], [LootItem.Kind.STICK, 2], [LootItem.Kind.BAT, 1], [LootItem.Kind.MEAT, 1]]
 const MAZE_MIX := [[LootItem.Kind.FLARE, 3], [LootItem.Kind.MAP, 3], [LootItem.Kind.TORCH, 2], [LootItem.Kind.SPEAR, 2],
 	[LootItem.Kind.HOOK, 1], [LootItem.Kind.LADDER, 1], [LootItem.Kind.BACKPACK, 1]]
+## A shot is heard by what hunts this near, metres (it goes to see), and who fired
+## it is known to what hunts this near (it goes after them).
+const SHOT_HEARD := 90.0
+const SHOT_KNOWN := 40.0
+## What a shot does to what it does not fell (out of a gun's `fells` reach, or too
+## big for a bullet): a long stagger.
+const SHOT_SECONDS := 5.0
+const SHOT_SHOVE := 1.8
+## What a bullet does not fell, only staggers: the great and the unnatural. (By
+## class name; the swarms, MazeEnemy.fears_fire, are not hit at all.)
+const BULLETPROOF := [&"Apophis", &"MazeColossus", &"MazeTripod", &"MazeAngel", &"MazeGargoyle", &"MazeSlimeWall",
+	&"MazeFleshMound", &"Abomination", &"Centipede", &"MazeSkinwalker", &"Griever"]
+## With something to fight with in his hand, the act button fights (not takes
+## what lies at his feet) when anything that hunts is this near.
+const FIGHT_NEAR := 7.0
 
 ## Where in the clearing something is put.
 enum Region { WOODS, TALL_GRASS, POND, FIELD }
@@ -106,6 +139,11 @@ var slots: Array[int] = []
 var hand := -1
 ## Whether he wears a backpack.
 var pack := false
+## His spare rounds, by the kind of box (LootItem.Kind.ROUNDS, SHELLS): taken from
+## boxes found, loaded into a gun when it is empty. They take no slot.
+var ammo := {LootItem.Kind.ROUNDS: 0, LootItem.Kind.SHELLS: 0}
+## Seconds left loading the gun in his hand (0: not).
+var reloading := 0.0
 ## What is in reach to take now (for the HUD's prompt), or null.
 var in_reach: Node3D
 ## What the act button would do now, for the HUD ("TAKE THE TORCH", "CUT MEAT
@@ -126,6 +164,9 @@ var _thrown := {}
 var _lures := {}
 var _meat_in := 0.0
 var _base_speeds := Vector2.ZERO
+var _base_swing := 0.6
+var _swing_was := 1.0
+var _reload_item: Node3D
 var _rng := RandomNumberGenerator.new()
 ## (x, z) circles where the grass is trodden down, by 10 m square: [middle, radius].
 var _trodden := {}
@@ -154,6 +195,7 @@ func attach(player: Player) -> void:
 	# (his seat, for what is given by him: a dog fed meat is the friend of a seat, MazeDog)
 	player.set_meta(&"seat", world.slot)
 	_base_speeds = Vector2(player.run_speed, player.sprint_speed)
+	_base_swing = player.swing_time
 	slots.resize(SLOTS)
 	slots.fill(-1)
 
@@ -177,7 +219,7 @@ func populate(seed_value: int) -> void:
 			continue
 		spots.append(spot)
 		var at := Vector3(spot.x, maze.ground_height(Vector3(spot.x, 0.0, spot.y)), spot.y)
-		add_camp(at, Campsite.Kind.OCCUPIED if i < occupied else Campsite.Kind.ABANDONED, _rng.randi(), false)
+		add_camp(at, Campsite.Kind.OCCUPIED if i < occupied else Campsite.Kind.ABANDONED, _rng.randi(), false, look)
 	# What lies about the clearing, kind by kind, among the woods' edge, the tall
 	# grass and by the pond (and anywhere in the field), off the middle where
 	# everyone wakes and the ways to the gates.
@@ -186,13 +228,20 @@ func populate(seed_value: int) -> void:
 		[LootItem.Kind.SPEAR, &"loot_spears", 2], [LootItem.Kind.TORCH, &"loot_torches", 2],
 		[LootItem.Kind.FLARE, &"loot_flares", 1], [LootItem.Kind.MAP, &"loot_maps", 1],
 		[LootItem.Kind.LADDER, &"loot_ladders", 1],
+		[LootItem.Kind.STICK, &"loot_sticks", 3], [LootItem.Kind.BAT, &"loot_bats", 1], [LootItem.Kind.SWORD, &"loot_swords", 0],
 	]
+	# (now and then a gun, and more rarely a box of rounds: by chance, from the seed)
+	var shotgun_share: float = _rule(look, &"shotgun_share", 0.3)
+	if _rng.randf() < _rule(look, &"gun_chance", 0.15):
+		counts.append([LootItem.Kind.SHOTGUN if _rng.randf() < shotgun_share else LootItem.Kind.REVOLVER, &"", 1])
+	if _rng.randf() < _rule(look, &"ammo_chance", 0.08):
+		counts.append([LootItem.Kind.SHELLS if _rng.randf() < shotgun_share else LootItem.Kind.ROUNDS, &"", 1])
 	var spread: Array[Vector2] = []
 	for camp in camps:
 		spread.append(Vector2(camp.position.x, camp.position.z))
 	var region := 0
 	for entry: Array in counts:
-		var count: int = look.get(entry[1]) if look.get(entry[1]) != null else entry[2]
+		var count: int = entry[2] if entry[1] == &"" else (look.get(entry[1]) if look.get(entry[1]) != null else entry[2])
 		for i in count:
 			var spot := _clearing_spot(region % 4, spread, 9.0, 40.0, 12.0)
 			region += 1
@@ -201,7 +250,7 @@ func populate(seed_value: int) -> void:
 			spread.append(spot)
 			var at := Vector3(spot.x, 0.0, spot.y)
 			at.y = maze.ground_height(at) + 0.02
-			_place(entry[0], at, _rng.randf_range(0.0, TAU))
+			_arm(_place(entry[0], at, _rng.randf_range(0.0, TAU)), look, _rng)
 			_tread(spot, 0.75)
 	# The maze, ring by ring (the square ones): a camp or so left in a wide hall
 	# or a dead end, and things lying in dead ends and well into its halls.
@@ -260,9 +309,9 @@ func _populate_ring(ring: int, style: MazeStyle) -> void:
 			for step: Vector2i in Maze.STEPS:
 				if not maze.blocked(cell, step) and maze.ring_of(cell + step) == ring:
 					middle += Vector3(step.x, 0.0, step.y) * Maze.CELL * 0.5
-		if not nav.clear_of_walls(middle, 3.0):
+		if not nav.clear_of_walls(middle, 3.0) or not _off_heaps(middle, 4.5):
 			continue
-		var camp := add_camp(middle, Campsite.Kind.ABANDONED, _rng.randi(), true)
+		var camp := add_camp(middle, Campsite.Kind.ABANDONED, _rng.randi(), true, style)
 		for step: Vector2i in Maze.STEPS:
 			if maze.blocked(cell, step):
 				# (the tallies on the wall at the end of the hall, found once the walls are solid)
@@ -278,17 +327,25 @@ func _populate_ring(ring: int, style: MazeStyle) -> void:
 		if cell in used:
 			continue
 		var at := nav.point(cell) + Vector3(_rng.randf_range(-2.5, 2.5), 0.0, _rng.randf_range(-2.5, 2.5))
-		if not nav.clear_of_walls(at, 1.4):
+		if not nav.clear_of_walls(at, 1.4) or not _off_heaps(at, 0.5):
 			at = nav.point(cell)
+			if not _off_heaps(at, 0.5):
+				continue
 		at.y = maze.ground_height(at) + 0.02
-		_place(_pick(MAZE_MIX), at, _rng.randf_range(0.0, TAU))
+		_arm(_place(_roll(maze_mix(style), style, _rng), at, _rng.randf_range(0.0, TAU)), style, _rng)
 		used.append(cell)
 		loose -= 1
 
 
+## Whether `at` is clear of the heaps of boxes and barrels (MazeProps) by `margin`.
+func _off_heaps(at: Vector3, margin: float) -> bool:
+	var built := world.get_node_or_null(^"Maze") as MazeBuilder if world else null
+	return built == null or built.props == null or not built.props.near_heap(at, margin)
+
+
 ## Puts in a camp of `kind` at `at` (on the ground), with what lies by it, and
 ## (with people at it) its runners sat round the fire.
-func add_camp(at: Vector3, kind: Campsite.Kind, seed_value: int, in_maze: bool) -> Campsite:
+func add_camp(at: Vector3, kind: Campsite.Kind, seed_value: int, in_maze: bool, rules: Resource = null) -> Campsite:
 	var camp := Campsite.new(kind, seed_value, in_maze)
 	camp.name = "Camp%d" % camps.size()
 	camp.ground = maze.ground_height
@@ -303,7 +360,7 @@ func add_camp(at: Vector3, kind: Campsite.Kind, seed_value: int, in_maze: bool) 
 	for i in mini(left, camp.stash.size()):
 		var spot := camp.global_transform * camp.stash[i]
 		spot.y = maze.ground_height(spot) + 0.02
-		_place(_pick(CAMP_MIX, r), spot, r.randf_range(0.0, TAU))
+		_arm(_place(_roll(CAMP_MIX, rules, r, "camp_" if rules is ClearingStyle else ""), spot, r.randf_range(0.0, TAU)), rules, r)
 	if kind == Campsite.Kind.OCCUPIED:
 		var sitting := r.randi_range(2, 3)
 		for i in sitting:
@@ -334,6 +391,7 @@ func _place(kind: LootItem.Kind, at: Vector3, yaw: float, id := -1) -> Node3D:
 	item.name = "Loot%d" % id
 	add_child(item)
 	item.call(&"lay_at", at, yaw)
+	item.set(&"loot", self)
 	item.connect(&"released", _on_released)
 	item.connect(&"rested", _on_rested)
 	if item.has_signal(&"eaten"):
@@ -345,16 +403,66 @@ func _place(kind: LootItem.Kind, at: Vector3, yaw: float, id := -1) -> Node3D:
 	return item
 
 
+## A rule of a section's (or the clearing's) style, or `otherwise` if it has none.
+static func _rule(rules: Resource, setting: StringName, otherwise: Variant) -> Variant:
+	if rules == null:
+		return otherwise
+	var value: Variant = rules.get(setting)
+	return otherwise if value == null else value
+
+
+## What lies in a section's halls, by weight: MAZE_MIX and its style's weapons.
+static func maze_mix(style: Resource) -> Array:
+	var mix := MAZE_MIX.duplicate()
+	mix.append([LootItem.Kind.STICK, _rule(style, &"stick_weight", 3)])
+	mix.append([LootItem.Kind.BAT, _rule(style, &"bat_weight", 2)])
+	mix.append([LootItem.Kind.SWORD, _rule(style, &"sword_weight", 1)])
+	return mix
+
+
+## One thing to leave lying, by the rules (a MazeStyle or the ClearingStyle, or
+## null for the defaults): a gun `gun_chance` of the time (a shotgun
+## `shotgun_share` of those), a box of rounds `ammo_chance` of the time, and
+## otherwise one of `mix` by weight. (`prefix`: "camp_" for the clearing's camps, which have chances of their own.)
+func _roll(mix: Array, rules: Resource, r: RandomNumberGenerator, prefix := "") -> LootItem.Kind:
+	var roll := r.randf()
+	var guns: float = _rule(rules, StringName(prefix + "gun_chance"), 0.04)
+	var boxes: float = _rule(rules, StringName(prefix + "ammo_chance"), 0.025)
+	if roll < guns:
+		return LootItem.Kind.SHOTGUN if r.randf() < float(_rule(rules, &"shotgun_share", 0.3)) else LootItem.Kind.REVOLVER
+	if roll < guns + boxes:
+		return LootItem.Kind.SHELLS if r.randf() < float(_rule(rules, &"shotgun_share", 0.3)) else LootItem.Kind.ROUNDS
+	return _pick(mix, r)
+
+
+## Sets what `item` has in it by the rules: the rounds in a gun (`rounds_in_gun`)
+## or a box (`rounds_per_box`), the blows a stick or a bat has in it before it
+## breaks. From `r`, so the same on every copy.
+func _arm(item: Node3D, rules: Resource, r: RandomNumberGenerator) -> void:
+	if item == null:
+		return
+	var kind: int = item.get(&"kind")
+	if kind in LootItem.GUNS:
+		var span: Vector2i = _rule(rules, &"rounds_in_gun", Vector2i(1, 3))
+		item.set(&"uses", clampi(r.randi_range(span.x, span.y), 0, LootItem.GUNS[kind]["capacity"]))
+	elif kind in LootItem.BOX_FOR:
+		var span: Vector2i = _rule(rules, &"rounds_per_box", Vector2i(2, 4))
+		item.set(&"uses", r.randi_range(span.x, span.y))
+	elif kind in LootItem.MELEE:
+		var blows: Vector2i = LootItem.MELEE[kind]["uses"]
+		item.set(&"uses", r.randi_range(blows.x, blows.y))
+
+
 ## One of `mix` ([kind, weight]...), by weight.
 func _pick(mix: Array, r: RandomNumberGenerator = null) -> LootItem.Kind:
 	var with := r if r else _rng
 	var total := 0
 	for entry: Array in mix:
-		total += int(entry[1])
-	var roll := with.randi_range(1, total)
+		total += maxi(int(entry[1]), 0)
+	var roll := with.randi_range(1, maxi(total, 1))
 	for entry: Array in mix:
-		roll -= int(entry[1])
-		if roll <= 0:
+		roll -= maxi(int(entry[1]), 0)
+		if roll <= 0 and int(entry[1]) > 0:
 			return entry[0]
 	return mix[0][0]
 
@@ -472,6 +580,9 @@ func act(player: Player) -> bool:
 		if dog:
 			feed(dog, held)
 			return true
+	# (something to fight with in his hand, and something that hunts near: he fights)
+	if held and held.has_method(&"weapon") and held.call(&"weapon") and hunter_near(player.global_position, FIGHT_NEAR):
+		return false
 	var found := nearest(player)
 	if found == null and player.is_on_floor():
 		var carcass := carcass_near(player)
@@ -491,6 +602,8 @@ func act(player: Player) -> bool:
 		if pack:
 			said.emit("YOU HAVE A BACKPACK")
 			return true
+	elif found.get(&"kind") in LootItem.BOX_FOR:
+		pass
 	elif slots.find(-1) < 0:
 		# (with something in his hand, the button is for that: he throws it)
 		if hand >= 0:
@@ -561,6 +674,17 @@ func _got(id: int, seat: int) -> void:
 				slots[i] = -1
 			item.call(&"spend")
 			said.emit("A BACKPACK: ROOM FOR FOUR")
+		elif kind in LootItem.BOX_FOR:
+			# (a box of rounds goes in his pocket loose: it takes no slot)
+			var rounds: int = item.get(&"uses")
+			ammo[kind] = int(ammo[kind]) + rounds
+			item.call(&"spend")
+			LootGunFx.play(self, "pickup_1", world.player.global_position, -8.0, 8.0)
+			said.emit("%d %s" % [rounds, "REVOLVER ROUNDS" if kind == LootItem.Kind.ROUNDS else "SHOTGUN SHELLS"] if rounds != 1 else ("A REVOLVER ROUND" if kind == LootItem.Kind.ROUNDS else "A SHOTGUN SHELL"))
+			# (and a gun in his hand that is empty is loaded with them)
+			var held := _item(hand)
+			if held and held.get(&"kind") == LootItem.BOX_FOR[kind] and int(held.get(&"uses")) <= 0:
+				_reload(held)
 		else:
 			var free := slots.find(-1)
 			if free < 0:
@@ -568,8 +692,14 @@ func _got(id: int, seat: int) -> void:
 				_put_down(item, world.player.global_position + Vector3.UP * 0.4, Vector3.ZERO)
 				return
 			slots[free] = id
-			said.emit(String(item.call(&"title")))
+			if kind in LootItem.GUNS:
+				var rounds: int = item.get(&"uses")
+				said.emit("A %s: %s" % [String(item.call(&"title")), "EMPTY" if rounds == 0 else ("ONE ROUND IN IT" if rounds == 1 else "%d ROUNDS IN IT" % rounds)])
+			else:
+				said.emit(String(item.call(&"title")))
 		changed.emit()
+	elif kind in LootItem.BOX_FOR:
+		item.call(&"spend")
 	elif kind == LootItem.Kind.BACKPACK:
 		item.call(&"spend")
 		var other: RemotePlayer = world.remotes.get(seat)
@@ -631,6 +761,10 @@ func draw(i: int) -> void:
 	player._carry_ease = 1.0
 	if item.get(&"kind") == LootItem.Kind.TORCH:
 		item.call(&"set_lit", true)
+	# (each weapon swings at its own speed)
+	var kind: int = item.get(&"kind")
+	player.swing_time = LootItem.MELEE[kind]["swing"] if kind in LootItem.MELEE else _base_swing
+	_swing_was = 1.0
 	_tell_hand(item)
 	changed.emit()
 
@@ -639,6 +773,7 @@ func draw(i: int) -> void:
 func stow() -> void:
 	var item := _item(hand)
 	hand = -1
+	reloading = 0.0
 	if item == null:
 		changed.emit()
 		return
@@ -670,6 +805,7 @@ func _on_released(item: Node3D) -> void:
 	if id != hand:
 		return
 	hand = -1
+	reloading = 0.0
 	var i := slots.find(id)
 	if i >= 0:
 		slots[i] = -1
@@ -728,6 +864,11 @@ func _spend(id: int, tell := true) -> void:
 	var item := _item(id)
 	if item:
 		item.call(&"spend")
+		# (out of a friend's hand too, if it was in one)
+		for seat: Variant in world.remotes:
+			var other: RemotePlayer = world.remotes[seat]
+			if is_instance_valid(other) and other.carried == item:
+				other.carried = null
 	owners[id] = -2
 	if tell and world.online:
 		Net.send_json(Net.BROADCAST, {"loot": "spent", "id": id})
@@ -739,7 +880,7 @@ func _tell_hand(item: Node3D) -> void:
 	if item == null:
 		Net.send_json(Net.BROADCAST, {"loot": "hand", "id": -1, "seat": world.slot})
 	else:
-		Net.send_json(Net.BROADCAST, {"loot": "hand", "id": item.get(&"loot_id"), "seat": world.slot, "lit": item.get(&"lit"), "fuel": item.get(&"fuel")})
+		Net.send_json(Net.BROADCAST, {"loot": "hand", "id": item.get(&"loot_id"), "seat": world.slot, "lit": item.get(&"lit"), "fuel": item.get(&"fuel"), "uses": item.get(&"uses")})
 
 
 # --- Using things ----------------------------------------------------------------
@@ -1039,6 +1180,13 @@ func _physics_process(delta: float) -> void:
 		if _lures[id] <= 0.0:
 			_lures[id] = LURE_EVERY
 			lure(flare.global_position, landing)
+	# Something to fight with in his hand: a swing coming round, a gun being loaded.
+	if hand >= 0:
+		var held := _item(hand)
+		if held:
+			_fight_step(player, held)
+	if reloading > 0.0:
+		_reload_step(delta)
 	# Walking into ivy with something in his hand, he puts it away to take hold.
 	_ivy_in -= delta
 	if hand >= 0 and _ivy_in <= 0.0:
@@ -1079,7 +1227,7 @@ func _tell_flight(item: Node3D) -> void:
 	var at := item.global_position
 	var going := (item as RigidBody3D).linear_velocity
 	Net.send_json(Net.BROADCAST, {"loot": "drop", "id": item.get(&"loot_id"), "kind": item.get(&"kind"), "seat": world.slot,
-		"at": [at.x, at.y, at.z], "vel": [going.x, going.y, going.z], "lit": item.get(&"lit"), "fuel": item.get(&"fuel")})
+		"at": [at.x, at.y, at.z], "vel": [going.x, going.y, going.z], "lit": item.get(&"lit"), "fuel": item.get(&"fuel"), "uses": item.get(&"uses")})
 
 
 ## A thrown spear in the air: anything that hunts that it passes near enough is staggered.
@@ -1118,16 +1266,15 @@ func hunters() -> Array[Node3D]:
 	return found
 
 
-## Staggers `hunter` along `push`: here, where the hunters are run, or by asking the host.
-func stagger(hunter: Node3D, push: Vector3) -> void:
+## Staggers `hunter` along `push` for `seconds`, shoved `shove`: here, where the
+## hunters are run, or by asking the host.
+func stagger(hunter: Node3D, push: Vector3, seconds := Stagger.SECONDS, shove := Stagger.SHOVE) -> void:
 	if not world.online or Net.is_host:
-		Stagger.hit(hunter, push)
+		Stagger.hit(hunter, push, seconds, shove)
 		return
-	var index := world.enemies.enemies.find(hunter) if world.enemies else -1
-	if hunter == world.griever:
-		index = -2
+	var index := _hunter_index(hunter)
 	if index != -1:
-		Net.send_json(Net.BROADCAST, {"loot": "stagger", "enemy": index, "push": [push.x, push.z]})
+		Net.send_json(Net.BROADCAST, {"loot": "stagger", "enemy": index, "push": [push.x, push.z], "secs": seconds, "shove": shove})
 
 
 ## A flare burning at `at`: (where the hunters are run) what hunts within
@@ -1153,6 +1300,290 @@ func _item(id: int) -> Node3D:
 	return item if item != null and is_instance_valid(item) else null
 
 
+# --- Fighting back ------------------------------------------------------------------
+
+## Whether anything that hunts is within `reach` of `at` (level).
+func hunter_near(at: Vector3, reach: float) -> bool:
+	for hunter in hunters():
+		var to := hunter.global_position - at
+		if Vector2(to.x, to.z).length() < reach + _girth(hunter) and absf(to.y) < 6.0:
+			return true
+	return false
+
+
+## Every step with something to fight with in his hand: a swing begun (told to
+## the room), and the moment it comes round (what it meets).
+func _fight_step(player: Player, held: Node3D) -> void:
+	var kind: int = held.get(&"kind")
+	if not kind in LootItem.MELEE:
+		_swing_was = 1.0
+		return
+	var now := player.swing_progress
+	if _swing_was >= 1.0 and now < 1.0 and world.online:
+		Net.send_json(Net.BROADCAST, {"loot": "swing", "seat": world.slot})
+	if _swing_was < Player.SWING_HITS and now >= Player.SWING_HITS:
+		swing_hits(player, held)
+	_swing_was = now
+
+
+## The weapon in his hands comes round: what hunts in front of him within its
+## reach is staggered and shoved back (the first it meets; all of them, for a
+## sword). Not one already reeling, or just come out of it (Stagger.open_to_blows):
+## it is only shoved. A stick or a bat wears with each blow that lands, and
+## breaks. Returns how many it hit.
+func swing_hits(player: Player, held: Node3D) -> int:
+	var kind: int = held.get(&"kind")
+	var spec: Dictionary = LootItem.MELEE[kind]
+	var facing := Vector3(sin(player.facing_yaw), 0.0, cos(player.facing_yaw))
+	var targets: Array = []
+	for hunter in hunters():
+		if hunter.get(&"fears_fire") == true:
+			continue
+		var to := hunter.global_position - player.global_position
+		var level := Vector3(to.x, 0.0, to.z)
+		var reach := level.length() - _girth(hunter)
+		if reach > spec["reach"] or to.y < -2.0 or to.y > 2.6:
+			continue
+		if level.length() > 0.4 and level.normalized().dot(facing) < 0.2:
+			continue
+		targets.append([reach, hunter])
+	if targets.is_empty():
+		return 0
+	targets.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	if not spec["cleaves"]:
+		targets.resize(1)
+	for entry: Array in targets:
+		var hunter: Node3D = entry[1]
+		if Stagger.open_to_blows(hunter):
+			stagger(hunter, facing, spec["seconds"], spec["shove"])
+		else:
+			# (still reeling: knocked on a little, no more)
+			stagger(hunter, facing, 0.0, spec["shove"] * 0.4)
+	LootGunFx.play(self, "impact_wood", held.global_position, -2.0 if kind == LootItem.Kind.STICK else 0.0, 30.0,
+		1.25 if kind == LootItem.Kind.STICK else (0.8 if kind == LootItem.Kind.SWORD else 1.0))
+	var left: int = held.get(&"uses")
+	if left > 0:
+		held.set(&"uses", left - 1)
+		if left - 1 <= 0:
+			_broken(held)
+	return targets.size()
+
+
+## A stick or a bat has broken on a blow: out of his hand and gone.
+func _broken(item: Node3D) -> void:
+	var id: int = item.get(&"loot_id")
+	if id == hand:
+		_stowing = true
+		world.player.let_go()
+		_stowing = false
+		hand = -1
+	var i := slots.find(id)
+	if i >= 0:
+		slots[i] = -1
+	_spend(id)
+	_tell_hand(null)
+	LootGunFx.play(self, "impact_wood", item.global_position, 2.0, 30.0, 1.5)
+	said.emit("THE STICK SNAPS" if item.get(&"kind") == LootItem.Kind.STICK else "THE BAT SPLITS")
+	changed.emit()
+
+
+## The gun in his hand: the trigger pulled (LootItem.fire, from Player._fire).
+## Loaded, it goes off: what it hits is felled or staggered, what hunts hears
+## it, the room sees it. Empty, it clicks, or is loaded from his spare rounds
+## if he has any. True if it went off.
+func gun_fire(item: Node3D, shooter: Node3D, aim: Vector3) -> bool:
+	if reloading > 0.0:
+		return false
+	var kind: int = item.get(&"kind")
+	var spec: Dictionary = LootItem.GUNS[kind]
+	var rounds: int = item.get(&"uses")
+	if rounds <= 0:
+		if int(ammo[spec["ammo"]]) > 0:
+			_reload(item)
+		else:
+			LootGunFx.play(self, "dry", item.global_position, -4.0, 6.0)
+			said.emit("CLICK. NO ROUNDS LEFT")
+		return false
+	item.set(&"uses", rounds - 1)
+	var muzzle: Transform3D = item.call(&"muzzle")
+	aim = aim.normalized() if aim.length_squared() > 0.0001 else -muzzle.basis.z.normalized()
+	var end := shoot(muzzle.origin, aim, kind, shooter)
+	LootGunFx.shot(self, muzzle, end, kind)
+	noise(muzzle.origin, shooter)
+	if world.online:
+		Net.send_json(Net.BROADCAST, {"loot": "shot", "seat": world.slot, "id": item.get(&"loot_id"), "kind": kind,
+			"from": [muzzle.origin.x, muzzle.origin.y, muzzle.origin.z], "to": [end.x, end.y, end.z], "uses": rounds - 1})
+	if rounds - 1 <= 0:
+		if int(ammo[spec["ammo"]]) > 0:
+			_reload(item)
+		else:
+			said.emit("THAT WAS THE LAST ROUND")
+	changed.emit()
+	return true
+
+
+## Loads the gun from his spare rounds (it takes a moment: LootItem.GUNS reload).
+func _reload(item: Node3D) -> void:
+	if reloading > 0.0:
+		return
+	reloading = LootItem.GUNS[item.get(&"kind")]["reload"]
+	_reload_item = item
+	LootGunFx.play(self, "break_open", item.global_position, -6.0, 8.0)
+	said.emit("LOADING")
+	changed.emit()
+
+
+func _reload_step(delta: float) -> void:
+	reloading -= delta
+	if reloading > 0.0:
+		return
+	reloading = 0.0
+	var item := _reload_item
+	_reload_item = null
+	if not is_instance_valid(item) or int(item.get(&"loot_id")) != hand:
+		return
+	var spec: Dictionary = LootItem.GUNS[item.get(&"kind")]
+	var going_in := mini(spec["capacity"] - int(item.get(&"uses")), int(ammo[spec["ammo"]]))
+	item.set(&"uses", int(item.get(&"uses")) + going_in)
+	ammo[spec["ammo"]] = int(ammo[spec["ammo"]]) - going_in
+	LootGunFx.play(self, "break_close", item.global_position, -6.0, 8.0)
+	_tell_hand(item)
+	changed.emit()
+
+
+## A shot from `from` along `aim` out of a gun of `kind`, by `shooter`: what
+## hunts it hits (the nearest a bullet passes close enough to, short of any
+## wall; with a shotgun, all in its spread) is felled or staggered (`hit_by_shot`).
+## Returns where the shot ended (what it hit, a wall, or its reach).
+func shoot(from: Vector3, aim: Vector3, kind: int, shooter: Node3D = null) -> Vector3:
+	var spec: Dictionary = LootItem.GUNS[kind]
+	var reach: float = spec["range"]
+	var space := get_world_3d().direct_space_state
+	var skip: Array[RID] = []
+	if shooter is CollisionObject3D:
+		skip.append((shooter as CollisionObject3D).get_rid())
+	var wall := space.intersect_ray(PhysicsRayQueryParameters3D.create(from, from + aim * reach, 1, skip))
+	var end := from + aim * reach
+	if not wall.is_empty():
+		end = wall["position"]
+		reach = from.distance_to(end)
+	var tolerance: Vector2 = spec["aim"]
+	var struck: Array = []
+	for hunter in hunters():
+		if hunter.get(&"fears_fire") == true:
+			continue
+		var girth := _girth(hunter)
+		# (the nearest a shot passes to it: to a line up its middle, from its feet to over its head)
+		var tall := maxf(1.6, girth * 2.6)
+		var best := INF
+		var along_best := 0.0
+		for k in 4:
+			var point := hunter.global_position + Vector3.UP * (tall * (0.15 + 0.25 * k))
+			var along := (point - from).dot(aim)
+			if along < 0.4 or along > reach + girth:
+				continue
+			var off := (point - from - aim * along).length()
+			if off < best:
+				best = off
+				along_best = along
+		if best <= girth + tolerance.x + tolerance.y * along_best:
+			struck.append([along_best, hunter])
+	if struck.is_empty():
+		return end
+	struck.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	if kind != LootItem.Kind.SHOTGUN:
+		struck.resize(1)
+	for entry: Array in struck:
+		hit_by_shot(entry[1], aim, entry[0] <= float(spec["fells"]))
+	if kind != LootItem.Kind.SHOTGUN:
+		end = from + aim * float(struck[0][0])
+	return end
+
+
+## Whether a shot can fell `hunter` (not one of the great or the unnatural).
+func can_fell(hunter: Node3D) -> bool:
+	if not hunter is MazeEnemy or hunter.get(&"fears_fire") == true:
+		return false
+	var script := hunter.get_script() as Script
+	while script:
+		if script.get_global_name() in BULLETPROOF:
+			return false
+		script = script.get_base_script()
+	return true
+
+
+## `hunter` is hit by a shot going `way`: felled if it can be and was near
+## enough (`close`), and otherwise staggered a long while.
+func hit_by_shot(hunter: Node3D, way: Vector3, close: bool) -> void:
+	if close and can_fell(hunter):
+		fell(hunter, way)
+	else:
+		stagger(hunter, way, SHOT_SECONDS, SHOT_SHOVE)
+
+
+## Fells `hunter` for good (Stagger.fell): where the hunters are run, and
+## everyone told; a guest asks the host.
+func fell(hunter: Node3D, push: Vector3) -> void:
+	var index := _hunter_index(hunter)
+	if not world.online or Net.is_host:
+		Stagger.fell(hunter, push)
+		if world.online and index >= 0:
+			Net.send_json(Net.BROADCAST, {"loot": "felled", "enemy": index, "push": [push.x, push.z]})
+		return
+	if index >= 0:
+		Net.send_json(Net.BROADCAST, {"loot": "fell", "enemy": index, "push": [push.x, push.z]})
+
+
+## A shot at `at` by `shooter` (where the hunters are run): what hunts within
+## SHOT_HEARD and is after nobody comes to see; within SHOT_KNOWN it knows who
+## fired, and goes after them. The Griever comes to look too.
+func noise(at: Vector3, shooter: Node3D) -> void:
+	if world.online and not Net.is_host:
+		return
+	for node: Node in get_tree().get_nodes_in_group(&"maze_enemies"):
+		var enemy := node as MazeEnemy
+		if enemy == null or enemy.puppet or Stagger.on(enemy):
+			continue
+		var d := enemy.global_position.distance_to(at)
+		if d > SHOT_HEARD:
+			continue
+		if d < SHOT_KNOWN and shooter and enemy.huntable(shooter):
+			enemy.notice(shooter)
+		elif not enemy.hunting():
+			enemy._last_seen = at
+	for node: Node in get_tree().get_nodes_in_group(&"grievers"):
+		var griever := node as Node3D
+		if griever and griever.visible and griever.global_position.distance_to(at) < SHOT_HEARD and griever.has_method(&"alert"):
+			griever.call(&"alert", at)
+
+
+## A hunter's number, as the room knows it (MazeEnemies' list; the Griever -2), or -1.
+func _hunter_index(hunter: Node3D) -> int:
+	if hunter == world.griever:
+		return -2
+	return world.enemies.enemies.find(hunter) if world.enemies else -1
+
+
+func _hunter_at(index: int) -> Node3D:
+	if index == -2:
+		return world.griever
+	if world.enemies and index >= 0 and index < world.enemies.enemies.size():
+		return world.enemies.enemies[index]
+	return null
+
+
+## What the HUD says of the gun in his hand: the rounds in it and his spare
+## ones (or that he is loading it); "" if he holds none.
+func ammo_text() -> String:
+	var held := _item(hand)
+	if held == null or not held.get(&"kind") in LootItem.GUNS:
+		return ""
+	var spec: Dictionary = LootItem.GUNS[held.get(&"kind")]
+	if reloading > 0.0:
+		return "LOADING..."
+	return "%d / %d   SPARE %d" % [int(held.get(&"uses")), int(spec["capacity"]), int(ammo[spec["ammo"]])]
+
+
 # --- The room's news -----------------------------------------------------------
 
 ## A message from the room ({"loot": ...}), from seat `from`.
@@ -1168,7 +1599,7 @@ func hear(message: Dictionary, from: int) -> void:
 			var hunter: Node3D = world.griever if index == -2 else (world.enemies.enemies[index] if index >= 0 and index < world.enemies.enemies.size() else null)
 			var push: Array = message.get("push", [0, 0])
 			if hunter:
-				Stagger.hit(hunter, Vector3(push[0], 0.0, push[1]))
+				Stagger.hit(hunter, Vector3(push[0], 0.0, push[1]), float(message.get("secs", Stagger.SECONDS)), float(message.get("shove", Stagger.SHOVE)))
 			return
 		if what == "feed":
 			# (a guest's meat held out to a dog: fed here, where the dogs are run)
@@ -1177,6 +1608,16 @@ func hear(message: Dictionary, from: int) -> void:
 			if dog:
 				dog.feed(world.remotes.get(from), from)
 			return
+		if what == "fell":
+			var hunter := _hunter_at(int(message.get("enemy", -1)))
+			var push: Array = message.get("push", [0, 0])
+			if hunter:
+				fell(hunter, Vector3(push[0], 0.0, push[1]))
+			return
+		if what == "shot":
+			# (what hunts hears a guest's shot here, where it is run)
+			var at: Array = message.get("from", [0, 0, 0])
+			noise(Vector3(at[0], at[1], at[2]), world.remotes.get(from))
 		# (the rest is passed on to everyone; a guest speaks only for itself)
 		if message.has("seat"):
 			message["seat"] = from
@@ -1185,6 +1626,9 @@ func hear(message: Dictionary, from: int) -> void:
 		"got":
 			_got(id, int(message.get("seat", -1)))
 		"hand":
+			var item := _item(id)
+			if item and message.has("uses"):
+				item.set(&"uses", int(message.get("uses", 0)))
 			_heard_hand(int(message.get("seat", -1)), id, bool(message.get("lit", false)), float(message.get("fuel", 0.0)))
 		"drop":
 			_heard_drop(message)
@@ -1213,6 +1657,34 @@ func hear(message: Dictionary, from: int) -> void:
 			_spend(id, false)
 		"cut":
 			_heard_cut(message)
+		"swing":
+			var other: RemotePlayer = world.remotes.get(int(message.get("seat", -1)))
+			if other:
+				other.swung()
+		"shot":
+			_heard_shot(message)
+		"felled":
+			var hunter := _hunter_at(int(message.get("enemy", -1)))
+			var push: Array = message.get("push", [0, 0])
+			if hunter:
+				Stagger.fell(hunter, Vector3(push[0], 0.0, push[1]))
+
+
+## Someone else's shot: seen and heard where it was, their gun brought up and kicking.
+func _heard_shot(message: Dictionary) -> void:
+	var kind := int(message.get("kind", LootItem.Kind.REVOLVER))
+	var a: Array = message.get("from", [0, 0, 0])
+	var b: Array = message.get("to", [0, 0, 1])
+	var from := Vector3(a[0], a[1], a[2])
+	var to := Vector3(b[0], b[1], b[2])
+	var way := (to - from).normalized() if from.distance_to(to) > 0.01 else Vector3.FORWARD
+	var item := _item(int(message.get("id", -1)))
+	if item:
+		item.set(&"uses", int(message.get("uses", 0)))
+	var other: RemotePlayer = world.remotes.get(int(message.get("seat", -1)))
+	if other:
+		other.fired(LootItem.GUNS.get(kind, {"kick": 0.6})["kick"], way)
+	LootGunFx.shot(self, Transform3D(Basis.looking_at(way, Vector3.UP if absf(way.y) < 0.98 else Vector3.RIGHT), from), to, kind)
 
 
 ## Seat `seat` has `id` in their hand now (-1: nothing).
@@ -1256,6 +1728,8 @@ func _heard_drop(message: Dictionary) -> void:
 	var vel: Array = message.get("vel", [0, 0, 0])
 	item.global_position = Vector3(at[0], at[1], at[2])
 	item.set(&"fuel", float(message.get("fuel", 0.0)))
+	if message.has("uses"):
+		item.set(&"uses", int(message.get("uses", 0)))
 	item.call(&"fly", Vector3(vel[0], vel[1], vel[2]))
 	item.call(&"set_lit", bool(message.get("lit", false)))
 
@@ -1281,9 +1755,15 @@ func dev_drop(what: String) -> void:
 	var id := (world.slot + 1) * 100000 + _next
 	_next += 1
 	var item := _place(DEV_KINDS[what], at, randf_range(0.0, TAU), id)
+	var r := RandomNumberGenerator.new()
+	r.randomize()
+	# (the dev panel's guns come with half a load, its boxes with a few)
+	_arm(item, null, r)
+	if item.get(&"kind") in LootItem.GUNS:
+		item.set(&"uses", ceili(LootItem.GUNS[item.get(&"kind")]["capacity"] * 0.5))
 	if world.online:
 		Net.send_json(Net.BROADCAST, {"loot": "drop", "id": id, "kind": item.get(&"kind"), "seat": world.slot,
-			"at": [at.x, at.y + 0.3, at.z], "vel": [0, 0, 0], "lit": false, "fuel": item.get(&"fuel")})
+			"at": [at.x, at.y + 0.3, at.z], "vel": [0, 0, 0], "lit": false, "fuel": item.get(&"fuel"), "uses": item.get(&"uses")})
 
 
 ## A point on the ground `reach` ahead of `player` the way `look`, short of any wall.

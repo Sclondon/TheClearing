@@ -3,21 +3,26 @@ extends RigidBody3D
 ## Something left lying about the clearing and the maze, to find and take (see
 ## Loot, which places them, keeps everyone's copies in step and keeps the
 ## inventory): a grappling hook, a backpack, a spear, a torch, a flare, a scrap of
-## a map, a rope ladder; and meat, cut from a carcass. Tools to get away with,
-## never weapons (DESIGN.md: "What lies about"). Meat is for what eats it: lying
-## on the ground it is in the group `meat` (meat-eaters that smell it go to it,
-## and a feral dog fed it is a friend: MazeDog), and `eat` is how it is eaten.
+## a map, a rope ladder; something to fight with: a stick, a bat, a sword,
+## rarely a revolver or a shotgun, and more rarely still a box of a few rounds
+## for one (DESIGN.md: "What lies about", "Fighting back"); and meat, cut from a
+## carcass. Meat is for what eats it: lying on the ground it is in the group
+## `meat` (meat-eaters that smell it go to it, and a feral dog fed it is a
+## friend: MazeDog), and `eat` is how it is eaten.
 ##
 ## One of these is a loose body like anything the boy can carry (Player.carried),
 ## and what Player does with what is in his hand works on it: act throws it. A
-## torch is also in the group `torches` (he holds it up), a spear in `spears`.
-## The grappling hook is not one of these but a LootHook (a GrappleHook) with
-## the same `kind`, `loot_id` and `loot_state`, made by `LootItem.make`.
+## torch is also in the group `torches` (he holds it up), a spear in `spears`; a
+## stick, a bat and a sword in `bats` (he holds it in both hands and swings it:
+## Player.swing_progress, and Loot sees what it hits), a gun in `guns` (he brings
+## it up and fires it: Player calls `fire`, and Loot shoots). The grappling hook
+## is not one of these but a LootHook (a GrappleHook) with the same `kind`,
+## `loot_id` and `loot_state`, made by `LootItem.make`.
 ##
 ## Its models are built in Blender: props/tools/build_props.py (props/models/).
 
-## What it is.
-enum Kind { HOOK, BACKPACK, SPEAR, TORCH, FLARE, MAP, LADDER, MEAT }
+## What it is. (Sent over the network by number: new kinds go on the end.)
+enum Kind { HOOK, BACKPACK, SPEAR, TORCH, FLARE, MAP, LADDER, STICK, BAT, SWORD, REVOLVER, SHOTGUN, ROUNDS, SHELLS, MEAT }
 ## Where it is: lying about, in someone's pocket (pack), in someone's hand, in
 ## the air (thrown or dropped), or used up (a burnt-out flare, a hung ladder).
 enum State { LYING, POCKET, HAND, FLYING, SPENT }
@@ -25,21 +30,58 @@ enum State { LYING, POCKET, HAND, FLYING, SPENT }
 ## What each is called (in the inventory, the prompt, the dev panel) and its model.
 const NAMES := {
 	Kind.HOOK: "GRAPPLING HOOK", Kind.BACKPACK: "BACKPACK", Kind.SPEAR: "SPEAR", Kind.TORCH: "TORCH",
-	Kind.FLARE: "FLARE", Kind.MAP: "MAP SCRAP", Kind.LADDER: "ROPE LADDER", Kind.MEAT: "RAW MEAT",
+	Kind.FLARE: "FLARE", Kind.MAP: "MAP SCRAP", Kind.LADDER: "ROPE LADDER", Kind.STICK: "STICK", Kind.BAT: "BAT",
+	Kind.SWORD: "SWORD", Kind.REVOLVER: "REVOLVER", Kind.SHOTGUN: "SHOTGUN", Kind.ROUNDS: "BOX OF ROUNDS",
+	Kind.SHELLS: "BOX OF SHELLS", Kind.MEAT: "RAW MEAT",
 }
 const SHORT := {
 	Kind.HOOK: "HOOK", Kind.BACKPACK: "BACKPACK", Kind.SPEAR: "SPEAR", Kind.TORCH: "TORCH",
-	Kind.FLARE: "FLARE", Kind.MAP: "MAP", Kind.LADDER: "LADDER", Kind.MEAT: "MEAT",
+	Kind.FLARE: "FLARE", Kind.MAP: "MAP", Kind.LADDER: "LADDER", Kind.STICK: "STICK", Kind.BAT: "BAT",
+	Kind.SWORD: "SWORD", Kind.REVOLVER: "REVOLVER", Kind.SHOTGUN: "SHOTGUN", Kind.ROUNDS: "ROUNDS",
+	Kind.SHELLS: "SHELLS", Kind.MEAT: "MEAT",
 }
 const MODELS := {
 	Kind.HOOK: "res://props/models/hook.glb", Kind.BACKPACK: "res://props/models/pack.glb",
 	Kind.SPEAR: "res://props/models/spear.glb", Kind.TORCH: "res://props/models/torch.glb",
 	Kind.FLARE: "res://props/models/flare.glb", Kind.MAP: "res://props/models/map.glb",
-	Kind.LADDER: "res://props/models/ladder.glb", Kind.MEAT: "res://props/models/meat.glb",
+	Kind.LADDER: "res://props/models/ladder.glb", Kind.STICK: "res://props/models/branch.glb",
+	Kind.BAT: "res://props/models/bat.glb", Kind.SWORD: "res://props/models/sword.glb",
+	Kind.REVOLVER: "res://props/models/revolver.glb", Kind.SHOTGUN: "res://props/models/shotgun.glb",
+	Kind.ROUNDS: "res://props/models/rounds.glb", Kind.SHELLS: "res://props/models/shells.glb",
+	Kind.MEAT: "res://props/models/meat.glb",
 }
-## Held in the hand to be used (act throws or casts it, or holds meat out to a
-## dog), or used from the inventory straight off (read, hung).
-const IN_HAND := [Kind.HOOK, Kind.SPEAR, Kind.TORCH, Kind.FLARE, Kind.MEAT]
+## Held in the hand to be used (act throws, casts, swings or fires it, or holds
+## meat out to a dog), or used from the inventory straight off (read, hung).
+const IN_HAND := [Kind.HOOK, Kind.SPEAR, Kind.TORCH, Kind.FLARE, Kind.STICK, Kind.BAT, Kind.SWORD, Kind.REVOLVER, Kind.SHOTGUN,
+	Kind.MEAT]
+## Swung (Loot: what a blow does). `reach`: metres past his middle to what it
+## hits (past its girth); `seconds` and `shove`: the stagger (Stagger.hit);
+## `uses`: blows that land before it breaks (a range; 0, never); `swing`: how
+## long a swing takes, seconds; `cleaves`: it hits everything in its sweep, not
+## only the first. A stick is weak and soon snaps; a bat knocks a hunter well
+## back; a sword is the best of them and never breaks.
+const MELEE := {
+	Kind.STICK: {"reach": 1.55, "seconds": 1.3, "shove": 0.9, "uses": Vector2i(3, 6), "swing": 0.45, "cleaves": false},
+	Kind.BAT: {"reach": 1.75, "seconds": 2.2, "shove": 4.2, "uses": Vector2i(12, 16), "swing": 0.6, "cleaves": false},
+	Kind.SWORD: {"reach": 2.0, "seconds": 3.4, "shove": 2.0, "uses": Vector2i(0, 0), "swing": 0.55, "cleaves": true},
+}
+## Fired (Loot: what a shot does). `capacity`: rounds it holds; `ammo`: the
+## kind of box that fills it; `range`: how far it reaches, metres; `fells`: out
+## to how far a shot fells what it hits (further, it only staggers it);
+## `aim`: how far off a shot may pass and still hit, metres past a hunter's
+## girth (and per metre away); `kick`, `two_handed`: for the Player and the rig;
+## `reload`: seconds to load it from spare rounds.
+const GUNS := {
+	Kind.REVOLVER: {"capacity": 6, "ammo": Kind.ROUNDS, "range": 45.0, "fells": 30.0, "aim": Vector2(0.35, 0.0),
+		"kick": 0.6, "two_handed": false, "reload": 1.6},
+	Kind.SHOTGUN: {"capacity": 2, "ammo": Kind.SHELLS, "range": 24.0, "fells": 11.0, "aim": Vector2(0.45, 0.09),
+		"kick": 1.3, "two_handed": true, "reload": 1.4},
+}
+## Where a gun's muzzle is, and its fore-end (where the off hand holds a long one), in its own space.
+const MUZZLE := {Kind.REVOLVER: Vector3(0.0, 0.058, -0.21), Kind.SHOTGUN: Vector3(0.0, 0.04, -0.73)}
+const SUPPORT := {Kind.SHOTGUN: Vector3(0.0, 0.0, -0.27)}
+## A box of rounds or shells: the gun kind it fills.
+const BOX_FOR := {Kind.ROUNDS: Kind.REVOLVER, Kind.SHELLS: Kind.SHOTGUN}
 
 ## How long a torch burns, seconds, all told; and from how long before the end
 ## it burns low.
@@ -71,6 +113,14 @@ var lit := false
 var fuel := 0.0
 ## Fire wards (FireWard): how far off what fears fire is kept, while it burns.
 var ward_radius := 0.0
+## A stick's or a bat's blows left before it breaks (0: it never does); the
+## rounds in a gun; the rounds in a box of them. Travels with it to whoever has it next.
+var uses := 0
+## A gun's, for the Player and the rig: held in both hands, and how hard it kicks.
+var two_handed := false
+var kick := 0.5
+## The Loot that keeps it (a gun asks it to shoot).
+var loot: Node
 
 var _model: Node3D
 var _fire: Fire
@@ -113,6 +163,14 @@ func _ready() -> void:
 			shape.radius = 0.07
 			shape.height = 0.3
 			collider.position.y = -0.18
+		Kind.STICK, Kind.BAT:
+			shape.radius = 0.04
+			shape.height = 0.85
+			collider.position.y = 0.33
+		Kind.SWORD:
+			shape.radius = 0.035
+			shape.height = 1.0
+			collider.position.y = 0.4
 		_:
 			shape.radius = 0.08
 			shape.height = 0.3
@@ -123,6 +181,17 @@ func _ready() -> void:
 		flat.size = Vector3(0.38, 0.2, 0.5)
 		collider.shape = flat
 		collider.position.y = 0.1
+	elif kind in GUNS:
+		# (a gun lies on its side: a box along its barrel)
+		var long := BoxShape3D.new()
+		long.size = Vector3(0.05, 0.12, 0.85 if kind == Kind.SHOTGUN else 0.26)
+		collider.shape = long
+		collider.position = Vector3(0.0, 0.0, -0.18 if kind == Kind.SHOTGUN else -0.08)
+	elif kind in BOX_FOR:
+		var little := BoxShape3D.new()
+		little.size = Vector3(0.1, 0.06, 0.08)
+		collider.shape = little
+		collider.position.y = 0.03
 	add_child(collider)
 	_model = (load(MODELS[kind]) as PackedScene).instantiate() as Node3D
 	add_child(_model)
@@ -136,6 +205,12 @@ func _ready() -> void:
 			add_child(_fire)
 		Kind.SPEAR:
 			add_to_group(&"spears")
+		Kind.STICK, Kind.BAT, Kind.SWORD:
+			add_to_group(&"bats")
+		Kind.REVOLVER, Kind.SHOTGUN:
+			add_to_group(&"guns")
+			two_handed = GUNS[kind]["two_handed"]
+			kick = GUNS[kind]["kick"]
 		Kind.FLARE:
 			fuel = FLARE_BURNS
 			_fire = Fire.new()
@@ -197,10 +272,14 @@ func lie() -> void:
 ## Laid on the ground at `at` (its foot), turned `yaw`, as it was left there.
 func lay_at(at: Vector3, yaw: float) -> void:
 	var tip := Basis(Vector3.UP, yaw)
-	if kind == Kind.SPEAR or kind == Kind.TORCH or kind == Kind.FLARE or kind == Kind.MEAT:
+	if kind in [Kind.SPEAR, Kind.TORCH, Kind.FLARE, Kind.STICK, Kind.BAT, Kind.SWORD, Kind.MEAT]:
 		# (long things lie along the ground)
 		tip = tip * Basis(Vector3.RIGHT, PI * 0.5)
-		at += Vector3.UP * (0.045 if kind == Kind.SPEAR else (0.06 if kind == Kind.MEAT else 0.035))
+		at += Vector3.UP * (0.045 if kind == Kind.SPEAR else (0.025 if kind == Kind.SWORD else (0.06 if kind == Kind.MEAT else 0.035)))
+	elif kind in GUNS:
+		# (a gun lies on its side)
+		tip = tip * Basis(Vector3.BACK, PI * 0.5)
+		at += Vector3.UP * 0.022
 	global_transform = Transform3D(tip, at)
 	lie()
 
@@ -343,7 +422,14 @@ func _process(_delta: float) -> void:
 	var rig: CharacterRig = bearer.get(&"rig") if not (bearer is Player) else null
 	var yaw: float = bearer.get(&"facing_yaw") if bearer.get(&"facing_yaw") != null else 0.0
 	if rig:
+		if kind in GUNS:
+			# (held by its grip, pointing where their arm points it)
+			global_transform = rig.gun_transform()
+			return
 		global_position = rig.hand_position()
+		if kind in MELEE:
+			global_basis = rig.bat_basis()
+			return
 		if kind == Kind.TORCH:
 			global_basis = Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, 0.3) * Basis(Vector3.BACK, 0.18)
 			global_position -= global_basis.y * 0.14
@@ -362,6 +448,29 @@ func _process(_delta: float) -> void:
 		var going: Vector3 = bearer.get(&"velocity") if bearer.get(&"velocity") != null else Vector3.ZERO
 		var swing := clampf(Vector2(going.x, going.z).length() * 0.06, 0.0, 0.35)
 		global_basis = Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, -swing * sin(Time.get_ticks_msec() * 0.009) - 0.15)
+
+
+## Whether it is something to fight with (swung or fired).
+func weapon() -> bool:
+	return kind in MELEE or kind in GUNS
+
+
+## A gun: the trigger pulled by `shooter`, aimed along `aim` (Player._fire).
+## Loot shoots, clicks if it is empty, or loads it. True if it went off.
+func fire(shooter: Node3D, aim: Vector3) -> bool:
+	if loot == null or not kind in GUNS:
+		return false
+	return loot.call(&"gun_fire", self, shooter, aim)
+
+
+## A gun's muzzle in the world, its -Z the way it points.
+func muzzle() -> Transform3D:
+	return global_transform.translated_local(MUZZLE.get(kind, Vector3.ZERO))
+
+
+## Where the off hand holds a long gun, in the world (CharacterRig).
+func support_point() -> Vector3:
+	return global_transform * SUPPORT.get(kind, Vector3(0.0, 0.0, -0.3))
 
 
 ## Thrown or put down from a hand (the Player has let go of it and set it going): it flies.

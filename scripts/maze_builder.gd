@@ -48,6 +48,8 @@ var layout: MazeLayout
 var beacon: Node3D
 ## The terraces, ivy, vines and bridges (MazeFeatures).
 var features: MazeFeatures
+## The vents, drains, boxes, barrels and old cables (MazeProps).
+var props: MazeProps
 ## The ferns, bushes, moss and tufts of grass.
 var undergrowth: Undergrowth
 ## The ground's material (MazeStone.ground), for the weather to wet.
@@ -57,15 +59,39 @@ var ground_material: ShaderMaterial
 var preview := false
 ## The round sections, if the maze has any.
 var round_sections: RoundBuilder
+## The standing water in the halls (Ponds).
+var ponds: Ponds
+
+
+## For a loading screen: with `stepwise` on, building stops for a frame between
+## its stages and says which comes next (`building`), so that the screen is not
+## frozen while the maze goes up. Off, it is all built at once, as before (and
+## `build` and `realize` then finish before they return, awaited or not).
+signal building(what: String)
+var stepwise := false
+
+
+func _breathe(what: String) -> void:
+	building.emit(what)
+	# (two frames: one to draw what it now says)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
+## What is in the desert ring's forest, swamp and plains quarters, built near the
+## camera (Wilds), if it has any.
+var wilds: Wilds
 
 
 ## Builds the maze `plan`, laid out as it generates.
 func build(plan: Maze) -> void:
+	if stepwise:
+		await _breathe("Laying out the maze")
 	layout = MazeLayout.new()
 	layout.name = "Layout"
 	add_child(layout)
 	layout.lay_out(plan)
-	realize(layout, plan)
+	await realize(layout, plan)
 
 
 ## Builds the maze laid out by `pieces` (a MazeLayout, which may be another
@@ -74,26 +100,45 @@ func build(plan: Maze) -> void:
 func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 	layout = pieces
 	maze = plan if plan else pieces.plan()
+	if stepwise:
+		await _breathe("Raising the walls")
 	var body := StaticBody3D.new()
 	body.name = "Walls"
 	# (its shapes all put in before it goes into the world: put in one by one
 	# after, each would have the physics make the body over again)
 	_walls(body, pieces)
 	add_child(body)
+	if stepwise:
+		await _breathe("Growing the ivy and hanging the vines")
 	features = MazeFeatures.new()
 	features.name = "Features"
 	add_child(features)
 	features.realize(pieces)
+	props = MazeProps.new()
+	props.name = "Props"
+	props.realize(pieces)
+	add_child(props)
+	if stepwise:
+		await _breathe("Sowing the grass")
 	if not preview:
 		_grass()
 	_ground()
+	# (the standing water in the halls, and the flooded marsh gate's slot)
+	ponds = Ponds.new()
+	ponds.name = "Ponds"
+	add_child(ponds)
+	ponds.realize(maze, pieces, ground_material, preview)
 	if not preview:
 		_pond()
+	if stepwise:
+		await _breathe("Planting the trees")
 	_trees(pieces)
 	if not preview:
 		_undergrowth(pieces)
 	# The round sections outside the square ones, past the moor.
 	if maze.round_rings:
+		if stepwise:
+			await _breathe("Building the round sections")
 		round_sections = RoundBuilder.new()
 		round_sections.name = "Round"
 		round_sections.plan = maze.round_rings
@@ -110,13 +155,13 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 ## of blocks and one of plain boxes in each for every height of stone (the ivy
 ## curtains of the stone hang from its top, so each height has its own material).
 func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
-	# [look, square] -> SurfaceTool.
+	# [look, square, section] -> SurfaceTool (each section's walls their own moss: MazeStyle.wall_moss_height).
 	var chunks := {}
 	var boxes: Array[MazePiece] = pieces.pieces(MazePiece.Kind.WALL) + pieces.pieces(MazePiece.Kind.PIER) + pieces.pieces(MazePiece.Kind.TERRACE)
 	for piece in boxes:
 		var size := piece.box_size()
 		var where := piece.box_transform()
-		var key := [_look_of(piece), Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK))]
+		var key := [_look_of(piece), Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK)), clampi(maze.ring_of(maze.cell_at(where.origin)), 1, maxi(maze.rings, 1))]
 		if not chunks.has(key):
 			var tool := SurfaceTool.new()
 			tool.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -132,18 +177,31 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 		(chunks[key] as SurfaceTool).append_from(built.commit(), 0, where)
 	var materials := {}
 	for key: Array in chunks:
-		if not materials.has(key[0]):
+		var kind := [key[0], key[2]]
+		if not materials.has(kind):
 			# (laid on in the world's space, so that the pieces meet without seams)
-			materials[key[0]] = Wall.material_for(key[0], true, LEDGE_TINT if key[0] == LEDGE_LOOK else Color.WHITE)
+			materials[kind] = Wall.material_for(key[0], true, LEDGE_TINT if key[0] == LEDGE_LOOK else Color.WHITE)
 			if key[0] == GREAT_LOOK:
 				# (the great walls are so big that their concrete is drawn bigger too)
-				materials[key[0]].set_shader_parameter(&"tile_size", Wall.LOOKS[GREAT_LOOK][1] * GREAT_TILE_SCALE)
+				materials[kind].set_shader_parameter(&"tile_size", Wall.LOOKS[GREAT_LOOK][1] * GREAT_TILE_SCALE)
+			var style: MazeStyle = maze.styles[key[2] - 1] if key[2] - 1 < maze.styles.size() else null
+			moss(materials[kind], style)
+			# (the maze walls' concrete laid on as big as the section says: MazeStyle.wall_texture_scale)
+			if style and key[0] != GREAT_LOOK:
+				materials[kind].set_shader_parameter(&"tile_size", Wall.LOOKS[key[0]][1] * style.wall_texture_scale)
 		var walls := MeshInstance3D.new()
 		walls.mesh = (chunks[key] as SurfaceTool).commit()
-		walls.material_override = materials[key[0]]
+		walls.material_override = materials[kind]
 		# (lost in the mist past this; the editor, seen from high over it all, shows all)
 		walls.visibility_range_end = 0.0 if Engine.is_editor_hint() else WALL_FAR
 		body.add_child(walls)
+
+
+## Gives a wall material the moss `style` says (MazeStyle.wall_moss_height and
+## wall_moss_patches; none without a style).
+static func moss(material: ShaderMaterial, style: MazeStyle) -> void:
+	material.set_shader_parameter(&"moss_foot", style.wall_moss_height if style else 0.0)
+	material.set_shader_parameter(&"moss_patches", style.wall_moss_patches if style else 0.0)
 
 
 ## What the ledges along the walls (and the beams the vines hang from) are made
@@ -310,13 +368,22 @@ func _ground() -> void:
 	# shaped (it may go down below level, into the marsh).
 	var shaped := maze.clearing_style.shaped()
 	var hole := maze.clearing * Maze.CELL * 0.5 - 1.0 if shaped else 0.0
-	for part: Rect2 in _framed(size * 0.5, hole):
+	# (cut away over the standing water, whose ground is lower: Ponds; then all
+	# of it one mesh)
+	var parts := _framed(size * 0.5, hole)
+	var wet := Ponds.holes(maze)
+	if not wet.is_empty():
+		parts = Ponds.cut(parts, wet)
+		body.add_child(Ponds.flat(parts, material))
+	for part: Rect2 in parts:
 		var shape := BoxShape3D.new()
 		shape.size = Vector3(part.size.x, 2.0, part.size.y)
 		var collider := CollisionShape3D.new()
 		collider.shape = shape
 		collider.position = Vector3(part.get_center().x, -1.0, part.get_center().y)
 		body.add_child(collider)
+		if not wet.is_empty():
+			continue
 		var plane := PlaneMesh.new()
 		plane.size = part.size
 		var visual := MeshInstance3D.new()
@@ -357,6 +424,13 @@ func _ground() -> void:
 		else:
 			material.set_shader_parameter(&"sand_laid", 1.0)
 			_sand_quarters()
+		material.set_shader_parameter(&"swamp_level", look.swamp_water_depth)
+		# (and the forest, swamp and plains quarters dressed, near the camera)
+		if not preview and not Engine.is_editor_hint() and maze.round_rings.wilds:
+			wilds = Wilds.new()
+			wilds.name = "Wilds"
+			add_child(wilds)
+			wilds.realize(maze.round_rings.wilds, material)
 	add_child(body)
 
 
@@ -607,7 +681,8 @@ func _undergrowth(pieces: MazeLayout) -> void:
 		if ring < 1 or ring > maze.rings or maze.solid.has(cell) or maze.entrances.has(cell):
 			continue
 		var thick: float = maze.styles[ring - 1].plant_density
-		if thick <= 0.0:
+		var grassy: float = maze.styles[ring - 1].wall_grass_share
+		if thick <= 0.0 and grassy <= 0.0:
 			continue
 		for step: Vector2i in Maze.STEPS:
 			if not maze.blocked(cell, step):
@@ -619,6 +694,16 @@ func _undergrowth(pieces: MazeLayout) -> void:
 			var style: MazeStyle = maze.styles[ring - 1]
 			if style.mezzanine_height > 0.0 and not maze.ring_wall(cell, step) and maze.ring_of(cell + step) == ring and not maze.solid.has(cell + step):
 				face -= s * style.mezzanine_depth
+			# Short grass along the foot of some faces: a run of close clumps a few metres long.
+			if rng.randf() < grassy:
+				var from := rng.randf_range(-0.5, 0.2) * Maze.CELL
+				var to := minf(from + rng.randf_range(3.0, 10.0), Maze.CELL * 0.5)
+				var run := from
+				while run < to:
+					var at := face - s * rng.randf_range(0.15, 0.7) + side * run
+					if not _on_terrace(at):
+						undergrowth.add(Undergrowth.Kind.GRASS, _plant(at, rng, Undergrowth.Kind.GRASS))
+					run += rng.randf_range(0.55, 0.85)
 			var along := -Maze.CELL * 0.5
 			while along < Maze.CELL * 0.5:
 				along += rng.randf_range(0.7, 1.8)
@@ -661,7 +746,7 @@ func _undergrowth(pieces: MazeLayout) -> void:
 
 ## Where a plant of `kind` stands at `at` (on the ground there), turned and sized at random.
 func _plant(at: Vector3, rng: RandomNumberGenerator, kind: Undergrowth.Kind) -> Transform3D:
-	var sizes := {Undergrowth.Kind.FERN: Vector2(1.1, 2.0), Undergrowth.Kind.BUSH: Vector2(0.9, 1.8), Undergrowth.Kind.MOSS: Vector2(1.0, 2.4), Undergrowth.Kind.TUFT: Vector2(1.0, 1.7)}
+	var sizes := {Undergrowth.Kind.FERN: Vector2(1.1, 2.0), Undergrowth.Kind.BUSH: Vector2(0.9, 1.8), Undergrowth.Kind.MOSS: Vector2(1.0, 2.4), Undergrowth.Kind.TUFT: Vector2(1.0, 1.7), Undergrowth.Kind.GRASS: Vector2(0.8, 1.3)}
 	var range_of: Vector2 = sizes[kind]
 	var big := rng.randf_range(range_of.x, range_of.y)
 	at.y = maze.ground_height(at)

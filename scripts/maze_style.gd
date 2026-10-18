@@ -45,6 +45,17 @@ extends Resource
 ## them): the next section out is moved that much further out. (Not for the last
 ## square section, nor round ones.)
 @export_range(0, 6) var border_wall_thickness_cells := 0
+## Moss up the foot of its walls, to about this many metres off the ground (its
+## top edge ragged; 0: none), and in patches higher up over about this share of
+## the walls' faces (0: none).
+@export_range(0.0, 8.0) var wall_moss_height := 1.2
+@export_range(0.0, 1.0) var wall_moss_patches := 0.12
+## How many times bigger than the concrete texture's own size it is laid on the
+## maze walls and their ledges (walls this high want it big; the great walls
+## between sections have their own, bigger still).
+@export_range(0.5, 12.0) var wall_texture_scale := 4.0
+## The share of wall faces with short grass along their foot, in runs of a few metres.
+@export_range(0.0, 1.0) var wall_grass_share := 0.25
 
 @export_group("Hallways")
 ## The chance a passage goes on straight when it can.
@@ -118,10 +129,71 @@ extends Resource
 @export_range(0.0, 0.5) var sewer_pipe_share := 0.0
 @export_range(0.2, 0.9) var sewer_pipe_height := 0.62
 
+@export_group("Sewers")
+## What the maze's drains and ducts show of themselves (MazeProps; dressing,
+## nothing to climb). The share of wall faces with an old vent high on them:
+## louvred or round, rusted, some of them big.
+@export_range(0.0, 0.5) var wall_vent_share := 0.0
+## The share of wall faces with a barred culvert at their foot, black behind its
+## bars, a wet stain and a puddle in front of it.
+@export_range(0.0, 0.5) var culvert_share := 0.0
+## The share of wall faces with a small pipe coming out of them a little up, a
+## rust stain running down the wall under it and a puddle at the foot; of those,
+## the share that drip.
+@export_range(0.0, 0.5) var outlet_share := 0.0
+@export_range(0.0, 1.0) var outlet_drip_share := 0.6
+## The share of hall cells with a drain grate in the floor by a wall's foot (a
+## puddle round some), and with a manhole cover out in the hall (now and then
+## pushed half off its hole).
+@export_range(0.0, 0.5) var drain_share := 0.0
+@export_range(0.0, 0.5) var manhole_share := 0.0
+
+@export_group("Signs of life")
+## Others lived here once (MazeProps). The share of wall faces with boxes and
+## barrels left against them, how many things in each heap (most and least), and
+## the share of those that are barrels (some fallen over). They are solid.
+@export_range(0.0, 0.5) var clutter_share := 0.0
+@export var clutter_heap_size := Vector2i(3, 7)
+@export_range(0.0, 1.0) var clutter_barrel_share := 0.4
+## The share of halls with an old electric cable strung across them high up,
+## sagging, from wall to wall, and how high its ends are, metres (never over the
+## lower wall top).
+@export_range(0.0, 1.0) var cable_share := 0.0
+@export var cable_height_range := Vector2(9.0, 22.0)
+## The share of vines strung across a hall with a cable strung beside them, in
+## among the vine, and of vines hanging from the walls with a cable's end hanging
+## beside them.
+@export_range(0.0, 1.0) var cable_by_vine_share := 0.0
+## Of cables across halls, the share snapped, their two ends hanging; of the rest,
+## the share with an old lamp (dead) hanging from them.
+@export_range(0.0, 1.0) var snapped_cable_share := 0.25
+@export_range(0.0, 1.0) var cable_lamp_share := 0.3
+## The share of wall faces with a cable looped along them on brackets.
+@export_range(0.0, 0.5) var wall_cable_share := 0.0
+
 @export_group("Plants")
 ## How thickly ferns, moss and tufts of grass grow along the foot of its walls (0
 ## none, 1 all along every wall).
 @export_range(0.0, 1.0) var plant_density := 0.0
+
+@export_group("Water")
+## The share of hall cells with standing water in them (Ponds): a pond lying in
+## the hall, or a stretch of the hall flooded from wall to wall. The ground goes
+## down under it, so he wades, and in the deepest swims.
+@export_range(0.0, 0.3) var pond_share := 0.02
+## Of those, the share that flood a stretch of the hall, how many cells long at
+## most (the rest are ponds lying within one cell).
+@export_range(0.0, 1.0) var flooded_hall_share := 0.4
+@export_range(2, 8) var flooded_hall_length := 4
+## How deep a pond is, metres, from puddle-deep to wading (to his waist at 0.8).
+@export var pond_depth_range := Vector2(0.15, 0.8)
+## The share of ponds deep enough to swim, and how deep those are, metres.
+@export_range(0.0, 1.0) var swim_pond_share := 0.12
+@export_range(1.0, 3.0) var swim_pond_depth := 1.7
+## The share of ponds (no shallower than FishSchool.SHALLOWEST) with a school of
+## small fish in them, that dart off from whoever wades near; how many in each.
+@export_range(0.0, 1.0) var fish_share := 0.6
+@export_range(1, 40) var fish_per_school := 12
 
 @export_group("What hunts it")
 ## How many of each thing that hunts are put in the section's passages (by
@@ -350,7 +422,24 @@ extends Resource
 @export_range(0, 20) var loot_items := 6
 ## Camps left behind in its halls (cold fires, tallies scratched on the wall
 ## beside them, often signs of a struggle).
-@export_range(0, 4) var abandoned_camps := 1
+@export_range(0, 8) var abandoned_camps := 1
+## How likely each thing lying in its halls is to be a stick (common, weak, it
+## snaps), a bat (knocks a hunter back) or a sword (the best: never breaks),
+## weighed against the rest of what lies there (flares and maps 3 each, torches
+## and spears 2, a hook, a ladder and a backpack 1).
+@export_range(0, 12) var stick_weight := 3
+@export_range(0, 12) var bat_weight := 2
+@export_range(0, 12) var sword_weight := 1
+## The chance that any one thing lying in its halls (or by its camps) is a gun:
+## rare. A shotgun `shotgun_share` of the time, a revolver otherwise; and found
+## with a few rounds in it (`rounds_in_gun`, of six or two).
+@export_range(0.0, 1.0, 0.005) var gun_chance := 0.04
+@export_range(0.0, 1.0, 0.05) var shotgun_share := 0.3
+@export var rounds_in_gun := Vector2i(1, 3)
+## The chance that any one is a box of rounds for one (rarer still), and how
+## many are left in a box (revolver rounds or shotgun shells, as `shotgun_share`).
+@export_range(0.0, 1.0, 0.005) var ammo_chance := 0.025
+@export var rounds_per_box := Vector2i(2, 4)
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
@@ -411,17 +500,39 @@ static func avenues() -> MazeStyle:
 	var style := made(6, 2, 0.5, 0.0, 0.0)
 	style.maze_wall_diameter = 12.0
 	style.mezzanine_height = style.maze_wall_height / 3.0
+	# (one thin ledge: a lip of concrete, not a balcony)
+	style.mezzanine_levels = 1
+	style.mezzanine_thickness = 0.25
+	style.mezzanine_depth = 0.9
 	style.terrace_share = 0.0
 	style.wall_top_bridge_share = 0.0
 	style.wall_ivy_share = 0.1
 	style.hanging_vine_share = 0.08
-	style.tightrope_vine_share = 0.12
+	style.tightrope_vine_share = 0.22
 	style.tightrope_vine_height_range = Vector2(0.45, 0.75)
 	style.sewer_pipe_share = 0.08
 	style.plant_density = 0.8
 	style.harpies = 2
 	style.colossi = 1
+	sewers(style, 1.0)
+	# (signs of those who lived here before: camps, heaps of boxes and barrels, old
+	# cables strung high across the halls among the vines, some snapped, lamps)
+	style.abandoned_camps = 3
+	style.clutter_share = 0.07
+	style.cable_share = 0.14
+	style.cable_by_vine_share = 0.6
+	style.wall_cable_share = 0.05
 	return style
+
+
+## Vents, culverts, outlets, drains and manholes, `amount` times as many as the
+## Avenues have.
+static func sewers(style: MazeStyle, amount: float) -> void:
+	style.wall_vent_share = 0.05 * amount
+	style.culvert_share = 0.025 * amount
+	style.outlet_share = 0.06 * amount
+	style.drain_share = 0.05 * amount
+	style.manhole_share = 0.025 * amount
 
 
 ## Galleries: the second section. Hallways and walls like the Avenues', but up
@@ -441,12 +552,14 @@ static func galleries() -> MazeStyle:
 	style.mezzanine_depth_step = 0.6
 	style.mezzanine_ivy_share = 0.25
 	style.mezzanine_bridge_share = 0.2
+	style.tightrope_vine_share = 0.15
 	style.terrace_share = 0.0
 	style.wall_top_bridge_share = 0.0
 	style.wall_ivy_share = 0.1
 	style.hanging_vine_share = 0.04
 	style.plant_density = 0.6
 	style.colossi = 1
+	sewers(style, 0.8)
 	return style
 
 
@@ -456,13 +569,16 @@ static func narrows() -> MazeStyle:
 	var style := made(4, 1, 0.0, 0.0, 0.06)
 	# (three ways in from the Galleries)
 	style.entrance_count = 3
+	sewers(style, 0.7)
 	return style
 
 
 ## Tangle: single hallways that branch often and loop back on themselves, so that
 ## there are many ways and it is easy to go round in circles.
 static func tangle() -> MazeStyle:
-	return made(4, 1, 0.3, 0.5, 0.2)
+	var style := made(4, 1, 0.3, 0.5, 0.2)
+	sewers(style, 0.7)
+	return style
 
 
 ## Spokes: the first round section, past the moor. Hallways two cells wide, long
@@ -509,4 +625,22 @@ static func square_defaults() -> Array[MazeStyle]:
 
 
 static func round_defaults() -> Array[MazeStyle]:
-	return [spokes(), whorl(), labyrinth()]
+	return [spokes(), turnstiles(), bore()]
+
+
+## The Turnstiles: the second round section. Not passages but halls round between
+## circles of wall, each circle broken by doorways with a great slab turning in each:
+## through when it stands edge on.
+static func turnstiles() -> MazeStyle:
+	var style := whorl()
+	style.section_width_cells = 6
+	(style as RoundStyle).layout = RoundStyle.Layout.ROTATING_DOORS
+	return style
+
+
+## The Bore: the last section, one wide roofed tunnel all the way round, dim, lit
+## through slots in its roof, from the way in to the way out.
+static func bore() -> MazeStyle:
+	var style := labyrinth()
+	(style as RoundStyle).layout = RoundStyle.Layout.TUNNEL
+	return style

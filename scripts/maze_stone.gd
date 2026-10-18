@@ -182,10 +182,12 @@ uniform vec3 sand_dark : source_color = vec3(0.5, 0.44, 0.34);
 // are left to the sand (SandGround) laid over them: not drawn here at all.
 uniform vec4 quarter_biomes = vec4(0.0);
 uniform float sand_laid = 0.0;
-uniform vec3 forest_floor : source_color = vec3(0.17, 0.14, 0.09);
+uniform vec3 forest_floor : source_color = vec3(0.13, 0.105, 0.075);
+// How high a swamp quarter's water stands (WildLands.water_level).
+uniform float swamp_level = 0.4;
 uniform vec3 swamp_mud : source_color = vec3(0.12, 0.13, 0.08);
-uniform vec3 plains_grass : source_color = vec3(0.34, 0.36, 0.24);
-uniform vec3 plains_rock : source_color = vec3(0.42, 0.41, 0.38);
+uniform vec3 plains_grass : source_color = vec3(0.19, 0.21, 0.12);
+uniform vec3 plains_rock : source_color = vec3(0.3, 0.29, 0.27);
 // Where walls stand (MazeStone.wall_feet), over a square `feet_half` metres each
 // way from the middle (none if 0): r, grown out by the strip of moss at their
 // foot; g, by the wet ground the rain runs off them onto.
@@ -327,7 +329,14 @@ void fragment() {
 		discard;
 	}
 	vec3 rocky = mix(plains_grass * (0.8 + 0.4 * patches(at * 0.3)), plains_rock * (0.85 + 0.3 * patches(at * 1.7)), smoothstep(0.55, 0.75, patches(at / 18.0 + 3.0)));
-	vec3 biome_colour = biome < 0.5 ? sand_colour : (biome < 1.5 ? forest_floor * (0.8 + 0.4 * patches(at * 0.5)) : (biome < 2.5 ? swamp_mud * (0.75 + 0.5 * patches(at * 0.2)) : rocky));
+	// (the forest's floor dark with fallen needles, mossy in patches; the swamp's
+	// mud black and wet at the water's edge and under it, its hummocks browner)
+	vec3 needles = forest_floor * (0.75 + 0.5 * patches(at * 0.5)) * (0.85 + 0.3 * clod);
+	needles = mix(needles, moss * (0.75 + 0.5 * patches(at * 2.1 + 6.0)), smoothstep(0.55, 0.75, patches(at / 7.0 + 21.0)) * 0.8);
+	float above = place.y - swamp_level;
+	vec3 bog = mix(swamp_mud * (0.75 + 0.5 * patches(at * 0.2)), vec3(0.15, 0.15, 0.08) * (0.8 + 0.4 * patches(at * 1.3)), smoothstep(0.08, 0.35, above));
+	bog = mix(bog, vec3(0.05, 0.048, 0.038) * (0.8 + 0.4 * patches(at * 3.1)), 1.0 - smoothstep(-0.02, 0.1, above + (patches(at * 2.3) - 0.5) * 0.06));
+	vec3 biome_colour = biome < 0.5 ? sand_colour : (biome < 1.5 ? needles : (biome < 2.5 ? bog : rocky));
 	colour = mix(colour, biome_colour, sandy);
 
 	// A puddle shows what is over it, most of all seen at a low angle: the walls
@@ -366,7 +375,10 @@ void fragment() {
 	ALBEDO = mix(colour, mix(mud, damp, 0.3) * 0.7 * (1.0 - shown), pool);
 	EMISSION = seen * shown * pool;
 	// (wet ground has a sheen: see light())
-	ROUGHNESS = mix(mix(1.0, 0.45, smoothstep(0.55, 1.0, soaked) * (1.0 - grassy) * (1.0 - mossy)), 0.05, pool);
+	// (not in the desert ring: the sky it would show over its dark ground reads
+	// as pale patches)
+	float sheen = smoothstep(0.55, 1.0, soaked) * (1.0 - grassy) * (1.0 - mossy) * (1.0 - sandy);
+	ROUGHNESS = mix(mix(1.0, 0.45, sheen), 0.05, pool);
 	SPECULAR = 0.0;
 	NORMAL = normalize(mat3(VIEW_MATRIX) * up);
 }

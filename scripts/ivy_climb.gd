@@ -36,7 +36,7 @@ func _ready() -> void:
 		_leaf.cull_mode = BaseMaterial3D.CULL_DISABLED
 		_leaf.roughness = 1.0
 		_leaf.metallic_specular = 0.0
-		_leaf_mesh = Vine.leaf_mesh(0.13)
+		_leaf_mesh = Vine.leaf_mesh(0.18)
 	# (drawn only once the camera first comes near enough to see it: a maze has
 	# hundreds of patches, too many leaves to lay all at once; the editor draws all)
 	if Engine.is_editor_hint() and plain:
@@ -93,6 +93,11 @@ static var plain := true
 static var _plain_material: StandardMaterial3D
 
 
+## He climbs across it as well as up: most of its width, not its ragged edges.
+func spread() -> float:
+	return maxf(width * 0.5 - 0.35, 0.0)
+
+
 ## Draws it as a flat green patch where its leaves would be.
 func _grow_plain() -> void:
 	grown = true
@@ -100,40 +105,88 @@ func _grow_plain() -> void:
 		_plain_material = StandardMaterial3D.new()
 		_plain_material.albedo_color = Color(0.22, 0.32, 0.16)
 		_plain_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# The same growth as in the game, coarser, each length of it a flat green band
+	# as wide as its leaves spread: its shape, without the leaves.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(global_position.snappedf(0.01))
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for piece: Array in _network(rng, 2.0):
+		var a: Vector3 = piece[0]
+		var b: Vector3 = piece[1]
+		var side: Vector3 = (b - a).cross(Vector3.BACK).normalized() * (0.2 + float(piece[2]) * 6.0)
+		for v: Vector3 in [a - side, b - side, b + side, a - side, b + side, a + side]:
+			tool.add_vertex(v + Vector3.BACK * 0.03)
 	var patch := MeshInstance3D.new()
-	var quad := QuadMesh.new()
-	quad.size = Vector2(width, height)
-	patch.mesh = quad
+	patch.mesh = tool.commit()
 	patch.material_override = _plain_material
-	# (over where its stems run, close against the wall)
-	patch.position = Vector3(0.0, height * 0.5, -0.05)
 	add_child(patch)
 
 
-## Draws its stems and leaves.
+## How it has grown: lengths of stem up the face, as [from, to, thickness]
+## (in its own space, close against the wall). A few stems root along its foot
+## and climb, wandering, drawn back towards the middle of the patch as they
+## stray; side shoots fork off them now and then and reach out a short way,
+## some forking again. So the patch is thick where the stems run and ragged at
+## its edges and top, with tendrils past them, as ivy is, not a square of it.
+## `coarse` makes the lengths that many times longer (fewer of them).
+func _network(rng: RandomNumberGenerator, coarse := 1.0) -> Array:
+	var pieces: Array = []
+	# Each growing tip: [where (x, up), which way, how thick, lengths left (-1: to the
+	# top), forks deep, how high it may go (each stem stops at its own: the top is ragged)].
+	var tips: Array = []
+	var roots := clampi(int(width / 0.5), 3, 8)
+	for r in roots:
+		var x := lerpf(-0.42, 0.42, (r + 0.5) / roots) * width + rng.randf_range(-0.15, 0.15)
+		tips.append([Vector2(x, 0.0), Vector2(rng.randf_range(-0.3, 0.3), 1.0).normalized(), 0.045, -1, 0, height * rng.randf_range(0.82, 1.06)])
+	var guard := 0
+	while not tips.is_empty() and guard < 6000:
+		guard += 1
+		var tip: Array = tips.pop_back()
+		var at: Vector2 = tip[0]
+		var way: Vector2 = tip[1]
+		var thick: float = tip[2]
+		var left: int = tip[3]
+		var deep: int = tip[4]
+		if left == 0:
+			continue
+		var top: float = tip[5]
+		way = way.rotated(rng.randf_range(-0.4, 0.4))
+		# (drawn up, and back towards the middle when it strays past the edge)
+		var stray := at.x / maxf(width * 0.5, 0.1)
+		way = (way + Vector2(-stray * 0.3, 0.45 if left < 0 else 0.1)).normalized()
+		var next := at + way * rng.randf_range(0.25, 0.45) * coarse
+		next.x = clampf(next.x, -width * 0.65, width * 0.65)
+		if next.y > top or next.y < 0.0:
+			continue
+		pieces.append([Vector3(at.x, at.y, -0.08), Vector3(next.x, next.y, -0.08), thick])
+		tips.append([next, way, maxf(thick * 0.985, 0.012), left - 1 if left > 0 else -1, deep, top])
+		# A side shoot: out to one side and a little down, short, now and then forking.
+		if deep < 2 and rng.randf() < (0.36 if deep == 0 else 0.18) * coarse:
+			var side := 1.0 if rng.randf() < 0.5 else -1.0
+			tips.append([next, way.rotated(side * rng.randf_range(0.7, 1.5)), maxf(thick * 0.55, 0.012), rng.randi_range(2, 7), deep + 1, top])
+	return pieces
+
+
+## Draws its stems and leaves: leaves along the stems, thickest where they run.
 func _grow() -> void:
 	grown = true
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(global_position.snappedf(0.01))
-	# Stems: a few thick ones that wander up the face, close against it.
+	var pieces := _network(rng)
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for s in 5:
-		var x := rng.randf_range(-0.45, 0.45) * width
-		var wander := rng.randf() * TAU
-		var y := 0.0
-		var last := Vector3(x, 0.0, -0.08)
-		while y < height:
-			y = minf(y + 0.6, height)
-			var next := Vector3(clampf(x + sin(y * 0.9 + wander) * 0.18 * width, -width * 0.5, width * 0.5), y, -0.08)
-			_branch(tool, last, next, 0.035)
-			last = next
+	var length := 0.0
+	for piece: Array in pieces:
+		_branch(tool, piece[0], piece[1], piece[2])
+		length += (piece[1] as Vector3).distance_to(piece[0])
 	tool.generate_normals()
 	var stems := MeshInstance3D.new()
 	stems.mesh = tool.commit()
 	stems.material_override = _stem
 	add_child(stems)
-	# Leaves, thick over the whole patch and thinning at its edges.
+	# Leaves, along the stems: as many as covered the patch before, shared out by
+	# each length's share of all the stem, spread either side of it.
 	var multi := MultiMesh.new()
 	multi.transform_format = MultiMesh.TRANSFORM_3D
 	multi.use_colors = true
@@ -141,33 +194,44 @@ func _grow() -> void:
 	# (a wide patch, up a bare wall, has bigger leaves, so that it reads from across
 	# a hall, and more than cover it, so that it is a mat and not a scatter)
 	var leaf_scale := clampf(width / 1.8, 1.0, 2.4)
+	# (as many as covered a square of it: along the stems, bigger, they make a mat)
 	var count := int(width * height * 70.0 * 1.3 / leaf_scale)
 	multi.instance_count = count
-	var ragged := rng.randf() * TAU
 	# (all at once, as the multimesh's buffer: a transform, then a colour, for each)
 	var buffer := PackedFloat32Array()
 	buffer.resize(count * 16)
-	for i in count:
-		var across := rng.randf_range(-0.5, 0.5)
-		# (fewer out at the sides)
-		across *= 0.6 + 0.4 * rng.randf()
-		# (its top ragged: some stems reach higher than others)
-		var reach := 1.0 - 0.28 * (0.5 + 0.5 * sin(across * 11.0 + ragged)) * (0.5 + 0.5 * sin(across * 4.3 - ragged))
-		var at := Vector3(across * width, pow(rng.randf(), 1.25) * height * reach, rng.randf_range(-0.05, 0.12))
-		var basis := Basis(Vector3.BACK, rng.randf_range(-1.2, 1.2) + PI).rotated(Vector3.RIGHT, rng.randf_range(-0.9, -0.2))
-		basis = basis.scaled(Vector3.ONE * rng.randf_range(0.7, 1.4) * leaf_scale)
-		var colour := Color(0.09, 0.17, 0.07).lightened(rng.randf_range(-0.05, 0.14))
-		var o := i * 16
-		for row in 3:
-			buffer[o + row * 4] = basis[0][row]
-			buffer[o + row * 4 + 1] = basis[1][row]
-			buffer[o + row * 4 + 2] = basis[2][row]
-			buffer[o + row * 4 + 3] = at[row]
-		buffer[o + 12] = colour.r
-		buffer[o + 13] = colour.g
-		buffer[o + 14] = colour.b
-		buffer[o + 15] = colour.a
-	multi.buffer = buffer
+	var per_metre := count / maxf(length, 0.01)
+	var i := 0
+	var owed := 0.0
+	for piece: Array in pieces:
+		var a: Vector3 = piece[0]
+		var b: Vector3 = piece[1]
+		var along := b - a
+		var side := along.cross(Vector3.BACK).normalized()
+		owed += along.length() * per_metre
+		# (a thick stem carries a broad fan of leaves, a thin shoot a narrow one)
+		var spread := (0.22 + float(piece[2]) * 7.0) * leaf_scale
+		while owed >= 1.0 and i < count:
+			owed -= 1.0
+			var off := rng.randfn(0.0, 0.5) * spread
+			var at := a + along * rng.randf() + side * off + Vector3.BACK * rng.randf_range(0.0, 0.16)
+			var basis := Basis(Vector3.BACK, rng.randf_range(-1.2, 1.2) + PI).rotated(Vector3.RIGHT, rng.randf_range(-0.9, -0.2))
+			basis = basis.scaled(Vector3.ONE * rng.randf_range(0.7, 1.4) * leaf_scale)
+			# (paler and younger out at the tips and edges, darker in the thick of it)
+			var colour := Color(0.09, 0.17, 0.07).lightened(rng.randf_range(-0.05, 0.1) + clampf(absf(off) / spread, 0.0, 1.0) * 0.06)
+			var o := i * 16
+			for row in 3:
+				buffer[o + row * 4] = basis[0][row]
+				buffer[o + row * 4 + 1] = basis[1][row]
+				buffer[o + row * 4 + 2] = basis[2][row]
+				buffer[o + row * 4 + 3] = at[row]
+			buffer[o + 12] = colour.r
+			buffer[o + 13] = colour.g
+			buffer[o + 14] = colour.b
+			buffer[o + 15] = colour.a
+			i += 1
+	multi.instance_count = i
+	multi.buffer = buffer.slice(0, i * 16)
 	var leaves := MultiMeshInstance3D.new()
 	leaves.multimesh = multi
 	leaves.material_override = _leaf

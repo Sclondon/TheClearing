@@ -111,7 +111,7 @@ func _one(seed_value: int) -> void:
 		deepest_in_lane = maxf(deepest_in_lane, marsh.depth_at(p))
 		if marsh.reed_at(p) > 0.0:
 			reeds_in_lane += 1
-	check("nothing deep in the lane in from the gate", deepest_in_lane < look.marsh_shallow_depth + 0.05, "(%.2f m)" % deepest_in_lane)
+	check("nothing deeper than wading in the lane in from the gate (it is flooded: Ponds)", deepest_in_lane < look.marsh_flood_depth + 0.05, "(%.2f m)" % deepest_in_lane)
 	check("no reeds in the lane", reeds_in_lane == 0)
 	var standing := 0
 	for found: Node in marsh.get_children():
@@ -123,7 +123,7 @@ func _one(seed_value: int) -> void:
 					standing += 1
 	check("no bulrush nor lily pad in the lane", standing == 0, "(%d)" % standing)
 	check("bulrushes and lily pads", marsh.bulrush_count > 100 and marsh.lily_pad_count > 50, "(%d, %d)" % [marsh.bulrush_count, marsh.lily_pad_count])
-	check("level and dry at the foot of the wall", absf(maze.ground_height(Vector3(gate.x, 0.0, gate.y) + Vector3(inward.x, 0.0, inward.y) * 1.0)) < 0.01)
+	check("flooded at the foot of the wall, wading deep", absf(ClearingStyle.MARSH_LEVEL - maze.ground_height(Vector3(gate.x, 0.0, gate.y) + Vector3(inward.x, 0.0, inward.y) * 1.0) - look.marsh_flood_depth) < 0.02)
 
 	# It meets the field without a step round its edge.
 	var step := 0.0
