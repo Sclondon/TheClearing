@@ -148,6 +148,8 @@ extends Resource
 @export_range(0, 4) var amalgams := 2
 ## Flesh mounds: many bodies grown together into a mound that nearly fills a hall.
 @export_range(0, 3) var flesh_mounds := 1
+## Harpies, each perched high on a wall (its ledge, or its top) over a hallway.
+@export_range(0, 4) var harpies := 1
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
@@ -213,6 +215,7 @@ static func avenues() -> MazeStyle:
 	style.tightrope_vine_height_range = Vector2(0.45, 0.75)
 	style.sewer_pipe_share = 0.08
 	style.plant_density = 0.8
+	style.harpies = 2
 	return style
 
 

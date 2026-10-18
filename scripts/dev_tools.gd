@@ -31,6 +31,7 @@ const HUNTERS := [
 	["ANGEL", "angel", SNAKE_AHEAD],
 	["FROG", "frog", AHEAD], ["FROG SWARM", "frog_swarm", AHEAD],
 	["AMALGAM", "amalgam", AHEAD], ["ABOMINATION", "flesh_mound", SNAKE_AHEAD],
+	["HARPY", "harpy", AHEAD],
 ]
 
 var world: World
@@ -208,6 +209,9 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = [MazeFrog.new()]
 		"frog_swarm":
 			made = [MazeFrogSwarm.new()]
+		"harpy":
+			# (it flies up to the nearest high wall ahead and perches there)
+			made = [MazeHarpy.new()]
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 

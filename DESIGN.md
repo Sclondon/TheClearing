@@ -174,6 +174,16 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     reach you leap on and cling, and the more there are the slower you go; enough of them for long enough and you are
     caught. Outrun them, shake them off by running and jumping, or get up onto something (a terrace, the ivy): they
     cannot hop that high, give up and go home.
+  - **Harpies** (the user: "lets add a harpie type enemy"): a starved woman's head and trunk (ribs, hollow eyes, a
+    too-wide lipless mouth, lank wet hair over the face) on great ragged grey-black wings, with a bird's lower body
+    and scaly raptor legs. Each perches high on a wall (the ledge, or the top), hunched, wings mantled, watching the
+    hall below. Seeing someone out in the open it screeches (the first warning), takes off over the walls and
+    circles high over them; then a falling cry (the second warning), a stoop over the end of a long straight hall,
+    and a dive down it, talons first, at chest height. It flies over the walls, so it can come from anywhere, but
+    it needs a straight run of hall under open sky: under a ledge or a bridge, or in a slot, you cannot be dived at,
+    and staying hidden long enough sends it home. Its line is set the last half second: duck, slide or roll and
+    the talons pass over; step aside and they pass by; stand or run straight and you are snatched. Two dives, then
+    it climbs back to its perch and lands.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
