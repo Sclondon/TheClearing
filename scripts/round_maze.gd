@@ -3,8 +3,9 @@ class_name RoundMaze
 extends RefCounted
 ## The round sections of the maze, outside the square ones (Maze): rings of
 ## passages between great circular walls, each made as its MazeStyle says (one
-## whose `round` is on). Between the square maze's outer wall and the first
-## circle is the moor, open ground that the square maze's way out comes onto;
+## whose `round_section` is on). Between the square maze's outer wall and the first
+## circle is a desert of dunes, cut into quarters by great walls from the
+## square's corners (a gate through each), that the square maze's way out comes onto;
 ## each circle has a few gates through it, and the last one way out.
 ##
 ## Each section is rows of cells, one hall wide (hallway diameter cells x
@@ -13,8 +14,6 @@ extends RefCounted
 ## them as in a square section (straight on chance, side branch chance, loop
 ## share), from the gates.
 
-## How far out the first circle stands past the corners of the square maze, metres.
-const MOOR_MARGIN := 28.0
 ## How many gates each circle has through it into the section outside it.
 const GATES := 3
 ## How wide the gap of a gate through a great wall is, metres.
@@ -38,6 +37,17 @@ class Ring:
 
 ## The middle of the great wall the moor ends at (the first circle).
 var inner_radius := 0.0
+## The desert inside it: half the square maze's width, the style its dunes are
+## made by (the first round section's), the square maze's way out into it and
+## which way that goes.
+var square_half := 0.0
+var desert: MazeStyle
+var door := Vector2.ZERO
+var way_in := Vector2.RIGHT
+var noise_seed := 0
+var _noise: FastNoiseLite
+# Where the dunes are level: the gaps in the diagonal walls, the door, the gates.
+var _level: Array[Vector2] = []
 var rings: Array[Ring] = []
 ## The way out: the angle it is at, round the last circle.
 var exit_angle := 0.0
@@ -50,7 +60,15 @@ static func generate(maze: Maze, count: int) -> RoundMaze:
 	var made := RoundMaze.new()
 	made._rng.seed = hash("round/%d" % maze.maze_seed)
 	var half := maze.extent() * 0.5
-	made.inner_radius = half * sqrt(2.0) + MOOR_MARGIN
+	var first: MazeStyle = maze.styles[maze.rings]
+	made.square_half = half
+	made.desert = first
+	made.inner_radius = half * sqrt(2.0) + first.desert_width
+	made.noise_seed = maze.maze_seed
+	# (the square maze's way out, and the quarter of the desert it comes into)
+	made.way_in = Vector2(maze.exit_side.x, maze.exit_side.y)
+	var door := maze.world(maze.exit)
+	made.door = Vector2(door.x, door.z) + made.way_in * Maze.CELL * 0.5
 	var radius := made.inner_radius
 	for k in count:
 		var style: MazeStyle = maze.styles[maze.rings + k]
@@ -69,13 +87,67 @@ static func generate(maze: Maze, count: int) -> RoundMaze:
 		made.rings.append(ring)
 	# (each section's gates in where the one inside it has its ways out)
 	var gates: Array[float] = []
-	var start := made._rng.randf() * TAU
+	# (the first circle's gates all in the quarter of the desert the square maze's
+	# way out comes into: the diagonal walls part the quarters)
+	var facing := made.way_in.angle()
 	for g in GATES:
-		gates.append(fposmod(start + g * TAU / GATES, TAU))
+		gates.append(fposmod(facing + (g - (GATES - 1) * 0.5) * 0.42 + made._rng.randf_range(-0.08, 0.08), TAU))
 	for k in made.rings.size():
 		gates = made._carve(made.rings[k], gates, k == made.rings.size() - 1)
 	made.exit_angle = gates[0]
 	return made
+
+
+## The angles of the great walls across the desert from the square's corners to
+## the first circle.
+const DIAGONALS: Array[float] = [PI * 0.25, PI * 0.75, PI * 1.25, PI * 1.75]
+## How wide the gap is through each, at its middle, and how far from the doors
+## and gates the dunes keep (level there), metres.
+const DIAGONAL_GAP := 10.0
+const LEVEL_ROUND := 45.0
+
+
+## Where the middle of each diagonal wall's gap is (x, z).
+func diagonal_gaps() -> Array[Vector2]:
+	var found: Array[Vector2] = []
+	for a: float in DIAGONALS:
+		found.append(Vector2(cos(a), sin(a)) * (square_half * sqrt(2.0) + inner_radius) * 0.5)
+	return found
+
+
+## How high the desert's dunes are at (x, z): nothing in the square maze or past
+## the first circle, little near the walls, and level round the doors and gates.
+func desert_height(x: float, z: float) -> float:
+	if desert == null or desert.dune_height <= 0.0:
+		return 0.0
+	var p := Vector2(x, z)
+	var from_square := maxf(absf(x), absf(z)) - square_half
+	var from_circle := inner_radius - p.length()
+	if from_square <= 0.0 or from_circle <= 0.0:
+		return 0.0
+	var shown := smoothstep(0.0, 60.0, from_square) * smoothstep(0.0, 60.0, from_circle)
+	# (low by the diagonal walls, and level round the doors and gates)
+	for a: float in DIAGONALS:
+		var along := Vector2(cos(a), sin(a))
+		shown *= smoothstep(8.0, 40.0, absf(p.cross(along)))
+	if _level.is_empty():
+		_level = diagonal_gaps()
+		_level.append(door)
+		for g: float in rings[0].gates_in if not rings.is_empty() else []:
+			_level.append(Vector2(cos(g), sin(g)) * inner_radius)
+	for spot: Vector2 in _level:
+		shown *= smoothstep(LEVEL_ROUND * 0.3, LEVEL_ROUND, p.distance_to(spot))
+	if shown <= 0.0:
+		return 0.0
+	if _noise == null:
+		_noise = FastNoiseLite.new()
+		_noise.seed = noise_seed
+		_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		_noise.frequency = 1.0 / desert.dune_spacing
+		_noise.fractal_octaves = 3
+	# (ridged: sharp crests between broad hollows, as dunes)
+	var ridge := 1.0 - absf(_noise.get_noise_2d(x, z * 0.6))
+	return desert.dune_height * shown * ridge * ridge
 
 
 ## The radius past which one has got out.

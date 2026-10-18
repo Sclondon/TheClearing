@@ -112,6 +112,17 @@ extends Resource
 @export_range(0.0, 0.5) var sewer_pipe_share := 0.0
 @export_range(0.2, 0.9) var sewer_pipe_height := 0.62
 
+@export_group("Desert before it")
+## For the first round section: the desert between it and the square sections.
+## How far the desert reaches past the square sections' corners, metres (the first
+## circle stands there), how high its dunes are and about how far apart.
+@export_range(30.0, 1000.0) var desert_width := 320.0
+@export_range(0.0, 40.0) var dune_height := 9.0
+@export_range(20.0, 400.0) var dune_spacing := 110.0
+## How high the great walls are that run from each corner of the square out to
+## the circle, across the desert (each with a gate through it).
+@export_range(20.0, 200.0) var diagonal_wall_height := 80.0
+
 @export_group("Plants")
 ## How thickly ferns, moss and tufts of grass grow along the foot of its walls (0
 ## none, 1 all along every wall).

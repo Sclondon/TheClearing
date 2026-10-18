@@ -523,15 +523,8 @@ func _trees(maze: Maze) -> void:
 	points = points.filter(func(p: Vector3) -> bool: return not look.kept_clear(Vector2(p.x, p.z)))
 	var built := maze.extent() * 0.5 + 6.0
 	var next := Maze.ring_extent(maze.rings + 1, maze.styles) * 0.5 - 6.0
-	if maze.round_rings:
-		# (pines over the moor, between the square maze and the first circle)
-		var moor := maze.round_rings.inner_radius - 12.0
-		for i in 220:
-			var turn := rng.randf() * TAU
-			var p := Vector3(cos(turn), 0.0, sin(turn)) * rng.randf_range(built, moor)
-			if maxf(absf(p.x), absf(p.z)) > built:
-				points.append(p)
-	else:
+	# (none in the desert outside, when there are round sections)
+	if not maze.round_rings:
 		for i in 60:
 			var side := rng.randi() % 4
 			points.append(_on_side(side, rng.randf_range(-next, next), rng.randf_range(built, next)))

@@ -173,6 +173,10 @@ uniform float wrap = 0.2;
 // Half the width of the clearing and of the whole maze, in metres.
 uniform float clearing_half = 10.0;
 uniform float maze_half = 50.0;
+// The desert outside the square maze, out to this far from the middle (0: none).
+uniform float desert_radius = 0.0;
+uniform vec3 sand : source_color = vec3(0.66, 0.59, 0.46);
+uniform vec3 sand_dark : source_color = vec3(0.5, 0.44, 0.34);
 // Where walls stand (MazeStone.wall_feet), over a square `feet_half` metres each
 // way from the middle (none if 0): r, grown out by the strip of moss at their
 // foot; g, by the wet ground the rain runs off them onto.
@@ -299,7 +303,16 @@ void fragment() {
 	float cushion = clamp((mix(big.a, small.a, share) - 0.35) * 1.6, 0.0, 1.0) * near + (1.0 - near) * 0.5;
 	colour = mix(colour, moss * (0.8 + 0.4 * patches(at * 3.1 + 8.0)) * (0.55 + 0.8 * cushion), mossy * mix(1.0, 0.75 + 0.25 * cushion, near));
 	float grassy = 1.0 - in_maze;
+	// (sand in the desert: in ripples across the wind, darker in the hollows)
+	float sandy = 0.0;
+	if (desert_radius > 0.0) {
+		sandy = smoothstep(maze_half + 0.4, maze_half + 3.0, out_x) * (1.0 - smoothstep(desert_radius - 2.0, desert_radius, length(at)));
+	}
+	grassy *= 1.0 - sandy;
 	colour = mix(colour, grass * (0.85 + 0.3 * patches(at * 0.35)), grassy);
+	float ripple = 0.5 + 0.5 * sin(dot(at, vec2(0.83, 0.55)) * 2.6 + patches(at * 0.15) * 6.0);
+	vec3 sand_colour = mix(sand_dark, sand, patches(at / 40.0 + 5.0) * 0.6 + 0.4 * smoothstep(0.0, 1.0, place.y / 8.0)) * (0.94 + 0.08 * ripple * near);
+	colour = mix(colour, sand_colour, sandy);
 
 	// A puddle shows what is over it, most of all seen at a low angle: the walls
 	// round it, and the sky over them. Which, is found by following the bounced

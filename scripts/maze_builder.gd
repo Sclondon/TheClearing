@@ -335,6 +335,10 @@ func _ground() -> void:
 		on_hills.shape = heights
 		on_hills.scale = Vector3.ONE * HILL_STEP
 		body.add_child(on_hills)
+	# The desert's dunes outside the square maze, if there are round sections.
+	if maze.round_rings:
+		material.set_shader_parameter(&"desert_radius", maze.round_rings.inner_radius)
+		_dunes(body, material)
 	add_child(body)
 
 
@@ -623,3 +627,65 @@ func _on_terrace(at: Vector3) -> bool:
 		if footprint.grow(0.3).has_point(Vector2(at.x, at.z)):
 			return true
 	return false
+
+
+## Metres between the points of the desert's dunes, and how many points along
+## each side of a stretch of them (each its own mesh and shape).
+const DUNE_STEP := 8.0
+const DUNE_STRETCH := 48
+
+
+## The desert's dunes (RoundMaze.desert_height), over the flat ground under them:
+## a grid of points DUNE_STEP apart, in stretches, each a mesh and a shape to walk
+## on, only where the sand rises (the flat ground is the rest).
+func _dunes(body: StaticBody3D, material: Material) -> void:
+	var plan := maze.round_rings
+	var reach := plan.inner_radius
+	var across := ceili(reach * 2.0 / DUNE_STEP) + 1
+	var start := -reach
+	var heights := PackedFloat32Array()
+	heights.resize(across * across)
+	for j in across:
+		for i in across:
+			heights[i + j * across] = plan.desert_height(start + i * DUNE_STEP, start + j * DUNE_STEP)
+	var height_of := func(i: int, j: int) -> float:
+		return heights[clampi(i, 0, across - 1) + clampi(j, 0, across - 1) * across]
+	for sj in range(0, across - 1, DUNE_STRETCH):
+		for si in range(0, across - 1, DUNE_STRETCH):
+			var points := PackedVector3Array()
+			var normals := PackedVector3Array()
+			for j in range(sj, mini(sj + DUNE_STRETCH, across - 1)):
+				for i in range(si, mini(si + DUNE_STRETCH, across - 1)):
+					var corners := [height_of.call(i, j), height_of.call(i + 1, j), height_of.call(i + 1, j + 1), height_of.call(i, j + 1)]
+					if corners.max() <= 0.0:
+						continue
+					var quad: Array[Vector3] = []
+					var faces: Array[Vector3] = []
+					for c: Vector2i in [Vector2i(i, j), Vector2i(i + 1, j), Vector2i(i + 1, j + 1), Vector2i(i, j + 1)]:
+						quad.append(Vector3(start + c.x * DUNE_STEP, height_of.call(c.x, c.y) + HILL_LIFT, start + c.y * DUNE_STEP))
+						var dx: float = height_of.call(c.x + 1, c.y) - height_of.call(c.x - 1, c.y)
+						var dz: float = height_of.call(c.x, c.y + 1) - height_of.call(c.x, c.y - 1)
+						faces.append(Vector3(-dx, 2.0 * DUNE_STEP, -dz).normalized())
+					# (wound so that the top is the front)
+					for k: int in [0, 1, 2, 0, 2, 3]:
+						points.append(quad[k])
+						normals.append(faces[k])
+			if points.is_empty():
+				continue
+			var arrays := []
+			arrays.resize(Mesh.ARRAY_MAX)
+			arrays[Mesh.ARRAY_VERTEX] = points
+			arrays[Mesh.ARRAY_NORMAL] = normals
+			var mesh := ArrayMesh.new()
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			var shown := MeshInstance3D.new()
+			shown.name = "Dunes"
+			shown.mesh = mesh
+			shown.material_override = material
+			shown.visibility_range_end = RoundBuilder.FAR
+			body.add_child(shown)
+			var shape := ConcavePolygonShape3D.new()
+			shape.set_faces(points)
+			var collider := CollisionShape3D.new()
+			collider.shape = shape
+			body.add_child(collider)

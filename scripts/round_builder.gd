@@ -27,6 +27,15 @@ var _parts := {}
 func _ready() -> void:
 	var body := StaticBody3D.new()
 	body.name = "Walls"
+	# The great walls across the desert from the square's corners to the first
+	# circle, a gate through the middle of each.
+	if plan.desert:
+		var corner := plan.square_half * sqrt(2.0)
+		var middle := (corner + plan.inner_radius) * 0.5
+		var gap := RoundMaze.DIAGONAL_GAP * 0.5 + MazeBuilder.RING_THICK * 0.5
+		for a: float in RoundMaze.DIAGONALS:
+			_radial(0, a, corner, middle - gap, MazeBuilder.RING_THICK, plan.desert.diagonal_wall_height, true)
+			_radial(0, a, middle + gap, plan.inner_radius, MazeBuilder.RING_THICK, plan.desert.diagonal_wall_height, true)
 	for k in plan.rings.size():
 		var ring: RoundMaze.Ring = plan.rings[k]
 		var style := ring.style
@@ -128,8 +137,8 @@ func _arc(k: int, r: float, a0: float, a1: float, thick: float, high: float, gre
 
 
 ## A wall out from `r0` to `r1` at angle `a` (as long again as the walls it meets are thick, to meet them).
-func _radial(k: int, a: float, r0: float, r1: float, thick: float, high: float) -> void:
-	_box(k, a, (r0 + r1) * 0.5, Vector3(thick, high, r1 - r0 + thick), false)
+func _radial(k: int, a: float, r0: float, r1: float, thick: float, high: float, great := false) -> void:
+	_box(k, a, (r0 + r1) * 0.5, Vector3(thick, high, r1 - r0 + thick), great)
 
 
 ## A box `size` (along the circle, high, out) standing with its middle `r` out
