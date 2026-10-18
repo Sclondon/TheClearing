@@ -192,6 +192,22 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     straight line, far faster than a sprint and barely able to turn. Step aside (a side passage, a slot, a way up)
     and it thunders past and skids, or slams into the wall and stands stunned a few seconds, then forgets you a
     while. In its way, you are tossed and caught. It cannot reach anyone up a wall.
+  - **Tripod** (the user: "a giant 3 legged tripod enemy like from war of the worlds"; then "the tripod legs should
+    be more fluid, noodly"): a Martian fighting-machine far taller than the walls. A low cowl of weathered bronze
+    plate some 60 m up, half lost in the mist, a pale eye glowing in the dark under its brow; three long, whippy legs
+    of segmented metal that coil up as they lift, swing high over the walls and uncoil to plant in the halls with a
+    boom that shakes the ground; cable tentacles and a clawed grasper hanging under it; a heat ray on a jointed arm;
+    red weed trailing off it. It does not chase: it patrols round its ring in great slow strides (slower than a
+    walk), its searchlight crossing the wall tops and sweeping slowly down one hall after another. Lit in the open
+    for half a second, you are found: its horn sounds, a deep, distorted "ULLA" heard across the maze (the warning),
+    its light stays on you and its hood turns to you. Near under it, its grasper uncoils high over you and comes down
+    slowly; get away or out of its sight and it draws back, stay and its claws lift you away. Further off, its arm
+    swings round and the emitter charges (about two and a half seconds: it glows brighter and its hum rises); then
+    the ray comes down the hall at you from well up it and burns along it through where you stood, drifting after
+    you only slowly. Step out of its line, into a side passage or a slot, under a ledge or behind a buttress, and it
+    burns past, leaving a black scorch with a glowing seam and steam rising off it. The walls cut its light and its
+    ray as they do its sight: against the near wall, under a ledge, in the ivy, you are hidden. One in a ring at
+    most (it is huge); the first ring has one.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.

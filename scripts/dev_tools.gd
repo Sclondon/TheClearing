@@ -34,6 +34,7 @@ const HUNTERS := [
 	["HARPY", "harpy", AHEAD],
 	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD], ["BOAR", "boar", SNAKE_AHEAD],
+	["TRIPOD", "tripod", SNAKE_AHEAD],
 ]
 
 var world: World
@@ -216,6 +217,9 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = [MazeHarpy.new()]
 		"boar":
 			made = [MazeBoar.new()]
+		"tripod":
+			# (it stands over the hall ahead, its light on the ground in front of him)
+			made = [MazeTripod.new()]
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 

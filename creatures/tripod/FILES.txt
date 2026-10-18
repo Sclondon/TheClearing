@@ -1,0 +1,8 @@
+# A Martian tripod: its look, its noodly-legged walk, its searchlight, heat ray, grasper and horn, for any game (no thinking)
+creatures/tripod/tripod.gd
+creatures/tripod/tripod_look.gd
+creatures/tripod/tripod_rig.gd
+creatures/tripod/tripod_sound.gd
+creatures/tripod/models/tripod.glb
+creatures/tripod/tools/.gdignore
+creatures/tripod/tools/build_tripod.py
