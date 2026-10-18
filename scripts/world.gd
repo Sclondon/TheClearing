@@ -123,6 +123,8 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	touch = TouchControls.new()
 	touch.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hud.add_child(touch)
+	# (the hand button cuts a strung vine as well, as the act key does: see try_cut)
+	touch.act_pressed.connect(func() -> void: try_cut())
 
 	_enemies(seed_value)
 	if DevTools.enabled():
@@ -172,6 +174,46 @@ func _enemies(seed_value: int) -> void:
 	Grass.push(griever, 1.6)
 	for enemy: Node3D in enemies.enemies:
 		Grass.push(enemy, 1.0)
+
+
+## How near his hands a strung vine has to be for him to cut it, metres.
+const CUT_REACH := 2.2
+
+
+## The act button: cuts the strung vine (VineStrand) he is on or by, where he
+## is, and tells the others. True if there was one.
+func try_cut() -> bool:
+	var hands := player.global_position + Vector3.UP * 1.0
+	var strands := maze_features().strands
+	for i in strands.size():
+		var strand := strands[i]
+		if is_instance_valid(strand) and strand.distance_to(hands) < CUT_REACH:
+			var on_it := player.is_on_floor() and strand._nearest(player.global_position) >= 0
+			var made := cut_strand(i, hands)
+			# (if he was on it, he keeps hold of the end of the half
+			# nearest him, and swings down on it)
+			if on_it and not made.is_empty():
+				var his := made[0]
+				for vine in made:
+					if vine.distance_to(hands) < his.distance_to(hands):
+						his = vine
+				player._hold_rope(his, his.length - 0.2, player.velocity)
+			if online:
+				Net.send_json(Net.BROADCAST, {"cut": i, "at": [hands.x, hands.y, hands.z]})
+			return true
+	return false
+
+
+## Cuts strung vine `index` (the same on every copy) nearest `at`.
+func cut_strand(index: int, at: Vector3) -> Array[Vine]:
+	var strands := maze_features().strands
+	if index >= 0 and index < strands.size() and is_instance_valid(strands[index]):
+		return strands[index].cut(at)
+	return []
+
+
+func maze_features() -> MazeFeatures:
+	return (get_node(^"Maze") as MazeBuilder).features
 
 
 ## Something has caught `who`. Here (alone or as the host, where they are run):
@@ -276,6 +318,8 @@ func _physics_process(delta: float) -> void:
 	if player == null:
 		return
 	clock += delta
+	if Input.is_action_just_pressed(&"act"):
+		try_cut()
 	if not out.has(slot) and maze.escaped(player.global_position):
 		_got_out(slot, clock)
 		if online:
@@ -354,6 +398,12 @@ func _on_packet(from: int, kind: int, data: PackedByteArray) -> void:
 		var message: Variant = JSON.parse_string(data.get_string_from_utf8())
 		if not (message is Dictionary):
 			return
+		if message.has("cut"):
+			# (a guest's cut is passed on to the others by the host)
+			if Net.is_host and from != slot:
+				Net.send_json(Net.BROADCAST, message)
+			var spot: Array = message.get("at", [0, 0, 0])
+			cut_strand(int(message["cut"]), Vector3(spot[0], spot[1], spot[2]))
 		if message.has("caught") and int(message["caught"]) == slot:
 			_back_to_the_clearing()
 		if message.has("out"):

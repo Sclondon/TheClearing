@@ -1,137 +1,181 @@
 @tool
 class_name VineStrand
-extends Node3D
-## A vine strung across a hall from one wall to the other, sagging in the middle:
-## a stem with leaves along it, hanging still (it is out of reach, high over the
-## hall, and drawn once; nothing simulates it). From `from` to `to`, in the world.
+extends RopeBridge
+## A vine strung across a hall from one wall to the other, sagging in the middle,
+## drawn as the vines that hang are (Vine: a green stem with leaves along it). It
+## is a RopeBridge one footstep wide: walked as a tightrope, it dips and sways
+## under him, and keeps him on it if he goes carefully (he is drawn back over it
+## while he stands on it and is not stepping off). `cut` it and it falls into two
+## vines hanging from where its ends were held, to swing on (or to hang from: he
+## is on it when he cuts it, and catches his half as it goes).
+##
+## From `from` to `to`, in the world.
 
-@export var from := Vector3.ZERO
-@export var to := Vector3(10.0, 0.0, 0.0)
-## How far the middle hangs below a straight line between its ends, metres
-## (0: a share of its length).
-@export var sag := 0.0
-
-const STEPS := 24
-const THICK := 0.1
-## Leaves per metre of stem.
-const LEAVES := 30.0
-## Tendrils hanging off it: about one every this many metres, this long at most.
-const TENDRIL_EVERY := 0.9
-const TENDRIL_LONG := 4.5
+## How far either side of the stem his feet stay on it, metres, and how quickly
+## he is drawn back over it.
+const FOOTING := 0.17
+const BALANCE := 7.0
+## A cut vine hangs no lower than this over the ground.
+const CLEAR := 1.6
 
 static var _stem: StandardMaterial3D
 static var _leaf: StandardMaterial3D
 static var _leaf_mesh: ArrayMesh
 
+var _stems: Array[MeshInstance3D] = []
+var _leaves: MultiMeshInstance3D
+var _placing: Array = []
+
+
+func _init() -> void:
+	width = FOOTING * 2.0
+	slack = 1.05
+	most_sag = 2.2
+
 
 func _ready() -> void:
+	super()
+	add_to_group(&"vine_strands")
+	# (no planks or hand ropes to be seen: only the vine, where the deck is)
+	for plank in _planks:
+		for child in plank.get_children():
+			if child is MeshInstance3D:
+				child.visible = false
+	for rail in _rails:
+		rail.visible = false
 	if _stem == null:
 		_stem = StandardMaterial3D.new()
-		_stem.albedo_color = Color(0.2, 0.22, 0.13)
+		_stem.albedo_color = Color(0.2, 0.24, 0.12)
 		_stem.roughness = 1.0
 		_stem.metallic_specular = 0.0
-		_stem.cull_mode = BaseMaterial3D.CULL_DISABLED
 		_leaf = StandardMaterial3D.new()
 		_leaf.vertex_color_use_as_albedo = true
 		_leaf.cull_mode = BaseMaterial3D.CULL_DISABLED
 		_leaf.roughness = 1.0
 		_leaf.metallic_specular = 0.0
-		_leaf_mesh = Vine.leaf_mesh(0.42)
-	top_level = true
-	global_transform = Transform3D.IDENTITY
-	var points := curve()
+		_leaf_mesh = Vine.leaf_mesh(0.16)
+	for i in POINTS - 1:
+		var stem := MeshInstance3D.new()
+		var line := CylinderMesh.new()
+		line.top_radius = 0.045
+		line.bottom_radius = 0.045
+		line.height = 1.0
+		line.radial_segments = 6
+		line.rings = 1
+		stem.mesh = line
+		stem.material_override = _stem
+		stem.top_level = true
+		add_child(stem)
+		_stems.append(stem)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(from.snappedf(0.01))
-	# Stems twisted round each other along the curve, and tendrils hanging off
-	# them, mostly short, each a line of points.
-	var lines: Array[PackedVector3Array] = []
-	var along_all := (to - from).normalized()
-	var across := along_all.cross(Vector3.UP).normalized()
-	for s in 3:
-		var twisted := PackedVector3Array()
-		var turns := rng.randf_range(3.0, 6.0)
-		var phase := s * TAU / 3.0
-		for i in points.size():
-			var a := phase + i / float(points.size() - 1) * turns * TAU
-			twisted.append(points[i] + (across * cos(a) + Vector3.UP * sin(a)) * THICK * 1.4)
-		lines.append(twisted)
-	var span := from.distance_to(to)
-	for k in int(span / TENDRIL_EVERY):
-		var at := points[rng.randi_range(1, points.size() - 2)]
-		var long := 0.4 + pow(rng.randf(), 2.0) * TENDRIL_LONG
-		var drift := Vector3(rng.randf_range(-0.5, 0.5), 0.0, rng.randf_range(-0.5, 0.5))
-		var tendril := PackedVector3Array()
-		for s in 5:
-			var t := s / 4.0
-			tendril.append(at + Vector3.DOWN * long * t + drift * sin(t * 2.5) * long * 0.3)
-		lines.append(tendril)
-	var tool := SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for line in lines:
-		var thick := THICK * (0.7 if line.size() == points.size() else 0.3)
-		for i in line.size() - 1:
-			_tube(tool, line[i], line[i + 1], thick)
-	tool.generate_normals()
-	var stem := MeshInstance3D.new()
-	stem.mesh = tool.commit()
-	stem.material_override = _stem
-	add_child(stem)
-	# Leaves along the stem and the tendrils, every way round, drooping.
-	var pieces: Array = []
-	var length := 0.0
-	for line in lines:
-		for i in line.size() - 1:
-			pieces.append([line[i], line[i + 1]])
-			length += line[i].distance_to(line[i + 1])
 	var multi := MultiMesh.new()
 	multi.transform_format = MultiMesh.TRANSFORM_3D
 	multi.use_colors = true
 	multi.mesh = _leaf_mesh
-	multi.instance_count = int(length * LEAVES)
+	var each := maxi(Vine.LEAVES, roundi(_piece / Vine.LEAF_REACH))
+	multi.instance_count = (POINTS - 1) * each
 	for i in multi.instance_count:
-		var piece: Array = pieces[rng.randi_range(0, pieces.size() - 1)]
-		var a: Vector3 = piece[0]
-		var b: Vector3 = piece[1]
-		var at := a.lerp(b, rng.randf())
-		var along := (b - a).normalized()
-		var round_about := Basis(along, rng.randf() * TAU)
-		var upright := absf(along.y) > 0.8
-		var out := round_about * (Vector3.RIGHT if upright else Vector3.UP).cross(along).normalized()
-		# (hanging leaves droop: more of them below the stem)
-		if not upright:
-			out = (out + Vector3.DOWN * 0.6).normalized()
-		var basis := Basis.looking_at(out, along).scaled(Vector3.ONE * rng.randf_range(0.7, 1.3))
-		multi.set_instance_transform(i, Transform3D(basis, at + out * 0.05))
-		multi.set_instance_color(i, Color(0.16, 0.26, 0.12).lightened(rng.randf_range(-0.1, 0.22)))
-	var leaves := MultiMeshInstance3D.new()
-	leaves.multimesh = multi
-	leaves.material_override = _leaf
-	leaves.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	leaves.visibility_range_end = 160.0
-	add_child(leaves)
+		_placing.append([i / each, rng.randf(), rng.randf() * TAU, rng.randf_range(0.7, 1.3)])
+		multi.set_instance_color(i, Color(0.16, 0.27, 0.12).lightened(rng.randf_range(-0.1, 0.25)))
+	_leaves = MultiMeshInstance3D.new()
+	_leaves.multimesh = multi
+	_leaves.material_override = _leaf
+	_leaves.top_level = true
+	_leaves.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_leaves.visibility_range_end = 160.0
+	add_child(_leaves)
+	_lay()
 
 
-## Points along it from `from` to `to`, hanging as a chain does (near enough: a
-## parabola), with a little twist of slack so that no two hang alike.
-func curve() -> PackedVector3Array:
-	var drop := sag if sag > 0.0 else from.distance_to(to) * 0.12
-	var points := PackedVector3Array()
-	for i in STEPS + 1:
-		var t := i / float(STEPS)
-		points.append(from.lerp(to, t) + Vector3.DOWN * drop * 4.0 * t * (1.0 - t))
-	return points
+func _physics_process(delta: float) -> void:
+	super(delta)
+	if Engine.is_editor_hint():
+		return
+	# Whoever stands on it is drawn back over it, unless he is stepping off.
+	for body: Node in get_tree().get_nodes_in_group(&"maze_players"):
+		var walker := body as CharacterBody3D
+		if walker == null or not walker.is_on_floor() or _nearest(walker.global_position) < 0:
+			continue
+		var off := walker.global_position - _closest(walker.global_position)
+		off.y = 0.0
+		var along := to - from
+		along.y = 0.0
+		var across := along.normalized().cross(Vector3.UP)
+		var aside := off.dot(across)
+		var stepping := Vector3(walker.velocity.x, 0.0, walker.velocity.z).dot(across * signf(aside))
+		if absf(aside) < 0.6 and stepping < 2.5:
+			walker.global_position -= across * aside * minf(1.0, BALANCE * delta)
 
 
-static func _tube(tool: SurfaceTool, a: Vector3, b: Vector3, radius: float) -> void:
-	var along := (b - a).normalized()
-	var side := along.cross(Vector3.UP).normalized() if absf(along.y) < 0.95 else Vector3.RIGHT
-	var up := side.cross(along).normalized()
-	for k in 4:
-		var p0 := (side * cos(k * TAU / 4.0) + up * sin(k * TAU / 4.0)) * radius
-		var p1 := (side * cos((k + 1) * TAU / 4.0) + up * sin((k + 1) * TAU / 4.0)) * radius
-		tool.add_vertex(a + p0)
-		tool.add_vertex(b + p0)
-		tool.add_vertex(b + p1)
-		tool.add_vertex(a + p0)
-		tool.add_vertex(b + p1)
-		tool.add_vertex(a + p1)
+## How far a point is from the vine.
+func distance_to(point: Vector3) -> float:
+	return _closest(point).distance_to(point)
+
+
+## The point on the vine nearest `point`.
+func _closest(point: Vector3) -> Vector3:
+	var best := _points[0]
+	for i in POINTS - 1:
+		var a := _points[i]
+		var b := _points[i + 1]
+		var ab := b - a
+		var t := clampf((point - a).dot(ab) / maxf(ab.length_squared(), 0.0001), 0.0, 1.0)
+		var p := a + ab * t
+		if p.distance_squared_to(point) < best.distance_squared_to(point):
+			best = p
+	return best
+
+
+## Cuts it at the point nearest `point`: it is gone, and from each end hangs a
+## vine as long as the part of it on that side (no lower than CLEAR over the
+## ground under it), laid out along where it was, to swing down. Returns them.
+func cut(point: Vector3) -> Array[Vine]:
+	var at := _closest(point)
+	var made: Array[Vine] = []
+	for from_start: bool in [true, false]:
+		var end := from if from_start else to
+		var length := 0.0
+		var last := end
+		for k in POINTS:
+			var p := _points[k if from_start else POINTS - 1 - k]
+			if p.distance_to(end) > at.distance_to(end):
+				break
+			length += p.distance_to(last)
+			last = p
+		length = minf(length + at.distance_to(last), end.y - CLEAR)
+		if length < 1.5:
+			continue
+		var vine := Vine.new()
+		vine.length = length
+		vine.position = end
+		get_parent().add_child(vine)
+		vine.lay_to(end + (at - end).normalized() * length)
+		made.append(vine)
+	queue_free()
+	return made
+
+
+func _lay() -> void:
+	super()
+	if _leaves == null:
+		return
+	for i in POINTS - 1:
+		var a := _points[i]
+		var b := _points[i + 1]
+		var along := b - a
+		var y := along.normalized()
+		var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
+		_stems[i].global_transform = Transform3D(Basis(x, y * along.length(), x.cross(y)), (a + b) * 0.5)
+	var multi := _leaves.multimesh
+	for i in _placing.size():
+		var place: Array = _placing[i]
+		var a := _points[place[0]]
+		var b := _points[place[0] + 1]
+		var along := (b - a).normalized() if a.distance_squared_to(b) > 0.000001 else Vector3.RIGHT
+		var out := along.cross(Vector3.UP)
+		out = out.normalized() if out.length_squared() > 0.001 else Vector3.RIGHT
+		out = out.rotated(along, place[2])
+		var leaf_at := a.lerp(b, place[1]) + out * 0.045
+		var basis := Basis(out.cross(along).normalized(), out, along).rotated(out.cross(along).normalized(), 0.6)
+		multi.set_instance_transform(i, Transform3D(basis.scaled(Vector3.ONE * place[3]), leaf_at))

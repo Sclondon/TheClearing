@@ -37,6 +37,9 @@ const VINE_BESIDE := 3.2
 const WALL_IVY := 5.0
 ## (No higher than this, even up the clearing's great wall: its leaves are many.)
 const IVY_MOST := 30.0
+## The buttress a strung vine is held on at one end: how wide, and how deep out
+## from the wall.
+const BUTTRESS := Vector2(2.6, 1.8)
 
 ## What is in the maze, for tests and tools: where each terrace stands, and each
 ## IvyClimb, Vine and RopeBridge made.
@@ -174,13 +177,22 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 			if not plan.blocked(cell, -step):
 				continue
 			var far := _far_side(cell, step)
-			if far == NOWHERE or _rng.randf() >= _style.strands:
+			if far == NOWHERE or _taken.has([cell, -step]) or _rng.randf() >= _style.strands:
 				continue
 			var low := minf(_face_top(cell, -step), _face_top(far, step))
 			var high := low * _rng.randf_range(_style.strand_reach.x, _style.strand_reach.y)
 			var along := _rng.randf_range(-0.4, 0.4) * Maze.CELL
-			var a := _edge(cell, -step, 0.05, along) + Vector3.UP * high
-			var b := _edge(far, step, 0.05, along + _rng.randf_range(-3.0, 3.0)) + Vector3.UP * (high + _rng.randf_range(-2.0, 2.0))
+			# (held at one end on top of a buttress of stone against the wall, with ivy up
+			# its face, so that he can climb to it, step onto it and walk it)
+			_taken[[cell, -step]] = true
+			var s := Vector3(-step.x, 0.0, -step.y)
+			var side := Vector3(-s.z, 0.0, s.x)
+			var size := side.abs() * BUTTRESS.x + s.abs() * BUTTRESS.y + Vector3.UP * high
+			_layout.add_piece(MazePiece.Kind.TERRACE, Transform3D(Basis.IDENTITY, _edge(cell, -step, BUTTRESS.y * 0.5, along)), {"size": size})
+			_climb(_edge(cell, -step, BUTTRESS.y, along), -step, high, BUTTRESS.x * 0.8)
+			var a := _edge(cell, -step, BUTTRESS.y, along) + Vector3.UP * high
+			# (along that wall runs the other way)
+			var b := _edge(far, step, 0.05, -along + _rng.randf_range(-3.0, 3.0)) + Vector3.UP * (high + _rng.randf_range(-1.5, 1.5))
 			_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b})
 
 
