@@ -10,6 +10,12 @@ extends Resource
 ## corners have no gates), each entered from the square maze on its own side, each
 ## with its own gate on into the first circle.
 enum Biome { DESERT, FOREST, SWAMP, PLAINS }
+## Each quarter is what the clearing's entrance on its side is in front of
+## (ClearingStyle.entrances): the woods lead to forest, the marsh to swamp, the
+## tall grass and the plain field to plains, a clear entrance to desert. A
+## quarter with no entrance on its side (and every one, with this off) is as set
+## here below.
+@export var match_entrances := true
 @export var north_quarter := Biome.DESERT
 @export var east_quarter := Biome.FOREST
 @export var south_quarter := Biome.SWAMP
@@ -36,7 +42,32 @@ static func quarter_at(x: float, z: float) -> Vector2i:
 	return Vector2i(0, 1) if z > 0.0 else Vector2i(0, -1)
 
 
+## What each clearing entrance leads to (`match_entrances`).
+const FROM_ENTRANCE := {
+	ClearingStyle.Entrance.WOODS: Biome.FOREST, ClearingStyle.Entrance.MARSH: Biome.SWAMP,
+	ClearingStyle.Entrance.TALL_GRASS: Biome.PLAINS, ClearingStyle.Entrance.PLAIN: Biome.PLAINS,
+	ClearingStyle.Entrance.CLEAR: Biome.DESERT,
+}
+
+## The quarters' biomes from the clearing's entrances (by quarter), once the
+## maze knows where they are (`match_to`).
+var _from_entrances := {}
+
+
+## Takes each quarter's biome from the clearing's entrance on its side (the
+## first, if there are more): call once the maze has put its entrances.
+func match_to(clearing: ClearingStyle) -> void:
+	_from_entrances.clear()
+	for i in mini(clearing.entrances.size(), clearing.entrance_spots.size()):
+		var inward: Vector2 = clearing.entrance_spots[i][1]
+		var quarter := quarter_at(-inward.x, -inward.y)
+		if not _from_entrances.has(quarter):
+			_from_entrances[quarter] = FROM_ENTRANCE[clearing.entrances[i]]
+
+
 func biome_of(quarter: Vector2i) -> Biome:
+	if match_entrances and _from_entrances.has(quarter):
+		return _from_entrances[quarter]
 	match quarter:
 		Vector2i(0, -1):
 			return north_quarter

@@ -349,7 +349,7 @@ func _ground() -> void:
 	if maze.round_rings:
 		var look := maze.round_rings.desert
 		material.set_shader_parameter(&"desert_radius", maze.round_rings.inner_radius)
-		material.set_shader_parameter(&"quarter_biomes", Vector4(look.north_quarter, look.east_quarter, look.south_quarter, look.west_quarter))
+		material.set_shader_parameter(&"quarter_biomes", Vector4(look.biome_of(Vector2i(0, -1)), look.biome_of(Vector2i(1, 0)), look.biome_of(Vector2i(0, 1)), look.biome_of(Vector2i(-1, 0))))
 		# (in the game, Outside's sand in each desert quarter; the editor, which
 		# cannot run it, shows plain dunes)
 		if Engine.is_editor_hint():

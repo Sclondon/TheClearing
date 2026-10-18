@@ -100,6 +100,8 @@ static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] 
 		var at := maze.world(way[0])
 		var face := Vector2(at.x, at.z) + out * (CELL * 0.5 - maze.wall_thick(way[0], step) * 0.5)
 		maze.clearing_style.entrance_spots.append([face, -out])
+	# (each quarter of the desert what the entrance on its side is in front of)
+	maze.desert_style.match_to(maze.clearing_style)
 	# (the desert counts as a ring, after the square ones: built one past them, it is
 	# there with no circles beyond it, its far wall the way out; more, the circles)
 	if built > square and maze.rings == square:
