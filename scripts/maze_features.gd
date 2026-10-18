@@ -126,11 +126,18 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 				if hangs or _rng.randf() < _style.wall_ivy:
 					_taken[[cell, step]] = true
 					var high := minf(_face_top(cell, step) * _rng.randf_range(_style.ivy_reach.x, _style.ivy_reach.y), IVY_MOST)
+					# (with a ledge along the walls, a curtain of it hanging from the ledge's
+					# edge to the ground instead: he climbs it onto the ledge)
+					var off_wall := 0.0
+					if _style.ledge > 0.0:
+						high = _style.ledge * MazeBuilder.WALL_HEIGHT
+						off_wall = _style.ledge_depth
 					var ivy_along := _rng.randf_range(-0.3, 0.3) * Maze.CELL
-					_climb(_edge(cell, step, 0.0, ivy_along), step, high, WALL_IVY)
+					_climb(_edge(cell, step, off_wall, ivy_along), step, high, WALL_IVY)
 					if hangs:
 						var beside := ivy_along + (VINE_BESIDE if ivy_along < 0.0 else -VINE_BESIDE)
-						_vine(cell, step, WALL_VINE_OUT, beside, high, VINE_CLEAR, false)
+						var out := WALL_VINE_OUT + off_wall
+						_vine(cell, step, out, beside, high, VINE_CLEAR, false)
 				continue
 			var upper := _rng.randf() < _style.upper_terraces
 			var along := _rng.randf_range(-0.2, 0.2) * Maze.CELL

@@ -70,6 +70,14 @@ extends Resource
 ## How thickly ferns, moss and tufts of grass grow along the foot of its walls (0
 ## none, 1 all along every wall).
 @export_range(0.0, 1.0) var undergrowth := 0.0
+## A ledge along every wall face in the ring, a mezzanine to walk along: how high,
+## as a share of the height of the walls inside a ring (MazeBuilder.WALL_HEIGHT; the
+## same height along the higher walls round it, so that it all joins up), 0 for
+## none; how deep out from the wall, and how thick, metres. Ivy up the walls
+## (`wall_ivy`) then grows to it and no higher, and vines hang from its edge.
+@export_range(0.0, 0.9) var ledge := 0.0
+@export_range(0.5, 4.0) var ledge_depth := 1.2
+@export_range(0.2, 2.0) var ledge_thick := 0.6
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
@@ -106,6 +114,9 @@ static func avenues() -> MazeStyle:
 	style.wall_vines = 0.08
 	style.strands = 0.12
 	style.undergrowth = 0.8
+	style.ledge = 1.0 / 3.0
+	# (strung vines above the ledge)
+	style.strand_reach = Vector2(0.45, 0.75)
 	return style
 
 

@@ -146,6 +146,8 @@ func lay_out(maze: Maze) -> void:
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, rampart[0]), {"size": rampart[1], "great": true})
 	for gatehouse: Array in _gatehouses(maze):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, gatehouse[0]), {"size": gatehouse[1], "great": true})
+	for ledge: Array in _ledges(maze, _runs(maze) + _ramparts(maze) + _gatehouses(maze)):
+		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1]})
 	MazeFeatures.lay_out(self, maze)
 	_trees(maze)
 	_add(MazePiece.Kind.BEACON, Transform3D(Basis.IDENTITY, maze.world(maze.exit + maze.exit_side * 2)), {})
@@ -312,6 +314,34 @@ static func _ramparts(maze: Maze) -> Array:
 				var middle := out * (near + far) * 0.5 + along * (cuts[i] + cuts[i + 1]) * 0.5
 				walls.append([middle, along * long + out.abs() * (far - near) + Vector3.UP * style.inner_height])
 	return walls
+
+
+## The ledges along the walls of rings that have one (MazeStyle.ledge), as [middle
+## of the foot, size]: along each long face of each of `boxes` ([middle of the
+## foot, size]) that looks into such a ring, as long as the box.
+static func _ledges(maze: Maze, boxes: Array) -> Array:
+	var ledges: Array = []
+	for box: Array in boxes:
+		var middle: Vector3 = box[0]
+		var size: Vector3 = box[1]
+		var long_x := size.x >= size.z
+		var out := Vector3(0.0, 0.0, 1.0) if long_x else Vector3(1.0, 0.0, 0.0)
+		var half: float = (size.z if long_x else size.x) * 0.5
+		for way: float in [-1.0, 1.0]:
+			var face := Vector3(middle.x, 0.0, middle.z) + out * way * half
+			var cell := maze.cell_at(face + out * way * 1.0)
+			var ring := maze.ring_of(cell)
+			if ring < 1 or ring > maze.rings or not maze.inside(cell) or maze.solid.has(cell):
+				continue
+			var style: MazeStyle = maze.styles[ring - 1]
+			if style.ledge <= 0.0:
+				continue
+			var high := style.ledge * MazeBuilder.WALL_HEIGHT
+			var long: float = size.x if long_x else size.z
+			var along := Vector3(long, 0.0, 0.0) if long_x else Vector3(0.0, 0.0, long)
+			var foot := face + out * way * style.ledge_depth * 0.5 + Vector3.UP * (high - style.ledge_thick)
+			ledges.append([foot, along + out * style.ledge_depth + Vector3.UP * style.ledge_thick])
+	return ledges
 
 
 ## The walls either side of each narrow entrance (MazeStyle.doorway), as
