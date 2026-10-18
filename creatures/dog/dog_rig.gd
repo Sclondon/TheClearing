@@ -46,17 +46,25 @@ const WALK: Array[float] = [0.25, 0.75, 0.0, 0.5]
 const TROT: Array[float] = [0.5, 1.0, 0.0, 0.5]
 const GALLOP: Array[float] = [0.6, 0.5, 0.0, 0.1]
 ## The share of the stride a paw is down, fore and hind, at a walk, a trot and a gallop.
-const DUTY_FORE := Vector3(0.63, 0.47, 0.22)
-const DUTY_HIND := Vector3(0.60, 0.42, 0.20)
+const DUTY_FORE := Vector3(0.63, 0.47, 0.28)
+const DUTY_HIND := Vector3(0.60, 0.42, 0.26)
 ## The middle of the first of the two flights of a gallop stride.
 const FLIGHT := 0.405
-const BOUND := 0.045
+const BOUND := 0.07
 ## Speeds (m/s, for a dog of the model's size) over which it goes from a walk to a trot, and a trot to a gallop.
+## (a pack at full chase is at a full gallop whatever its size: a gait half way
+## between the two is a scrabble, not a run)
 const TROT_AT := Vector2(1.3, 1.8)
-const GALLOP_AT := Vector2(3.2, 3.9)
+const GALLOP_AT := Vector2(2.6, 3.2)
 ## Length of a stride (m) against speed (m/s).
-const STRIDE := [0.0, 0.42, 1.0, 0.70, 2.5, 1.0, 3.6, 1.25, 5.4, 1.75, 9.0, 2.6]
+const STRIDE := [0.0, 0.42, 1.0, 0.70, 2.5, 1.0, 3.6, 1.6, 5.4, 2.1, 9.0, 2.9]
 const REACH := 0.42
+## Galloping: how much further a paw may sweep under it, how far past where it
+## lands a paw reaches out first (fore, hind), and how far back it is flung as
+## it leaves the ground (fore, hind), m in the model.
+const GALLOP_REACH := 1.4
+const REACH_OUT := Vector2(0.15, 0.07)
+const FLING_BACK := Vector2(0.06, 0.13)
 const GLIDE := 0.25
 const FOLD := Vector2(3.4, 2.2)
 const FOLD_PLANTED := Vector2(-0.25, 0.9)
@@ -293,7 +301,7 @@ func _process(delta: float) -> void:
 		_phase = fposmod(_phase + _pace / stride * delta, 1.0)
 	var gait := smoothstep(0.05, 0.45, _pace) * (1.0 - _air) * (1.0 - sit)
 	var travel := clampf(speed / maxf(_pace, 0.05), 0.0, 1.0)
-	var lift := lerpf(lerpf(0.045, 0.075, trot), 0.15, gallop) * _size * lerpf(1.0, 0.6, _stalk)
+	var lift := lerpf(lerpf(0.045, 0.075, trot), 0.2, gallop) * _size * lerpf(1.0, 0.6, _stalk)
 	var flying := gallop * gait
 	var bound := cos(2.0 * TAU * (_phase - FLIGHT))
 	var rise := (0.25 + bound) * BOUND * _size * flying
@@ -307,11 +315,18 @@ func _process(delta: float) -> void:
 		var duties := DUTY_FORE if fore else DUTY_HIND
 		var duty := lerpf(lerpf(duties.x, duties.y, trot), duties.z, gallop)
 		duty = lerpf(duty, minf(duty + 0.12, 0.8), _stalk)
-		var span := minf(duty * stride, REACH * _size) * travel
-		var middle := lerpf(-0.035, 0.05 if fore else 0.09, gallop) * travel
+		var span := minf(duty * stride, REACH * lerpf(1.0, GALLOP_REACH, gallop) * _size) * travel
+		var middle := lerpf(-0.035, 0.03 if fore else -0.04, gallop) * travel
 		var other := i ^ 1 if _mirrored else i
 		var at := fposmod(_phase - lerpf(lerpf(WALK[i], TROT[i], trot), GALLOP[other], gallop), 1.0)
 		var cycle := _foot_cycle(at, duty, span * 0.5, lift * (1.0 if fore else 0.85))
+		if at >= duty and flying > 0.0:
+			# Galloping, a paw is flung out behind as it leaves the ground, and
+			# reaches out ahead before it lands (drawn back under it as it does).
+			var swing := (at - duty) / (1.0 - duty)
+			var out: float = REACH_OUT.x if fore else REACH_OUT.y
+			var back: float = FLING_BACK.x if fore else FLING_BACK.y
+			cycle.z += (out * sin(PI * smoothstep(0.4, 1.0, swing)) - back * sin(PI * clampf(swing / 0.4, 0.0, 1.0))) * _size * travel * flying
 		var rest := _paws[i]
 		var carried := 0.0
 		if at >= duty:
@@ -328,7 +343,9 @@ func _process(delta: float) -> void:
 			else:
 				load_hind += bearing
 		var from_hip := rest.z - _hips[i].z + middle * gait
-		var furthest := (absf(from_hip) + span * 0.5 * gait) * (1.0 - GLIDE)
+		# (galloping it is not lowered to reach the ends of its stride: the back
+		# bends and stretches for them instead)
+		var furthest := (absf(from_hip) + span * 0.5 * gait * (1.0 - 0.45 * flying)) * (1.0 - GLIDE)
 		var total := _lengths[i].x + _lengths[i].y + _lengths[i].z - 0.012
 		drop = maxf(drop, _hips[i].y - _paw_height - sqrt(maxf(total * total - furthest * furthest, 0.01)))
 
@@ -347,8 +364,8 @@ func _process(delta: float) -> void:
 	var air_pitch := _air * clampf(-velocity.y * 0.04, -0.4, 0.4) * (1.0 - flung)
 	var body_at := _body_rest + Vector3(0.0, -_drop - _crouch + (high_fore + high_hind) * 0.5 + rise, 0.0)
 	var body_turn := Vector3(air_pitch + rock, 0.0, bank)
-	var chest_turn := Vector3(back_bend * 0.2, bend + swing_fore, (targets[0].y - targets[1].y) * 0.5)
-	var pelvis_turn := Vector3(-back_bend * 0.38, -bend * 0.7 + swing_hind, (targets[2].y - targets[3].y) * 0.6)
+	var chest_turn := Vector3(back_bend * 0.3, bend + swing_fore, (targets[0].y - targets[1].y) * 0.5)
+	var pelvis_turn := Vector3(-back_bend * 0.55,-bend * 0.7 + swing_hind, (targets[2].y - targets[3].y) * 0.6)
 	var poles: Array[Vector3] = [BEHIND, BEHIND, AHEAD, AHEAD]
 	var flat: Array[float] = [0.0, 0.0, 0.0, 0.0]
 
