@@ -1,0 +1,13 @@
+# The giant octopus: its look, its soft arms, its skin's camouflage, its ink, its pool and drains, its sounds (no thinking; needs godot/character-controller's Toon and Settings)
+creatures/octopus/octopus.gd
+creatures/octopus/octopus_arm.gd
+creatures/octopus/octopus_rig.gd
+creatures/octopus/octopus_look.gd
+creatures/octopus/octopus_ink.gd
+creatures/octopus/octopus_pool.gd
+creatures/octopus/octopus_drain.gd
+creatures/octopus/octopus_sound.gd
+creatures/octopus/example.gd
+creatures/octopus/models/octopus.glb
+creatures/octopus/tools/.gdignore
+creatures/octopus/tools/build_octopus.py
