@@ -42,6 +42,9 @@ var enemies: MazeEnemies
 var griever: Griever
 ## God mode and the rest (DevTools), when it is on for this run.
 var dev: DevTools
+## The hour, the light with it, and the doors of the clearing (put once the walls stand).
+var day: DayCycle
+var gates: ClearingGates
 ## Everyone starts in front of a gate instead of in the middle (with dev tools on,
 ## unless the flag `start=middle` is given).
 var start_at_gate := false
@@ -74,6 +77,11 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 		maze = Maze.generate(seed_value, int(Flags.value("rings", str(RINGS))))
 		builder.build(maze)
 	start_at_gate = DevTools.enabled() and Flags.value("start") != "middle"
+	# Day and night, and the clearing's gates shut through the night.
+	day = DayCycle.put(self)
+	day.dawn.connect(_shut_gates.bind(false))
+	day.sunset.connect(_shut_gates.bind(true))
+	_put_gates()
 
 	for entry: Dictionary in players:
 		var seat := int(entry["slot"])
@@ -422,3 +430,15 @@ func _on_left(seat: int) -> void:
 	if remotes.has(seat):
 		remotes[seat].queue_free()
 		remotes.erase(seat)
+
+
+func _put_gates() -> void:
+	# (the doorways are measured against the walls, which must be in the physics first)
+	await get_tree().physics_frame
+	gates = ClearingGates.put(self, maze)
+	gates.set_shut(not day.is_day())
+
+
+func _shut_gates(shutting: bool) -> void:
+	if gates:
+		gates.close(shutting)

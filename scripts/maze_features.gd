@@ -270,11 +270,12 @@ func _levels(plan: Maze) -> void:
 			for level in range(1, count):
 				var high := _level_height(level)
 				var deep := _level_depth(level)
-				var size := flat_side.abs() * length + s.abs() * deep + Vector3.UP * _style.mezzanine_thickness
-				_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(cell, step, deep * 0.5, middle) + Vector3.UP * (high - _style.mezzanine_thickness)), {"size": size})
+				# (a step of the wall standing on the level under it)
+				var under := _level_height(level - 1)
+				var size := flat_side.abs() * length + s.abs() * deep + Vector3.UP * (high - under)
+				_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(cell, step, deep * 0.5, middle) + Vector3.UP * under), {"size": size, "ledge": true})
 				# (ivy from its edge down onto the level under it, somewhere along it)
 				if _rng.randf() < _style.mezzanine_ivy_share:
-					var under := _level_height(level - 1)
 					var along := middle + _rng.randf_range(-0.3, 0.3) * length
 					_climb(_edge(cell, step, deep, along) + Vector3.UP * under, step, high - under, WALL_IVY * 0.6)
 	# Rope bridges across the halls between ledges at the same level.

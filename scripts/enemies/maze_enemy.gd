@@ -217,7 +217,7 @@ func goal() -> Vector3:
 			return _last_seen
 	if _wander_goal.x < 0 or here == _wander_goal or nav.distance(here, _wander_goal) < 0:
 		_wander_goal = nav.wander(here, _rng)
-	return maze.world(_wander_goal)
+	return nav.point(_wander_goal)
 
 
 ## The way to go from where it is to `goal()`, flat, keeping `radius` off the walls.

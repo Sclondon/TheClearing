@@ -137,7 +137,7 @@ const MAZE_LOOK := Wall.Look.SLABS
 
 
 static func _look_of(piece: MazePiece) -> Wall.Look:
-	if piece.kind == MazePiece.Kind.PIER and piece.position.y > 0.5:
+	if piece.ledge or (piece.kind == MazePiece.Kind.PIER and piece.position.y > 0.5):
 		return LEDGE_LOOK
 	return surface_of(piece)
 
@@ -334,7 +334,14 @@ func _pond() -> void:
 	pool.size = Vector3(across, look.pond_depth * 1.3 + 0.5, across)
 	pool.position = Vector3(middle.x, ClearingStyle.POND_LEVEL, middle.y)
 	add_child(pool)
-	# (grey and murky, as the rest of the place)
+	if pool.water:
+		_murky(pool)
+	else:
+		pool.ready.connect(_murky.bind(pool))
+
+
+# (grey and murky, as the rest of the place)
+static func _murky(pool: Pool) -> void:
 	var water := pool.water
 	water.shallow = Color(0.2, 0.25, 0.22)
 	water.deep = Color(0.05, 0.07, 0.07)
@@ -344,6 +351,7 @@ func _pond() -> void:
 	water.alpha_shallow = 0.55
 	water.caustics = 0.0
 	water.swell_height = 0.01
+
 
 ## A square `half` metres each way from the middle, as rects (x, z): the whole of
 ## it, or (with `hole`) the four round a square hole `hole` metres each way.
@@ -560,6 +568,10 @@ func _undergrowth(pieces: MazeLayout) -> void:
 			var s := Vector3(step.x, 0.0, step.y)
 			var side := Vector3(-s.z, 0.0, s.x)
 			var face := maze.world(cell) + s * (Maze.CELL * 0.5 - maze.wall_thick(cell, step) * 0.5)
+			# (in front of the step of ledge along its foot, if it has one)
+			var style: MazeStyle = maze.styles[ring - 1]
+			if style.mezzanine_height > 0.0 and not maze.ring_wall(cell, step) and maze.ring_of(cell + step) == ring and not maze.solid.has(cell + step):
+				face -= s * style.mezzanine_depth
 			var along := -Maze.CELL * 0.5
 			while along < Maze.CELL * 0.5:
 				along += rng.randf_range(0.7, 1.8)

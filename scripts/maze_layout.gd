@@ -124,6 +124,9 @@ func plan() -> Maze:
 	maze.set_walls(func(cell: Vector2i, step: Vector2i) -> bool:
 		var on_line := maze.world(cell) + Vector3(step.x, 0.0, step.y) * Maze.CELL * 0.5 + Vector3.UP * 2.0
 		for block in blocks:
+			# (a ledge along a wall stands out from it, but is not a wall)
+			if block.ledge:
+				continue
 			if block.box_has(on_line, 0.05):
 				return true
 		return false)
@@ -148,7 +151,7 @@ func lay_out(maze: Maze) -> void:
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, gatehouse[0]), {"size": gatehouse[1], "great": true})
 	# (along the maze walls only, not the great walls round the rings)
 	for ledge: Array in _ledges(maze, _runs(maze).filter(func(run: Array) -> bool: return not run[2])):
-		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1]})
+		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1], "ledge": true})
 	MazeFeatures.lay_out(self, maze)
 	_trees(maze)
 	_add(MazePiece.Kind.BEACON, Transform3D(Basis.IDENTITY, maze.world(maze.exit + maze.exit_side * 2)), {})
@@ -340,8 +343,9 @@ static func _ledges(maze: Maze, boxes: Array) -> Array:
 			var high := style.mezzanine_height
 			var long: float = size.x if long_x else size.z
 			var along := Vector3(long, 0.0, 0.0) if long_x else Vector3(0.0, 0.0, long)
-			var foot := face + out * way * style.mezzanine_depth * 0.5 + Vector3.UP * (high - style.mezzanine_thickness)
-			ledges.append([foot, along + out * style.mezzanine_depth + Vector3.UP * style.mezzanine_thickness])
+			# (a step of the wall, from the ground up: nothing under it to see through)
+			var foot := face + out * way * style.mezzanine_depth * 0.5
+			ledges.append([foot, along + out * style.mezzanine_depth + Vector3.UP * high])
 	return ledges
 
 

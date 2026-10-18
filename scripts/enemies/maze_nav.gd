@@ -41,6 +41,7 @@ static var _shared := {}
 static var _shared_order := {}
 static var _shared_maze := 0
 static var _shared_links := {}
+static var _shared_halves := PackedFloat32Array()
 
 ## How many ticks a waypoint is kept for, and how far (metres) it may move meanwhile.
 const REWAY_TICKS := 6
@@ -89,6 +90,7 @@ func field(goal: Vector2i) -> PackedInt32Array:
 		_shared = {true: {}, false: {}}
 		_shared_order = {true: [], false: []}
 		_shared_links = {}
+		_shared_halves = PackedFloat32Array()
 	var fields: Dictionary = _shared[avoid_clearing]
 	if fields.has(goal):
 		return fields[goal]
@@ -197,24 +199,41 @@ func _waypoint(from: Vector3, goal: Vector3, clearance: float, look: int) -> Vec
 	if allowed(there) and line_free(from, goal, clearance):
 		return goal
 	var at := here
-	var best := maze.world(here)
+	var best := point(here)
 	best.y = from.y
 	for i in look:
 		var next := next_cell(at, there)
 		if next == at:
 			break
 		at = next
-		var point := maze.world(at)
-		point.y = from.y
-		if not line_free(from, point, clearance):
+		var spot := point(at)
+		spot.y = from.y
+		if not line_free(from, spot, clearance):
 			break
-		best = point
+		best = spot
 	# (stood in its own cell's middle already, with the next not in sight: go for the next anyway)
 	if Vector2(best.x - from.x, best.z - from.z).length() < 0.3:
 		var next := next_cell(here, there)
-		best = maze.world(next)
+		best = point(next)
 		best.y = from.y
 	return best
+
+
+## The middle of the open floor of `cell`, between the faces of the walls round
+## it (with the walls as thick as they are, the middle of a cell beside one can
+## be close to its face, or in the ledge along its foot).
+func point(cell: Vector2i) -> Vector3:
+	var middle := maze.world(cell)
+	if not maze.inside(cell):
+		return middle
+	var half := Maze.CELL * 0.5
+	var shift := Vector2.ZERO
+	for axis: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+		var low := -half + (_wall_half(cell, -axis) if maze.blocked(cell, -axis) else 0.0)
+		var high := half - (_wall_half(cell, axis) if maze.blocked(cell, axis) else 0.0)
+		if low < high:
+			shift += Vector2(axis) * (low + high) * 0.5
+	return middle + Vector3(shift.x, 0.0, shift.y)
 
 
 ## Whether a point is at least `margin` from the face of every wall, by the
@@ -245,11 +264,32 @@ func clear_of_walls(point: Vector3, margin: float) -> bool:
 
 ## Half the thickness of the wall (if there is one) on a cell's `step` side.
 func _wall_half(cell: Vector2i, step: Vector2i) -> float:
-	if maze.inside(cell + step) and maze.ring_wall(cell, step):
-		return MazeBuilder.RING_THICK * 0.5
 	if not maze.inside(cell + step):
 		return MazeBuilder.RING_THICK * 0.5
-	return MazeBuilder.WALL_THICK * 0.5
+	if _shared_halves.is_empty() or _shared_maze != maze.get_instance_id():
+		field(Vector2i.ZERO)
+		_shared_halves = PackedFloat32Array()
+		_shared_halves.resize(maze.size * maze.size * 4)
+		for i in maze.size * maze.size:
+			var at := Vector2i(i % maze.size, i / maze.size)
+			for k in 4:
+				_shared_halves[i * 4 + k] = _half_of(at, Maze.STEPS[k])
+	return _shared_halves[maze.index(cell) * 4 + Maze.STEPS.find(step)]
+
+
+# Half the thickness of that wall as the plan has it (between rings, or in a
+# ring; however thick its style makes it, its middle line is what counts), and the
+# step of ledge along its foot (MazeStyle.mezzanine_depth) if the ring has one.
+func _half_of(cell: Vector2i, step: Vector2i) -> float:
+	if not maze.inside(cell + step) or maze.ring_wall(cell, step):
+		return MazeBuilder.RING_THICK * 0.5
+	var half := MazeBuilder.WALL_THICK * 0.5
+	var ring := maze.ring_of(cell)
+	if not maze.ring_wall(cell, step) and ring >= 1 and ring <= maze.styles.size():
+		var style: MazeStyle = maze.styles[ring - 1]
+		if style.mezzanine_height > 0.0:
+			half += style.mezzanine_depth
+	return half
 
 
 ## Whether a straight line from `a` to `b` stays `margin` off the walls' faces.

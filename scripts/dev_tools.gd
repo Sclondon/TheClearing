@@ -95,6 +95,8 @@ func _init(in_world: World) -> void:
 	grid.add_child(_button("TO GATE", to_gate))
 	grid.add_child(_button("TO MIDDLE", to_middle))
 	grid.add_child(_button("TO EXIT", to_exit))
+	grid.add_child(_button("TO DUSK", to_hour.bind(DayCycle.SUNSET - 0.4)))
+	grid.add_child(_button("TO DAWN", to_hour.bind(DayCycle.DAWN - 0.4)))
 	grid.add_child(_button("CLOSE", toggle))
 	_show()
 
@@ -261,6 +263,12 @@ func to_middle() -> void:
 func to_exit() -> void:
 	var out := Vector3(world.maze.exit_side.x, 0.0, world.maze.exit_side.y)
 	world.put_player(world.maze.world(world.maze.exit) - out * 3.0 + Vector3.UP * 0.05, atan2(out.x, out.z))
+
+
+## On to `hour` o'clock (a little before sunset, or dawn, to see the gates go).
+func to_hour(hour: float) -> void:
+	if world.day:
+		world.day.set_hour(hour)
 
 
 # ----------------------------------------------------------------------------
