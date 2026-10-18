@@ -50,13 +50,21 @@ func _run() -> void:
 	_check(not square_shown.has("round_section") and not square_shown.has("desert_width"), "a square section shows no round switch and no desert (%d settings)" % square_shown.size())
 	var layout_shown: Array = shown.call(editor)
 	_check(layout_shown.has("square_sections") and layout_shown.has("round_sections") and layout_shown.has("desert") and not layout_shown.has("styles"), "the layout shows square sections, the desert and round sections apart: %s" % ", ".join(layout_shown))
+	# Seven rings: the square sections, the desert (one ring) and the round ones.
+	var round_count: int = maze.round_rings.rings.size() if maze.round_rings else 0
+	_check(main.world.ring_count() == 7 and maze.rings + 1 + round_count == 7, "seven rings, the desert one of them (%d square, the desert, %d round)" % [maze.rings, round_count])
+	var to_desert := Maze.generate(1, 4)
+	_check(to_desert.rings == 3 and to_desert.round_rings != null and to_desert.round_rings.rings.is_empty(), "built to ring 4, the desert with no circles past it")
+	if to_desert.round_rings:
+		var out_at: float = to_desert.round_rings.exit_angle
+		_check(to_desert.escaped(Vector3(cos(out_at), 0.0, sin(out_at)) * (to_desert.round_rings.inner_radius + 5.0)), "and out past its far wall is out of the maze")
 	var old := MazeLayout.new()
 	var mixed: Array[MazeStyle] = MazeStyle.square_defaults()
 	var legacy := MazeStyle.made(5, 1, 0.3, 0.3, 0.06)
 	legacy.round_section = true
 	mixed.append(legacy)
 	old.styles = mixed
-	_check(old.square_sections.size() == 4 and old.round_sections.size() == 1 and old.round_sections[0].section_width_cells == 5, "a layout saved with one list is shared out")
+	_check(old.square_sections.size() == MazeStyle.square_defaults().size() and old.round_sections.size() == 1 and old.round_sections[0].section_width_cells == 5, "a layout saved with one list is shared out")
 	old.free()
 	# The clearing's wall is its own; each section's border wall is its outer one.
 	_check(maze.inner_height(1) == maze.clearing_style.clearing_wall_height and maze.rampart(1) == maze.clearing_style.clearing_wall_thickness_cells, "the clearing's wall by its own controls (%.0f m, %d cells)" % [maze.inner_height(1), maze.rampart(1)])

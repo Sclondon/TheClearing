@@ -140,9 +140,8 @@ func _init(in_world: World) -> void:
 	grid.add_child(_button("TO MIDDLE", to_middle))
 	grid.add_child(_button("TO EXIT", to_exit))
 	for ring in range(1, world.ring_count() + 1):
-		grid.add_child(_button("TO RING %d" % ring, to_ring.bind(ring)))
-	if world.maze.round_rings:
-		grid.add_child(_button("TO DESERT", to_desert))
+		var desert: bool = world.maze.round_rings and ring == world.maze.rings + 1
+		grid.add_child(_button("TO RING %d%s" % [ring, " (DESERT)" if desert else ""], to_ring.bind(ring)))
 	grid.add_child(_button("TO DUSK", to_hour.bind(DayCycle.SUNSET - 0.4)))
 	grid.add_child(_button("TO DAWN", to_hour.bind(DayCycle.DAWN - 0.4)))
 	_weather_button = _button("", next_weather)
@@ -552,7 +551,7 @@ func _physics_process(delta: float) -> void:
 
 
 ## Somewhere open in ring `ring` (counting out from the clearing, the square
-## ones first, then the round ones), facing out.
+## ones first, then the desert, then the round ones), facing out.
 func to_ring(ring: int) -> void:
 	var maze: Maze = world.maze
 	if ring <= maze.rings:
@@ -572,9 +571,12 @@ func to_ring(ring: int) -> void:
 			world.put_player(maze.world(best) + Vector3.UP * 0.05, PI * 0.5)
 		return
 	var outer: RoundMaze = maze.round_rings
-	if outer == null or ring - maze.rings > outer.rings.size():
+	if outer == null or ring - maze.rings - 1 > outer.rings.size():
 		return
-	var round_ring: RoundMaze.Ring = outer.rings[ring - maze.rings - 1]
+	if ring == maze.rings + 1:
+		to_desert()
+		return
+	var round_ring: RoundMaze.Ring = outer.rings[ring - maze.rings - 2]
 	# (in the middle of a cell of its middle row: a cell's middle is always open)
 	var row: Array = round_ring.rows[round_ring.rows.size() / 2]
 	var a := (RoundMaze.angle_of(0, row[2]) + RoundMaze.angle_of(1, row[2])) * 0.5

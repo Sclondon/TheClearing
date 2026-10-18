@@ -46,7 +46,8 @@ The rules for generated mazes are set here too: every generated round is made by
 Style** (with the clearing's own wall), **Square Sections** (a `MazeStyle` each, from the clearing out), **Desert**
 (`DesertStyle`: dunes, the diagonal walls, its far wall) and **Round Sections** (a `RoundStyle` each, showing only
 what a round section uses), from the round's own seed (`Mazes.rules`). A section's border wall is the one round its
-outside. Change a section's style here,
+outside. The maze is 7 rings: 3 square sections, the desert (a ring of its own) and 3 round ones; **Rings** counts
+them the same way. Change a section's style here,
 save, and the next round played uses it; the pieces laid out in this scene only count once saved into `res://mazes/`.
 
 Walls count where they stand: which lines between cells have a wall is read from the wall and pier pieces when the

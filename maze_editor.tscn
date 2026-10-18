@@ -51,14 +51,6 @@ straight_on_chance = 0.1
 side_branch_chance = 0.5
 loop_share = 0.18
 
-[sub_resource type="Resource" id="Resource_aeo8p"]
-script = ExtResource("4_round")
-section_width_cells = 6
-maze_wall_height = 46.0
-section_border_wall_height = 60.0
-side_branch_chance = 0.1
-loop_share = 0.03
-
 [sub_resource type="Resource" id="Resource_desert"]
 script = ExtResource("5_desert")
 
@@ -72,7 +64,7 @@ script = ExtResource("1")
 maze_seed = 3462
 rings = 7
 square_sections = Array[ExtResource("2_83lp3")]([SubResource("Resource_7fxqu"), SubResource("Resource_5ge7g"), SubResource("Resource_h67si")])
-round_sections = Array[ExtResource("4_round")]([SubResource("Resource_owt5n"), SubResource("Resource_i0nbs"), SubResource("Resource_41t42"), SubResource("Resource_aeo8p")])
+round_sections = Array[ExtResource("4_round")]([SubResource("Resource_owt5n"), SubResource("Resource_i0nbs"), SubResource("Resource_41t42")])
 desert = SubResource("Resource_desert")
 clearing_style = SubResource("Resource_1favp")
 playable = false

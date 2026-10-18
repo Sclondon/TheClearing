@@ -18,8 +18,8 @@ extends Node3D
 
 ## Which maze to start from.
 @export var maze_seed := 1
-## How many sections round the clearing: the square ones first, then (past the
-## desert) the round ones, shown as the game will build them.
+## How many rings round the clearing, as the game counts them: the square sections
+## first, then the desert (one ring), then the round sections; shown as built.
 @export_range(1, 7) var rings := 1
 ## How the clearing is made (ClearingStyle): its wall, its level middle, its hills
 ## and its woods. Empty: the game's own, which Generate fills in here to be changed.
@@ -174,8 +174,8 @@ func plan() -> Maze:
 ## Puts down the pieces of `maze`.
 func lay_out(maze: Maze) -> void:
 	maze_seed = maze.maze_seed
-	# (the round sections past the square ones count too)
-	rings = maze.rings + (maze.round_rings.rings.size() if maze.round_rings else 0)
+	# (the desert and the round sections past the square ones count too)
+	rings = maze.rings + (1 + maze.round_rings.rings.size() if maze.round_rings else 0)
 	clearing_style = maze.clearing_style
 	desert = maze.desert_style
 	for run: Array in _runs(maze):

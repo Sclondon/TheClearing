@@ -66,8 +66,9 @@ static func seed_for(code: String, round_number: int) -> int:
 	return hash("%s/%d" % [code, round_number]) & 0x7fffffff
 
 
-## Makes the maze for `seed_value`, with `built` rings round the clearing, each
-## made as its style says (MazeStyle.defaults() if none are given).
+## Makes the maze for `seed_value`, with `built` rings round the clearing (the square
+## sections, then the desert, then the round ones), each made as its style says
+## (MazeStyle.defaults() if none are given).
 static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] = [], clearing_look: ClearingStyle = null, desert_look: DesertStyle = null) -> Maze:
 	var maze := Maze.new()
 	maze.styles = ring_styles if not ring_styles.is_empty() else MazeStyle.defaults()
@@ -92,8 +93,10 @@ static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] 
 		var at := maze.world(way[0])
 		var face := Vector2(at.x, at.z) + out * (CELL * 0.5 - maze.wall_thick(way[0], step) * 0.5)
 		maze.clearing_style.entrance_spots.append([face, -out])
-	var round_count := mini(built, maze.styles.size()) - maze.rings
-	if round_count > 0 and maze.rings == square:
+	# (the desert counts as a ring, after the square ones: built one past them, it is
+	# there with no circles beyond it, its far wall the way out; more, the circles)
+	if built > square and maze.rings == square:
+		var round_count := clampi(built - square - 1, 0, maze.styles.size() - square)
 		maze.round_rings = RoundMaze.generate(maze, round_count)
 	return maze
 

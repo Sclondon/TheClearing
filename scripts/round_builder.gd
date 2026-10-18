@@ -36,6 +36,9 @@ func _ready() -> void:
 		for a: float in RoundMaze.DIAGONALS:
 			_radial(0, a, corner, middle - gap, MazeBuilder.RING_THICK, plan.desert.diagonal_wall_height, true)
 			_radial(0, a, middle + gap, plan.inner_radius, MazeBuilder.RING_THICK, plan.desert.diagonal_wall_height, true)
+		# (the desert the last ring built: its far wall, with the way out through it)
+		if plan.rings.is_empty():
+			_circle(0, plan.inner_radius, MazeBuilder.RING_THICK, plan.desert.far_wall_height, [plan.exit_angle] as Array[float])
 	for k in plan.rings.size():
 		var ring: RoundMaze.Ring = plan.rings[k]
 		var style := ring.style

@@ -17,7 +17,8 @@ signal caught(slot: int)
 const Flags := preload("res://scripts/flags.gd")
 const K_STATE := 83  # S
 const SEND_EVERY := 1.0 / 12.0
-## How many rings a generated maze has round the clearing (the flag rings=<n> for another number).
+## How many rings a generated maze has round the clearing, the desert counting as one
+## (the flag rings=<n> for another number).
 const RINGS := 7
 ## The host's news of what hunts the maze: MazeEnemies.pack(), then the Griever's state.
 const K_ENEMIES := 69  # E
@@ -509,9 +510,10 @@ func _shut_gates(shutting: bool) -> void:
 		gates.close(shutting)
 
 
-## How many rings the maze has: the square ones and the round ones past them.
+## How many rings the maze has: the square ones, the desert and the round ones past it.
 func ring_count() -> int:
-	return maze.rings + (maze.round_rings.rings.size() if maze.round_rings else 0)
+	# (the desert counts as one)
+	return maze.rings + (1 + maze.round_rings.rings.size() if maze.round_rings else 0)
 
 
 ## Things that hunt, roam or forage far from everyone are put to sleep: they

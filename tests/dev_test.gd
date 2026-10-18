@@ -2,7 +2,7 @@ extends SceneTree
 ## The dev tools (DevTools), alone: he starts in front of a gate, things are put
 ## in ahead of him out in the maze, god mode keeps him from being caught, he is
 ## moved to the middle and the exit, and everything is cleared away. And the
-## clearing's wall stands twice as high as the other walls between rings.
+## clearing's wall stands as high as its rules say (ClearingStyle).
 ## Given a file, a picture from in front of the gate is saved to it.
 ##
 ##     godot --headless --path . -s res://tests/dev_test.gd -- --dev
@@ -45,7 +45,7 @@ func _run() -> void:
 	var tallest := 0.0
 	for piece in world.get_node("Maze").layout.pieces(MazePiece.Kind.WALL):
 		tallest = maxf(tallest, piece.size.y)
-	check("the clearing's wall twice as high", is_equal_approx(tallest, MazeBuilder.RING_HEIGHT * 2.0), "(%.0f m)" % tallest)
+	check("the clearing's wall as high as its rules say", is_equal_approx(tallest, maxf(world.maze.inner_height(1), world.maze.inner_height(2))), "(%.0f m, the clearing's %.0f m)" % [tallest, world.maze.inner_height(1)])
 
 	# The clearing: no trees in the middle, gentle hills he stands on, level in the middle.
 	var nearest := INF

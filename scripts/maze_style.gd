@@ -378,7 +378,7 @@ static func defaults() -> Array[MazeStyle]:
 
 ## The game's own square sections, and its own round ones.
 static func square_defaults() -> Array[MazeStyle]:
-	return [avenues(), galleries(), warren(), tangle()]
+	return [avenues(), galleries(), warren()]
 
 
 static func round_defaults() -> Array[MazeStyle]:

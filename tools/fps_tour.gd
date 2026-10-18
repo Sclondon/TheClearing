@@ -26,9 +26,7 @@ func _run() -> void:
 	var places: Array = []
 	places.append(["clearing", func() -> void: world.dev.to_middle()])
 	for ring in range(1, world.ring_count() + 1):
-		places.append(["ring %d" % ring, world.dev.to_ring.bind(ring)])
-		if ring == world.maze.rings and world.maze.round_rings:
-			places.append(["desert", func() -> void: world.dev.to_desert()])
+		places.append(["desert" if world.maze.round_rings and ring == world.maze.rings + 1 else "ring %d" % ring, world.dev.to_ring.bind(ring)])
 	for place: Array in places:
 		(place[1] as Callable).call()
 		# (settled, then measured over three seconds as the camera turns)
