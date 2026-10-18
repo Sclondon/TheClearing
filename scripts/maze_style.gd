@@ -132,6 +132,8 @@ extends Resource
 ## Pairs of aliens (each pack two or three).
 @export_range(0, 3) var alien_packs := 1
 @export_range(0, 3) var dog_packs := 1
+## Swarms of beetles, each waiting in cracks at the foot of a wall (in a dead end or along a hall).
+@export_range(0, 4) var beetle_swarms := 2
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
