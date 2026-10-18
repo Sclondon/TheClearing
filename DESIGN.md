@@ -76,7 +76,10 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
   seed, some broken, some leant over) and lily pads and a scum of duckweed on the
   open water. All of it bends round whoever pushes through. Wading slows him (the deeper, the slower), he splashes
   going in and leaves rings. A lane in from the gate has nothing deep and nothing standing in it: the way in is wet
-  but open.
+  but open. The gate itself is flooded (the user, 2026-10-18: "you have to wade through"): in front of it, from the
+  wall's foot about 70 m along and 40 m out, water to his knees or waist (`marsh_flood_*`) with no dry way across,
+  and on through the gate's slot in the wall into a pond across the hall beyond (Ponds). Wading, never swimming.
+  Schools of small fish in its water dart off from whoever wades near (`FishSchool`).
 - Its wall is a special case, far thicker than the grid, with its own controls (ClearingStyle, "Clearing wall"):
   by default 3 cells of solid stone (about 54 m) and 92 m high, twice the other walls between rings. Nothing grows or stands on it.
 - Four gates, one in the middle of each side, each a slot about 2 m wide (about three of him) running the whole way
@@ -112,6 +115,15 @@ Past the desert, three round sections (`RoundStyle`, `MazeLayout.round_sections`
 - **Tunnel** (ring 7, Bore): one wide roofed tunnel all the way round, from the gates in to the way out. It is
   dim, lined in dark stone that the mist does not lighten, and lit only by slots across its roof (faint shafts and
   pale patches on the floor). Settings: width, height, skylight spacing.
+
+### Standing water
+
+Ponds and flooded halls (`scripts/ponds.gd`, MazeStyle "Water"): a share of hall cells has standing water, a pond
+lying in the hall or a stretch of hall flooded from wall to wall, from puddle-deep to his waist, a few deep enough to
+swim; the ground goes down under it, so he wades and swims. Laid out as pond pieces (editable by hand), kept clear of
+walls, ledges and terraces. Grey, still, overcast water; schools of small dark fish in some that dart off as he wades
+near. Cheap: one sheet of water per area of ponds, fish in one MultiMesh per school, and water and fish far from the
+camera do nothing.
 
 ### Ways up
 

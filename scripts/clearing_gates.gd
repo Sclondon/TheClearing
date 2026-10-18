@@ -17,6 +17,9 @@ const BACK := 2.5
 ## tight), and how far back into the wall's side past the doorway it goes, open.
 const OVERLAP := 0.3
 const CLEAR := 0.1
+## How far the doors go down under the ground (the marsh gate's way is flooded,
+## its floor lower: Ponds), metres.
+const SUNK := 1.5
 
 ## 0 open, 1 shut.
 var shut := 0.0
@@ -68,18 +71,18 @@ static func put(parent: Node3D, maze: Maze) -> ClearingGates:
 		for way: float in [-1.0, 1.0]:
 			var door := AnimatableBody3D.new()
 			door.sync_to_physics = true
-			var size := across.abs() * half + Vector3(inward.x, 0.0, inward.y).abs() * thick + Vector3.UP * high
+			var size := across.abs() * half + Vector3(inward.x, 0.0, inward.y).abs() * thick + Vector3.UP * (high + SUNK)
 			var shape := BoxShape3D.new()
 			shape.size = size
 			var collider := CollisionShape3D.new()
 			collider.shape = shape
-			collider.position.y = high * 0.5
+			collider.position.y = (high - SUNK) * 0.5
 			door.add_child(collider)
 			var mesh := BoxMesh.new()
 			mesh.size = size
 			var shown := MeshInstance3D.new()
 			shown.mesh = mesh
-			shown.position.y = high * 0.5
+			shown.position.y = (high - SUNK) * 0.5
 			shown.material_override = material
 			door.add_child(shown)
 			var shut_at := middle + across * way * (half * 0.5 - OVERLAP)

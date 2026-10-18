@@ -77,7 +77,7 @@ const GROUPS := {
 	MazePiece.Kind.WALL: "Walls", MazePiece.Kind.PIER: "Piers", MazePiece.Kind.TERRACE: "Terraces",
 	MazePiece.Kind.IVY: "Ivy", MazePiece.Kind.VINE: "Vines", MazePiece.Kind.BRIDGE: "Bridges",
 	MazePiece.Kind.TREE: "Trees", MazePiece.Kind.BEACON: "Beacon", MazePiece.Kind.STRAND: "Strands", MazePiece.Kind.PIPE: "Pipes",
-	MazePiece.Kind.PROP: "Props", MazePiece.Kind.WIRE: "Wires",
+	MazePiece.Kind.PROP: "Props", MazePiece.Kind.WIRE: "Wires", MazePiece.Kind.POND: "Ponds",
 }
 
 var _editor_shown: Array[Node] = []
@@ -253,6 +253,8 @@ func plan() -> Maze:
 			if block.box_has(on_line, 0.05):
 				return true
 		return false)
+	# (the standing water where the pond pieces lie: the ground under it is lower)
+	maze.ponds = Ponds.read(self)
 	return maze
 
 
@@ -280,7 +282,9 @@ func lay_out(maze: Maze) -> void:
 	for ledge: Array in _ledges(maze, _runs(maze).filter(func(run: Array) -> bool: return not run[2])):
 		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1], "ledge": true})
 	MazeFeatures.lay_out(self, maze)
-	# (after the ways up: the props keep clear of them, and cables hang by the vines)
+	Ponds.lay_out(self, maze)
+	maze.ponds = Ponds.read(self)
+	# (after the ways up and the ponds: the props keep clear of them, and cables hang by the vines)
 	MazeProps.lay_out(self, maze)
 	_trees(maze)
 	if not maze.round_rings:
