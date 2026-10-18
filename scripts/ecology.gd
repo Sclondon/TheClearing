@@ -46,6 +46,9 @@ const KINDS := {
 	"MazeFox": [1, Diet.MEAT], "MazePondFrogs": [0, Diet.PLANTS],
 	"MazeLynx": [1, Diet.MEAT], "MazePanther": [3, Diet.MEAT], "MazeWolf": [3, Diet.MEAT],
 	"MazeRabbit": [0, Diet.PLANTS], "MazeHare": [1, Diet.PLANTS], "MazeJackalope": [1, Diet.PLANTS],
+	"MazeOctopus": [3, Diet.MEAT],
+	"MazeMoose": [3, Diet.PLANTS], "MazeMooseCalf": [2, Diet.PLANTS],
+	"MazeMammoth": [4, Diet.PLANTS], "MazeMammothCalf": [2, Diet.PLANTS],
 }
 
 ## How long a fed meat-eater takes to starve, seconds, and how hungry it must be to hunt the others.
@@ -139,6 +142,9 @@ func creatures() -> Array:
 ## Whether `one` could be eaten by `hunter`.
 func is_prey(one: MazeEnemy, hunter: MazeEnemy) -> bool:
 	if one == hunter or one.dead or one.puppet or diet(one) == Diet.NONE or kind_of(one) == kind_of(hunter):
+		return false
+	# (the giant plant-eaters, the mammoth, the stegosaurus, the brachiosaurus, nothing takes)
+	if bulk(one) >= 4 and diet(one) == Diet.PLANTS:
 		return false
 	var mine := bulk(hunter)
 	return bulk(one) < mine or (bulk(one) == mine and diet(one) == Diet.PLANTS)
@@ -238,10 +244,11 @@ func _back_from_dens() -> void:
 		if player is Node3D:
 			eyes.append((player as Node3D).global_position)
 	for i in range(_dead.size() - 1, -1, -1):
-		var one: MazeEnemy = _dead[i][0]
-		if not is_instance_valid(one):
+		# (one freed meanwhile is let go before it is typed)
+		if not is_instance_valid(_dead[i][0]):
 			_dead.remove_at(i)
 			continue
+		var one: MazeEnemy = _dead[i][0]
 		if seconds - float(_dead[i][1]) < RESPAWN_SECONDS:
 			continue
 		var den: Vector3 = _known.get(one, one.global_position)

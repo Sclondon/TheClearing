@@ -423,6 +423,38 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var cell := _far_from(taken, some_halls, rng)
 		taken.append(cell)
 		add(MazeJackalope.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.octopuses:
+		# (a pool in a hall, or every other one a drain in the wall of a hall)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var octopus := MazeOctopus.new()
+		octopus.drain = i % 2 == 1
+		add(octopus, cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.moose:
+		# (a bull, or a cow and her calf, at a wallow in a straight hall: room to wade and to charge)
+		var ground := _far_from(taken, some_halls, rng)
+		taken.append(ground)
+		var along := _straight(ground)
+		var yaw := atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI)
+		if i % 2 == 1:
+			var family := MazeMoose.family(rng.randi())
+			add(family[0], ground, yaw, rng.randi())
+			add(family[1], ground, yaw + rng.randf_range(-0.6, 0.6), rng.randi(), Vector3(2.0, 0.0, 1.5))
+		else:
+			var bull := MazeMoose.new()
+			bull.rut = 0.4
+			add(bull, ground, yaw, rng.randi())
+	for i in style.mammoth_herds:
+		# (a herd grazes in a straight hall, as far from the rest as can be, strung along it)
+		var pasture := _far_from(taken, some_halls, rng)
+		taken.append(pasture)
+		var along := _straight(pasture)
+		var yaw := atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI)
+		var way := Vector3(along.x, 0.0, along.y)
+		var herd := MazeMammoth.herd_of(rng.randi_range(4, 5), rng.randi())
+		for k in herd.size():
+			var spot := way * (4.5 * ((k + 1) / 2) * (1 if k % 2 == 1 else -1)) if k > 0 and k < herd.size() - 1 else (way * -2.0 if k > 0 else Vector3.ZERO)
+			add(herd[k], pasture, yaw + rng.randf_range(-0.5, 0.5), rng.randi(), spot)
 	# Out past the square maze: brachiosaurs in the desert and the wide round halls,
 	# and dimetrodons basking in the desert.
 	for spot: Vector3 in MazeBrachiosaurus.spots(maze, style.brachiosaurs, rng.randi()):

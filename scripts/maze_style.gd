@@ -256,6 +256,16 @@ extends Resource
 ## Jackalopes (MazeJackalope): a hare with antlers that stares instead of hiding, and
 ## butts whoever comes too near.
 @export_range(0, 2) var jackalopes := 1
+## Giant octopuses, each lurking in a black pool against a hall's wall or in a
+## drain through a wall (every other one), reaching for whoever lingers near.
+@export_range(0, 3) var octopuses := 1
+## Moose, each at a wallow of its own in a hall (every other one a cow with her calf;
+## the bulls in the rut some of the time): unpredictable, charging whoever comes near
+## the calf, or a bull in the rut whoever he sees.
+@export_range(0, 3) var moose := 1
+## Herds of woolly mammoths (a matriarch, cows and a calf) grazing in the widest halls:
+## they ring the calf, and the matriarch trumpets, mock-charges and then charges.
+@export_range(0, 2) var mammoth_herds := 1
 ## Murders of crows (Crows), each sitting along the wall tops over a hall: they
 ## follow whoever passes along the walls, and erupt cawing at anyone who runs,
 ## which calls the hunters.

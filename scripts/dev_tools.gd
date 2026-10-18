@@ -55,6 +55,8 @@ const HUNTERS := [
 	["PSYCHIC CHILD", "psychic_child", AHEAD], ["LYNX", "lynx", AHEAD], ["PANTHER", "panther", SNAKE_AHEAD],
 	["WOLVES", "wolves", SNAKE_AHEAD], ["FOXES", "foxes", AHEAD], ["FROGS (POND)", "pond_frogs", AHEAD],
 	["RABBITS", "rabbits", AHEAD], ["HARES", "hares", AHEAD], ["JACKALOPE", "jackalope", AHEAD],
+	["OCTOPUS", "octopus", AHEAD], ["OCTOPUS (DRAIN)", "octopus_drain", AHEAD],
+	["MOOSE", "moose", SNAKE_AHEAD], ["MOOSE (COW, CALF)", "moose_family", SNAKE_AHEAD], ["MAMMOTHS", "mammoths", SNAKE_AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -377,6 +379,20 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			return
 		"jackalope":
 			made = [MazeJackalope.new()]
+		"octopus":
+			made = [MazeOctopus.new()]
+		"octopus_drain":
+			var octopus := MazeOctopus.new()
+			octopus.drain = true
+			made = [octopus]
+		"moose":
+			var bull := MazeMoose.new()
+			bull.rut = 1.0
+			made = [bull]
+		"moose_family":
+			made = MazeMoose.family(randi())
+		"mammoths":
+			made = MazeMammoth.herd_of(4, randi())
 		"ravens":
 			# (wildlife: on the walls round where they are put, not among the hunters)
 			world.birds.add_ravens_at(at)
