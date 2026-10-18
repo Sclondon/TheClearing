@@ -13,7 +13,7 @@ no face, a plain shirt (its colour by seat, the first red) and dark trousers.
 What the game is meant to be (pillars, art direction, the maze's rules, enemies, playing together) is in
 [DESIGN.md](DESIGN.md); this file is how it is built and run.
 
-Godot 4.7, GL Compatibility, portrait first (it also fills a landscape window). Web build in `build/`, served at
+Godot 4.7, GL Compatibility, landscape first (it also fills a portrait window). Web build in `build/`, served at
 https://sclondon.github.io/TheClearing/build/.
 
 ## Playing
@@ -135,16 +135,16 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 # each newer kind on its own (always with --audio-driver Dummy: some make sounds)
 for t in ghoul centipede spider abomination slime_wall bats baboon dog alien; do
   "$G" --headless --audio-driver Dummy --path . -s res://tests/${t}_test.gd; done
-# pictures of each: tools/<kind>_shots.gd (windowed, 720x1280)
+# pictures of each: tools/<kind>_shots.gd (windowed, 1280x720)
 "$G" --headless --path . -s res://tests/dev_test.gd -- --dev   # the dev tools (and the clearing wall's height)
-"$G" --path . --resolution 720x1280 -s res://tools/climb_shots.gd -- <folder>   # pictures of the ways up
+"$G" --path . --resolution 1280x720 -s res://tools/climb_shots.gd -- <folder>   # pictures of the ways up
 "$G" --headless --path . -s res://tools/bake_preview.gd -- [seed] [rings]   # a maze to look round in the editor: preview/maze_preview.scn
 "$G" --path . --resolution 900x900 -s res://tools/head_sheet.gd -- <file.png>    # every head shape
 "$G" --path . --resolution 900x900 -s res://tools/legs_sheet.gd -- <file.png>    # every trouser cut and boot
 node tools/dev_relay.mjs <scareathon-v3/server> 3111      # local rooms (needs server/node_modules)
 sh tools/coop_test.sh                                     # two copies in one room against it
-"$G" --path . --resolution 720x1280 -s res://tools/shots.gd -- <folder>   # pictures to look at
-"$G" --path . --resolution 720x1280 -s res://tools/clearing_shots.gd -- <folder> [seed]   # the clearing: hills, woods
+"$G" --path . --resolution 1280x720 -s res://tools/shots.gd -- <folder>   # pictures to look at
+"$G" --path . --resolution 1280x720 -s res://tools/clearing_shots.gd -- <folder> [seed]   # the clearing: hills, woods
 "$G" --headless --path . --export-release "Web" build/index.html
 ```
 

@@ -2,7 +2,7 @@ extends SceneTree
 ## Pictures of the first ring's mezzanine, from the hall floor looking up along a
 ## wall, and from on the ledge.
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/ledge_shots.gd -- <folder>
+##     godot --path . --resolution 1280x720 -s res://tools/ledge_shots.gd -- <folder>
 
 var main: Node
 

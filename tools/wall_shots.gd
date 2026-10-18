@@ -2,7 +2,7 @@ extends SceneTree
 ## Pictures of what grows on the first ring's walls: a vine strung across a hall,
 ## seen from under it, and ivy up a wall with a vine hanging from its top.
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/wall_shots.gd -- <folder>
+##     godot --path . --resolution 1280x720 -s res://tools/wall_shots.gd -- <folder>
 
 var main: Node
 

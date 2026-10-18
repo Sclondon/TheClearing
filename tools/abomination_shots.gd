@@ -2,7 +2,7 @@ extends SceneTree
 ## Pictures of the meat abomination (creatures/abomination/, and Abomination,
 ## its hunter in the maze). Needs a real window (the engine draws nothing headless):
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/abomination_shots.gd -- <folder> [close|maze|all]
+##     godot --path . --resolution 1280x720 -s res://tools/abomination_shots.gd -- <folder> [close|maze|all]
 ##
 ## close: on a bare floor in the maze's light, from the front, side, three
 ## quarters, behind and above; creeping (frames through a wave); a lash (frames

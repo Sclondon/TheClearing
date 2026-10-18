@@ -5,7 +5,7 @@ extends SceneTree
 ## the other kinds; a mummy's swipe. Says how many draws a frame takes with them
 ## and without. Needs a real window (the engine draws nothing headless):
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/enemy_shots.gd -- <folder>
+##     godot --path . --resolution 1280x720 -s res://tools/enemy_shots.gd -- <folder>
 
 var folder := "enemy_shots"
 var world

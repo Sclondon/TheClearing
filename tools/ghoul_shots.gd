@@ -8,7 +8,7 @@ extends SceneTree
 ## standing in a dead end, one screaming at the boy, one taking him. Says how
 ## many draws a frame takes. Needs a real window (the engine draws nothing headless):
 ##
-##     godot --audio-driver Dummy --path . --resolution 720x1280 -s res://tools/ghoul_shots.gd -- <folder> [model|maze|sound]
+##     godot --audio-driver Dummy --path . --resolution 1280x720 -s res://tools/ghoul_shots.gd -- <folder> [model|maze|sound]
 ##
 ## (sound only writes the shriek to <folder>/shriek.wav, to listen to or look at.)
 

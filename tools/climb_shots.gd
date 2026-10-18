@@ -3,7 +3,7 @@ extends SceneTree
 ## ivy, a vine, a rope bridge from one end, and the maze from a wall top. Needs a
 ## real window:
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/climb_shots.gd -- <folder>
+##     godot --path . --resolution 1280x720 -s res://tools/climb_shots.gd -- <folder>
 
 var main: Node
 var folder := "climb_shots"

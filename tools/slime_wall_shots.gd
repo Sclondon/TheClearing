@@ -6,7 +6,7 @@ extends SceneTree
 ## holding the boy. `maze`: in a real round, filling a hall, coming at the boy,
 ## and with him in it. Says how many draws it takes. Needs a real window:
 ##
-##     godot --audio-driver Dummy --path . --resolution 720x1280 -s res://tools/slime_wall_shots.gd -- <folder> [close|maze]
+##     godot --audio-driver Dummy --path . --resolution 1280x720 -s res://tools/slime_wall_shots.gd -- <folder> [close|maze]
 
 var folder := "slime_wall_shots"
 var which := "all"

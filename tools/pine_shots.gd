@@ -4,7 +4,7 @@ extends SceneTree
 ## below the crown, and a stand of them far off (the plain trees). Needs a real
 ## window (the engine draws nothing headless):
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/pine_shots.gd -- <folder>
+##     godot --path . --resolution 1280x720 -s res://tools/pine_shots.gd -- <folder>
 
 var folder := "shots/pines"
 var camera: Camera3D

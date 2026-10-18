@@ -5,7 +5,7 @@ extends SceneTree
 ## rearing; biting; and climbing back up. Says how many draws a frame takes
 ## with it and without. Needs a real window:
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/spider_shots.gd -- <folder>
+##     godot --path . --resolution 1280x720 -s res://tools/spider_shots.gd -- <folder>
 ##
 ## (The round's own hunters are kept busy elsewhere: their only target is a
 ## stand-in in the clearing, where nothing hunts.)

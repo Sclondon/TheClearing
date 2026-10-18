@@ -2,7 +2,7 @@ extends SceneTree
 ## How long each kind of enemy's physics takes per tick over the first seconds
 ## of a round: their processing is stopped and each is run by hand, timed.
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/enemy_times.gd
+##     godot --path . --resolution 1280x720 -s res://tools/enemy_times.gd
 
 var main: Node
 var enemies: Array = []

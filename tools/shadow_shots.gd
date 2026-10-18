@@ -2,7 +2,7 @@ extends SceneTree
 ## A walk through the first gate and along the hall past it, a picture every few
 ## steps, put side by side in one sheet: to see the walls' shadows as he moves.
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/shadow_shots.gd -- <file.png> [frames]
+##     godot --path . --resolution 1280x720 -s res://tools/shadow_shots.gd -- <file.png> [frames]
 
 var main: Node
 

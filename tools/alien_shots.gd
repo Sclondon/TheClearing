@@ -6,7 +6,7 @@ extends SceneTree
 ## figure in the mist. Says how many draws a frame takes with them and without.
 ## (The round's own enemies are put away first.) Needs a real window:
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/alien_shots.gd -- <folder>
+##     godot --path . --resolution 1280x720 -s res://tools/alien_shots.gd -- <folder>
 
 var folder := "alien_shots"
 var world

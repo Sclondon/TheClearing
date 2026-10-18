@@ -4,7 +4,7 @@ extends SceneTree
 ## (-- enemies | vines | bridges | none), or only the enemies of one script left
 ## going (-- only:mummy.gd).
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/physics_split.gd -- vines
+##     godot --path . --resolution 1280x720 -s res://tools/physics_split.gd -- vines
 
 var main: Node
 

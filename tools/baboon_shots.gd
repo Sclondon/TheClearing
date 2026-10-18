@@ -6,7 +6,7 @@ extends SceneTree
 ## in a passage of a real round (World: the game's light and mist), a pack
 ## coming, and the draws a frame takes. Needs a real window:
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/baboon_shots.gd -- <folder> [studio|maze]
+##     godot --path . --resolution 1280x720 -s res://tools/baboon_shots.gd -- <folder> [studio|maze]
 
 var folder := "baboon_shots"
 var only := ""

@@ -7,7 +7,7 @@ extends SceneTree
 ## passage of a real round (World, the game's light and mist), hunting the
 ## boy. Says how many draws a frame takes. Needs a real window:
 ##
-##     godot --path . --audio-driver Dummy --resolution 720x1280 -s res://tools/centipede_shots.gd -- <folder> [stage|maze]
+##     godot --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/centipede_shots.gd -- <folder> [stage|maze]
 
 var folder := "centipede_shots"
 var camera: Camera3D
