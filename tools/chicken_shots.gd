@@ -9,7 +9,7 @@ extends SceneTree
 ## panic as he runs at them; and the mob round him. Says how many draws a frame
 ## takes. Needs a real window (the engine draws nothing headless):
 ##
-##     godot --audio-driver Dummy --path . --resolution 1280x720 -s res://tools/chicken_shots.gd -- <folder> [studio|moves|maze]
+##     godot --audio-driver Dummy --path . --resolution 1280x720 -s res://tools/chicken_shots.gd -- <folder> [studio|moves|maze|clearing]
 
 var folder := "chicken_shots"
 var only := ""
@@ -54,6 +54,8 @@ func _run() -> void:
 		await _studio()
 	if only == "" or only == "maze":
 		await _maze()
+	if only == "" or only == "clearing":
+		await _clearing()
 	quit()
 
 
@@ -352,6 +354,72 @@ func _maze() -> void:
 	await wait(0.5)
 	await shot("38_maze_mob_game_camera")
 
+
+
+
+# --- Tame chickens in the clearing ---
+
+func _clearing() -> void:
+	if world:
+		# (the maze's round, if it was pictured first)
+		world.queue_free()
+		await process_frame
+	world = load("res://scripts/world.gd").new()
+	world.name = "World"
+	root.add_child(world)
+	world.setup(Maze.seed_for("SHOT", 1), 0, [{"slot": 0, "look": "p11"}], false)
+	maze = world.maze
+	boy = world.player
+	boy.takes_input = false
+	for enemy in world.enemies.enemies:
+		enemy.process_mode = Node.PROCESS_MODE_DISABLED
+		enemy.visible = false
+	world.griever.process_mode = Node.PROCESS_MODE_DISABLED
+	world.griever.visible = false
+	print("tame flocks: %d" % world.wildlife.size())
+	var eye := Camera3D.new()
+	world.add_child(eye)
+	eye.fov = 45.0
+	for k in world.wildlife.size():
+		var tame: TameChickens = world.wildlife[k]
+		var home: Vector3 = tame.flock.home
+		# He stands a little way off, between them and the middle of the clearing.
+		var toward := Vector3(-home.x, 0.0, -home.z).normalized()
+		var stand := home + toward * 9.0
+		stand.y = maze.ground_height(stand) + 0.1
+		boy.global_position = stand
+		boy.velocity = Vector3.ZERO
+		boy.rotation.y = atan2(-toward.x, -toward.z)
+		world.camera._yaw = atan2(toward.x, toward.z)
+		world.camera.snap()
+		await wait(4.0)
+		var middle := tame.flock.centre()
+		var side := Vector3(-toward.z, 0, toward.x)
+		eye.look_at_from_position(middle + toward * 6.0 + side * 1.5 + Vector3.UP * 1.3, middle + Vector3.UP * 0.25)
+		eye.make_current()
+		await wait(0.3)
+		await shot("40_clearing_flock%d_from_his_height" % k)
+		eye.fov = 28.0
+		eye.look_at_from_position(middle + toward * 4.0 - side * 1.5 + Vector3.UP * 0.8, middle + Vector3.UP * 0.25)
+		await wait(1.0)
+		await shot("41_clearing_flock%d_close" % k)
+		eye.fov = 45.0
+		world.camera.make_current()
+		await wait(0.5)
+		await shot("42_clearing_flock%d_game_camera" % k)
+	# He runs through the first: they scatter, squawking, and settle again.
+	var first: TameChickens = world.wildlife[0]
+	var mid := first.flock.centre()
+	var into := Vector3(-mid.x, 0, -mid.z).normalized()
+	eye.look_at_from_position(mid + into * 7.0 + Vector3(-into.z, 0, into.x) * 3.0 + Vector3.UP * 1.4, mid + Vector3.UP * 0.4)
+	eye.make_current()
+	boy.global_position = Vector3(mid.x, maze.ground_height(mid) + 0.1, mid.z) + into * 1.5
+	boy.velocity = -into * 4.4
+	first.flock.scare(boy.global_position)
+	await wait(0.6)
+	await shot("43_clearing_scatter")
+	await wait(3.0)
+	await shot("44_clearing_settled")
 
 func _draws() -> int:
 	await process_frame

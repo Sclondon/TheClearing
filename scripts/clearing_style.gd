@@ -79,6 +79,11 @@ var entrance_spots: Array = []
 ## Bushes over the field (none within the treeless radius), most of them near the trees.
 @export_range(0, 400) var bush_count := 70
 
+@export_group("Wildlife")
+## Flocks of tame chickens (TameChickens) foraging in the clearing: hens and a
+## rooster that hunt nobody, the first at the edge of the woods.
+@export_range(0, 6) var chicken_flocks := 2
+
 var _noise: FastNoiseLite
 var _noise_seed := -1
 

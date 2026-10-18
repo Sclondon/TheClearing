@@ -40,6 +40,8 @@ var out := {}
 ## What hunts the maze (see _enemies).
 var enemies: MazeEnemies
 var griever: Griever
+## What lives in the clearing (and the maze) and hunts nobody: TameChickens.
+var wildlife: Array[TameChickens] = []
 ## God mode and the rest (DevTools), when it is on for this run.
 var dev: DevTools
 ## The hour, the light with it, and the doors of the clearing (put once the walls stand).
@@ -139,6 +141,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	touch.act_pressed.connect(func() -> void: try_cut())
 
 	_enemies(seed_value)
+	wildlife = TameChickens.populate(self, maze, hash("wildlife/%d" % seed_value))
 	if DevTools.enabled():
 		dev = DevTools.new(self)
 		hud.add_child(dev)

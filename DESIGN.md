@@ -204,6 +204,17 @@ ring has is its style's choice. The wall tops are a second level you can travel 
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
 - With friends, the room's maker runs them; everyone else sees copies.
 
+## Wildlife
+
+Not everything in the clearing and the maze is a threat. Added 2026-10-18 at the user's request ("there should be
+non hostile regular deer and elk and chicken as well. Some should be in the clearing"):
+
+- **Tame chickens**: ordinary farmyard hens and a rooster that forage, cluck and crow. Run through them and they
+  scatter a few steps, squawking, and settle; walk near and they edge away. They never call the hunters and never mob.
+  The clearing has a couple of flocks (ClearingStyle, "Wildlife"), the first pecking at the edge of the woods, all well
+  away from the middle and the paths to the gates; a ring can have some in its halls too (MazeStyle, "Wildlife", none
+  by default). Placed from the round's seed, so everyone in a room sees the same flocks.
+
 ## Playing together
 
 - Alone, or a room for up to four: make a room, share its four-letter code, the maker starts. The maze comes from

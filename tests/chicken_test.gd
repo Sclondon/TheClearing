@@ -10,7 +10,9 @@ extends SceneTree
 ## and go back to foraging; running into one sets the flock mobbing (round the
 ## head, some in the air), and getting well away ends it; they never catch
 ## anyone; a puppet flock follows the host's news; MazeEnemies' packing carries
-## it; and what a flock costs a frame.
+## it; and what a flock costs a frame. Then tame chickens (wildlife): placed in the
+## clearing, scattered by a runner but calling nobody and never mobbing; the
+## low-detail bird; the sounds.
 ##
 ##     godot --headless --audio-driver Dummy --path . -s res://tests/chicken_test.gd
 ##
@@ -261,6 +263,11 @@ func _run() -> void:
 	await frames(2)
 	check("MazeEnemies packs and unpacks a flock", (a as Chickens).mode == Chickens.Mode.PANIC and (b as Chickens).mode == Chickens.Mode.PANIC and b.puppet and (b as Chickens).flock.count == (a as Chickens).flock.count, "(modes %d, %d; %d, %d birds)" % [(a as Chickens).mode, (b as Chickens).mode, (a as Chickens).flock.count, (b as Chickens).flock.count])
 
+	# (the hostile flocks out of the way first: their racket would call the mummy)
+	for node: Node in [chickens, puppet_copy, set_a, set_b]:
+		node.queue_free()
+	await frames(2)
+	await _tame(start, way)
 	# What a flock costs: its frame's work, panicking (the busiest it gets).
 	var big := ChickenFlock.new()
 	big.count = 15
@@ -275,3 +282,91 @@ func _run() -> void:
 	check("a flock of 15 costs well under a millisecond a frame", each < 1.0, "(%.3f ms)" % each)
 	print("PASSED" if failures == 0 else "FAILED (%d)" % failures)
 	quit(0 if failures == 0 else 1)
+
+
+## Tame chickens (scripts/wildlife/tame_chickens.gd): placed in the clearing away
+## from the middle and the gate paths, the same from the same seed; running
+## through scatters them but calls nobody, and even running into one, they never
+## mob; they are no pursuers. And the low-detail bird, and the sounds.
+func _tame(start: Vector2i, way: Vector2i) -> void:
+	var along := Vector3(way.x, 0, way.y)
+	var holder := Node3D.new()
+	stage.add_child(holder)
+	var flocks := TameChickens.populate(holder, maze, 99)
+	var again := Node3D.new()
+	stage.add_child(again)
+	var flocks_again := TameChickens.populate(again, maze, 99)
+	await frames(3)
+	var look: ClearingStyle = maze.clearing_style
+	var in_clearing := 0
+	var placed_ok := true
+	var same := flocks.size() == flocks_again.size()
+	for k in flocks.size():
+		var at := flocks[k].global_position
+		if maze.in_clearing(maze.cell_at(at)):
+			in_clearing += 1
+		var flat := Vector2(at.x, at.z)
+		if flat.length() < 45.0:
+			placed_ok = false
+		for gate: Array in look.entrance_spots:
+			if Geometry2D.get_closest_point_to_segment(flat, Vector2.ZERO, gate[0]).distance_to(flat) < 15.0:
+				placed_ok = false
+		if same and (flocks_again[k].global_position.distance_to(at) > 0.01 or flocks_again[k].flock.count != flocks[k].flock.count):
+			same = false
+	check("tame flocks in the clearing, as its style says", in_clearing == look.chicken_flocks, "(%d of %d)" % [in_clearing, look.chicken_flocks])
+	check("away from the middle and the paths to the gates", placed_ok)
+	check("the same flocks from the same seed", same)
+	var woods := look.entrance(ClearingStyle.Entrance.WOODS)
+	if not woods.is_empty() and not flocks.is_empty():
+		var d := Vector2(flocks[0].global_position.x, flocks[0].global_position.z).distance_to(woods[0])
+		check("the first at the edge of the woods", d > look.woods_size * 0.9 and d < look.woods_size * 1.2, "(%.0f m from the woods' gate; the woods reach %.0f)" % [d, look.woods_size])
+	again.queue_free()
+	check("tame chickens are not pursuers nor hunters", not flocks[0].is_in_group(&"pursuers") and not flocks[0].is_in_group(&"maze_enemies") and flocks[0].flock.tame)
+
+	# One in the maze, with a dormant mummy near: run through, then into them.
+	var tame := TameChickens.new(maze, 4321)
+	tame.position = maze.world(start + way * 2) + Vector3.UP * 0.05
+	stage.add_child(tame)
+	var mummy := Mummy.new()
+	mummy.start_dormant = true
+	mummy.sight_range = 0.0
+	mummy.hear_range = 0.0
+	mummy.maze = maze
+	mummy.position = maze.world(start + way * 4) + Vector3.UP * 0.05
+	stage.add_child(mummy)
+	await frames(120)
+	var middle := tame.flock.centre()
+	var from := Vector3(middle.x, 0.05, middle.z) - along * 8.0
+	var scattered := 0
+	for i in 60 * 4:
+		put(from + along * 4.4 * i / 60.0, along * 4.4)
+		await physics_frame
+		scattered = maxi(scattered, tame.flock.panicking())
+	check("running through scatters them", scattered >= 3, "(%d at once)" % scattered)
+	var bird: Vector3 = tame.flock.bird_position(0)
+	for i in 30:
+		put(Vector3(bird.x, 0.05, bird.z), along * 1.5)
+		await physics_frame
+	check("running into one: no mob", not tame.flock.mobbing())
+	put(runner.global_position + along * 200.0)
+	var settled := false
+	for i in 60 * 15:
+		await physics_frame
+		if tame.flock.panicking() == 0:
+			settled = true
+			break
+	var acts := []
+	for b in tame.flock.count:
+		acts.append("%s %.1f m up" % [ChickenFlock.Act.keys()[tame.flock.act_of(b)], tame.flock._birds[b].height])
+	check("they settle soon", settled, str(acts))
+	check("and they called nobody", mummy.quarry == null and not mummy.is_awake(), "(mummy %s)" % Mummy.Mode.keys()[mummy.mode])
+	mummy.queue_free()
+	holder.queue_free()
+	tame.queue_free()
+
+	# The low-detail bird, and the sounds.
+	var full := ChickenBody.mesh(false).get_faces().size() / 3
+	var low := ChickenBody.mesh(true).get_faces().size() / 3
+	check("a low-detail bird for phones", low > 0 and low * 2 < full, "(%d triangles against %d)" % [low, full])
+	ChickenVoice._make_sounds()
+	check("clucks, squawks and a crow made in code", ChickenVoice._clucks.size() == 3 and ChickenVoice._squawks.size() == 2 and ChickenVoice._crow != null and ChickenVoice._crow.data.size() > 16000)

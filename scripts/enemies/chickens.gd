@@ -83,6 +83,7 @@ func _ready() -> void:
 	flock.flock_seed = _flock_seed
 	flock.count = choose.randi_range(8, 13)
 	flock.roosters = 1
+	flock.low_poly = Settings.low_poly
 	flock.home = Vector3(_home.x, maze.ground_height(_home) if maze else _home.y, _home.z)
 	flock.roam = roam
 	flock.keep_in = _keep_in
@@ -91,6 +92,7 @@ func _ready() -> void:
 	add_child(flock)
 	flock.top_level = true
 	flock.global_transform = Transform3D.IDENTITY
+	flock.add_child(ChickenVoice.new(flock))
 
 
 ## Whether anyone is being mobbed.

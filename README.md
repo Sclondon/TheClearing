@@ -99,6 +99,9 @@ from the seed. Generate again replaces everything in the layout.
   `add_hunters`) and puts in a Griever; alone or as the host they are run there and their state goes to guests ten
   times a second (K_ENEMIES), where copies follow it. Caught, a player is put back in the clearing; out, nobody is
   hunted.
+- `scripts/wildlife/`: what lives in the clearing and hunts nobody. `TameChickens`: a tame ChickenFlock (with its
+  sounds, ChickenVoice), placed by `TameChickens.populate` from the seed (ClearingStyle and MazeStyle, "Wildlife"),
+  scattered by anyone running through; each copy of the game runs its own (`World.wildlife`).
 - `creatures/`: GameCommon's creatures, look and motion only (see each one's README): `ghoul`, `centipede`,
   `giant_spider`, `abomination`, `flesh_mound` (needs the boy from the character controller), `slime_wall`, `bats`, `baboon`, `dog`, `alien`, `beetle_swarm`, `fish_person`, `angel`, `frog` (the giant toad and the frog swarm), `harpy`, `boar`, `chicken`. Change them here, then `kit.sh pull`
   them back to GameCommon (`godot/<name>`, with `_` as `-`). Their models are built in Blender by their `tools/` scripts.

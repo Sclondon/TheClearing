@@ -35,7 +35,7 @@ const HUNTERS := [
 	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD], ["BOAR", "boar", SNAKE_AHEAD],
 	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
-	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD], ["CHICKENS", "chickens", AHEAD],
+	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD], ["CHICKENS", "chickens", AHEAD], ["CHICKENS (TAME)", "tame_chickens", AHEAD],
 ]
 
 var world: World
@@ -220,6 +220,13 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = [MazeBoar.new()]
 		"chickens":
 			made = [Chickens.new()]
+		"tame_chickens":
+			# (wildlife, not a hunter: put in beside the rest, not among them)
+			var flock := TameChickens.new(world.maze, randi())
+			flock.position = at
+			world.add_child(flock)
+			world.wildlife.append(flock)
+			return
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 
