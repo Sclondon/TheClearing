@@ -48,6 +48,8 @@ var layout: MazeLayout
 var beacon: Node3D
 ## The terraces, ivy, vines and bridges (MazeFeatures).
 var features: MazeFeatures
+## The vents, drains, boxes, barrels and old cables (MazeProps).
+var props: MazeProps
 ## The ferns, bushes, moss and tufts of grass.
 var undergrowth: Undergrowth
 ## The ground's material (MazeStone.ground), for the weather to wet.
@@ -105,6 +107,10 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 	features.name = "Features"
 	add_child(features)
 	features.realize(pieces)
+	props = MazeProps.new()
+	props.name = "Props"
+	props.realize(pieces)
+	add_child(props)
 	if stepwise:
 		await _breathe("Sowing the grass")
 	if not preview:

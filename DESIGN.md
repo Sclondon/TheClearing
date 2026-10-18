@@ -514,6 +514,26 @@ The maker staggers and fells (a guest asks), and everyone sees the felled one fa
   the fire if there is nothing). Nothing hunts in the clearing, so they are never hunted there.
 - The ground round a camp in the clearing is trodden: the grass worn thin, raggedly, never bare.
 
+## Signs of life, and the sewers
+
+Added 2026-10-18 at the user's request ("vents and sewer props on the walls and floor", "Zone 1 set up with signs of
+abandoned life: camps, boxes and barrels, wires hanging above in the vines"). `MazeProps` (`scripts/maze_props.gd`)
+lays them out from the seed as PROP and WIRE pieces (editable in the maze editor, in Props and Wires), by each
+section's MazeStyle:
+
+- **Sewers** (every square section, fewest further out): old vents high on the walls (louvred or round, some great
+  ducts), barred culverts at their feet with a puddle in front, small pipes with a rust stain down the wall and a
+  puddle under them (some dripping), drain grates by the walls and manhole covers out in the halls (now and then
+  pushed half off the black shaft).
+- **Signs of life** (the Avenues): three camps left; heaps of boxes and barrels against the walls (solid, some
+  stacked, a barrel fallen over); old black cables strung high across the halls, in among the strung vines and
+  hanging beside the hanging ones, some snapped with their ends hanging, now and then a dead lamp; cables looped
+  along walls on brackets.
+- All weathered and dull, kept clear of the ways up (ivy, terraces, pipes), the gates and each other; the camps and
+  what lies about keep off the heaps. Drawn as a MultiMesh a kind per 140 m square (cables merged into one mesh a
+  square), gone past 110 to 160 m; nothing processes (drips fall in their shader). `tests/props_test.gd`,
+  `tools/props_shots.gd`.
+
 ## Playing together
 
 - Alone, or a room for up to four: make a room, share its four-letter code, the maker starts. The maze comes from
