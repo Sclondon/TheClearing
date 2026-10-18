@@ -417,6 +417,10 @@ func _ground() -> void:
 		visual.mesh = plane
 		visual.position = Vector3(part.get_center().x, 0.0, part.get_center().y)
 		visual.material_override = material
+		# (the ground casts no shadow: there is nothing under it to shade, and with
+		# the sun low it shaded itself, in fine stripes over the grass: "lines in the
+		# ground")
+		visual.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		body.add_child(visual)
 	# The clearing's hills over it, and a heightmap to walk on them.
 	if shaped:
@@ -555,6 +559,8 @@ static func hills(look: ClearingStyle, seed_value: int, material: Material) -> M
 	shown.name = "Hills"
 	shown.mesh = mesh
 	shown.material_override = material
+	# (no shadow of its own, as the flat ground: it striped itself with the sun low)
+	shown.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	shown.set_meta(&"points", across)
 	return shown
 
@@ -674,7 +680,7 @@ func _grass() -> void:
 	var tall := look.entrance(ClearingStyle.Entrance.TALL_GRASS)
 	if tall.is_empty():
 		return
-	var around := Rect2(look.tall_grass_middle() - Vector2.ONE * look.tall_grass_radius * 1.05, Vector2.ONE * look.tall_grass_radius * 2.1).intersection(field)
+	var around := look.tall_grass_rect().intersection(field)
 	Grass.field(self, around, 0.8, {
 		"mask": func(p: Vector2) -> float: return look.tall_grass_at(p) if dry.call(p) else 0.0,
 		"height": func(p: Vector2) -> float: return maze.ground_height(Vector3(p.x, 0.0, p.y)) + HILL_LIFT,

@@ -69,6 +69,19 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
   4 m, level again near the walls. All set by `ClearingStyle` (`scripts/clearing_style.gd`, `MazeLayout.clearing_style`).
 - Something different before each entrance (`ClearingStyle.entrances`): dense woods round one, grass up to his chest
   round another, a marsh in front of another, nothing at all near the last.
+- The tall grass (ClearingStyle "Entrances": tall grass width, reach, ragged, height, hollow): a meadow of grass up to
+  his chest, half an oval with its straight side along the wall, about 340 m along it and 150 m out into the
+  clearing, its edge wandering in bays and spits. It runs right up to the foot of the wall and to the gate on both
+  sides of it; the doorway stays open (grass has no colliders). Changed 2026-10-18 at the user's word ("the tall
+  grass area needs to be bigger in the clearing and run right up to the walls and door"): before, it was a round
+  meadow of 75 m radius, its middle 55 m in from the gate, that met the wall only near the gate.
+- Plants (`scripts/undergrowth.gd`): ferns and moss round the pines, bushes over the field. A bush is a rooted dome
+  of leafy lumps a couple of metres across: thin stems from its foot, and over each lump a shell of small cards on
+  which a shader draws sprays of pointed leaves, the gaps cut out, darker inside and low down, lit as one rounded
+  mass. (2026-10-18, the user: "the bush just looks like floating squares": they had been flat-shaded diamonds hung
+  round their lumps.)
+- The ground casts no shadow (2026-10-18, the user: "I can see lines in the ground"): with the sun low it shaded
+  itself in fine stripes (shadow acne), which showed between the grass.
 - The marsh (`scripts/marsh.gd`, the marsh settings of `ClearingStyle`): not a pond but a wide, ragged bog, about
   190 m along the wall and 125 m out, beginning a few metres from the wall's foot. Many shallow, irregular pools and
   channels of standing water between hummocks and tussocks of wet ground, black mud at the water's edge, broad open

@@ -355,6 +355,8 @@ func _ground() -> void:
 	ground.name = "Ground"
 	ground.mesh = mesh
 	ground.material_override = material
+	# (no shadow: it striped itself with the sun low, as the field did)
+	ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(ground)
 	# (to walk on: the same heights, in heightmap units, the shape scaled up by STEP)
 	var body := StaticBody3D.new()
