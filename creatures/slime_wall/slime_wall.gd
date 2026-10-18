@@ -82,6 +82,8 @@ const TRAIL_COUNT := 64
 ## How far it goes between one patch of trail and the next.
 const TRAIL_STEP := 0.9
 const DRIPS := 10
+## How far it presses into a wall it is against (metres), out of sight in the wall, so no gap shows.
+const PRESS := 0.6
 
 var _body: Node3D
 var _jelly: MeshInstance3D
@@ -96,6 +98,9 @@ var _trail_material: ShaderMaterial
 var _target_width := 12.0
 var _target_offset := 0.0
 var _last_gap := 0.0
+## Which sides (left, right) are against a wall, and how far it has pressed into each (0..1).
+var _hem := Vector2.ZERO
+var _pressed := Vector2.ZERO
 var _feel_in := 0.0
 var _was_at := Vector3.INF
 var _sway := 0.0
@@ -191,6 +196,7 @@ func settle() -> void:
 		_feel()
 	fitted_width = _target_width
 	fitted_offset = _target_offset
+	_pressed = _hem
 	_trail_from = Vector3.INF
 	_apply()
 
@@ -269,6 +275,7 @@ func _process(delta: float) -> void:
 	fitted_offset = move_toward(fitted_offset, _target_offset, delta * (1.5 + absf(_target_offset - fitted_offset)))
 	_squish = lerpf(_squish, clampf((was_width - fitted_width) / delta * 0.6, -1.0, 1.0), 1.0 - exp(-4.0 * delta))
 	_body.position = Vector3(fitted_offset, 0.0, 0.0)
+	_pressed = _pressed.move_toward(_hem, delta * 2.0)
 	# It swells towards what it is after, near enough.
 	var reach_to := Vector3(0.0, 1.0, depth)
 	var want := 0.0
@@ -303,6 +310,14 @@ func _feel() -> void:
 						right_room = minf(right_room, d)
 					else:
 						left_room = minf(left_room, d)
+	# (it presses into a wall only if the wall stands higher than it: over a low one the pressing would show)
+	var tall := Vector2.ZERO
+	var top := global_position + Vector3.UP * (fitted_height() - 0.4)
+	for k in 2:
+		var side := -1.0 if k == 0 else 1.0
+		var room := left_room if k == 0 else right_room
+		if room < far and not space.intersect_ray(PhysicsRayQueryParameters3D.create(top, top + right * side * (room + 0.6), room_mask)).is_empty():
+			tall[k] = 1.0
 	room_left = left_room if left_room < far else INF
 	room_right = right_room if right_room < far else INF
 	# Hemmed in on both sides it fills the gap, and remembers how wide that was.
@@ -310,6 +325,7 @@ func _feel() -> void:
 	# wall it still has; open on both, to the width it had, where it is.
 	var gap := left_room + right_room - 0.15
 	var keep := clampf(_last_gap if _last_gap > 0.0 else width, min_width, max_width)
+	_hem = Vector2.ZERO
 	if left_room >= far and right_room >= far:
 		_target_width = keep
 		_target_offset = clampf(_target_offset, -keep * 0.25, keep * 0.25)
@@ -318,10 +334,13 @@ func _feel() -> void:
 		_target_width = keep
 		var side := 1.0 if right_room < left_room else -1.0
 		_target_offset = side * (near - _target_width * 0.5 - 0.05)
+		_hem = (Vector2(0.0, 1.0) if side > 0.0 else Vector2(1.0, 0.0)) * tall
 	else:
 		_target_width = clampf(gap, min_width, max_width)
 		_target_offset = (right_room - left_room) * 0.5 if gap <= max_width else 0.0
 		_last_gap = _target_width
+		if gap <= max_width:
+			_hem = tall
 
 
 func _apply(reach_to := Vector3(0.0, 1.0, 4.0)) -> void:
@@ -329,8 +348,13 @@ func _apply(reach_to := Vector3(0.0, 1.0, 4.0)) -> void:
 		return
 	var half := Vector3(fitted_width * 0.5, fitted_height() * 0.5, depth * 0.5)
 	var round_r := minf(1.6, minf(half.x, half.z) * 0.8)
+	# (what is seen is pressed into the walls it is against, and squarer there)
+	var reach := visual_extents()
+	var seen := Vector3((reach.x + reach.y) * 0.5, half.y, half.z)
 	for material: ShaderMaterial in [_back, _front, _drip_material]:
-		material.set_shader_parameter(&"half_size", half)
+		material.set_shader_parameter(&"half_size", seen)
+		material.set_shader_parameter(&"x_mid", (reach.y - reach.x) * 0.5)
+		material.set_shader_parameter(&"side_round", Vector2(lerpf(round_r, 0.15, _pressed.x), lerpf(round_r, 0.15, _pressed.y)))
 		material.set_shader_parameter(&"round_r", round_r)
 		material.set_shader_parameter(&"surge", _surge)
 		material.set_shader_parameter(&"sway", _sway)
@@ -403,3 +427,9 @@ func _lay_trail() -> void:
 	_trail.multimesh.set_instance_transform(i, Transform3D(basis, Vector3(middle.x, global_position.y + 0.03 + i * 0.0004, middle.z)))
 	var custom := _trail.multimesh.get_instance_custom_data(i)
 	_trail.multimesh.set_instance_custom_data(i, Color(_clock, custom.g, custom.b, 0.0))
+
+
+## How far what is seen of it reaches to its left and right from its middle
+## (metres): half its width, and further into any wall it is against.
+func visual_extents() -> Vector2:
+	return Vector2(fitted_width * 0.5 + PRESS * _pressed.x, fitted_width * 0.5 + PRESS * _pressed.y)

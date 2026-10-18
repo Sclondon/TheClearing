@@ -325,7 +325,7 @@ func _maze() -> void:
 	middle = centre.call()
 	look(middle + up * 0.5, over - middle - up * 0.5)
 	await shot("m05_charging")
-	look(dogs[0].global_position + up * 0.7 - way * 0.4, side * 7.0 + up * 0.6)
+	look(dogs[0].global_position + up * 0.7 + way * 1.0, side * 7.0 + up * 0.6)
 	await shot("m06_charging_side")
 
 	# The first springs at him

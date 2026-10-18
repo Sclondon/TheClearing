@@ -27,7 +27,10 @@ if slime.contains(player.global_position + Vector3.UP, 0.1):
 - **Fits where it is.** A few times a second it casts rays to either side (`room_mask`) and spreads or squeezes to
   fill the space between the walls (`min_width` to `max_width`), sliding over to sit in the middle. Squeezed, it
   rises. At a turning off (no wall on one side) it keeps the width it had, along the wall it has. `measure_room = false`
-  keeps it `width` wide. `room_left`, `room_right`, `fitted_width`, `fitted_offset`, `fitted_height()` say what it found.
+  keeps it `width` wide. Against a wall taller than itself it is squared off and pressed `PRESS` (0.6 m) into it,
+  out of sight, and its foot is sunk a little into the ground, so no floor ever shows beside or under it; its other
+  edges are rounded. `room_left`, `room_right`, `fitted_width`, `fitted_offset`, `fitted_height()`,
+  `visual_extents()` say what it found.
 - **`contains(point, margin)`**: whether a point is inside it (for touching).
 - **`hold(node, seconds)`**: moves `node` into itself and holds it, rising and turning; at the end it is stood upright
   where it is and `released(node)` is emitted. Stop the node moving itself meanwhile. For a figure whose visible part

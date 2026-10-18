@@ -28,37 +28,44 @@ shader_type spatial;
 uniform vec3 albedo : source_color = vec3(0.16, 0.14, 0.12);
 uniform vec3 pale : source_color = vec3(0.42, 0.37, 0.31);
 uniform vec3 skin : source_color = vec3(0.27, 0.21, 0.2);
-uniform vec3 scar : source_color = vec3(0.36, 0.3, 0.28);
+// Scar tissue: pink-grey, paler along its ridge, raw at its edges.
+uniform vec3 scar : source_color = vec3(0.5, 0.4, 0.4);
+uniform vec3 scar_edge : source_color = vec3(0.36, 0.2, 0.2);
+// How wide a scar is (cm either side of its line, in the model), and the hairless strip round it.
+uniform float scar_width = 0.32;
+uniform float scar_bald = 0.75;
 // The banded light.
 uniform float wrap = 0.25;
 uniform float flatness = 0.65;
-// How many strands across a metre of coat, how long a run of one tone is along them, how far their tones differ.
-uniform float strands = 900.0;
-uniform float run = 0.022;
-uniform float streak = 0.32;
-// Patches a few centimetres across, darker or lighter all over.
-uniform float patch = 0.22;
-uniform float root_shade = 0.5;
-uniform float tip_bleach = 0.18;
+// The coat lies in matted clumps: how many to a metre across the lie of the
+// hair and along it, and how much they differ in tone; then a little fine
+// grain within each, and broad patches.
+uniform vec2 clumps = vec2(34.0, 12.0);
+uniform float clump_tone = 0.38;
+uniform float strands = 300.0;
+uniform float streak = 0.12;
+uniform float patch = 0.12;
+uniform float root_shade = 0.35;
+uniform float tip_bleach = 0.12;
 // How dark the creases go, and how much paler the underside is.
 uniform float crease = 0.72;
 uniform float pale_gain = 0.75;
 // Bare patches: how much of the coat is bare, and how big a patch is (m).
-uniform float mange = 0.3;
+uniform float mange = 0.2;
 uniform float mange_size = 0.06;
 uniform float rim_gain = 0.45;
 uniform float rim_width = 0.3;
-uniform float rim_ragged = 0.4;
+uniform float rim_ragged = 0.3;
 uniform vec3 sheen : source_color = vec3(0.6, 0.62, 0.66);
-uniform float sheen_gain = 0.06;
-uniform float sheen_gloss = 12.0;
+uniform float sheen_gain = 0.05;
+uniform float sheen_gloss = 10.0;
 // Which layer this is: 0 the skin, up to 1 for the tips of the longest hair.
+// The layers stand off the skin only towards the outline, so that they soften
+// it into fuzz and do not stripe the surface.
 uniform float shell = 0.0;
 uniform float fur_length = 0.014;
 uniform float comb = 0.8;
 uniform float droop = 0.3;
-// Fewer, bigger tufts than a groomed coat: it is matted.
-uniform float tufts = 700.0;
 uniform float face = -0.44;
 uniform float face_length = 0.22;
 
@@ -78,18 +85,30 @@ float noise(vec2 p) {
 	return mix(mix(hash(cell), hash(cell + vec2(1.0, 0.0)), f.x), mix(hash(cell + vec2(0.0, 1.0)), hash(cell + vec2(1.0, 1.0)), f.x), f.y);
 }
 
+// How far from the middle of a scar (cm), from the second texture coordinates
+// (see tools/build_dog.py): x, across the line of it, which runs smooth through
+// the middle of a triangle; y, how far from the scar itself, to keep to it. Its
+// width wanders along it.
+float scar_gap(vec2 uv2, vec2 uv) {
+	float across = abs(uv2.x - 0.5) * 10.0;
+	float near = 1.0 - smoothstep(0.7, 1.3, abs(uv2.y - 0.5) * 10.0);
+	return mix(9.0, across / (0.75 + 0.5 * noise(uv * vec2(9.0, 60.0))), near);
+}
+
 // How bare the coat is here, 0..1: mange (thin at the edge of a patch, bare in
-// its middle, the edge ragged), and scars (green).
-float bareness(vec2 uv, vec4 colour) {
+// its middle, the edge ragged), and the strip along a scar.
+float bareness(vec2 uv, vec2 uv2) {
 	vec2 at = uv / mange_size;
 	float n = noise(at) * 0.6 + noise(at * 2.7 + 13.0) * 0.28 + noise(at * 9.0 + 41.0) * 0.12;
 	float edge = 1.0 - mange * 0.5;
-	float mangy = smoothstep(edge - 0.06, edge + 0.1, n);
-	return max(mangy, smoothstep(0.3, 0.7, colour.g));
+	float mangy = smoothstep(edge - 0.02, edge + 0.16, n);
+	return max(mangy, 1.0 - smoothstep(scar_width, scar_bald, scar_gap(uv2, uv)));
 }
 
 void vertex() {
-	float bare = bareness(UV, COLOR);
+	float bare = bareness(UV, UV2);
+	// (scar tissue stands a little proud)
+	VERTEX += NORMAL * 0.0012 * (1.0 - smoothstep(0.0, scar_width * 1.4, scar_gap(UV2, UV)));
 	if (shell > 0.0) {
 		vec3 down = (vec4(0.0, -1.0, 0.0, 0.0) * MODEL_MATRIX).xyz;
 		float hair = mix(face_length, 1.0, smoothstep(face - 0.05, face + 0.03, UV.x));
@@ -100,34 +119,42 @@ void vertex() {
 }
 
 void fragment() {
-	vec2 grain = vec2(UV.y * strands, UV.x / run);
-	float fine = clamp(0.6 / max(fwidth(grain.x), 0.0001), 0.0, 1.0);
-	strand = noise(grain);
-	float tone = 1.0 + (strand - 0.5) * streak * fine + (noise(UV * vec2(19.0, 47.0)) - 0.5) * patch;
-	float bare = bareness(UV, COLOR);
+	// The clumps, lying along the hair, each its own tone, darker where they part.
+	vec2 at = vec2(UV.y * clumps.x, UV.x * clumps.y);
+	float clump = noise(at) * 0.7 + noise(at * 2.3 + 5.0) * 0.3;
+	float fine_grain = noise(vec2(UV.y * strands, UV.x * strands * 0.25));
+	float fine = clamp(0.6 / max(fwidth(UV.y * strands), 0.0001), 0.0, 1.0);
+	strand = mix(clump, fine_grain, 0.25);
+	float tone = 1.0 + (clump - 0.5) * clump_tone + (fine_grain - 0.5) * streak * fine + (noise(UV * vec2(9.0, 5.0)) - 0.5) * patch;
+	tone *= mix(0.72, 1.0, smoothstep(0.15, 0.45, clump));
+	float bare = bareness(UV, UV2);
 	if (shell > 0.0) {
-		// (towards a bare patch the hair thins out, the longest going first)
-		if (bare > 0.75 - shell * 0.45 + (strand - 0.5) * 0.3) {
+		// Only towards the outline, where it is seen from the side.
+		float facing = abs(dot(normalize(NORMAL), normalize(VIEW)));
+		if (facing > 0.84 - shell * 0.3 + (clump - 0.5) * 0.25) {
 			discard;
 		}
-		float row = floor(UV.y * tufts);
-		vec2 tuft = vec2(UV.y * tufts, UV.x * tufts * 0.13 + hash(vec2(row, 7.0)) * 7.0);
-		float height = hash(floor(tuft)) * 0.75 + strand * 0.25;
+		// (towards a bare patch the hair thins out, the longest going first)
+		if (bare > 0.7 - shell * 0.4 + (clump - 0.5) * 0.3) {
+			discard;
+		}
+		// The ends of the clumps: a ragged edge, the longer hair standing in tufts.
+		vec2 tuft = vec2(UV.y * clumps.x * 2.0, UV.x * clumps.y * 1.5);
+		float height = hash(floor(tuft)) * 0.6 + clump * 0.4;
 		vec2 within = fract(tuft) - 0.5;
-		float across = max(abs(within.x) * 2.0, abs(within.y) * 2.0 - 0.35);
-		float edge = 1.0 - abs(dot(normalize(NORMAL), normalize(VIEW)));
-		float thin = smoothstep(0.55, 0.95, edge) * 0.45;
-		// (thin in the creases too)
-		thin += (1.0 - COLOR.r) * 0.35;
-		if (height < shell + thin || across > 1.2 - shell * 0.75) {
+		float across = abs(within.x) * 2.0 + max(within.y, 0.0);
+		if (height < shell * 0.85 + (1.0 - COLOR.r) * 0.3 || across > 1.15 - shell * 0.6) {
 			discard;
 		}
 	}
 	vec3 base = mix(albedo, pale, clamp(COLOR.b, 0.0, 1.0) * pale_gain);
 	base *= mix(1.0 - crease, 1.0, COLOR.r);
 	base *= tone * mix(1.0 - root_shade, 1.0 + tip_bleach, shell);
-	// Bare skin: grey-pink, mottled, and scar tissue paler still.
-	vec3 hide = mix(skin, scar, smoothstep(0.2, 0.7, COLOR.g)) * (0.85 + 0.3 * noise(UV * 90.0)) * mix(0.6, 1.0, COLOR.r);
+	// Bare skin: grey-pink and mottled. Scar tissue: pink-grey, raised, paler along its ridge.
+	float gap = scar_gap(UV2, UV);
+	float on_scar = 1.0 - smoothstep(scar_width * 0.7, scar_width * 1.3, gap);
+	vec3 tissue = mix(scar_edge, scar, 1.0 - smoothstep(0.0, scar_width, gap));
+	vec3 hide = mix(skin * (0.85 + 0.3 * noise(UV * 90.0)) * mix(0.6, 1.0, COLOR.r), tissue, on_scar);
 	ALBEDO = mix(base, hide, smoothstep(0.45, 0.85, bare) * (shell > 0.0 ? 0.0 : 1.0));
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
@@ -143,7 +170,7 @@ void light() {
 	float reach = clamp(ATTENUATION, 0.0, 1.0);
 	float facing = (dot(NORMAL, LIGHT) + wrap) / (1.0 + wrap);
 	float amount = facing * smoothstep(0.15, 0.6, reach);
-	float lit = cut(amount + (strand - 0.5) * 0.14, 0.04);
+	float lit = cut(amount + (strand - 0.5) * 0.06, 0.04);
 	float strength = mix(reach, 1.0, flatness);
 	DIFFUSE_LIGHT += lit * strength * LIGHT_COLOR / PI;
 	float graze = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
@@ -223,9 +250,19 @@ void fragment() {
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
 	if (wet > 0.95) {
+		// An eye: where on its front this is (the second texture coordinates,
+		// see tools/build_dog.py), 0 at the middle of the pupil, 1 at its rim.
+		float r = length(UV2 - vec2(0.5)) / 0.4;
+		float pixel = max(fwidth(r), 0.002);
+		float pupil = 1.0 - smoothstep(0.42 - pixel, 0.42 + pixel, r);
+		float rim = smoothstep(0.72 - pixel, 0.84 + pixel, r);
+		// (the iris darker towards its edge, flecked)
+		vec3 iris = COLOR.rgb * mix(1.15, 0.6, smoothstep(0.36, 0.85, r)) * (0.9 + 0.2 * fract(sin(atan(UV2.y - 0.5, UV2.x - 0.5) * 7.0) * 43758.5));
+		ALBEDO = mix(mix(iris, vec3(0.025, 0.02, 0.02), pupil), vec3(0.06, 0.04, 0.03), rim);
+		// The light it gives back: through the iris, and dimly from deep in the pupil
 		// (strongest looking straight at it, as eyeshine is)
 		float facing = clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
-		EMISSION = shine * eyeshine * (0.25 + 0.75 * facing * facing);
+		EMISSION = shine * eyeshine * (0.25 + 0.75 * facing * facing) * (1.0 - rim) * mix(0.6, 0.3, pupil);
 	}
 }
 

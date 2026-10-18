@@ -28,7 +28,7 @@ const HOLD := 1.8
 @export var height := 9.0
 @export var depth := 5.0
 @export var width := 12.0
-@export var max_width := 30.0
+@export var max_width := 34.0
 ## Further than this from every player it is not drawn or moved about.
 @export var pose_range := 100.0
 @export var gravity := 24.0
