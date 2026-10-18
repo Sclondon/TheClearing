@@ -14,6 +14,8 @@ extends Node3D
 ## Every runner is the same boy as the players, in a shirt of his own (SHIRTS),
 ## muted and greyer than the players' four so that he reads as one of the others.
 
+## The cut of their trousers (BodyShape.CUTS): plain tapered legs.
+const RUNNER_CUT := "slim"
 ## Their shirts, in turn: a grey, a brown, an off-white, a dark taupe. None of
 ## them near Inside's red, the faded blue, the mustard or the dull green.
 const SHIRTS: Array[Color] = [
@@ -89,6 +91,8 @@ func add(ring: int, at: Vector3, yaw: float, choices_seed := 0) -> MazeRunner:
 	add_child(runner)
 	var look: Dictionary = Looks.decode("", 0)
 	look["colours"]["shirt"] = SHIRTS[runners.size() % SHIRTS.size()]
+	# (plain tapered legs, not the players' shaped ones: the user found those lumpy on them)
+	look["cut"] = RUNNER_CUT
 	Looks.apply(runner.get_node(^"Rig") as CharacterRig, look)
 	(runner.get_node(^"Rig") as CharacterRig).cap_hand = false
 	runner.sprint_speed = 6.0

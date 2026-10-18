@@ -1,5 +1,5 @@
 extends Node
-## The connection to the Scareathon server's rooms for The Clearing (/the-clearing/ws; see
+## The connection to the Scareathon server's rooms for Warren (/the-clearing/ws; see
 ## server/routes/theClearing.js in scareathon-v3). The server keeps the lobby and relays binary
 ## packets between the host (whoever made the room) and everyone else; it uses the same room
 ## manager as October Valley and 8 Bit Evil Returns V2 (server/eightBitEvilV2/rooms.js).

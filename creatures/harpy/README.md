@@ -6,14 +6,14 @@ temples and cheeks, small milky eyes deep in their sockets, and a lipless mouth 
 cheekbone to the other, its jaw dropping open on crowded teeth. Lank wet black hair hangs from the crown over most of
 the face and down to the chest. Where her arms should be are great ragged grey-black wings built as a bird's are; from
 the lower ribs down she is a bird, with feathered thighs and bare scaly raptor legs and long hooked talons. Made
-2026-10-18 for The Clearing (where she perches on the maze's walls and swoops: `scripts/enemies/maze_harpy.gd`
+2026-10-18 for Warren (where she perches on the maze's walls and swoops: `scripts/enemies/maze_harpy.gd`
 there). It is only the look, the motion and the sound: it does no thinking.
 
 - `creatures/harpy/harpy.gd` (`class_name Harpy`, a `Node3D`): the motion, posed bone by bone in code (no
   animations), and its sounds, made in code.
 - `creatures/harpy/harpy_look.gd` (`class_name HarpyLook`): its shader.
 - `creatures/harpy/models/harpy.glb`: two skinned meshes on one skeleton, `harpy` (about 56,000 triangles) and
-  `harpy_lo` (about 20,000), built in Blender 4.3 by `tools/build_harpy.py` (in The Clearing's copy, and beside this
+  `harpy_lo` (about 20,000), built in Blender 4.3 by `tools/build_harpy.py` (in Warren's copy, and beside this
   README in GameCommon):
 
 ```

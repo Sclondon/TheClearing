@@ -1,7 +1,7 @@
 # Chickens (Godot 4.7)
 
 A flock of scruffy feral chickens, hens and a rooster: how they look and how they go about, and nothing about what
-they mean in a game. Made 2026-10-18 for The Clearing (where they are one of the maze's alarms:
+they mean in a game. Made 2026-10-18 for Warren (where they are one of the maze's alarms:
 `scripts/enemies/chickens.gd` there). No scenes and no textures: `creatures/chicken/chicken_flock.gd`
 (`class_name ChickenFlock`), `chicken_body.gd` (`ChickenBody`: the mesh and material), `chicken.gdshader`, and
 `models/chicken.glb`, hen and rooster in one model (about 11000 triangles for the two; each bird draws its own parts),

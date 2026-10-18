@@ -14,7 +14,7 @@ chips where it has been knocked, and a crazing of hairline cracks. As a statue i
 and cannot be told from a carving. Alive, an ember glows faintly deep in its cracks (spreading out from its heart
 as it wakes, brighter while it strains) and in its eyes; stone grinds as it moves and dust sheds off it.
 
-Made 2026-10-18 for The Clearing (its gargoyles: `scripts/enemies/maze_gargoyle.gd` there). It is only the look,
+Made 2026-10-18 for Warren (its gargoyles: `scripts/enemies/maze_gargoyle.gd` there). It is only the look,
 the motion and the sound: it does no thinking.
 
 - `creatures/gargoyle/gargoyle.gd` (`class_name Gargoyle`, a `Node3D`): the motion, all posed in code (no
@@ -25,7 +25,7 @@ the motion and the sound: it does no thinking.
   (`low_poly`, or `Gargoyle.low_poly_all` for every one). One skinned mesh, one material: one draw, and its shadow.
 - `creatures/gargoyle/textures/gargoyle_stone.png`: the stone's grain, 512 px, from Poly Haven's
   [concrete_wall_007](https://polyhaven.com/a/concrete_wall_007) (CC0; Charlotte Baglioni, Dario Barresi, Rico
-  Cilliers), the concrete of The Clearing's walls.
+  Cilliers), the concrete of Warren's walls.
 - `creatures/gargoyle/tools/build_gargoyle.py` builds the models in Blender 4.3 (15 seconds):
 
 ```

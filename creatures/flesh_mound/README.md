@@ -45,7 +45,7 @@ folded, stretch-marked, veined, swollen with boils of pus and weeping in
 patches. Cel shaded in hard bands. This is the look and the motion only: your
 game moves it and decides what catching means.
 
-Made for The Clearing (scripts/enemies/flesh_mound.gd is its hunter there).
+Made for Warren (scripts/enemies/flesh_mound.gd is its hunter there).
 
 ## Files
 

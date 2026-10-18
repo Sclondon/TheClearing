@@ -30,7 +30,7 @@ func own(node: Node, root: Node) -> void:
 func _run() -> void:
 	await process_frame
 	# (a ring with terraces to move: the game's first ring has only vines)
-	MazeStyle.chosen = [MazeStyle.warren()]
+	MazeStyle.chosen = [MazeStyle.narrows()]
 	var seed_value := Maze.seed_for("LAYOUT", 1)
 	var maze := Maze.generate(seed_value)
 	var layout := MazeLayout.new()

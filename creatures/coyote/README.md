@@ -5,7 +5,7 @@ and cheeks, a narrow head with a long pointed muzzle, big upright pointed ears a
 tail carried low. Its coat is grizzled grey and tan (banded guard hairs, some tipped black), darker down the back,
 tawny on the legs, the backs of the ears and the muzzle, cream under the jaw, down the throat and chest and under the
 belly, with a dark line down the front of each foreleg. Everything it does is animated in code: no clips. Its yips and
-howls are made in code too. Made for The Clearing (its skittish coyote packs, and the skinwalker that hides among
+howls are made in code too. Made for Warren (its skittish coyote packs, and the skinwalker that hides among
 them). The component has no thinking.
 
 ## Needs

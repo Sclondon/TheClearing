@@ -10,7 +10,7 @@ arms with webbed, long-fingered, clawed hands, and long flat feet with four webb
 
 It lurks in black water up to its eyes, rises out of it, shambles, lopes bent double, croaks (a gurgling, rattling
 croak that strains up into a screech) and lunges, grabbing with both hands. It is only the look, the motion and the
-croak. It does no thinking: your game moves it and tells it when to act. Made for The Clearing, 2026-10-18 (its
+croak. It does no thinking: your game moves it and tells it when to act. Made for Warren, 2026-10-18 (its
 `MazeFishPerson` is the thinking that drives it there).
 
 ## Needs
@@ -100,7 +100,7 @@ its rest position rides along as its texture coordinates (UV x, z; UV2 x: y) so 
 scales over it that stay put as it moves (scales in rows like roof tiles, triplanar, fading out where they would be
 too small to see), with mottling, a hard wet gleam broken up by the scales and a sheen along its edges. Its eyes,
 the dark of its mouth and gills, its teeth and claws are coloured by the same shader from the vertex colour, so it
-is one material and one surface; about 58k triangles (`fish_person_lo`: 10k). In The Clearing one in sight costs
+is one material and one surface; about 58k triangles (`fish_person_lo`: 10k). In Warren one in sight costs
 about 4 draw calls, shadows and the spatter of its feet included, and its pool one more.
 
 ## Try it

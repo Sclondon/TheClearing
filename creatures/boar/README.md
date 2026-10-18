@@ -8,7 +8,7 @@ to a wet disc of a nose, small eyes deep under a heavy brow. Two pairs of tusks,
 of the mouth, chipped and scored; the right lower one broken off short. Short thick legs on cloven hooves with
 dewclaws. Coarse black-brown coat grizzled at the tips, mud caked up its legs, belly and snout, old scars, broken
 arrow shafts still in its shoulder and flank, strings of slobber, steaming breath. Toon-shaded (hard light bands).
-Everything it does is animated in code on its own skeleton: no clips. Made for The Clearing (its charging boar).
+Everything it does is animated in code on its own skeleton: no clips. Made for Warren (its charging boar).
 The component has no thinking; it makes its own sounds, in code.
 
 ## Using it

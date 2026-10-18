@@ -2,7 +2,7 @@
 
 A crack in the ground that dozens of tiny imps pour out of, after someone: a carpet of them over the floor, a share of
 them running up and along the walls and leaping off at him, the ones that reach him running up him and clinging all
-over him; and home again down the crack. Made 2026-10-18 for The Clearing (its imp swarms), as a component any game can
+over him; and home again down the crack. Made 2026-10-18 for Warren (its imp swarms), as a component any game can
 use: the look and the motion; whatever drives it says who they are after and decides what their getting on him means.
 The imp is the same imp as `godot/imp`, made coarse (about 1,500 vertices) and baked on all fours.
 
@@ -10,7 +10,7 @@ The imp is the same imp as `godot/imp`, made coarse (about 1,500 vertices) and b
 - `creatures/imp_swarm/imp_swarm.gdshader`: the imps' legs (a trot, in diagonal pairs), tails, wings and jaws, moved
   per vertex from each imp's custom data; two flat tones; colours from the mesh's second UV (not vertex colours, which
   the web does not give a MultiMesh dependably).
-- `creatures/imp_swarm/models/imp_swarm.glb`: built by The Clearing's `creatures/imp/tools/build_imp.py` (with
+- `creatures/imp_swarm/models/imp_swarm.glb`: built by Warren's `creatures/imp/tools/build_imp.py` (with
   `imp_swarm.json` beside it: where each limb turns, which the shader keeps a copy of).
 
 ## Using it

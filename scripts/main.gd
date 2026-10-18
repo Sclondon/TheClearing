@@ -62,7 +62,7 @@ func show_title() -> void:
 	screen = "title"
 	var page := _new_page()
 	page.add_child(_spacer(1.0))
-	page.add_child(_label("THE CLEARING", 66, INK))
+	page.add_child(_label("WARREN", 66, INK))
 	page.add_child(_label("You wake in the middle of a maze.\nFind the way out.", 24, INK.darkened(0.15)))
 	page.add_child(_spacer(0.6))
 	page.add_child(_button("PLAY ALONE", start_solo))

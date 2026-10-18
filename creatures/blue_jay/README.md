@@ -3,7 +3,7 @@
 A family of blue jays: `BlueJays` (`creatures/blue_jay/blue_jays.gd`), a `CorvidFlock` of kind `BLUE_JAY` set up as
 jays go about. **Needs `godot/crow`** (the flock, the mesh loader, the shader, the voice, and the Blender script
 `creatures/crow/tools/build_corvids.py` that builds the jay's models here: `models/blue_jay.glb` and
-`blue_jay_lo.glb`). Made 2026-10-18 for The Clearing, where families of them live in the pines at the edge of the
+`blue_jay_lo.glb`). Made 2026-10-18 for Warren, where families of them live in the pines at the edge of the
 woods (`scripts/wildlife/birds.gd` there) and are one of the very few colour accents in its misty, near-colourless
 clearing.
 
@@ -43,7 +43,7 @@ jays.scold(someone_under_the_tree)   # or Vector3.INF
 
 `example.gd` is the smallest level: five jays in three post-trees, flitting and hopping, and every 20 seconds
 scolding a point under the middle one. Give them perches out at the ends of branches, where a bird sits clear of
-the needles (The Clearing works them out from its pines: `Perches.in_pines`).
+the needles (Warren works them out from its pines: `Perches.in_pines`).
 
 ## Limits
 

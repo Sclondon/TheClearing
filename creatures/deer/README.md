@@ -4,7 +4,7 @@ A white-tailed deer: a doe, or a buck with antlers, or (scaled down) a spotted f
 cervid plan (the elbow tucked up to the chest, the knee forward, the stifle forward, the high hock back, long cannons,
 cloven hooves with dewclaws), a deep narrow chest, the neck carried up, big ears, big dark wet eyes that give back the
 light. Grey-brown winter coat with the white throat patch, eye ring, nose band, belly and the white under its tail.
-Everything it does is animated in code on its own skeleton: no clips. Made for The Clearing (the herd that watches,
+Everything it does is animated in code on its own skeleton: no clips. Made for Warren (the herd that watches,
 and the peaceful herds in the clearing). The component has no thinking.
 
 `wrong` (0..1) makes one that is not a deer: its legs a little too long, its head turning round further than a neck

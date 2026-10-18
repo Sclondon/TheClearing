@@ -15,7 +15,7 @@ class_name GiantSpiderLook
 ## - The silk thread is one thin cylinder, stretched.
 ##
 ## The hide is lit like the game's figures (hard bands of light, after
-## scripts/toon.gd in The Clearing) with a broken, pale fuzz round its edges,
+## scripts/toon.gd in Warren) with a broken, pale fuzz round its edges,
 ## so that it reads as hair against the mist; the eyes and fangs are glossy
 ## black, and catch the light in hard glints.
 ##

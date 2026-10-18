@@ -3,7 +3,7 @@
 A coarse olive-grey ape on all fours, high-shouldered, walking on its knuckles, with a dog's muzzle, fangs and two
 small eyes glowing like embers under a heavy brow. The alpha is a mandrill: twice as heavy, a shaggy cape of mane, a
 yellow-orange beard, and the face: a crimson ridge down the snout to a bulb of a nose, and swollen, ribbed slate-blue
-cheeks, the one colour in it. Made 2026-10-18 for The Clearing (its baboon troops), as a creature any game can use: it
+cheeks, the one colour in it. Made 2026-10-18 for Warren (its baboon troops), as a creature any game can use: it
 is only the look and the motion, and knows nothing of what it is doing it for.
 
 - `creatures/baboon/baboon.gd` (`class_name Baboon`, a `Node3D`): the motion, all procedural (no animations).

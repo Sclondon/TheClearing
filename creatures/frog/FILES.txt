@@ -1,4 +1,4 @@
-# Frogs: the giant toad (rigged, posed in code) and the frog swarm (one MultiMesh), their shaders and models (run-time files only; the Blender script that builds the models is creatures/frog/tools/build_frogs.py in The Clearing)
+# Frogs: the giant toad (rigged, posed in code) and the frog swarm (one MultiMesh), their shaders and models (run-time files only; the Blender script that builds the models is creatures/frog/tools/build_frogs.py in Warren)
 creatures/frog/giant_toad.gd
 creatures/frog/frog_swarm.gd
 creatures/frog/frog_look.gd

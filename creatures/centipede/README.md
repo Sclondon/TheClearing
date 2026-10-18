@@ -3,7 +3,7 @@
 A giant centipede to look at and to move, after a Scolopendra: eighteen metres of glossy red-brown armour (a domed,
 rimmed, grooved plate to each length, lapping over the next, pale soft skin between that shows as it bends) on 44
 amber legs of six joints each, the last pair long and trailing; a redder shield of a head with clusters of black eyes,
-long beaded feelers, and great curved poison claws with black fangs. Made 2026-10-18 for The Clearing (its `Centipede` enemy drives it), but it knows nothing of
+long beaded feelers, and great curved poison claws with black fangs. Made 2026-10-18 for Warren (its `Centipede` enemy drives it), but it knows nothing of
 that game. Two scripts, no scenes, no models, no textures: `creatures/centipede/centipede_body.gd`
 (`class_name CentipedeBody`, a `Node3D`) and `centipede_parts.gd` (`CentipedeParts`: its shapes and its shader).
 
@@ -46,7 +46,7 @@ if centipede.stage() == CentipedeBody.Stage.POUNCE and centipede.bites(feet, hea
 ```
 
 If it is a child of a `CharacterBody3D`, that body is left out of its wall rays. To drive it from physics without
-stutter, set it `top_level` and put its transform where your body is drawn each frame (as The Clearing does).
+stutter, set it `top_level` and put its transform where your body is drawn each frame (as Warren does).
 `example.gd` (attach to a Node3D in an empty scene) runs one round a loop past a wall, rearing and striking at a post.
 
 ## What it needs from a game

@@ -4,7 +4,7 @@ A knee-high imp, wiry and pot-bellied: sooty red-brown skin going to charcoal on
 arms with three long clawed fingers and a thumb; short bowed legs standing on its toes, three clawed toes and a spur;
 big cupped bat's ears; two small ridged horns curving back; stubby leathery wings; a whip of a tail with a barbed spade;
 small slanted glowing eyes with slit pupils under a heavy V of a brow; a sharp hooked nose; and a wide grin whose lips
-are drawn back at the corners on two rows of needle teeth, a pointed chin. Made 2026-10-18 for The Clearing (its imp
+are drawn back at the corners on two rows of needle teeth, a pointed chin. Made 2026-10-18 for Warren (its imp
 gangs), as a creature any game can use: only the look, the motion and its voice; it knows nothing of what it is for.
 
 - `creatures/imp/imp.gd` (`class_name Imp`, a `Node3D`): the motion, all procedural (no animations), and its sounds.

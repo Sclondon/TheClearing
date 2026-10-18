@@ -348,7 +348,7 @@ func _arms(go: float, scream: float, shudder: float, tremble: Vector3, reach: fl
 		_set_hand(i, curl, splay, wrist)
 
 
-# --- Shared with the mummies' rigs (after scripts/enemies/mummy_rig.gd in The Clearing) ---
+# --- Shared with the mummies' rigs (after scripts/enemies/mummy_rig.gd in Warren) ---
 
 ## Steps with each leg in turn: a whole cycle is STRIDE long and each foot is
 ## off the ground for SWING of it. A planted foot stays where it is on the

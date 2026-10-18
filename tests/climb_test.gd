@@ -59,7 +59,7 @@ func let_go() -> void:
 func _run() -> void:
 	await frames(5)
 	# (a ring with every way up in it: the game's first ring has only vines)
-	MazeStyle.chosen = [MazeStyle.warren()]
+	MazeStyle.chosen = [MazeStyle.narrows()]
 	main._begin([{"slot": 0, "look": "p1"}], 0, false, Maze.seed_for("CLMB", 1))
 	await frames(20)
 	var world = main.world

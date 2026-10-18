@@ -1,4 +1,4 @@
-# The Clearing: design
+# Warren: design
 
 What the game is meant to be, and the decisions that shape it. The README says how it is built and run; this says
 what it is for. Where the two disagree about the game (not the code), this one wins. Keep it current: when a
@@ -83,13 +83,13 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
 
 ### Ring styles
 
-| | Avenues (ring 1) | Warren (ring 2, planned) | Tangle (ring 3, planned) |
+| | Avenues (ring 1) | Narrows (ring 3) | Tangle (ring 3, planned) |
 | --- | --- | --- | --- |
 | Depth | 6 cells (outside the clearing wall's 3 of solid stone) | 4 cells | 4 cells |
 | Halls | 2 cells wide (about 16 m between walls) | 1 cell | 1 cell |
 | Walls | 12 m thick, 34 m high | 3.2 m thick | 3.2 m thick |
 | Passages | go on straight half the time; no extra branching; no loops | winding, forking | branching often, many loops |
-| On the walls | climbable ivy up a tenth of the faces (a third to two-thirds of the way up, never to the top), vines hanging from some of it, vines strung across an eighth of the halls (walked as tightropes from a buttress with ivy up it; the act button cuts one into two hanging vines) | terraces, ivy, vines, rope bridges | as Warren |
+| On the walls | climbable ivy up a tenth of the faces (a third to two-thirds of the way up, never to the top), vines hanging from some of it, vines strung across an eighth of the halls (walked as tightropes from a buttress with ivy up it; the act button cuts one into two hanging vines) | terraces, ivy, vines, rope bridges | as Narrows |
 
 What a style can set: depth (cells), hall width (cells), wall thickness, its border wall (the wall round its outside: how high, and extra cells of solid wall
 thickening it on the far side), how often passages go straight, how often they branch, how many loops, narrow entrances (a passage of

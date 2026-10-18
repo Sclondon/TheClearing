@@ -331,9 +331,9 @@ static func galleries() -> MazeStyle:
 	return style
 
 
-## Warren: a close maze of single hallways that wind and fork, with terraces, ivy,
+## Narrows: a close maze of single hallways that wind and fork, with terraces, ivy,
 ## vines and rope bridges to climb.
-static func warren() -> MazeStyle:
+static func narrows() -> MazeStyle:
 	var style := made(4, 1, 0.0, 0.0, 0.06)
 	# (three ways in from the Galleries)
 	style.entrance_count = 3
@@ -386,7 +386,7 @@ static func defaults() -> Array[MazeStyle]:
 
 ## The game's own square sections, and its own round ones.
 static func square_defaults() -> Array[MazeStyle]:
-	return [avenues(), galleries(), warren()]
+	return [avenues(), galleries(), narrows()]
 
 
 static func round_defaults() -> Array[MazeStyle]:
