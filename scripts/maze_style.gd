@@ -132,6 +132,10 @@ extends Resource
 ## Pairs of aliens (each pack two or three).
 @export_range(0, 3) var alien_packs := 1
 @export_range(0, 3) var dog_packs := 1
+## A colossus that walks the ring over its walls (one at most: it is a hundred
+## and twenty metres tall). Only rings with halls wide enough for its feet
+## (the Avenues and the Galleries) have one.
+@export_range(0, 1) var colossi := 0
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
@@ -197,6 +201,7 @@ static func avenues() -> MazeStyle:
 	style.tightrope_vine_height_range = Vector2(0.45, 0.75)
 	style.sewer_pipe_share = 0.08
 	style.plant_density = 0.8
+	style.colossi = 1
 	return style
 
 
@@ -220,6 +225,7 @@ static func galleries() -> MazeStyle:
 	style.wall_ivy_share = 0.1
 	style.hanging_vine_share = 0.04
 	style.plant_density = 0.6
+	style.colossi = 1
 	return style
 
 

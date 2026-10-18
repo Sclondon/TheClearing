@@ -20,12 +20,15 @@ const STONE := Color(0.13, 0.14, 0.13, 0.86)
 const AHEAD := 12.0
 ## The snake is long: further off, so that he is not on top of him.
 const SNAKE_AHEAD := 20.0
+## The colossus stands over the maze: far off, out over the walls, not brought short of them.
+const COLOSSUS_AHEAD := 80.0
 ## The other kinds the panel puts in (spawn_hunter): the button, the kind, and
 ## how far ahead (the big ones further off, like the snake).
 const HUNTERS := [
 	["GHOUL", "ghoul", AHEAD], ["CENTIPEDE", "centipede", SNAKE_AHEAD], ["SPIDER", "spider", AHEAD],
 	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD],
+	["COLOSSUS", "colossus", COLOSSUS_AHEAD],
 ]
 
 var world: World
@@ -162,7 +165,7 @@ func spawn_griever() -> void:
 ## Puts one of the other kinds in ahead of him (see HUNTERS): one creature, or
 ## a whole pack for those that go about in packs, side by side across his way.
 func spawn_hunter(kind: String, reach := AHEAD) -> void:
-	var at := _ahead(reach)
+	var at := _ahead(reach) if kind != "colossus" else _out_ahead(reach)
 	var across := _look().cross(Vector3.UP) * 2.6
 	var made: Array = []
 	match kind:
@@ -184,6 +187,8 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = MazeDog.pack_of(4, randi())
 		"aliens":
 			made = [Alien.new(), Alien.new()]
+		"colossus":
+			made = [MazeColossus.new()]
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 
@@ -227,6 +232,13 @@ func _ahead(reach := AHEAD) -> Vector3:
 	var hit := world.get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(from, to, 1, [world.player.get_rid()]))
 	if not hit.is_empty():
 		to = from + _look() * maxf((hit["position"] as Vector3).distance_to(from) - 3.0, 2.5)
+	return Vector3(to.x, world.maze.ground_height(to) + 0.05, to.z)
+
+
+## A point `reach` metres in front of him the way the camera looks, on the
+## ground, walls or no walls (for what stands over them).
+func _out_ahead(reach: float) -> Vector3:
+	var to := world.player.global_position + _look() * reach
 	return Vector3(to.x, world.maze.ground_height(to) + 0.05, to.z)
 
 
