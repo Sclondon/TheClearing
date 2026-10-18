@@ -65,7 +65,7 @@ func _run() -> void:
 	check("strung vines", features.strands.size() > 5, "(%d)" % features.strands.size())
 	# The ledge along the walls: up a curtain of ivy from the ground onto it.
 	var style: MazeStyle = world.maze.styles[0]
-	var ledge_top := style.ledge * MazeBuilder.WALL_HEIGHT
+	var ledge_top := style.mezzanine_height
 	var ledges := 0
 	for piece in world.get_node("Maze").layout.pieces(MazePiece.Kind.PIER):
 		if is_equal_approx(piece.position.y + piece.size.y, ledge_top):

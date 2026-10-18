@@ -51,7 +51,7 @@ func _run() -> void:
 	var nearest := INF
 	for piece in world.get_node("Maze").layout.pieces(MazePiece.Kind.TREE):
 		nearest = minf(nearest, Vector2(piece.position.x, piece.position.z).length())
-	check("no trees in the middle", nearest > maze.clearing_style.glade - 0.01, "(nearest %.0f m)" % nearest)
+	check("no trees in the middle", nearest > maze.clearing_style.treeless_radius - 0.01, "(nearest %.0f m)" % nearest)
 	check("level in the middle", maze.ground_height(Vector3(20.0, 0.0, -30.0)) == 0.0)
 	var top := Vector3.ZERO
 	for i in 4000:

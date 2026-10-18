@@ -72,7 +72,7 @@ func _show_in_editor() -> void:
 	ground.material_override = MazeStone.ground(Maze.CLEARING * Maze.CELL * 0.5, Maze.ring_extent(rings, styles) * 0.5, MazeBuilder.WALL_THICK)
 	add_child(ground, false, Node.INTERNAL_MODE_BACK)
 	_editor_shown.append(ground)
-	if clearing_style and clearing_style.hills > 0.0:
+	if clearing_style and clearing_style.hill_height > 0.0:
 		var field := MazeBuilder.hills(clearing_style, maze_seed, ground.material_override)
 		add_child(field, false, Node.INTERNAL_MODE_BACK)
 		_editor_shown.append(field)
@@ -281,7 +281,7 @@ static func _cut_back(maze: Maze, beyond: Array, crossing: float, thick: float) 
 	return (thick + crossing) * 0.5 if crossing > 0.0 else 0.0
 
 
-## The ramparts round the inside of rings (MazeStyle.rampart), as [middle of the
+## The ramparts round the inside of rings (MazeStyle.border_wall_thickness_cells), as [middle of the
 ## foot, size]: solid stone as high as the wall between rings, from the face of
 ## that wall out over the rampart's cells to the face of the walls beyond, as
 ## four sides, each broken by a slot (as narrow as a way through a wall a cell
@@ -290,13 +290,13 @@ static func _ramparts(maze: Maze) -> Array:
 	var walls: Array = []
 	for ring in range(1, maze.rings + 1):
 		var style: MazeStyle = maze.styles[ring - 1]
-		if style.rampart <= 0:
+		if style.border_wall_thickness_cells <= 0:
 			continue
 		var way: Array = maze.gates[ring - 1][0]
 		var thick := maze.wall_thick(way[0], way[1])
 		var slot := Maze.CELL - thick
 		var near := maze.ring_sizes[ring - 1] * Maze.CELL * 0.5 - thick * 0.5
-		var far := near + thick + style.rampart * Maze.CELL
+		var far := near + thick + style.border_wall_thickness_cells * Maze.CELL
 		for side: Vector2i in Maze.STEPS:
 			var out := Vector3(side.x, 0.0, side.y)
 			var along := Vector3(absf(out.z), 0.0, absf(out.x))
@@ -312,11 +312,11 @@ static func _ramparts(maze: Maze) -> Array:
 			for i in range(0, cuts.size(), 2):
 				var long: float = cuts[i + 1] - cuts[i]
 				var middle := out * (near + far) * 0.5 + along * (cuts[i] + cuts[i + 1]) * 0.5
-				walls.append([middle, along * long + out.abs() * (far - near) + Vector3.UP * style.inner_height])
+				walls.append([middle, along * long + out.abs() * (far - near) + Vector3.UP * style.section_border_wall_height])
 	return walls
 
 
-## The ledges along the walls of rings that have one (MazeStyle.ledge), as [middle
+## The ledges along the walls of rings that have one (MazeStyle.mezzanine_height), as [middle
 ## of the foot, size]: along each long face of each of `boxes` ([middle of the
 ## foot, size]) that looks into such a ring, as long as the box.
 static func _ledges(maze: Maze, boxes: Array) -> Array:
@@ -334,24 +334,24 @@ static func _ledges(maze: Maze, boxes: Array) -> Array:
 			if ring < 1 or ring > maze.rings or not maze.inside(cell) or maze.solid.has(cell):
 				continue
 			var style: MazeStyle = maze.styles[ring - 1]
-			if style.ledge <= 0.0:
+			if style.mezzanine_height <= 0.0:
 				continue
-			var high := style.ledge * MazeBuilder.WALL_HEIGHT
+			var high := style.mezzanine_height
 			var long: float = size.x if long_x else size.z
 			var along := Vector3(long, 0.0, 0.0) if long_x else Vector3(0.0, 0.0, long)
-			var foot := face + out * way * style.ledge_depth * 0.5 + Vector3.UP * (high - style.ledge_thick)
-			ledges.append([foot, along + out * style.ledge_depth + Vector3.UP * style.ledge_thick])
+			var foot := face + out * way * style.mezzanine_depth * 0.5 + Vector3.UP * (high - style.mezzanine_thickness)
+			ledges.append([foot, along + out * style.mezzanine_depth + Vector3.UP * style.mezzanine_thickness])
 	return ledges
 
 
-## The walls either side of each narrow entrance (MazeStyle.doorway), as
+## The walls either side of each narrow entrance (MazeStyle.entrance_doorway_width), as
 ## [middle of the foot, size]: filling the entrance's cells but for the doorway
 ## down the middle, as high as the wall round the inside of the ring it leads into.
 static func _gatehouses(maze: Maze) -> Array:
 	var walls: Array = []
 	for ring in range(1, maze.rings + 1):
 		var style: MazeStyle = maze.styles[ring - 1]
-		if style.doorway <= 0.0:
+		if style.entrance_doorway_width <= 0.0:
 			continue
 		for way: Array in maze.gates[ring - 1]:
 			var step: Vector2i = way[1]
@@ -365,10 +365,10 @@ static func _gatehouses(maze: Maze) -> Array:
 			# (from the middle of the wall it goes through to the far end of the entrance)
 			var start: Vector3 = maze.world(way[0]) + s * Maze.CELL * 0.5
 			var middle := start + s * cells * Maze.CELL * 0.5
-			var wide := (Maze.CELL - style.doorway) * 0.5
+			var wide := (Maze.CELL - style.entrance_doorway_width) * 0.5
 			var size := side.abs() * wide + s.abs() * cells * Maze.CELL + Vector3.UP * maze.inner_height(ring)
 			for out in [-1.0, 1.0]:
-				walls.append([middle + side * out * (style.doorway + wide) * 0.5, size])
+				walls.append([middle + side * out * (style.entrance_doorway_width + wide) * 0.5, size])
 	return walls
 
 
@@ -414,7 +414,7 @@ static func _piers(maze: Maze, great: bool) -> Array:
 			var thick := thickest + MazeBuilder.PIER.x
 			# (a great one as high as the wall round the outermost ring it stands at)
 			var ring := maxi(maxi(maze.ring_of(Vector2i(i - 1, j - 1)), maze.ring_of(Vector2i(i, j - 1))), maxi(maze.ring_of(Vector2i(i - 1, j)), maze.ring_of(Vector2i(i, j))))
-			var high := (maze.inner_height(ring) if great else MazeBuilder.WALL_HEIGHT) + MazeBuilder.PIER.y
+			var high := (maze.inner_height(ring) if great else maze.maze_wall_height(ring)) + MazeBuilder.PIER.y
 			piers.append([Vector3((i - 0.5 - middle) * Maze.CELL, high * 0.5, (j - 0.5 - middle) * Maze.CELL), Vector3(thick, high, thick)])
 	return piers
 
@@ -474,21 +474,21 @@ func _trees(maze: Maze) -> void:
 		var middle := _on_side(side, along, edge - into)
 		for i in rng.randi_range(3, 6):
 			var p := middle + Vector3(rng.randf_range(-6.0, 6.0), 0.0, rng.randf_range(-6.0, 6.0))
-			if maxf(absf(p.x), absf(p.z)) < edge - 3.0 and p.length() > look.glade:
+			if maxf(absf(p.x), absf(p.z)) < edge - 3.0 and p.length() > look.treeless_radius:
 				points.append(p)
 	for i in maze.clearing:
 		var p := Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.0, 1.0)) * (edge - 6.0)
-		if p.length() > look.glade:
+		if p.length() > look.treeless_radius:
 			points.append(p)
 	# Dense woods in one corner, thinning out towards their edge.
-	if look.woods > 0.0:
+	if look.woods_density > 0.0:
 		var corner := Vector3(1.0 if rng.randf() < 0.5 else -1.0, 0.0, 1.0 if rng.randf() < 0.5 else -1.0)
-		var steps := ceili(look.woods_reach / look.spacing)
+		var steps := ceili(look.woods_size / look.woods_tree_spacing)
 		for a in steps:
 			for b in steps:
-				var p := corner * (Vector3.ONE * (edge - 3.0) - (Vector3(a, 0.0, b) + Vector3(rng.randf(), 0.0, rng.randf()) * 0.8) * look.spacing)
-				var deep := 1.0 - (corner * edge - p).length() / look.woods_reach
-				if p.length() > look.glade and rng.randf() < look.woods * smoothstep(0.0, 0.35, deep):
+				var p := corner * (Vector3.ONE * (edge - 3.0) - (Vector3(a, 0.0, b) + Vector3(rng.randf(), 0.0, rng.randf()) * 0.8) * look.woods_tree_spacing)
+				var deep := 1.0 - (corner * edge - p).length() / look.woods_size
+				if p.length() > look.treeless_radius and rng.randf() < look.woods_density * smoothstep(0.0, 0.35, deep):
 					points.append(p)
 	var built := maze.extent() * 0.5 + 6.0
 	var next := Maze.ring_extent(maze.rings + 1, maze.styles) * 0.5 - 6.0
