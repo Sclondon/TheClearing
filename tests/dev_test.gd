@@ -98,11 +98,13 @@ func _run() -> void:
 		root.get_texture().get_image().save_png(picture.replace(".png", "_spawned.png"))
 	# Each of the other kinds, from its own button
 	for one: Array in world.dev.HUNTERS:
-		var had: int = world.enemies.enemies.size()
+		# (tame chickens are wildlife: they go in beside the hunters, not among them)
+		var list: Array = world.tame_chickens if one[1] == "tame_chickens" else world.enemies.enemies
+		var had: int = list.size()
 		world.dev.spawn_hunter(one[1], one[2])
 		await frames(2)
-		var put: int = world.enemies.enemies.size() - had
-		var last = world.enemies.enemies.back()
+		var put: int = list.size() - had
+		var last = list.back()
 		check("+ %s" % one[0], put >= 1 and is_instance_valid(last) and last.is_inside_tree(), "(%d put in)" % put)
 	# Runners ahead: one, then three.
 	var had_runners: int = world.runners.runners.size()
@@ -110,6 +112,13 @@ func _run() -> void:
 	world.dev.spawn_runners()
 	await frames(2)
 	check("+ RUNNER and + RUNNERS", world.runners.runners.size() == had_runners + 4 and runner.is_inside_tree() and runner.global_position.distance_to(player.global_position) < 25.0)
+	# The peaceful animals, from theirs: not among what hunts
+	for one: Array in world.dev.WILDLIFE:
+		var hunters: int = world.enemies.enemies.size()
+		var herds: int = world.wildlife.herds.size()
+		world.dev.spawn_wildlife(one[1])
+		await frames(2)
+		check("+ %s" % one[0], world.wildlife.herds.size() == herds + 1 and world.enemies.enemies.size() == hunters, "(%d animals)" % world.wildlife.herds.back().animals.size())
 	await frames(30)
 
 	world.dev.toggle_god()

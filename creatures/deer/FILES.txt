@@ -1,0 +1,8 @@
+# White-tailed deer: their look, every move and their sounds, for any game (no thinking)
+creatures/deer/deer.gd
+creatures/deer/deer_look.gd
+creatures/deer/deer_rig.gd
+creatures/deer/models/deer_doe.glb
+creatures/deer/models/deer_doe_lo.glb
+creatures/deer/models/deer_buck.glb
+creatures/deer/models/deer_buck_lo.glb

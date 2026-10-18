@@ -27,17 +27,17 @@ const HUNTERS := [
 	["GHOUL", "ghoul", AHEAD], ["CENTIPEDE", "centipede", SNAKE_AHEAD], ["SPIDER", "spider", AHEAD],
 	["MEAT BEAST", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD],
-	["BEETLES", "beetles", AHEAD],
-	["FISH PERSON", "fish_person", AHEAD],
-	["ANGEL", "angel", SNAKE_AHEAD],
+	["BEETLES", "beetles", AHEAD], ["FISH PERSON", "fish_person", AHEAD], ["ANGEL", "angel", SNAKE_AHEAD],
 	["FROG", "frog", AHEAD], ["FROG SWARM", "frog_swarm", AHEAD],
 	["AMALGAM", "amalgam", AHEAD], ["ABOMINATION", "flesh_mound", SNAKE_AHEAD],
-	["HARPY", "harpy", AHEAD],
-	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
-	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD], ["BOAR", "boar", SNAKE_AHEAD],
-	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
-	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD], ["CHICKENS", "chickens", AHEAD],
-	["GARGOYLE", "gargoyle", AHEAD],
+	["HARPY", "harpy", AHEAD], ["BOAR", "boar", SNAKE_AHEAD], ["CHICKENS", "chickens", AHEAD],
+	["CHICKENS (TAME)", "tame_chickens", AHEAD], ["GARGOYLE", "gargoyle", AHEAD],
+	["DEER", "deer", SNAKE_AHEAD], ["ELK", "elk", SNAKE_AHEAD],
+	["IMPS", "imps", AHEAD], ["IMP SWARM", "imp_swarm", AHEAD],
+]
+## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
+const WILDLIFE := [
+	["DEER (TAME)", Wildlife.Kind.DEER], ["ELK (TAME)", Wildlife.Kind.ELK],
 ]
 
 var world: World
@@ -106,6 +106,8 @@ func _init(in_world: World) -> void:
 		grid.add_child(_button("+ " + String(one[0]), spawn_hunter.bind(one[1], one[2])))
 	grid.add_child(_button("+ RUNNER", spawn_runner))
 	grid.add_child(_button("+ RUNNERS", spawn_runners))
+	for one: Array in WILDLIFE:
+		grid.add_child(_button("+ " + String(one[0]), spawn_wildlife.bind(one[1])))
 	grid.add_child(_button("CLEAR ALL", clear))
 	grid.add_child(_button("TO GATE", to_gate))
 	grid.add_child(_button("TO MIDDLE", to_middle))
@@ -230,6 +232,21 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			var gargoyle := MazeGargoyle.new()
 			gargoyle.seek_perch = false
 			made = [gargoyle]
+		"deer":
+			made = MazeDeer.herd_of(5, randi())
+		"elk":
+			made = [MazeElk.new()]
+		"tame_chickens":
+			# (wildlife, not a hunter: put in beside the rest, not among them)
+			var flock := TameChickens.new(world.maze, randi())
+			flock.position = at
+			world.add_child(flock)
+			world.tame_chickens.append(flock)
+			return
+		"imps":
+			made = MazeImp.gang(4)
+		"imp_swarm":
+			made = [MazeImpSwarm.new()]
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 
@@ -252,6 +269,10 @@ func spawn_runners() -> void:
 func _add_runner(at: Vector3, turn: float) -> MazeRunner:
 	var ring := clampi(world.maze.ring_of(world.maze.cell_at(at)), 1, world.maze.rings)
 	return world.runners.add(ring, at - Vector3.UP * 0.05, _facing_him(at) + PI + turn, randi())
+## Puts a peaceful herd (Wildlife) in ahead of him, grazing.
+func spawn_wildlife(kind: Wildlife.Kind) -> void:
+	var at := _ahead(SNAKE_AHEAD)
+	world.wildlife.add_herd(kind, at, world.maze.in_clearing(world.maze.cell_at(at)), randi())
 
 
 ## Takes away everything that hunts (the Griever World put in is only put to

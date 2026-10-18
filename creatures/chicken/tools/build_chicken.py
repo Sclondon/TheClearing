@@ -4,7 +4,9 @@ Run from the project root (Blender 4.3):
     blender --background --python creatures/chicken/tools/build_chicken.py
     blender --background --python creatures/chicken/tools/build_chicken.py -- <folder>   # and pictures
 
-Writes creatures/chicken/models/chicken.glb. ChickenBody (creatures/chicken/
+Writes creatures/chicken/models/chicken.glb, and chicken_lo.glb, the
+low-detail bird for phones (about a third of the triangles: the same parts with
+fewer, bigger feathers and coarser legs). ChickenBody (creatures/chicken/
 chicken_body.gd) reads it and merges it into the flock's mesh, telling the
 parts apart by their object and material names. The shader poses the parts
 (there is no armature here): which bone carries a part is in its object's
@@ -56,7 +58,9 @@ from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-OUT = os.path.join(ROOT, "creatures", "chicken", "models", "chicken.glb")
+OUT_FULL = os.path.join(ROOT, "creatures", "chicken", "models", "chicken.glb")
+OUT_LO = os.path.join(ROOT, "creatures", "chicken", "models", "chicken_lo.glb")
+OUT = OUT_FULL
 
 # How much of its radius a lone metaball's surface is at (threshold 0.6, stiffness 2).
 SHRINK = 0.672
@@ -74,6 +78,14 @@ SHOULDER = Vector((0.07, 0.355, 0.07))
 TAIL_ROOT = Vector((0.0, 0.39, -0.17))
 
 rng = random.Random(7)
+
+# Building the low-detail bird (chicken_lo.glb): fewer, bigger feathers, coarser tubes.
+LOW = False
+
+
+def L(high, low):
+    """`high` for the full bird, `low` for the low-detail one."""
+    return low if LOW else high
 
 
 def B(p):
@@ -299,7 +311,13 @@ def vane_faces(base, rows=3):
 
 def feather(part, root, d, n, length, width, region, kind="round", open_frame=None, rows=3, **shape):
     """Adds one feather to `part` (and, for a wing, where it is when open:
-    `open_frame` = (root, d, n))."""
+    `open_frame` = (root, d, n)). Low detail, it has half the rows, and the
+    body's feathers are bigger (there are fewer of them)."""
+    if LOW:
+        rows = max(1, rows // 2)
+        if kind in ("round", "lance") and region not in (COVERT, SICKLE):
+            length *= 1.25
+            width *= 1.4
     pts, uvs = vane_points(root, d, n, length, width, kind, rows=rows, **shape)
     opened = vane_points(open_frame[0], open_frame[1], open_frame[2], length, width, kind, rows=rows, **shape)[0] if open_frame else pts
     tag = rng.random()
@@ -315,6 +333,8 @@ def feather(part, root, d, n, length, width, region, kind="round", open_frame=No
 def tube(part, line, radii, sides=8, uv2=(0.0, 0.0), cap_end=True, cap_start=False, squash=1.0, ridge=None, along_uv=True, up=Vector((0, 1, 0))):
     """A round tube along the points of `line` with a radius at each, its ends
     closed. `ridge`(k, i): extra radius for side k of ring i (scales)."""
+    if LOW:
+        sides = max(4, sides - 2)
     rings = []
     total = sum((line[i + 1] - line[i]).length for i in range(len(line) - 1))
     run = 0.0
@@ -354,6 +374,9 @@ def tube(part, line, radii, sides=8, uv2=(0.0, 0.0), cap_end=True, cap_start=Fal
 def ball(part, middle, radii, segments=8, rings=6, axis=Vector((0, 0, 1)), uv2=(0.0, 0.0), polar_uv=False):
     """An ellipsoid; with `polar_uv`, UV.y is the angle off `axis` (0 at the
     pole that faces along it), for an eye."""
+    if LOW:
+        segments = max(5, segments - 2)
+        rings = max(3, rings - 1)
     middle = Vector(middle)
     axis = Vector(axis).normalized()
     one = axis.cross(Vector((0, 1, 0)) if abs(axis.y) < 0.9 else Vector((1, 0, 0))).normalized()
@@ -433,7 +456,7 @@ BODY_BALLS = [
 
 
 def body_part():
-    body = blobs("body", BODY_BALLS, 950)
+    body = blobs("body", BODY_BALLS, L(950, 420))
     body.data.materials.append(mat("down"))
     return body
 
@@ -444,11 +467,11 @@ def body_feathers(tree):
     part = Part("feathers", "feather")
     axis_from = V(0.0, 0.31, 0.15)
     axis_to = V(0.0, 0.35, -0.2)
-    rows = 13
+    rows = L(13, 8)
     for r in range(rows):
         u = (r + 0.5) / rows
         middle = axis_from.lerp(axis_to, u)
-        around = 17 if 0.1 < u < 0.85 else 13
+        around = L(17, 11) if 0.1 < u < 0.85 else L(13, 8)
         for k in range(around):
             a = math.tau * (k + 0.5 * (r % 2)) / around
             out = V(math.sin(a), math.cos(a), 0.0)
@@ -477,9 +500,9 @@ def body_feathers(tree):
                     lift=0.16 + 0.1 * fluffy + rng.uniform(0.0, 0.1), cup=0.15, twist=rng.uniform(-0.2, 0.2), rows=2)
     # The breast's front, which the rows round the body do not reach: shingled
     # down it from the throat, the higher over the lower.
-    for row in range(7):
+    for row in range(L(7, 4)):
         y = 0.4 - row * 0.032
-        for k in range(5):
+        for k in range(L(5, 3)):
             x = (k - 2) * 0.032 + (0.016 if row % 2 else 0.0)
             hit, normal, _, _ = tree.ray_cast(B(V(x, y, 0.5)), B(V(0.0, 0.0, -1.0)))
             if hit is None:
@@ -494,7 +517,7 @@ def body_feathers(tree):
             feather(part, at - nrm * 0.002, flow, nrm, 0.055 * rng.uniform(0.9, 1.15), 0.045, BREAST, "round",
                     lift=0.2, cup=0.15, rows=2, twist=rng.uniform(-0.2, 0.2))
     # The crown: tiny feathers over the top and back of the skull.
-    for k in range(14):
+    for k in range(L(14, 6)):
         a = rng.uniform(-1.2, 1.2)
         b = rng.uniform(0.0, 1.0)
         origin = HEAD + V(math.sin(a) * 0.2, math.cos(a) * 0.2, -0.05 - 0.15 * b)
@@ -515,11 +538,11 @@ def neck_feathers(tree, rooster):
     """Hackles: rings of long narrow feathers round the neck, from under the
     skull down over the shoulders, longest at the bottom."""
     part = Part("hackle__r" if rooster else "hackle__h", "feather")
-    rings = 7
+    rings = L(7, 4)
     for r in range(rings):
         u = r / (rings - 1)
         middle = HEAD.lerp(NECK_BASE, 0.18 + 0.82 * u) + V(0.0, 0.0, -0.012)
-        around = 12
+        around = L(12, 8)
         for k in range(around):
             a = math.tau * (k + 0.5 * (r % 2)) / around
             # (none on the throat at the top: the wattles hang there)
@@ -551,9 +574,9 @@ def saddle_feathers(tree):
     """The rooster's saddle: lancets down the sides of the lower back, in
     front of the tail, falling over the wing tips."""
     part = Part("saddle__r", "feather")
-    for r in range(5):
+    for r in range(L(5, 3)):
         z = -0.06 - r * 0.025
-        for k in range(9):
+        for k in range(L(9, 6)):
             a = -1.4 + 2.8 * k / 8
             origin = V(math.sin(a) * 0.3, 0.33 + math.cos(a) * 0.3, z)
             hit, normal, _, _ = tree.ray_cast(B(origin), B((V(0.0, 0.31, z) - origin).normalized()))
@@ -642,7 +665,7 @@ def wing(side, tree):
         feather(part, root_f, d_f, n_f, length, width, region, kind, open_frame=(root_o, d_o, n_o), **shape)
 
     # Primaries: from the tip of the hand inwards; folded they lie lowest, the outer under.
-    for j in range(10):
+    for j in range(L(10, 10)):
         u = j / 9.0
         root_o = t_o.lerp(w_o, u * 0.95)
         a = 1.25 - 0.95 * u
@@ -651,7 +674,7 @@ def wing(side, tree):
         length = 0.2 - 0.03 * u
         add(root, V(0.0, -0.1, -1.0), length, 0.004 + 0.0006 * j, root_o, d_o, 0.045, FLIGHT, "flight", lift=0.0, bend=-0.03, cup=0.06, rows=3, skew=0.3)
     # Secondaries: along the forearm, from the wrist in; folded, the inner ones on top.
-    for j in range(10):
+    for j in range(L(10, 10)):
         u = j / 9.0
         root_o = w_o.lerp(e_o, u).lerp(s_o, 0.25 * u * u)
         a = 0.25 - 0.3 * u
@@ -679,11 +702,11 @@ def leg(side, rooster_spur):
     # The drumstick: a fluffy tapering cluster of feathers from the knee down to the hock.
     thigh = Part("thigh_" + name, "feather")
     down = (a - k).normalized()
-    for r in range(3):
+    for r in range(L(3, 2)):
         u = r / 3.0
         centre = k.lerp(a, 0.05 + 0.6 * u)
         radius = 0.042 * (1.0 - 0.55 * u)
-        for q in range(8):
+        for q in range(L(8, 6)):
             ang = math.tau * (q + 0.5 * (r % 2)) / 8
             side_v = down.cross(V(0, 0, 1)).normalized()
             front_v = side_v.cross(down).normalized()
@@ -695,8 +718,9 @@ def leg(side, rooster_spur):
     ball(thigh, k.lerp(a, 0.35), (0.035, 0.035, 0.07), 8, 5, axis=down, uv2=(0.5, (BREAST + 0.5) / 8.0))
     shank = Part("shank_" + name, "leg")
     # The shank: from the hock down and forward to the foot, ringed with scales.
-    line = [a.lerp(f, t / 9.0) for t in range(10)]
-    radii = [0.012 - 0.0022 * (t / 9.0) for t in range(10)]
+    steps = L(9, 5)
+    line = [a.lerp(f, t / float(steps)) for t in range(steps + 1)]
+    radii = [0.012 - 0.0022 * (t / float(steps)) for t in range(steps + 1)]
     radii[0] = 0.015
 
     def scales(kk, i):
@@ -725,8 +749,8 @@ def leg(side, rooster_spur):
         start = V(f.x, 0.012, f.z)
         pts = []
         rad = []
-        for j in range(joints * 2 + 1):
-            t = j / (joints * 2)
+        for j in range(L(joints * 2, joints) + 1):
+            t = j / float(L(joints * 2, joints))
             # (the toe arches a little between the knuckles, the end touching down)
             pts.append(start + d * length * t + V(0, 0.002 * math.sin(math.pi * t) - 0.004 * t, 0))
             rad.append((0.0075 - 0.003 * t) * (1.12 if j % 2 == 0 else 0.96))
@@ -750,8 +774,8 @@ def comb(rooster):
     thick = 0.011 if rooster else 0.008
     front = HEAD.z + 0.032
     back = HEAD.z - (0.05 if rooster else 0.028)
-    columns = points * 3
-    rows = 3
+    columns = points * L(3, 2)
+    rows = L(3, 2)
     # A ribbon standing on the skull: columns from the front to the back, each
     # from the base up to the top edge (points with rounded notches between),
     # thick in the middle and thin at the edge and the ends.
@@ -791,8 +815,8 @@ def wattles(rooster):
     length = 0.055 if rooster else 0.026
     for side in (1.0, -1.0):
         outline = []
-        for i in range(12):
-            a = math.tau * i / 16
+        for i in range(L(12, 8)):
+            a = math.tau * i / L(12, 8)
             # (a drop: narrow at the top, round at the bottom)
             y = -length * 0.5 * (1.0 - math.cos(a)) * 1.0
             z = math.sin(a) * length * 0.32 * (0.6 + 0.4 * (1.0 - math.cos(a)) / 2.0)
@@ -814,7 +838,7 @@ def beak():
     upper = Part("beak", "beak")
     lower = Part("jaw", "beak")
     base = HEAD + V(0.0, -0.002, 0.03)
-    rows = 6
+    rows = L(6, 3)
     for part, top, depth, length, drop in ((upper, 1.0, 0.012, 0.032, 0.007), (lower, -1.0, 0.006, 0.026, 0.0)):
         rings = []
         for r in range(rows + 1):
@@ -922,7 +946,16 @@ def previews(folder, made, only=None):
             bpy.ops.render.render(write_still=True)
 
 
-made_now = build()
 args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+LOW = True
+OUT = OUT_LO
+rng.seed(7)
+made_now = build()
+if args:
+    previews(os.path.join(args[0], "low"), made_now, args[1].split(",") if len(args) > 1 else None)
+LOW = False
+OUT = OUT_FULL
+rng.seed(7)
+made_now = build()
 if args:
     previews(args[0], made_now, args[1].split(",") if len(args) > 1 else None)

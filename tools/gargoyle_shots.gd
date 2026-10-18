@@ -263,7 +263,18 @@ func _maze() -> void:
 	var along: Vector3 = g.perch_out.cross(Vector3.UP).normalized()
 	var top: Vector3 = g.perch + Vector3.UP * 1.2
 	# Perched over the hall: from down in it, as he sees it coming along.
-	_look_from(g.perch_foot + g.perch_out * 6.5 + along * 12.0 + Vector3.UP * 1.5, top)
+	# (from down the hall, as far off as there is a clear view of it)
+	var view := g.perch_foot + g.perch_out * 3.0 + Vector3.UP * 1.5
+	var space := g.get_world_3d().direct_space_state
+	for metres: float in [14.0, 11.0, -14.0, -11.0, 8.0, -8.0]:
+		for out: float in [5.0, 3.0]:
+			var p: Vector3 = g.perch_foot + g.perch_out * out + along * metres + Vector3.UP * 1.5
+			if nav.allowed(maze.cell_at(p)) and nav.clear_of_walls(p, 1.0) and space.intersect_ray(PhysicsRayQueryParameters3D.create(p, top, 1, [g.get_rid()])).is_empty():
+				view = p
+				break
+		if view != g.perch_foot + g.perch_out * 3.0 + Vector3.UP * 1.5:
+			break
+	_look_from(view, top)
 	await shot("30_perched_over_the_hall")
 	_look_from(g.perch_foot + g.perch_out * 3.0 + along * 3.0 + Vector3.UP * 1.4, top)
 	await shot("31_perched_from_below")

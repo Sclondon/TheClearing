@@ -181,8 +181,8 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     hall below. Seeing someone out in the open it screeches (the first warning), takes off over the walls and
     circles high over them; then a falling cry (the second warning), a stoop over the end of a long straight hall,
     and a dive down it, talons first, at chest height. It flies over the walls, so it can come from anywhere, but
-    it needs a straight run of hall under open sky: under a ledge or a bridge, or in a slot, you cannot be dived at,
-    and staying hidden long enough sends it home. Its line is set the last half second: duck, slide or roll and
+    it needs a straight run of hall, wider than its wings, under open sky: under a bridge or a platform, or in a
+    slot, you cannot be dived at, and staying hidden long enough sends it home. Its line is set the last half second: duck, slide or roll and
     the talons pass over; step aside and they pass by; stand or run straight and you are snatched. Two dives, then
     it climbs back to its perch and lands.
   - **Giant boar** (after the boar gods of *Princess Mononoke*): a wild boar far over the boy's head at the
@@ -208,6 +208,33 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     misses. A miss turns it to stone where it lands for a few seconds: the time to get away. Then it hunts in heavy
     bounds a little slower than a run, slow to turn (a turn down a side passage gains ground), and from a few metres
     in front of you winds up (wings raised, a snarl) and leaps. Lost, it beats its way back up to its ledge.
+  - **The herd** (added 2026-10-18, "lets add deer and elk as well"): white-tailed deer standing in a hall, real at
+    first glance. When they see you every head comes up and turns to you, and they freeze, staring, too long, eyes
+    giving back the light. Look away and they are a little closer when you look back (they never come within 12 m).
+    Come near (9 m) or run at them and one snorts and stamps, the tails go up white, they stot off on stiff legs and
+    break into a stampede down the passages away from you; if the only way out is past you, it comes straight back
+    down the hall at you, and a deer that runs into you knocks you down (caught). The alarm and the stotting are the
+    warning, nearly two seconds: stand aside. One in a herd of four or more is wrong: legs a little too long, a head
+    that turns round further than a neck should; now and then it stands up on its hind legs and takes a step towards
+    you; it never runs with the others, and stays watching you as they go.
+  - **The bull elk**: taller at the shoulder than the boy, holding a stretch of halls as his own. On his ground and
+    in his sight, he faces you and bugles (an eerie rising scream, steam pouring from his mouth: the first time
+    only), paws the ground and lowers his antlers, then charges faster than anyone can run. For an instant he can
+    still swing at you; then his line is set and he can hardly turn. Step aside into a side passage or behind a
+    buttress, climb, or leave his ground; standing in his line, you are caught. He runs on past, stands blowing,
+    turns slowly and comes again.
+  - **Tiny imps** (added 2026-10-18, "add tiny imps and imp swarm"): knee-high devils, sooty red-brown, pot-bellied,
+    bat-eared, needle-toothed. Gangs of three or four perch head down on a wall face like gargoyles, chittering. They
+    pester rather than kill: noticing you, they cackle, scurry down the wall and scuttle after you (faster than a run,
+    slower than a sprint), leap on and cling (back, thigh, shoulder). Each one on you holds you back, and its cackle
+    tells every hunter nearby where you are (they fetch bigger things). Three on at once for a moment bring you down.
+    A jump or two shakes them off; a roll, slide or dive throws them all off; thrown off, one tumbles and throws a
+    tantrum before it comes again. They give up when they lose you and climb back to their perch.
+  - **Imp swarm**: a crack at the foot of a wall. Come near (or run near) and it chitters for a second, then dozens of
+    imps pour out as a tide along the floor and up and along the walls. Those that reach you run up you and cling,
+    slowing you; ten on you for a second and you are down. A roll throws them off; a sprint outruns them; getting up
+    onto anything (a terrace, ivy, a vine) or out of reach and they give up and stream home, and rest before coming
+    out again.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
@@ -238,6 +265,27 @@ they read as others but plainly the same kind of person. Each knows his own sect
   boy, and none is posed when far from the camera.
 - With friends, the room's maker runs them; everyone else sees copies driven by the same inputs, so they climb,
   sprint and gesture alike.
+## Wildlife
+
+Not everything that lives here hunts (added 2026-10-18: "there should be non hostile regular deer and elk"). Herds of
+ordinary white-tailed deer (a buck, does, spotted fawns) and of elk (a bull, cows, calves) graze out in the clearing's
+meadow, towards its corners and the edges of the woods (never the middle where everyone wakes, nor the ways to the
+gates), and a few stand in the halls. They graze and wander, lift their heads to watch you come, flick their ears
+and tails, and run off when you come near (deer stotting a few bounds with their white tails up, then away at a
+gallop; elk trotting, then galloping), and settle to graze where they stop; a bull bugles now and then far off. They
+catch nobody and are nothing to be afraid of, which makes the ones that are wrong worse. How many: ClearingStyle and
+MazeStyle, "Wildlife". Each machine runs its own copy from the round's seed, frightened by the same players, so they
+agree.
+## Wildlife
+
+Not everything in the clearing and the maze is a threat. Added 2026-10-18 at the user's request ("there should be
+non hostile regular deer and elk and chicken as well. Some should be in the clearing"):
+
+- **Tame chickens**: ordinary farmyard hens and a rooster that forage, cluck and crow. Run through them and they
+  scatter a few steps, squawking, and settle; walk near and they edge away. They never call the hunters and never mob.
+  The clearing has a couple of flocks (ClearingStyle, "Wildlife"), the first pecking at the edge of the woods, all well
+  away from the middle and the paths to the gates; a ring can have some in its halls too (MazeStyle, "Wildlife", none
+  by default). Placed from the round's seed, so everyone in a room sees the same flocks.
 
 ## Playing together
 
