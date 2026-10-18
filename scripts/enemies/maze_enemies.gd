@@ -6,7 +6,7 @@ extends Node3D
 ## `populate(maze, seed)` puts Apophis and packs of mummies in the passages, out
 ## of the clearing and well away from it, and `add_hunters(style, seed)` the
 ## rest of what a ring's MazeStyle asks for (ghouls, centipedes, spiders,
-## abominations, flesh mounds and amalgams, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms, harpies, boars: each kind's own
+## abominations, flesh mounds and amalgams, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms, harpies, boars, chickens, gargoyles: each kind's own
 ## script is in scripts/enemies/, its look and motion in creatures/). The same maze and seed always give the
 ## same ones in the same places in the same order, so every machine in a room
 ## can build the same set without it being sent; then one machine (the host)
@@ -99,6 +99,9 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ##   at the end of a dead end too.
 ## - Harpies are put in hallways and perch on the nearest high wall over one.
 ## - A boar roots in a dead end or a straight hall, facing out.
+## - Chicken flocks forage in straight halls, where people must pass them.
+## - Gargoyles are put in halls (a straight run of passage, walls both sides):
+##   each crouches on a ledge over it, a terrace's edge or the wall's top.
 func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	var nav := MazeNav.new(maze)
 	var rng := RandomNumberGenerator.new()
@@ -204,6 +207,15 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var cell := _far_from(taken, ends + halls if not (ends + halls).is_empty() else lairs, rng)
 		taken.append(cell)
 		add(MazeBoar.new(), cell, _facing_out(cell), rng.randi())
+	for i in style.chicken_flocks:
+		# (a flock forages in a hall, not a dead end, where people must pass it)
+		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(Chickens.new(), cell, 0.0, rng.randi())
+	for i in style.gargoyles:
+		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(MazeGargoyle.new(), cell, rng.randf_range(-PI, PI), rng.randi())
 
 
 ## Puts a pack round `middle`: one to a cell within two steps of it, and two

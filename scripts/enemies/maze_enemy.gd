@@ -361,7 +361,7 @@ func nearest_player(at: Vector3) -> Node3D:
 ## The player this machine plays (a Player), if there is one among the players.
 func local_player() -> Player:
 	for player: Node in players():
-		if player is Player and is_instance_valid(player):
+		if player is Player and is_instance_valid(player) and not player.is_in_group(&"runners"):
 			return player
 	return null
 

@@ -104,6 +104,12 @@ func _run() -> void:
 		var put: int = world.enemies.enemies.size() - had
 		var last = world.enemies.enemies.back()
 		check("+ %s" % one[0], put >= 1 and is_instance_valid(last) and last.is_inside_tree(), "(%d put in)" % put)
+	# Runners ahead: one, then three.
+	var had_runners: int = world.runners.runners.size()
+	var runner = world.dev.spawn_runner()
+	world.dev.spawn_runners()
+	await frames(2)
+	check("+ RUNNER and + RUNNERS", world.runners.runners.size() == had_runners + 4 and runner.is_inside_tree() and runner.global_position.distance_to(player.global_position) < 25.0)
 	await frames(30)
 
 	world.dev.toggle_god()

@@ -11,18 +11,23 @@ and phones). One creature in many sizes: `bodies` says how many are in it.
   slapping down in turn.
 - **Big, 5 to 10 bodies.** A heaving mound of grown-together flesh, bigger the
   more are in it (at 10 about 6 m across and 4 high, its limbs reaching
-  further). The boys lie half sunk in it face up or rise from it to the waist;
+  further). The boys lie sunk in it face up (their mask faces out) or face down
+  (their backs out), or rise from it to the waist; men lie sunk in it to their ribs;
   men's arms, long gaunt arms and legs grow out of it between them. It hauls
   itself along on the hands at its flanks (on the walls, where they are near),
   gropes ahead with the hands at its front, and grabs with them. The arms on
   its top reach and open and close, others hang limp, legs kick weakly.
 - **Growing.** `absorb(point)` drags a body in from there (seen dragged in
   backwards, arms reaching out of it) and it gains one; `merge_into(other)`
-  flows it into another, which then `grow`s by its bodies. A small one that
+  reaches for another, stretches a bridge of skin to it and
+  pours itself along it into the other, which then `grow`s by its bodies. A small one that
   grows past 4 becomes a mound.
 
-No mouth, no teeth, hardly any blood: one pallid, waxy, bruised skin flowing
-from body to body, puckered and scar-dark where they were knitted together,
+No mouth, no teeth, hardly any blood: one pallid, waxy, matte skin (greys and ashen
+yellows, bruise purples in patches) flowing
+from body to body and over the mass between them, gathered in folds and webbed
+where a body is knitted into it, bodies pressing it out from underneath (backs,
+buttocks, shoulders, limbs),
 folded, stretch-marked, veined, swollen with boils of pus and weeping in
 patches. Cel shaded in hard bands. This is the look and the motion only: your
 game moves it and decides what catching means.

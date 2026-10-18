@@ -97,6 +97,9 @@ var _flesh: Node3D
 var _core: MeshInstance3D
 var _material: ShaderMaterial
 var _skeleton: Skeleton3D
+var _skin_material: ShaderMaterial
+## A bridge of skin stretched to the one it is flowing into.
+var _bridge: MeshInstance3D
 var _build: FleshParts.Build
 var _trail: MultiMeshInstance3D
 var _crawl := 0.0
@@ -132,6 +135,8 @@ var _hands := PackedVector3Array()
 var _absorbing: Array = []
 var _merge_to: FleshMound
 var _merge_t := 0.0
+## One flowing into it.
+var _pulled_by: FleshMound
 var _trail_at := PackedVector3Array()
 var _trail_way := PackedFloat32Array()
 var _trail_wide := PackedFloat32Array()
@@ -183,6 +188,8 @@ func _rebuild() -> void:
 	var skin := _build.skin_for(_skeleton)
 	skin.name = "Skin"
 	skin.extra_cull_margin = 6.0
+	_skin_material = FleshParts.own_material()
+	skin.material_override = _skin_material
 	_skeleton.add_child(skin)
 	for copy in _build.copies:
 		for chain: FleshParts.Chain in copy.chains.values():
@@ -391,7 +398,7 @@ func _process(delta: float) -> void:
 	var heave := sin(_crawl * TAU / 3.2) * minf(flat / 2.0, 1.0) * 0.12
 	_bounce_speed += ((heave - _bounce) * 40.0 - _bounce_speed * 5.0) * delta
 	_bounce += _bounce_speed * delta
-	_feel = lerpf(_feel, 1.0 if aim.is_finite() else 0.0, 1.0 - exp(-1.8 * delta))
+	_feel = lerpf(_feel, 1.0 if _aim_now().is_finite() else 0.0, 1.0 - exp(-1.8 * delta))
 	_swell = maxf(_swell - delta * 0.8, 0.0)
 	_growing(delta)
 	if small():
@@ -443,17 +450,62 @@ func _growing(delta: float) -> void:
 		_merge_t += delta
 		var t := clampf(_merge_t / merge_time, 0.0, 1.0)
 		var to := _merge_to.global_position - global_position
-		var flow := smoothstep(0.0, 1.0, t)
-		# It stretches out towards the other and pours itself into it, shrinking.
+		_merge_to._pulled_by = self
+		# First the two reach for each other and a bridge of skin grows between
+		# them; then it pours itself along it into the other, shrinking, the
+		# bridge thinning as it goes.
+		var flow := smoothstep(0.35, 1.0, t)
 		_flesh.global_position = global_position + to * flow * 0.9
-		var stretch := 1.0 + sin(t * PI) * 0.5
+		var stretch := 1.0 + sin(flow * PI) * 0.5
 		_flesh.scale = Vector3(1.0 - flow * 0.6, 1.0 - flow * 0.75, stretch * (1.0 - flow * 0.5))
 		_merge_to._swell = maxf(_merge_to._swell, flow)
+		_stretch_bridge(t)
 		if t >= 1.0:
 			_flesh.visible = false
+			_bridge.visible = false
 			var other := _merge_to
 			_merge_to = null
 			merged.emit(other)
+
+
+## The bridge of skin between it and the one it flows into, `t` of the way through.
+func _stretch_bridge(t: float) -> void:
+	if _bridge == null:
+		_bridge = MeshInstance3D.new()
+		_bridge.name = "Bridge"
+		_bridge.mesh = FleshMoundLook.bridge()
+		_bridge.material_override = FleshParts.material()
+		_bridge.top_level = true
+		add_child(_bridge)
+	var mine := _middle_of(self)
+	var theirs := _middle_of(_merge_to)
+	var along := theirs - mine
+	var thick := minf(_girth_of(self), _girth_of(_merge_to)) * 0.8 * sqrt(sin(clampf(t * 1.6, 0.0, 1.0) * PI * 0.5) * (1.0 - smoothstep(0.75, 1.0, t)))
+	if along.length() < 0.01 or thick < 0.01:
+		_bridge.visible = false
+		return
+	_bridge.visible = true
+	var basis := FleshParts.frame(along, Vector3.UP.cross(along).cross(along) if absf(along.normalized().y) < 0.95 else Vector3.FORWARD)
+	_bridge.global_transform = Transform3D(Basis(basis.x * thick, along, basis.z * thick * 0.8), mine)
+
+
+## The middle of one's flesh in the world, and about how thick it is.
+static func _middle_of(one: FleshMound) -> Vector3:
+	var high := (one._hub if one.small() else FleshMoundLook.radii(one.bodies).y * 0.55 + 0.3) * one.size
+	return one._flesh.global_position + Vector3.UP * high
+
+
+static func _girth_of(one: FleshMound) -> float:
+	return (0.7 if one.small() else FleshMoundLook.radii(one.bodies).y) * one.size
+
+
+## What its limbs reach for: whatever it is after, or, merging, the other one.
+func _aim_now() -> Vector3:
+	if _merge_to:
+		return _middle_of(_merge_to)
+	if _pulled_by and is_instance_valid(_pulled_by) and _pulled_by._merge_to == self:
+		return _middle_of(_pulled_by)
+	return aim
 
 
 # --- A small one: the wheel ---
@@ -499,6 +551,10 @@ func _pose_star(delta: float, flat: float) -> void:
 	_material.set_shader_parameter(&"jiggle", Vector3.ZERO)
 	var to_skeleton := _skeleton.global_transform.affine_inverse()
 	var ground := (to_skeleton * Vector3(global_position.x, global_position.y + 0.06 * size, global_position.z)).y
+	var reach_for := _aim_now() if (_merge_to or _pulled_by) else Vector3.INF
+	var local_reach := to_skeleton * reach_for if reach_for.is_finite() else Vector3.INF
+	_skin_material.set_shader_parameter(&"core_at", Vector4(0.0, _hub, 0.0, 0.0))
+	_skin_material.set_shader_parameter(&"core_size", Vector4(0.3, 0.3, 0.3, 1.0) * Vector4(1.0 + _swell * 0.15, 1.0 + _swell * 0.15, 1.0 + _swell * 0.15, 1.0))
 	for copy in _build.copies:
 		var d := copy.data
 		var spoke: float = d.spoke + _wheel
@@ -522,6 +578,9 @@ func _pose_star(delta: float, flat: float) -> void:
 			if chain.arm:
 				# Arms out past its head, splayed, groping.
 				dir = (out * (0.8 - wind * 0.3) + across * (0.5 + wind * 0.5))
+				# (merging, they reach out for the other and grip it)
+				if local_reach.is_finite():
+					dir += (local_reach - root).normalized() * 1.6
 			else:
 				# Legs across into the gaps between the others.
 				dir = (-out * 0.35 + across * 0.9 + out.cross(across) * 0.15)
@@ -661,7 +720,12 @@ func _grab_weights() -> Vector3:
 func _pose_mound(delta: float) -> void:
 	var to_skeleton := _skeleton.global_transform.affine_inverse()
 	var to_world := _skeleton.global_transform
-	var local_aim := to_skeleton * aim if aim.is_finite() else Vector3.INF
+	var reach_for := _aim_now()
+	var middle := (_core.transform * (Vector3.UP * FleshMoundLook.MIDDLE)) / size
+	var half := _core.basis.get_scale() * FleshMoundLook.RADII / size
+	_skin_material.set_shader_parameter(&"core_at", Vector4(middle.x, middle.y, middle.z, 0.0))
+	_skin_material.set_shader_parameter(&"core_size", Vector4(half.x, half.y, half.z, 1.0))
+	var local_aim := to_skeleton * reach_for if reach_for.is_finite() else Vector3.INF
 	var target := to_skeleton * _grab_at
 	var weights := _grab_weights()
 	var stage := grab_stage()
@@ -813,7 +877,7 @@ func _pose_grabber(chain: FleshParts.Chain, root: Vector3, out: Vector3, long: f
 	var forward := Vector3.FORWARD
 	var flat := Vector3(out.x, 0.0, out.z).normalized()
 	# Groping along the floor ahead, like the crawlers.
-	var ideal := root + (flat + forward).normalized() * long * 0.82
+	var ideal := root + (flat + forward).normalized() * long * 0.62
 	ideal.y = 0.07
 	var planted := _planted(chain, ideal, long, delta, to_skeleton, to_world)
 	var at: Vector3 = planted[0]
@@ -846,7 +910,7 @@ func _pose_grabber(chain: FleshParts.Chain, root: Vector3, out: Vector3, long: f
 		rise += Vector3(sin(_time * 41.0 + phase), sin(_time * 37.0), cos(_time * 43.0 + phase)) * 0.05 * chain.size
 		var slid := room_out * weights.z
 		var root_out := root + out * slid
-		var thrown := root_out + (spot - root_out).limit_length(long * 0.99)
+		var thrown := root_out + (spot - root_out).limit_length(long * 0.9)
 		var pose_at := rise.lerp(thrown, weights.y) if stage != Stage.RECOVER else at.lerp(thrown, weights.x)
 		at = at.lerp(pose_at, weights.x) if stage == Stage.WIND_UP else pose_at
 		var reach_way := (spot - root_out).normalized()

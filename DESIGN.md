@@ -31,7 +31,8 @@ own), seen and lit like *Inside*. A secret cart in the Scareathon arcade (code *
   head with a chin, a plain basin-cut of hair low over the brow, a plain shirt, tapered dark trousers with some shape
   to the legs (never tubes), short angular boots. The only difference between players is the shirt colour, by seat:
   Inside's deep red first, then faded blue, mustard, dull green. Every head and hair option made along the way is
-  kept (CharacterStudio, and the head/hair sheets) for comparison.
+  kept (CharacterStudio, and the head/hair sheets) for comparison. The runners (below) are the same boy too, in
+  greyer shirts no player has: grey, brown, off-white, a dark charcoal-brown.
 - **Animation.** Readable, exaggerated poses; a full-tilt sprint after Dylan O'Brien's in *The Maze Runner*; jump,
   slide, roll and trip with believable hands and ankles. Reference: `videoplayback.mp4`.
 - **Light.** Inside's: overcast, misty, nearly colourless but for the red shirt; soft light from above, soft
@@ -192,10 +193,51 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     straight line, far faster than a sprint and barely able to turn. Step aside (a side passage, a slot, a way up)
     and it thunders past and skids, or slams into the wall and stands stunned a few seconds, then forgets you a
     while. In its way, you are tossed and caught. It cannot reach anyone up a wall.
+  - **Chickens** (added at the user's request, "lets also add chickens"): flocks of scruffy feral hens and a rooster
+    foraging in the halls, pecking and scratching at the mud, heads bobbing with the chicken head-lock; filthy and
+    molting, a rooster crowing in the fog, and a little comic relief. Like the bats they catch nobody: run or
+    sprint near them, or walk upright close by, and they explode in a squawking, flapping panic (some flying, feathers
+    everywhere), and the racket calls every hunter within 40 m. Creep past crouched. Run into one and the rooster
+    flies into a rage (after Zelda's cuccos): the flock mobs you, leaping and beating round your head, pecking,
+    slowing you, calling the hunters all the while, until you get away.
+  - **Gargoyles** ("and a Gargoyle enemy"): a carved-stone grotesque, alive, bat-winged, of the walls' own weathered
+    concrete. It crouches as a statue on a ledge over a hall (a terrace's edge, a wall top low enough to be seen, or
+    a stone corbel jutting from the wall), and cannot be told from a carving. Pass beneath it and it stirs (a faint
+    ember in its cracks and eyes, its head grinding round to follow you, dust trickling off it), then drops in a long
+    glide onto where you were going, its shadow darkening where it will land: keep moving, or turn aside, and it
+    misses. A miss turns it to stone where it lands for a few seconds: the time to get away. Then it hunts in heavy
+    bounds a little slower than a run, slow to turn (a turn down a side passage gains ground), and from a few metres
+    in front of you winds up (wings raised, a snarl) and leaps. Lost, it beats its way back up to its ledge.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
 - With friends, the room's maker runs them; everyone else sees copies.
+
+## Who else is in the maze
+
+Added 2026-10-18 at the user's request ("npc runners"): other boys in the maze, after the Gladers' Runners, run by
+the computer. They are the same boy as the players, on the same controller and rig, in muted shirts no player has, so
+they read as others but plainly the same kind of person. Each knows his own section (ring) and stays in it.
+
+- **They run it.** They jog its halls from place to place, down the middle of the wide ones, and now and then climb
+  some ivy to look about and come down again.
+- **They are hunted.** Everything that hunts the maze hunts them as it would a player. They see it coming and sprint
+  (as fast as a player's sprint, near enough) to where it cannot get first: the clearing best, or up ivy they will
+  reach before it. Caught, a runner is struck down and is back in the clearing, sitting, as a caught player is; then
+  he jogs out to his section again.
+- **They draw hunters away.** Sprinting, a runner is loud: anything hunting that sees him near turns after him if he
+  is nearer than what it was after, so one sprinting past pulls the pack off you. And one who sees a player hunted
+  near him waves both arms over his head (no voice: gestures only) and the hunter takes after him instead; not
+  often (half a minute between).
+- **They lead.** Come up to one (a few metres, in sight) and he stops, faces you and beckons, then runs (not
+  sprints, so you can keep up) for the gate out of his section; fall behind and he stops and
+  beckons again; lose him and he gives up. At the gate he stands aside and points through it, and goes back to his
+  running. He leads one section at a time, never all the way out: the next section's runners know theirs. Then he
+  will not lead again for a while.
+- **How many**: a ring's style says (MazeStyle, "Who else is in it"); two in each for now. Few, since each poses a whole
+  boy, and none is posed when far from the camera.
+- With friends, the room's maker runs them; everyone else sees copies driven by the same inputs, so they climb,
+  sprint and gesture alike.
 
 ## Playing together
 
