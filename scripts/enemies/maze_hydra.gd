@@ -109,7 +109,7 @@ func _ready() -> void:
 	collider.rotation.x = PI * 0.5
 	collider.position = Vector3(0.0, shape.radius + 0.02, -0.6)
 	add_child(collider)
-	collision_layer = 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 1
 
 	_home = _middle_of_hall(global_position)

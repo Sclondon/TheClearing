@@ -6,7 +6,7 @@ extends Node3D
 ## `populate(maze, seed)` puts Apophis and packs of mummies in the passages, out
 ## of the clearing and well away from it, and `add_hunters(style, seed)` the
 ## rest of what a ring's MazeStyle asks for (ghouls, centipedes, spiders,
-## abominations, flesh mounds and amalgams, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms, harpies, boars, chickens, gargoyles, deer, elk, imps and imp swarms, a colossus, coyotes and skinwalkers, tripods: each kind's own
+## abominations, flesh mounds and amalgams, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms, harpies, boars, chickens, gargoyles, deer, elk, imps and imp swarms, a colossus, coyotes and skinwalkers, tripods, clowns, stegosaurs, spider monkeys, lizard people, the masked tribe, deinonychus, pterodactyls, giant snails, hydras, gibbons: each kind's own
 ## script is in scripts/enemies/, its look and motion in creatures/). The same maze and seed always give the
 ## same ones in the same places in the same order, so every machine in a room
 ## can build the same set without it being sent; then one machine (the host)
@@ -112,6 +112,12 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ## - Coyotes go about in packs, put round one cell; a skinwalker is put in with
 ##   a pack (as one of them).
 ## - A tripod stands over any passage (it walks round the ring over the walls).
+## - Clowns, stegosaurs (some with a calf), spider monkey troops (stringing vines
+##   along its walls), bands of lizard people (on both walls), deinonychus packs,
+##   pterodactyls (roosting on the nearest high wall top), giant snails and hydras
+##   (each in a marsh pool of its own across it) wait in halls; gibbons in halls
+##   past the first section, where there are ledges and terraces.
+## - Hunting parties of the masked tribe camp in a dead end round their totem.
 func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	var nav := MazeNav.new(maze)
 	var rng := RandomNumberGenerator.new()
@@ -289,6 +295,77 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var cell := _far_from(taken, lairs, rng)
 		taken.append(cell)
 		add(MazeTripod.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	var some_halls := halls if not halls.is_empty() else lairs
+	for i in style.clowns:
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeClown.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.stegosaurs:
+		# (it grazes in a straight hall, along it: where people must get past it)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		var facing := atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI)
+		var family: Array = MazeStegosaurus.family(1 if rng.randf() < 0.4 else 0)
+		for k in family.size():
+			var round_about := rng.randf_range(0.0, TAU)
+			add(family[k], cell, facing + rng.randf_range(-0.4, 0.4), rng.randi(), Vector3(cos(round_about), 0.0, sin(round_about)) * 4.0 if k > 0 else Vector3.ZERO)
+	for i in style.spider_monkey_troops:
+		# (a troop strings its vines along the walls of a hall: everyone in it put in the one cell)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var troop: Array = MazeSpiderMonkey.troop(rng.randi_range(4, 7))
+		for k in troop.size():
+			add(troop[k], cell, 0.0, rng.randi())
+	for i in style.lizard_people:
+		# (a band in a straight hall, put on alternate sides so that they climb both walls over it)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		if along == Vector2i.ZERO:
+			along = Vector2i(0, 1)
+		var band := MazeLizardPerson.band(rng.randi_range(2, 3))
+		for k in band.size():
+			var offset := Vector3(along.x, 0.0, along.y) * (k - (band.size() - 1) * 0.5) * 3.5 + Vector3(along.y, 0.0, along.x) * (2.5 if k % 2 == 0 else -2.5)
+			add(band[k], cell, rng.randf_range(-PI, PI), rng.randi(), offset)
+	for i in style.tribe_parties:
+		# (a party camps in a dead end, its chief's totem at the back of it)
+		var camp := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		_add_pack(MazeTribesman.party_of(rng.randi_range(3, 5), rng.randi(), maze.world(camp)), camp, nav, rng, taken)
+	for i in style.deinonychus_packs:
+		# (a pack waits in a hall, where it can be seen far off; from there it goes round the loops of the halls after anyone)
+		var den := _far_from(taken, some_halls, rng)
+		_add_pack(MazeDeinonychus.pack_of(rng.randi_range(3, 4), rng.randi()), den, nav, rng, taken)
+	for i in style.pterodactyls:
+		# (over a wide hall, where it hunts best; it finds a high wall top near it to roost on)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazePterodactyl.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.snails:
+		# (a snail crawls a straight hall, where its slime lies across the way people pass)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		add(MazeSnail.new(), cell, atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI), rng.randi())
+	for i in style.hydras:
+		# (its pool across a hall, where everyone going that way must pass it)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		add(MazeHydra.new(), cell, atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI), rng.randi())
+	# (gibbons only where there are ledges and terraces for them: past the first section)
+	var high_halls: Array[Vector2i] = []
+	for cell in some_halls:
+		if maze.ring_of(cell) > 1:
+			high_halls.append(cell)
+	for i in style.gibbon_troops:
+		if high_halls.is_empty():
+			break
+		var middle := _far_from(taken, high_halls, rng)
+		taken.append(middle)
+		var troop: Array = MazeGibbon.troop(rng.randi_range(3, 5))
+		for k in troop.size():
+			add(troop[k], middle, rng.randf_range(-PI, PI), rng.randi(), Vector3(k - 2.0, 0.0, 0.0))
 
 
 ## Puts in the wildlife of the clearing that is run with what hunts (so that

@@ -150,7 +150,7 @@ func _ready() -> void:
 	add_to_group(&"pursuers")
 	# (a solid body, host and puppet alike, that the boy bumps into; it moves
 	# itself by hand and is stopped by nothing)
-	collision_layer = 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 0
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.22
@@ -798,5 +798,5 @@ func _put(at: Vector3, facing: float) -> void:
 
 
 func _puppet_changed() -> void:
-	collision_layer = 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 0

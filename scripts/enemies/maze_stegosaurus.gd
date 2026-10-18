@@ -134,7 +134,7 @@ static func family(count: int) -> Array:
 
 func _ready() -> void:
 	add_to_group(&"pursuers")
-	collision_layer = 0 if puppet else 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 1
 	floor_snap_length = 0.5
 	_size = CALF_SIZE if calf else 1.0
@@ -560,4 +560,4 @@ func _put(at: Vector3, facing: float) -> void:
 
 
 func _puppet_changed() -> void:
-	collision_layer = 0 if puppet else 4
+	collision_layer = PUPPET_LAYER if puppet else 4

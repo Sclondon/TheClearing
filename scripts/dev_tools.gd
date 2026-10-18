@@ -46,6 +46,11 @@ const HUNTERS := [
 	["COYOTES", "coyotes", SNAKE_AHEAD], ["SKINWALKER", "skinwalker", SNAKE_AHEAD],
 	["TRIPOD", "tripod", SNAKE_AHEAD],
 	["CROWS", "crows", AHEAD], ["RAVENS", "ravens", AHEAD], ["BLUE JAYS", "blue_jays", AHEAD],
+	["CLOWN", "clown", SNAKE_AHEAD], ["STEGOSAURUS", "stegosaurus", SNAKE_AHEAD],
+	["SPIDER MONKEYS", "spider_monkeys", AHEAD], ["LIZARD PEOPLE", "lizard_people", AHEAD],
+	["MASKED TRIBE", "tribe", AHEAD], ["DEINONYCHUS", "deinonychus", SNAKE_AHEAD],
+	["PTERODACTYL", "pterodactyl", AHEAD], ["SNAIL", "snail", SNAKE_AHEAD], ["HYDRA", "hydra", AHEAD],
+	["GIBBONS", "gibbons", AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -304,6 +309,32 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = [MazeTripod.new()]
 		"crows":
 			made = [Crows.new()]
+		"clown":
+			made = [MazeClown.new()]
+		"stegosaurus":
+			# (a mother and her calf)
+			made = MazeStegosaurus.family(1)
+		"spider_monkeys":
+			# (they string their vines along the walls nearest the first of them)
+			made = MazeSpiderMonkey.troop(5)
+		"lizard_people":
+			# (each runs up the nearest wall ahead and waits there, head down)
+			made = MazeLizardPerson.band(3)
+		"tribe":
+			made = MazeTribesman.party_of(4, randi())
+		"deinonychus":
+			made = MazeDeinonychus.pack_of(3, randi())
+		"pterodactyl":
+			# (it finds the nearest high wall top ahead to roost on, and soars from there)
+			made = [MazePterodactyl.new()]
+		"snail":
+			made = [MazeSnail.new()]
+		"hydra":
+			# (it puts itself in the middle of the hall, its pool across it)
+			made = [MazeHydra.new()]
+		"gibbons":
+			# (each finds its way up onto the ledges and wall tops near)
+			made = MazeGibbon.troop(4)
 		"ravens":
 			# (wildlife: on the walls round where they are put, not among the hunters)
 			world.birds.add_ravens_at(at)
@@ -611,6 +642,8 @@ const HEADINGS := {
 	"crows": "Birds and bugs", "ravens": "Birds and bugs", "blue_jays": "Birds and bugs",
 	"bats": "Birds and bugs", "beetles": "Birds and bugs",
 	"tame_chickens": "Tame animals",
+	"stegosaurus": "Prehistoric", "deinonychus": "Prehistoric", "pterodactyl": "Prehistoric",
+	"spider_monkeys": "Apes and monkeys", "gibbons": "Apes and monkeys", "baboons": "Apes and monkeys",
 }
 
 

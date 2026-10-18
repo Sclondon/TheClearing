@@ -193,6 +193,35 @@ extends Resource
 ## Martian tripods (MazeTripod), each striding round the ring over the walls,
 ## its searchlight sweeping the halls. One at most: it is huge.
 @export_range(0, 1) var tripods := 1
+## Horror clowns (MazeClown), each prowling the halls with a red balloon floating
+## over the walls: still while anyone looks at him, a sprint when nobody does.
+@export_range(0, 3) var clowns := 1
+## Stegosaurs, each grazing in a hall (sometimes with a calf): they hunt nobody,
+## but anyone too near is warned off, and then the spiked tail is swung at them.
+@export_range(0, 4) var stegosaurs := 1
+## Troops of spider monkeys (four to seven), hanging from vines strung along the
+## walls over a hall, dropping on whoever passes under.
+@export_range(0, 4) var spider_monkey_troops := 1
+## Bands of lizard people (two or three each), clinging to the walls over a hall.
+@export_range(0, 4) var lizard_people := 2
+## Hunting parties of the masked tribe (MazeTribesman: three to five of the maze's
+## lost boys gone wild, masked, with spears), each camped round its totem in a dead end.
+@export_range(0, 4) var tribe_parties := 1
+## Packs of deinonychus (each three or four): feathered pack hunters, one drawing
+## you while the others go round to cut you off; climbing high escapes them.
+@export_range(0, 3) var deinonychus_packs := 1
+## Pterodactyls, soaring high over the maze and roosting on its high wall tops;
+## they dive at anyone out in the open.
+@export_range(0, 6) var pterodactyls := 2
+## Giant snails, each crawling a straight hall (it climbs the walls after anyone up high).
+@export_range(0, 3) var snails := 1
+## Hydras (MazeHydra): each lies in a marsh pool of its own in a hall and strikes
+## with many heads at anyone who passes in reach.
+@export_range(0, 3) var hydras := 1
+## Troops of gibbons (three to five), living on the ledges, terraces and wall tops
+## (only of sections that have them): they call when they see you below (fetching
+## other hunters) and knock down climbers.
+@export_range(0, 3) var gibbon_troops := 1
 ## Murders of crows (Crows), each sitting along the wall tops over a hall: they
 ## follow whoever passes along the walls, and erupt cawing at anyone who runs,
 ## which calls the hunters.

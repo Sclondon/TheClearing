@@ -270,6 +270,10 @@ func try_cut() -> bool:
 			if online:
 				Net.send_json(Net.BROADCAST, {"cut": i, "at": [hands.x, hands.y, hands.z]})
 			return true
+	# (a hydra's head near his hands is cut off, where the hunters are run: two grow back)
+	for enemy: Node in get_tree().get_nodes_in_group(&"maze_enemies"):
+		if enemy is MazeHydra and (enemy as MazeHydra).cut(hands):
+			return true
 	return false
 
 

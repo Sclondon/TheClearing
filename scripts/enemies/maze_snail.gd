@@ -123,7 +123,7 @@ func _ready() -> void:
 	add_to_group(&"pursuers")
 	# Solid where its head is (layer 4, as the other hunters are: the boy walks into it and is
 	# caught, as touching it catches); it finds its own footing (rays), so it collides with nothing.
-	collision_layer = 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 0
 	_body = CollisionShape3D.new()
 	var ball := SphereShape3D.new()

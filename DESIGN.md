@@ -332,6 +332,66 @@ ring has is its style's choice. The wall tops are a second level you can travel 
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
 - With friends, the room's maker runs them; everyone else sees copies.
+- **Solid** (2026-10-18, the user: "the enemies should have collision"): the boy is stopped by a hunter's body as by
+  a wall (layer 4; copies run by another machine on their own layer, MazeEnemy.PUPPET_LAYER, so a guest is stopped
+  by them too). Swarms, flocks and the giants stay passable.
+
+### The added hunters (2026-10-18)
+
+- **Clown**: a horror clown, too tall and too thin, stained baggy suit and ruff, a greasepaint mask with a painted
+  grin, one red balloon floating over the walls (the only colour near him). He stalks whoever he has noticed to a
+  music box, slower than a run, and is only ever still when someone looks at him (frozen mid-pose, the head tilting).
+  Within 10 m, unwatched, he giggles (look at him then and he stops), then sprints in flailing stop-motion at 8 m/s for
+  2.3 s and stands winded. Touching him catches. The reverse of the angel: watched, he is harmless.
+- **Stegosaurus**: Stegosaurus stenops at its real size, a grazer in the wide halls (sometimes with a calf), often
+  across the hall. It barely notices anyone creeping; within about 7 m of its body it turns side on, rumbles and raises
+  the thagomizer (2.6 s), then swings it low: whoever the spikes hit is thrown and caught. It never chases.
+- **Spider monkeys**: troops of four to seven hang by their tails from a vine they string about 6 m up a hall's
+  walls, still and dark. They stir and swing along over you; pass under one and it shrieks (0.6 s) and drops at where
+  you will be: walking or running you are landed on, a sprint carries you past. A miss and it chases briefly, then
+  climbs back.
+- **Lizard people**: bands of two or three, reptile men clinging head down to the walls over a hall, tasting the air.
+  They skitter along the face beside you and climb after you; they hiss and fan the dewlap, then leap at where you
+  were (keep moving and they miss). On the ground a little faster than a run. Cold-blooded: by night or in rain slow
+  enough that a run escapes.
+- **The masked tribe** (the user: "natives with masks and spears"; a fictional feral tribe of the maze's own lost
+  boys, after Lord of the Flies, not any real people): parties of three to five boys, clay-grey, in rags, each face
+  behind a crude carved mask of wood, bone or bark, each with a stick spear. They camp round a skull totem in a dead
+  end and patrol in file; one drums and chants on seeing you and they hunt at a run (a sprint gets away), fanning
+  out. One at a time draws back with a yell (0.85 s) and throws where you are going (ducked, it goes over); close to,
+  they jab. They cannot reach anyone up high.
+- **Deinonychus**: packs of three or four, feathered and as the bones say. One holds off about 9 m, crouched and
+  clicking, while the others go round by loops of the halls to cut you off; then all burst faster than a sprint for
+  about two seconds and tire. Close and facing you: a crouch, tail flick and hiss, then a pinning leap (step aside and
+  it stumbles). They cannot climb: up high you are safe.
+- **Pterodactyls**: Pteranodon-like, 6.8 m across, soaring over the rings and roosting on high wall tops. They hunt
+  anyone in the open: a low pass with its shadow and a croak, then a dive with the roar of the wind, feet forward; its
+  line is set the last half second (step aside). Caught, you are carried off. Not into a passage under 9 m wide, or
+  under anything.
+- **Giant snail**: a land snail as big as a car, slower than a walk but relentless; it climbs walls and over the tops
+  after anyone up high, and its slime trail lies two minutes and holds you back to less than its speed. Touching it
+  catches; it pulls into its shell when bumped or when it loses you.
+- **Hydra**: a heavy, low reptile body with seven serpent necks, sunk in a black marsh pool of its own across a hall.
+  Awake, its heads weave and watch; anyone within about 8.5 m is struck at: a head coils back and hisses (0.75 s), then
+  darts, up to three at once from different angles. Sprint and swerve past, or slip by behind it. A head cut off (act,
+  near it) falls, and two grow back.
+- **Gibbons**: troops of three to five living high on the ledges, terraces and wall tops (past the first section),
+  swinging under the edges and flying the gaps. On the ground you are safe but seen: the great call fetches every
+  hunter within 40 m. Climbing near their ways you are prey: one winds up shrieking and swings at you feet first; get
+  down or away from the edges first.
+
+### The maze lives on its own (2026-10-18, Ecology)
+
+The user: "they should also interact with each other. We should have world game manager ... like a Rain World or
+Kenshi kind of sim ... relatively simple". scripts/ecology.gd, run where the hunters are (alone, or the host):
+- Every kind that takes part has a size (0 a hen to 4 the biggest) and a diet (Ecology.KINDS). Meat-eaters grow hungry
+  over about five minutes; hungry and after no player, they hunt the nearest smaller creature they see (or one as big
+  that eats only plants), never their own kind. Catching it kills it: a carcass where it fell (the flies come), and
+  the killer eats a while. Players still come first.
+- What could be eaten runs from a meat-eater near it that is after it or hungry.
+- Out of everyone's sight the creatures still go on their ways, and a hungry one may kill sleeping prey it comes on:
+  the maze is not as it was left.
+- The dead come back after three minutes at their dens (where they began), once nobody is within 150 m.
 
 ## Who else is in the maze
 
