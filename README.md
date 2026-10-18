@@ -6,7 +6,8 @@ high, damp and mossy, ivy hanging from them. Find the way out. The maze goes rou
 walled off from the next but for one gate; a pale light stands up past the gate out of the last ring.
 
 This is the start: the clearing, the first ring, rooms for playing together, and a maze made fresh each
-round. Apophis, packs of mummies and a Griever hunt the passages; the walls do not move, and there is no night.
+round. Apophis, packs of mummies and a Griever hunt the passages, and other boys, the runners, run them; the walls do
+not move, and there is no night.
 Every player is Inside's boy:
 no face, a plain shirt (its colour by seat, the first red) and dark trousers.
 
@@ -103,6 +104,17 @@ from the seed. Generate again replaces everything in the layout.
   `giant_spider`, `abomination`, `flesh_mound` (needs the boy from the character controller), `slime_wall`, `bats`, `baboon`, `dog`, `alien`, `beetle_swarm`, `fish_person`, `angel`, `frog` (the giant toad and the frog swarm), `harpy`, `boar`, `chicken`, `gargoyle`. Change them here, then `kit.sh pull`
   them back to GameCommon (`godot/<name>`, with `_` as `-`). Their models are built in Blender by their `tools/` scripts.
 - `scripts/remote_player.gd` (`RemotePlayer`): a friend, a `Figure` on the boy's rig chasing their news.
+- `scripts/runners/`: the others in the maze, after the Gladers' Runners. `MazeRunner` is the same boy as the players
+  (`DrivenBoy`, `scripts/driven_boy.gd`: the player's own controller and rig steered by code, from GameCommon's
+  `godot/driven-boy`) in a muted shirt of his own, who runs his own section (ring): jogs its halls by the middle on
+  `MazeNav` waypoints (feeling ahead with a ray for what the plan does not know, a buttress, a tree), sprints from what
+  hunts him (to cells he reaches first, the clearing best of all, or up ivy he gets to first), is loud while he
+  sprints (hunters that see him near turn after him), waves both arms to draw a hunter off a player, beckons a player
+  who comes up to him and runs for his section's gate, waiting when they fall behind, and stands aside pointing
+  through it (`GestureRig`, `scripts/gesture_rig.gd`). He is in `maze_players`, so everything hunts him; caught, he
+  is struck down (limp) and put back in the clearing, sits, and jogs home. `MazeRunners` puts in as many per ring as
+  its style says ("Who else is in it": `runners`) and keeps them in step: the host runs them and sends
+  `MazeRunners.pack()` ten times a second (K_RUNNERS); a guest's are DrivenBoy puppets steered with the same inputs.
 - `scripts/looks.gd` (`Looks`): every player is the same boy, as Inside has him (no face, a basin cut, no cap,
   shirt, dark trousers and boots). Only the shirt's colour differs, by seat.
 - `scripts/voice.gd` (`Voice`): proximity voice in rooms (web only), WebRTC signalled through the room.
@@ -114,7 +126,8 @@ from the seed. Generate again replaces everything in the layout.
   phone keyboard), the lobby, the HUD, round over, and the score sent to the arcade.
 - From GameCommon (`C:\Projects\GameCommon`): `godot/character-controller` (player.tscn, `scripts/player.gd`,
   `character_rig.gd`, `character_look.gd`, `follow_camera.gd`, `touch_controls.gd`, `toon.gd`, `figure.gd`,
-  models/boy*.glb and the rest listed in its FILES.txt), `godot/pine-tree` and `godot/grass`. Copies: change them here if need
+  models/boy*.glb and the rest listed in its FILES.txt), `godot/driven-boy` (`driven_boy.gd`, `gesture_rig.gd`),
+  `godot/pine-tree` and `godot/grass`. Copies: change them here if need
   be, and pull good changes back with `sh /c/Projects/GameCommon/kit.sh pull`.
 
 ## Commands
@@ -128,6 +141,8 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/climb_test.gd     # ivy onto a terrace, a vine, a rope bridge
 "$G" --headless --path . -s res://tests/strand_test.gd    # a strung vine: walked as a tightrope, cut into two vines
 "$G" --headless --path . -s res://tests/hunt_test.gd      # enemies in a round; caught, back to the clearing
+"$G" --headless --audio-driver Dummy --path . -s res://tests/runner_test.gd   # runners: a route, ivy, drawing a hunter, caught, leading to a gate, a puppet
+"$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/runner_shots.gd -- <folder>   # pictures of runners
 "$G" --headless --path . -s res://tests/layout_test.gd    # a layout changed by hand, saved, loaded and played
 "$G" --editor --path . res://tests/editor_check.tscn       # (after layout_test) what the editor shows, saved to user://editor_view.png
 "$G" --headless --path . -s res://tests/enemy_test.gd     # Apophis and the mummies on their own
@@ -152,7 +167,8 @@ sh tools/coop_test.sh                                     # two copies in one ro
 Flags (command line `-- --name=value` or the page's `?name=value`): `server=<url>` for another rooms server.
 `dev` turns on the dev tools (on anyway when the game is run from the Godot editor): everyone starts in front of a
 gate of the clearing (`start=middle` for the middle), and a DEV button under the clock opens god mode: put mummies
-(of a chosen kind, alone or in a pack), the snake or a Griever into the maze ahead, freeze or clear everything that
+(of a chosen kind, alone or in a pack), the snake or a Griever into the maze ahead, a runner or three (+ RUNNER,
++ RUNNERS: come up to one and he leads you to his section's gate), freeze or clear everything that
 hunts, be uncatchable, go to a gate, the middle or the exit. Keys: ` the panel, G god, M a mummy, N the snake, B a
 Griever. What it puts in is only in your copy, so use it playing alone; no score is sent with it on
 (`scripts/dev_tools.gd`, `DevTools`).

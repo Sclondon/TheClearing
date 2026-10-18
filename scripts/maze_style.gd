@@ -158,6 +158,13 @@ extends Resource
 ## wall top), dropping on whoever passes beneath.
 @export_range(0, 4) var gargoyles := 2
 
+@export_group("Who else is in it")
+## How many runners run the section's passages (MazeRunners, from the round's
+## seed): other boys, driven by the computer, who know their section. They lead
+## anyone who comes up to them to its gate out, draw what hunts away, and are
+## hunted themselves. Each one poses a whole boy, so keep it small.
+@export_range(0, 6) var runners := 2
+
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
 

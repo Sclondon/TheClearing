@@ -22,6 +22,8 @@ const RINGS := 2
 ## The host's news of what hunts the maze: MazeEnemies.pack(), then the Griever's state.
 const K_ENEMIES := 69  # E
 const ENEMIES_EVERY := 0.1
+## The host's news of the runners: MazeRunners.pack(), as often.
+const K_RUNNERS := 82  # R
 
 ## This player's seat (0 when playing alone).
 var slot := 0
@@ -40,6 +42,8 @@ var out := {}
 ## What hunts the maze (see _enemies).
 var enemies: MazeEnemies
 var griever: Griever
+## The others in the maze (see _runners).
+var runners: MazeRunners
 ## God mode and the rest (DevTools), when it is on for this run.
 var dev: DevTools
 ## The hour, the light with it, and the doors of the clearing (put once the walls stand).
@@ -190,6 +194,21 @@ func _enemies(seed_value: int) -> void:
 	Grass.push(griever, 1.6)
 	for enemy: Node3D in enemies.enemies:
 		Grass.push(enemy, 1.0)
+	var away := taken.duplicate()
+	away.append(lair)
+	_runners(seed_value, away, puppets)
+
+
+## The others in the maze (MazeRunners): as many in each ring as its style says
+## ("Who else is in it"), placed from the seed away from where the hunters start.
+## Alone or as the host they are run here and hunted like players; a guest's
+## are puppets that follow the host's news (K_RUNNERS).
+func _runners(seed_value: int, away: Array[Vector2i], puppets: bool) -> void:
+	runners = MazeRunners.new()
+	runners.name = "Runners"
+	add_child(runners)
+	runners.puppet = puppets
+	runners.populate(maze, hash("runners/%d" % seed_value), maze_features().climbs, away)
 
 
 ## How near his hands a strung vine has to be for him to cut it, metres.
@@ -235,6 +254,9 @@ func maze_features() -> MazeFeatures:
 ## Something has caught `who`. Here (alone or as the host, where they are run):
 ## this player goes back to the clearing, and a guest is told to.
 func _on_caught(who: Node3D) -> void:
+	if who is MazeRunner:
+		(who as MazeRunner).take()
+		return
 	if who == player and dev and dev.god:
 		return
 	if who == player:
@@ -354,6 +376,7 @@ func _physics_process(delta: float) -> void:
 				var news := enemies.pack()
 				news.append_array(griever.state_bytes())
 				Net.send(Net.BROADCAST, K_ENEMIES, news)
+				Net.send(Net.BROADCAST, K_RUNNERS, runners.pack())
 
 
 func _got_out(seat: int, seconds: float) -> void:
@@ -412,6 +435,8 @@ func _on_packet(from: int, kind: int, data: PackedByteArray) -> void:
 		var at := 1 + MazeEnemy.STATE_SIZE * enemies.enemies.size()
 		if data.size() >= at + Griever.STATE_SIZE:
 			griever.from_bytes(data, at)
+	elif kind == K_RUNNERS and not Net.is_host:
+		runners.unpack(data, 0)
 	elif kind == Net.K_JSON:
 		var message: Variant = JSON.parse_string(data.get_string_from_utf8())
 		if not (message is Dictionary):

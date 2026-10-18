@@ -148,8 +148,11 @@ func _engulf(player: Node3D) -> void:
 	_taking[player] = HOLD
 	# (kept from being taken twice while it holds them)
 	_spared[player] = HOLD + spare_time
-	if player is Player:
+	# (this machine's player; a runner is only stopped where he is)
+	if player is Player and not player.is_in_group(&"runners"):
 		_hold_local(player)
+	elif player.has_method(&"hold"):
+		player.call(&"hold", HOLD)
 
 
 ## Holds this machine's player inside it, stopped, for HOLD. What is seen of

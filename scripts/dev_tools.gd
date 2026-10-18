@@ -1,8 +1,9 @@
 class_name DevTools
 extends Control
 ## God mode for trying the maze out: a DEV button under the clock opens a panel
-## that puts things that hunt into the maze ahead of the boy, clears or stops
-## them, makes him uncatchable, and moves him to a gate, the middle or the exit.
+## that puts things that hunt (and runners, MazeRunner) into the maze ahead of
+## the boy, clears or stops them, makes him uncatchable, and moves him to a gate,
+## the middle or the exit.
 ## Keys: ` opens it, G god, M a mummy, N the snake, B a Griever.
 ##
 ## On when the game is run from the Godot editor, or with the flag `dev`
@@ -103,6 +104,8 @@ func _init(in_world: World) -> void:
 	grid.add_child(_button("+ GRIEVER", spawn_griever))
 	for one: Array in HUNTERS:
 		grid.add_child(_button("+ " + String(one[0]), spawn_hunter.bind(one[1], one[2])))
+	grid.add_child(_button("+ RUNNER", spawn_runner))
+	grid.add_child(_button("+ RUNNERS", spawn_runners))
 	grid.add_child(_button("CLEAR ALL", clear))
 	grid.add_child(_button("TO GATE", to_gate))
 	grid.add_child(_button("TO MIDDLE", to_middle))
@@ -229,6 +232,26 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = [gargoyle]
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
+
+
+## Puts a runner (MazeRunner) in ahead of him, facing away and jogging on, in
+## whichever section that is (the first, from the clearing). Come up to him and
+## he leads you to its gate.
+func spawn_runner() -> MazeRunner:
+	return _add_runner(_ahead(), 0.0)
+
+
+## Three runners ahead of him, side by side across his way.
+func spawn_runners() -> void:
+	var at := _ahead()
+	var across := _look().cross(Vector3.UP) * 2.2
+	for k in 3:
+		_add_runner(at + across * (k - 1), 0.0)
+
+
+func _add_runner(at: Vector3, turn: float) -> MazeRunner:
+	var ring := clampi(world.maze.ring_of(world.maze.cell_at(at)), 1, world.maze.rings)
+	return world.runners.add(ring, at - Vector3.UP * 0.05, _facing_him(at) + PI + turn, randi())
 
 
 ## Takes away everything that hunts (the Griever World put in is only put to
