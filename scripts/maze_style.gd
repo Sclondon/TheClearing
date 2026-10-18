@@ -154,6 +154,9 @@ extends Resource
 @export_range(0, 3) var boars := 1
 ## Flocks of feral chickens (a rooster and his hens), foraging in a hall.
 @export_range(0, 4) var chicken_flocks := 2
+## Gargoyles, each crouched as a statue on a ledge over a hall (a terrace's edge or a
+## wall top), dropping on whoever passes beneath.
+@export_range(0, 4) var gargoyles := 2
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []

@@ -36,6 +36,7 @@ const HUNTERS := [
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD], ["BOAR", "boar", SNAKE_AHEAD],
 	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD], ["CHICKENS", "chickens", AHEAD],
+	["GARGOYLE", "gargoyle", AHEAD],
 ]
 
 var world: World
@@ -220,6 +221,12 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = [MazeBoar.new()]
 		"chickens":
 			made = [Chickens.new()]
+		"gargoyle":
+			# (crouched on the ground as a statue where it is put, so that it is seen:
+			# it wakes as he comes near)
+			var gargoyle := MazeGargoyle.new()
+			gargoyle.seek_perch = false
+			made = [gargoyle]
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 

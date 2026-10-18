@@ -199,6 +199,14 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     everywhere), and the racket calls every hunter within 40 m. Creep past crouched. Run into one and the rooster
     flies into a rage (after Zelda's cuccos): the flock mobs you, leaping and beating round your head, pecking,
     slowing you, calling the hunters all the while, until you get away.
+  - **Gargoyles** ("and a Gargoyle enemy"): a carved-stone grotesque, alive, bat-winged, of the walls' own weathered
+    concrete. It crouches as a statue on a ledge over a hall (a terrace's edge, a wall top low enough to be seen, or
+    a stone corbel jutting from the wall), and cannot be told from a carving. Pass beneath it and it stirs (a faint
+    ember in its cracks and eyes, its head grinding round to follow you, dust trickling off it), then drops in a long
+    glide onto where you were going, its shadow darkening where it will land: keep moving, or turn aside, and it
+    misses. A miss turns it to stone where it lands for a few seconds: the time to get away. Then it hunts in heavy
+    bounds a little slower than a run, slow to turn (a turn down a side passage gains ground), and from a few metres
+    in front of you winds up (wings raised, a snarl) and leaps. Lost, it beats its way back up to its ledge.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
