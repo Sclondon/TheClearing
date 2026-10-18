@@ -1,0 +1,7 @@
+# The gnome: five scripts and two models (the Blender script that makes them is in Warren, creatures/gnome/tools/)
+creatures/gnome/gnome.gd
+creatures/gnome/gnome_look.gd
+creatures/gnome/gnome_hollow.gd
+creatures/gnome/gnome_rope.gd
+creatures/gnome/models/gnome.glb
+creatures/gnome/models/gnome_lo.glb
