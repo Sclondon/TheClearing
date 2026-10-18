@@ -76,7 +76,7 @@ void fragment() {
 	col = mix(col, silt * (0.8 + 0.4 * patches(at * 0.9)), smoothstep(0.0, -0.25, above));
 	float marsh = smoothstep(0.0, 0.45, wet);
 	ALBEDO = mix(field, col, marsh);
-	ROUGHNESS = mix(1.0, 0.75, margin * marsh);
+	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
 }
 
@@ -106,7 +106,8 @@ render_mode cull_disabled;
 
 uniform vec3 stalk : source_color = vec3(0.17, 0.21, 0.1);
 uniform vec3 stalk_top : source_color = vec3(0.36, 0.36, 0.2);
-uniform vec3 head : source_color = vec3(0.2, 0.12, 0.07);
+uniform vec3 head : source_color = vec3(0.19, 0.11, 0.065);
+uniform vec3 fluff : source_color = vec3(0.37, 0.33, 0.27);
 uniform float height = 1.9;
 uniform vec2 wind_dir = vec2(1.0, 0.35);
 uniform float wind = 0.45;
@@ -118,6 +119,7 @@ uniform float wrap = 0.2;
 varying float v_t;
 varying float v_head;
 varying float v_rnd;
+varying float v_fluff;
 
 void vertex() {
 	vec3 root = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
@@ -147,11 +149,17 @@ void vertex() {
 	v_t = t;
 	v_head = COLOR.a;
 	v_rnd = rnd;
+	v_fluff = COLOR.g;
 }
 
 void fragment() {
 	vec3 col = mix(stalk, stalk_top, smoothstep(0.2, 1.0, v_t)) * (0.85 + 0.3 * v_rnd);
-	col = mix(col, head * (0.85 + 0.3 * v_rnd), v_head);
+	// The head: brown velvet, darker face on and paler towards its outline,
+	// where the nap catches the light; gone to seed, a buff fluff.
+	float rim = 1.0 - clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);
+	vec3 velvet = head * (0.8 + 0.35 * v_rnd) * (0.8 + 0.9 * rim * rim);
+	vec3 fluffy = fluff * (0.85 + 0.25 * v_rnd) * (0.8 + 0.3 * rim);
+	col = mix(col, mix(velvet, fluffy, v_fluff), v_head);
 	ALBEDO = col;
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
@@ -257,7 +265,13 @@ func sedge_at(point: Vector2) -> float:
 		return 0.0
 	var deep := look.marsh_grass_depth
 	var depth := depth_at(point)
-	var thick := lerpf(0.8, 0.4, smoothstep(-0.06, 0.06, depth)) * (1.0 - smoothstep(deep * 0.5, deep, depth))
+	# (in the water: thick stands in the shallowest, thinning as it deepens and
+	# in open gaps here and there, so that the eye catches the water between)
+	var in_water := lerpf(0.4, 0.1, smoothstep(0.06, 0.3, depth))
+	var gaps := smoothstep(0.3, 0.6, _clumps.get_noise_2d(point.x * 0.8 - 200.0, point.y * 0.8 + 90.0) * 0.5 + 0.5)
+	in_water *= lerpf(1.0, 0.25, gaps)
+	var bank := lerpf(0.8, 0.45, smoothstep(-0.15, -0.03, depth))
+	var thick := lerpf(bank, in_water, smoothstep(-0.06, 0.06, depth)) * (1.0 - smoothstep(deep * 0.5, deep, depth))
 	return smoothstep(0.02, 0.35, wet) * thick
 
 
@@ -373,7 +387,7 @@ func _water() -> void:
 		"swell_height": 0.006,
 		"lines": 0.18,
 		"glint": 0.0,
-		"foam_width": 0.16,
+		"foam_width": 0.1,
 		"foam_ragged": 0.8,
 		"foam_drift": 0.22,
 		"sides": false,
@@ -439,13 +453,18 @@ func _bulrushes_and_pads() -> void:
 			var reedy := reed_at(p)
 			if reedy > 0.0 and rng.randf() < reedy * look.marsh_reeds * 0.7:
 				var y := ground_at(p)
-				var lean := Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.0, 1.0)) * 0.08
+				# (most upright; some gone to seed, some broken, some leant well over)
+				var pick := rng.randf()
+				var kind := Bulrush.UPRIGHT if pick < 0.74 else (Bulrush.SEEDING if pick < 0.88 else Bulrush.BROKEN)
+				var tilt := 0.35 if pick < 0.14 else 0.08
+				var lean := Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.0, 1.0)).normalized() * rng.randf_range(0.2, 1.0) * tilt
 				var basis := Basis(Vector3.UP, rng.randf() * TAU)
 				basis = Basis(lean.cross(Vector3.UP).normalized() if lean.length() > 0.001 else Vector3.RIGHT, lean.length()) * basis
 				basis = basis.scaled(Vector3.ONE * rng.randf_range(0.75, 1.15))
-				if not rushes.has(square):
-					rushes[square] = []
-				rushes[square].append(Transform3D(basis, Vector3(p.x, y - 0.05, p.y)))
+				var key := [square, kind]
+				if not rushes.has(key):
+					rushes[key] = []
+				rushes[key].append(Transform3D(basis, Vector3(p.x, y - 0.05, p.y)))
 				continue
 			if look.marsh_lily_pads <= 0.0:
 				continue
@@ -470,11 +489,13 @@ func _bulrushes_and_pads() -> void:
 		_bulrush_material = ShaderMaterial.new()
 		_bulrush_material.shader = shader
 		_bulrush_material.set_shader_parameter(&"height", BULRUSH_HEIGHT)
-		var mesh := _bulrush_mesh()
-		for square: Vector2i in rushes:
-			var placed: Array = rushes[square]
+		var meshes := {}
+		for kind: Bulrush in Bulrush.values():
+			meshes[kind] = _bulrush_mesh(kind)
+		for key: Array in rushes:
+			var placed: Array = rushes[key]
 			bulrush_count += placed.size()
-			add_child(_multi(mesh, _bulrush_material, placed, [], NEAR))
+			add_child(_multi(meshes[key[1]], _bulrush_material, placed, [], NEAR))
 	if not pads.is_empty():
 		var material := StandardMaterial3D.new()
 		material.vertex_color_use_as_albedo = true
@@ -508,37 +529,105 @@ func _multi(mesh: Mesh, material: Material, placed: Array, colours: Array, near:
 	return shown
 
 
-# A bulrush: a stalk of two crossed blades, a brown head two thirds of the way
-# up (alpha 1 in its colour) and a thin spike above it.
-static func _bulrush_mesh() -> ArrayMesh:
+## The kinds of bulrush (cattail): upright with its brown head, gone to seed
+## (the head swollen into a ragged buff fluff), and broken (its stem snapped
+## half way up, the top with its head hanging down). A bent one is an upright
+## one leant well over.
+enum Bulrush { UPRIGHT, SEEDING, BROKEN }
+
+
+# A bulrush of `kind`: a thin stem, two strap leaves arching out from its foot,
+# a rounded, slightly tapering head of brown velvet two thirds of the way up
+# (alpha 1 in its colour; green 1 for a seeding one) and a fine spike above.
+static func _bulrush_mesh(kind: Bulrush) -> ArrayMesh:
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11 + kind
 	var h := BULRUSH_HEIGHT
+	var snap := h * 0.5
+	# (the stem as a line of points; a broken one turns over at the snap and hangs)
+	var spine := func(s: float) -> Vector3:
+		if kind != Bulrush.BROKEN or s <= snap:
+			return Vector3(0.0, s, 0.0)
+		var over := s - snap
+		var turn := 2.1
+		return Vector3(sin(turn) * over, snap + cos(turn) * over, 0.0)
+	var along := func(s: float) -> Vector3:
+		return (spine.call(s + 0.01) - spine.call(s - 0.01)).normalized()
+	var low := h * 0.64
+	var high := h * 0.83
+	var top := high + 0.2
+	# The stem, as two crossed blades in steps.
+	const STEPS := 8
 	for turn: float in [0.0, PI * 0.5]:
-		var across := Vector3(cos(turn), 0.0, sin(turn)) * 0.012
-		var normal := Vector3(-sin(turn), 0.25, cos(turn)).normalized()
-		_quad(tool, Vector3.ZERO - across, Vector3.ZERO + across, Vector3(0, h, 0) + across * 0.3, Vector3(0, h, 0) - across * 0.3, normal, 0.0)
-	# (the head: a six sided stick of brown, capped)
-	var low := h * 0.66
-	var high := h * 0.84
-	for s in 6:
-		var a := TAU * s / 6.0
-		var b := TAU * (s + 1) / 6.0
-		var pa := Vector3(cos(a), 0.0, sin(a)) * 0.042
-		var pb := Vector3(cos(b), 0.0, sin(b)) * 0.042
-		var normal := Vector3(cos((a + b) * 0.5), 0.0, sin((a + b) * 0.5))
-		_quad(tool, pa + Vector3(0, low, 0), pb + Vector3(0, low, 0), pb * 0.8 + Vector3(0, high, 0), pa * 0.8 + Vector3(0, high, 0), normal, 1.0)
-		for tri: Array in [[Vector3(0, high + 0.02, 0), pb * 0.8 + Vector3(0, high, 0), pa * 0.8 + Vector3(0, high, 0)], [Vector3(0, low - 0.015, 0), pa + Vector3(0, low, 0), pb + Vector3(0, low, 0)]]:
-			for v: Vector3 in tri:
-				tool.set_color(Color(1, 1, 1, 1.0))
-				tool.set_normal(normal)
-				tool.add_vertex(v)
+		var side := Vector3(cos(turn), 0.0, sin(turn))
+		for k in STEPS:
+			var s0 := top * k / STEPS
+			var s1 := top * (k + 1) / STEPS
+			var w0 := lerpf(0.011, 0.002, s0 / top)
+			var w1 := lerpf(0.011, 0.002, s1 / top)
+			var a: Vector3 = spine.call(s0)
+			var b: Vector3 = spine.call(s1)
+			var normal := side.cross(along.call(s0)).normalized()
+			_quad(tool, a - side * w0, a + side * w0, b + side * w1, b - side * w1, normal, Color(1, 0, 0, 0))
+	# Two strap leaves, arching out and over from its foot.
+	for leaf in 2:
+		var heading := rng.randf() * TAU
+		var out := Vector3(cos(heading), 0.0, sin(heading))
+		var side := Vector3(-out.z, 0.0, out.x)
+		var length := rng.randf_range(1.0, 1.5)
+		var arch := rng.randf_range(0.5, 1.0)
+		var prev := Vector3.ZERO
+		for k in 6:
+			var t1 := (k + 1) / 6.0
+			var angle := arch * t1 * t1 * 1.6
+			var next := prev + (Vector3.UP * cos(angle) + out * sin(angle)) * length / 6.0
+			var w0 := 0.016 * (1.0 - k / 6.0 * 0.8)
+			var w1 := 0.016 * (1.0 - t1 * 0.8)
+			var normal := side.cross(next - prev).normalized()
+			_quad(tool, prev - side * w0, prev + side * w0, next + side * w1, next - side * w1, normal, Color(1, 0, 0, 0))
+			prev = next
+	# The head: rings round the stem, rounded at both ends, a little narrower
+	# at the top; a seeding one fatter and ragged.
+	const SIDES := 8
+	const RINGS := 9
+	var fluffy := kind == Bulrush.SEEDING
+	var radius := 0.05 if fluffy else 0.036
+	var colour := Color(1, 1.0 if fluffy else 0.0, 0, 1)
+	var rings: Array[PackedVector3Array] = []
+	var normals: Array[PackedVector3Array] = []
+	for r in RINGS + 1:
+		var t := float(r) / RINGS
+		var s := lerpf(low, high, t)
+		var centre: Vector3 = spine.call(s)
+		var d: Vector3 = along.call(s)
+		var u := d.cross(Vector3.FORWARD if absf(d.z) < 0.9 else Vector3.RIGHT).normalized()
+		var v := d.cross(u)
+		var round := sqrt(clampf(sin(PI * t), 0.0, 1.0))
+		var ring := PackedVector3Array()
+		var faces := PackedVector3Array()
+		for k in SIDES:
+			var a := TAU * k / SIDES
+			var radial := u * cos(a) + v * sin(a)
+			var bump := 1.0 + (rng.randf_range(-0.25, 0.35) if fluffy and r > 0 and r < RINGS else 0.0)
+			ring.append(centre + radial * radius * maxf(round, 0.12) * (1.0 - 0.18 * t) * bump)
+			faces.append((radial * maxf(round, 0.3) + d * cos(PI * t) * 0.8).normalized())
+		rings.append(ring)
+		normals.append(faces)
+	for r in RINGS:
+		for k in SIDES:
+			var k1 := (k + 1) % SIDES
+			for corner: Vector2i in [Vector2i(r, k), Vector2i(r, k1), Vector2i(r + 1, k1), Vector2i(r, k), Vector2i(r + 1, k1), Vector2i(r + 1, k)]:
+				tool.set_color(colour)
+				tool.set_normal(normals[corner.x][corner.y])
+				tool.add_vertex(rings[corner.x][corner.y])
 	return tool.commit()
 
 
-static func _quad(tool: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, normal: Vector3, head: float) -> void:
+static func _quad(tool: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, normal: Vector3, colour: Color) -> void:
 	for v: Vector3 in [a, b, c, a, c, d]:
-		tool.set_color(Color(1, 1, 1, head))
+		tool.set_color(colour)
 		tool.set_normal(normal)
 		tool.add_vertex(v)
 

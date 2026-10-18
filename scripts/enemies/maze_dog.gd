@@ -150,10 +150,10 @@ func _lay_trails(delta: float) -> void:
 		return
 	_laid_frame = frame
 	_clock += delta
-	for player: Node3D in trails.keys():
+	for player: Variant in trails.keys():
 		if not is_instance_valid(player):
 			trails.erase(player)
-	for player: Node3D in players():
+	for player: Node3D in _live_players():
 		if not is_instance_valid(player) or not player.is_inside_tree():
 			continue
 		var trail: PackedVector4Array = trails.get(player, PackedVector4Array())
@@ -173,6 +173,12 @@ func _lay_trails(delta: float) -> void:
 			if not last.is_finite() or last.distance_to(at) > CRUMB:
 				trail.append(Vector4(at.x, at.y, at.z, _clock))
 		trails[player] = trail
+
+
+## The players still in the game (a list of targets may keep one freed since:
+## taken as a Node3D, a freed one is an error).
+func _live_players() -> Array:
+	return players().filter(func(p: Variant) -> bool: return is_instance_valid(p) and p is Node3D)
 
 
 ## The crumb of `player`'s trail it should make for next (INF: the trail is lost).
@@ -206,7 +212,7 @@ func _next_crumb(player: Node3D) -> Vector3:
 func _pick_up_scent() -> bool:
 	var here := global_position
 	var best_score := INF
-	for player: Node3D in players():
+	for player: Node3D in _live_players():
 		if not huntable(player):
 			continue
 		var trail: PackedVector4Array = trails.get(player, PackedVector4Array())
@@ -248,7 +254,7 @@ func _physics_process(delta: float) -> void:
 			velocity.x = push.x
 			velocity.z = push.z
 			if not _bit:
-				for player: Node3D in players():
+				for player: Node3D in _live_players():
 					if huntable(player) and dog.bite_hits(player.global_position + Vector3.UP * 0.75, 0.55):
 						_bit = true
 						_catch(player)
