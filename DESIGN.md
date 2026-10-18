@@ -100,6 +100,19 @@ terraces, rope bridges, ivy to the top, vines on terraces, wall-top bridges and 
 Because walls are thick, any opening one cell long through a wall is itself a slot (cell minus wall thickness):
 that is how the gates become slots.
 
+### Round sections
+
+Past the desert, three round sections (`RoundStyle`, `MazeLayout.round_sections`), each with a **layout**:
+- **Maze** (ring 5, Spokes): passages grown between circular walls (`RoundMaze`).
+- **Rotating doors** (ring 6, Turnstiles): halls round between circles of wall. Each circle is broken by doorways,
+  and in each a great slab turns on a pivot under a lintel. You get through by timing it: either side of an
+  edge-on door is a gap. The doors are moving bodies that shove you, turned by the round's clock (`World.clock`) so
+  everyone sees the same thing. Their turns are spread so some door in every circle is always nearly open.
+  Settings: circles, doors per circle, seconds per half turn, gap width.
+- **Tunnel** (ring 7, Bore): one wide roofed tunnel all the way round, from the gates in to the way out. It is
+  dim, lined in dark stone that the mist does not lighten, and lit only by slots across its roof (faint shafts and
+  pale patches on the floor). Settings: width, height, skylight spacing.
+
 ### Ways up
 
 Terraces of stone against the walls (steps for a giant: 6.5 m and 13 m), ivy to climb their faces and sometimes on

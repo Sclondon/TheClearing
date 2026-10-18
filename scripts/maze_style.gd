@@ -487,4 +487,22 @@ static func square_defaults() -> Array[MazeStyle]:
 
 
 static func round_defaults() -> Array[MazeStyle]:
-	return [spokes(), whorl(), labyrinth()]
+	return [spokes(), turnstiles(), bore()]
+
+
+## The Turnstiles: the second round section. Not passages but halls round between
+## circles of wall, each circle broken by doorways with a great slab turning in each:
+## through when it stands edge on.
+static func turnstiles() -> MazeStyle:
+	var style := whorl()
+	style.section_width_cells = 6
+	(style as RoundStyle).layout = RoundStyle.Layout.ROTATING_DOORS
+	return style
+
+
+## The Bore: the last section, one wide roofed tunnel all the way round, dim, lit
+## through slots in its roof, from the way in to the way out.
+static func bore() -> MazeStyle:
+	var style := labyrinth()
+	(style as RoundStyle).layout = RoundStyle.Layout.TUNNEL
+	return style
