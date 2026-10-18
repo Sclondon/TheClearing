@@ -152,7 +152,8 @@ func plan() -> Maze:
 ## Puts down the pieces of `maze`.
 func lay_out(maze: Maze) -> void:
 	maze_seed = maze.maze_seed
-	rings = maze.rings
+	# (the round sections past the square ones count too)
+	rings = maze.rings + (maze.round_rings.rings.size() if maze.round_rings else 0)
 	clearing_style = maze.clearing_style
 	for run: Array in _runs(maze):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, Vector3(run[0].x, 0.0, run[0].z)), {"size": run[1], "great": run[2]})
