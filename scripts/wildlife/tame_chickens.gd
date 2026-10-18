@@ -93,7 +93,7 @@ func _nearest_bird(at: Vector3) -> float:
 	return best
 
 
-## Keeps a bird where chickens may be: out of walls, out of the pond, and (if
+## Keeps a bird where chickens may be: out of walls, out of the marsh, and (if
 ## home is in the clearing) in the clearing.
 func _keep_in(point: Vector3) -> Vector3:
 	if maze == null:
@@ -101,7 +101,7 @@ func _keep_in(point: Vector3) -> Vector3:
 	var home := flock.home if flock else global_position
 	var in_clearing := maze.in_clearing(maze.cell_at(home))
 	for k in 6:
-		var ok := maze.ground_height(point) > ClearingStyle.POND_LEVEL + 0.05
+		var ok := maze.ground_height(point) > ClearingStyle.MARSH_LEVEL + 0.05
 		if in_clearing:
 			ok = ok and maze.in_clearing(maze.cell_at(point))
 		elif nav:
@@ -116,7 +116,7 @@ func _keep_in(point: Vector3) -> Vector3:
 ## ClearingStyle says (Wildlife: chicken_flocks), the first at the edge of the
 ## woods and the rest about the field, all well away from the middle (where
 ## everyone starts) and from the paths between the middle and the gates, and out
-## of the pond and the tall grass; and as many in the first ring's halls as its
+## of the marsh and the tall grass; and as many in the first ring's halls as its
 ## MazeStyle says (Wildlife: tame_chicken_flocks). Placed from `seed_value`.
 static func populate(parent: Node, plan: Maze, seed_value: int) -> Array[TameChickens]:
 	var made: Array[TameChickens] = []
@@ -154,7 +154,7 @@ static func _add(parent: Node, plan: Maze, at: Vector3, flock_seed: int) -> Tame
 ## A place in the clearing for a flock (x, z): at the edge of the woods if
 ## `by_woods` (and there are woods), else anywhere in the field; at least 45 m
 ## from the middle, 15 m from the way from the middle to any gate, 25 m in from
-## the walls, `apart` from other flocks, out of the pond and the tall grass.
+## the walls, `apart` from other flocks, out of the marsh and the tall grass.
 ## Not finite if none was found.
 static func clearing_spot(plan: Maze, rng: RandomNumberGenerator, by_woods: bool, others: Array[Vector2] = []) -> Vector2:
 	var look := plan.clearing_style
@@ -171,8 +171,8 @@ static func clearing_spot(plan: Maze, rng: RandomNumberGenerator, by_woods: bool
 			continue
 		if look.tall_grass_at(spot) > 0.0:
 			continue
-		var pond := look.pond_middle()
-		if pond.is_finite() and spot.distance_to(pond) < look.pond_radius * 1.4:
+		var marsh := look.marsh_rect()
+		if marsh.has_area() and marsh.grow(10.0).has_point(spot):
 			continue
 		var on_path := false
 		for gate: Array in look.entrance_spots:
