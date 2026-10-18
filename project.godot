@@ -33,6 +33,7 @@ pointing/emulate_touch_from_mouse=true
 [physics]
 
 3d/physics_engine="Jolt Physics"
+jolt_physics_3d/limits/max_bodies=40960
 common/physics_interpolation=false
 
 [rendering]
