@@ -51,7 +51,7 @@ func _run() -> void:
 	var cell := Vector2i(-1, -1)
 	for y in maze.size:
 		for x in maze.size - 1:
-			if cell.x < 0 and not maze.in_clearing(Vector2i(x, y)) and maze.blocked(Vector2i(x, y), Vector2i(1, 0)):
+			if cell.x < 0 and not maze.in_clearing(Vector2i(x, y)) and maze.blocked(Vector2i(x, y), Vector2i(1, 0)) and not _has_terrace(world, maze.world(Vector2i(x, y))):
 				cell = Vector2i(x, y)
 	player.global_position = maze.world(cell) + Vector3.UP * 0.1
 	player.velocity = Vector3.ZERO
@@ -105,3 +105,12 @@ func _run() -> void:
 	check("back to the title", main.screen == "title")
 	print("SMOKE TEST %s" % ("PASSED" if failures == 0 else "FAILED (%d)" % failures))
 	quit(failures)
+
+
+## Whether a terrace stands anywhere in the cell round `middle` (he would be put inside it).
+func _has_terrace(world: Node, middle: Vector3) -> bool:
+	var cell := Rect2(middle.x - Maze.CELL * 0.5, middle.z - Maze.CELL * 0.5, Maze.CELL, Maze.CELL)
+	for footprint: Rect2 in world.get_node("Maze").features.footprints:
+		if footprint.intersects(cell):
+			return true
+	return false

@@ -65,10 +65,14 @@ from the seed. Generate again replaces everything in the layout.
   2.6 m up so it takes a jump); and rope bridges (`scripts/rope_bridge.gd`, `RopeBridge`: a chain of points that
   sags, dips under anyone in the group `bridge_weights` and sways, its planks moving bodies) between terraces
   across a hall and between wall tops.
-- `scripts/wall.gd` (`Wall`, scene `scenes/wall.tscn`): a wall as one textured box, width, height and depth in the
+- `scenes/wall_gallery.tscn` (`scripts/wall_gallery.gd`, made by `tools/make_wall_gallery.gd`): a room of every
+  wall style and look side by side, each signed; play it to walk among them.
+- `scripts/wall.gd` (`Wall`, scene `scenes/wall.tscn`): a wall in a style (Basic: a plain box; Cornice, Pilasters,
+  Stepped: decorated; `Wall.style_boxes`), width, height and depth in the
   Inspector, in one of several concretes (photographed, from Poly Haven, CC0: `textures/polyhaven/CREDITS.md`; or
   made by `tools/make_wall_textures.gd`), the repeats hidden by a shader that shifts the texture about and lays
-  broad tone and rain streaks over it. The maze's walls are drawn with it (`Wall.material_for`): cast concrete inside
+  broad tone and rain stains over it. The maze's walls are drawn with it (`Wall.material_for`), Basic unless a
+  wall piece is given a style (`MazePiece.style`): cast concrete inside
   the rings, precast slabs between them.
 - `scripts/maze_stone.gd` (`MazeStone`): the ground shader (and the old stone wall shader, no longer used). The stone is Outside's `Sandstone`
   shader at a giant's scale (blocks 5 m long), made grey and damp: dark streaks run down from the joints, the

@@ -1,0 +1,456 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/wall_gallery.gd" id="1_qe4e2"]
+[ext_resource type="Script" path="res://scripts/wall.gd" id="2_iclik"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/concrete_wall_007/concrete_wall_007_diff_2k.jpg" id="3_kmm7d"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/concrete_wall_007/concrete_wall_007_nor_gl_2k.jpg" id="4_pu6ob"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/concrete_wall_007/concrete_wall_007_rough_2k.jpg" id="5_v8krm"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/concrete_slab_wall_02/concrete_slab_wall_02_diff_2k.jpg" id="6_7mtbc"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/concrete_slab_wall_02/concrete_slab_wall_02_nor_gl_2k.jpg" id="7_rhdsm"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/concrete_slab_wall_02/concrete_slab_wall_02_rough_2k.jpg" id="8_5k1td"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/concrete/concrete_diff_2k.jpg" id="9_0dygs"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/concrete/concrete_nor_gl_2k.jpg" id="10_p2dx2"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/concrete/concrete_rough_2k.jpg" id="11_4r0vw"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/rough_concrete/rough_concrete_diff_2k.jpg" id="12_sv6s0"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/rough_concrete/rough_concrete_nor_gl_2k.jpg" id="13_33ode"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/rough_concrete/rough_concrete_rough_2k.jpg" id="14_vn47p"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/ribbed_concrete_wall/ribbed_concrete_wall_diff_2k.jpg" id="15_pfwii"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/ribbed_concrete_wall/ribbed_concrete_wall_nor_gl_2k.jpg" id="16_ak0qs"]
+[ext_resource type="Texture2D" path="res://textures/polyhaven/ribbed_concrete_wall/ribbed_concrete_wall_rough_2k.jpg" id="17_2i02u"]
+[ext_resource type="Texture2D" path="res://textures/concrete.png" id="18_kw553"]
+[ext_resource type="Texture2D" path="res://textures/concrete_normal.png" id="19_yhrxp"]
+[ext_resource type="Texture2D" path="res://textures/concrete_panels.png" id="20_sksbf"]
+[ext_resource type="Texture2D" path="res://textures/concrete_panels_normal.png" id="21_v1jjh"]
+[ext_resource type="Texture2D" path="res://textures/concrete_boards.png" id="22_bmyd5"]
+[ext_resource type="Texture2D" path="res://textures/concrete_boards_normal.png" id="23_cw3vc"]
+[ext_resource type="Texture2D" path="res://textures/concrete_weathered.png" id="24_0jglj"]
+[ext_resource type="Texture2D" path="res://textures/concrete_weathered_normal.png" id="25_fgocx"]
+[ext_resource type="Texture2D" path="res://textures/concrete_monolith.png" id="26_2l5vg"]
+[ext_resource type="Texture2D" path="res://textures/concrete_monolith_normal.png" id="27_1n83c"]
+[ext_resource type="Texture2D" path="res://textures/stone_blocks.png" id="28_wl4fa"]
+[ext_resource type="Texture2D" path="res://textures/stone_blocks_normal.png" id="29_34dbf"]
+
+[node name="WallGallery" type="Node3D" unique_id=2004859295]
+script = ExtResource("1_qe4e2")
+
+[node name="Basic" type="Node3D" parent="." unique_id=121809710]
+
+[node name="Basic_Cast" type="StaticBody3D" parent="Basic" unique_id=404784660]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 0, 0)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+texture = ExtResource("3_kmm7d")
+normal_map = ExtResource("4_pu6ob")
+roughness_map = ExtResource("5_v8krm")
+
+[node name="Basic_Cast_Sign" type="Label3D" parent="Basic" unique_id=559383390]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 1, 4.9)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Basic / Cast"
+font_size = 96
+outline_size = 18
+
+[node name="Basic_Slabs" type="StaticBody3D" parent="Basic" unique_id=1214250128]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -64, 0, 0)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+look = 8
+texture = ExtResource("6_7mtbc")
+normal_map = ExtResource("7_rhdsm")
+roughness_map = ExtResource("8_5k1td")
+tile_size = 2.1
+
+[node name="Basic_Slabs_Sign" type="Label3D" parent="Basic" unique_id=2016574762]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -64, 1, 4.9)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Basic / Slabs"
+font_size = 96
+outline_size = 18
+
+[node name="Basic_Grooved" type="StaticBody3D" parent="Basic" unique_id=817046258]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -48, 0, 0)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+look = 9
+texture = ExtResource("9_0dygs")
+normal_map = ExtResource("10_p2dx2")
+roughness_map = ExtResource("11_4r0vw")
+tile_size = 4.0
+
+[node name="Basic_Grooved_Sign" type="Label3D" parent="Basic" unique_id=97934428]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -48, 1, 4.9)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Basic / Grooved"
+font_size = 96
+outline_size = 18
+
+[node name="Basic_Rough" type="StaticBody3D" parent="Basic" unique_id=1009700903]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -32, 0, 0)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+look = 10
+texture = ExtResource("12_sv6s0")
+normal_map = ExtResource("13_33ode")
+roughness_map = ExtResource("14_vn47p")
+tile_size = 1.23
+
+[node name="Basic_Rough_Sign" type="Label3D" parent="Basic" unique_id=1134677840]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -32, 1, 4.9)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Basic / Rough"
+font_size = 96
+outline_size = 18
+
+[node name="Basic_Ribbed" type="StaticBody3D" parent="Basic" unique_id=1176084362]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0, 0)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+look = 11
+texture = ExtResource("15_pfwii")
+normal_map = ExtResource("16_ak0qs")
+roughness_map = ExtResource("17_2i02u")
+tile_size = 2.0
+
+[node name="Basic_Ribbed_Sign" type="Label3D" parent="Basic" unique_id=532759084]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 1, 4.9)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Basic / Ribbed"
+font_size = 96
+outline_size = 18
+
+[node name="Basic_Concrete" type="StaticBody3D" parent="Basic" unique_id=642525945]
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+look = 6
+texture = ExtResource("18_kw553")
+normal_map = ExtResource("19_yhrxp")
+tile_size = 6.0
+
+[node name="Basic_Concrete_Sign" type="Label3D" parent="Basic" unique_id=828082795]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 4.9)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Basic / Concrete"
+font_size = 96
+outline_size = 18
+
+[node name="Basic_ConcretePanels" type="StaticBody3D" parent="Basic" unique_id=1306487069]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, 0)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+look = 0
+texture = ExtResource("20_sksbf")
+normal_map = ExtResource("21_v1jjh")
+tile_size = 9.6
+
+[node name="Basic_ConcretePanels_Sign" type="Label3D" parent="Basic" unique_id=768769076]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 1, 4.9)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Basic / Concrete Panels"
+font_size = 96
+outline_size = 18
+
+[node name="Basic_BoardMarked" type="StaticBody3D" parent="Basic" unique_id=1413868579]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32, 0, 0)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+look = 1
+texture = ExtResource("22_bmyd5")
+normal_map = ExtResource("23_cw3vc")
+tile_size = 7.0
+
+[node name="Basic_BoardMarked_Sign" type="Label3D" parent="Basic" unique_id=607116478]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32, 1, 4.9)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Basic / Board Marked"
+font_size = 96
+outline_size = 18
+
+[node name="Basic_Weathered" type="StaticBody3D" parent="Basic" unique_id=452823483]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 0, 0)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+look = 2
+texture = ExtResource("24_0jglj")
+normal_map = ExtResource("25_fgocx")
+tile_size = 10.0
+
+[node name="Basic_Weathered_Sign" type="Label3D" parent="Basic" unique_id=1482042529]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 1, 4.9)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Basic / Weathered"
+font_size = 96
+outline_size = 18
+
+[node name="Basic_Monolith" type="StaticBody3D" parent="Basic" unique_id=1277069840]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 64, 0, 0)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+look = 3
+texture = ExtResource("26_2l5vg")
+normal_map = ExtResource("27_1n83c")
+tile_size = 12.0
+
+[node name="Basic_Monolith_Sign" type="Label3D" parent="Basic" unique_id=955245031]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 64, 1, 4.9)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Basic / Monolith"
+font_size = 96
+outline_size = 18
+
+[node name="Basic_StoneBlocks" type="StaticBody3D" parent="Basic" unique_id=327851113]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 0, 0)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+look = 4
+texture = ExtResource("28_wl4fa")
+normal_map = ExtResource("29_34dbf")
+tile_size = 8.0
+
+[node name="Basic_StoneBlocks_Sign" type="Label3D" parent="Basic" unique_id=384386717]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 1, 4.9)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Basic / Stone Blocks"
+font_size = 96
+outline_size = 18
+
+[node name="Cornice" type="Node3D" parent="." unique_id=1950419527]
+
+[node name="Cornice_Cast" type="StaticBody3D" parent="Cornice" unique_id=1415124605]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0, -32)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+style = 1
+texture = ExtResource("3_kmm7d")
+normal_map = ExtResource("4_pu6ob")
+roughness_map = ExtResource("5_v8krm")
+
+[node name="Cornice_Cast_Sign" type="Label3D" parent="Cornice" unique_id=1997658637]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 1, -27.1)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Cornice / Cast"
+font_size = 96
+outline_size = 18
+
+[node name="Cornice_Slabs" type="StaticBody3D" parent="Cornice" unique_id=1610886768]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -32)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+style = 1
+look = 8
+texture = ExtResource("6_7mtbc")
+normal_map = ExtResource("7_rhdsm")
+roughness_map = ExtResource("8_5k1td")
+tile_size = 2.1
+
+[node name="Cornice_Slabs_Sign" type="Label3D" parent="Cornice" unique_id=929834919]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -27.1)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Cornice / Slabs"
+font_size = 96
+outline_size = 18
+
+[node name="Cornice_Ribbed" type="StaticBody3D" parent="Cornice" unique_id=2045753528]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -32)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+style = 1
+look = 11
+texture = ExtResource("15_pfwii")
+normal_map = ExtResource("16_ak0qs")
+roughness_map = ExtResource("17_2i02u")
+tile_size = 2.0
+
+[node name="Cornice_Ribbed_Sign" type="Label3D" parent="Cornice" unique_id=839351538]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 1, -27.1)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Cornice / Ribbed"
+font_size = 96
+outline_size = 18
+
+[node name="Pilasters" type="Node3D" parent="." unique_id=759020118]
+
+[node name="Pilasters_Cast" type="StaticBody3D" parent="Pilasters" unique_id=1747172275]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0, -64)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+style = 2
+texture = ExtResource("3_kmm7d")
+normal_map = ExtResource("4_pu6ob")
+roughness_map = ExtResource("5_v8krm")
+
+[node name="Pilasters_Cast_Sign" type="Label3D" parent="Pilasters" unique_id=1167684914]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 1, -59.1)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Pilasters / Cast"
+font_size = 96
+outline_size = 18
+
+[node name="Pilasters_Slabs" type="StaticBody3D" parent="Pilasters" unique_id=810137706]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -64)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+style = 2
+look = 8
+texture = ExtResource("6_7mtbc")
+normal_map = ExtResource("7_rhdsm")
+roughness_map = ExtResource("8_5k1td")
+tile_size = 2.1
+
+[node name="Pilasters_Slabs_Sign" type="Label3D" parent="Pilasters" unique_id=806899568]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -59.1)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Pilasters / Slabs"
+font_size = 96
+outline_size = 18
+
+[node name="Pilasters_Ribbed" type="StaticBody3D" parent="Pilasters" unique_id=1527253217]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -64)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+style = 2
+look = 11
+texture = ExtResource("15_pfwii")
+normal_map = ExtResource("16_ak0qs")
+roughness_map = ExtResource("17_2i02u")
+tile_size = 2.0
+
+[node name="Pilasters_Ribbed_Sign" type="Label3D" parent="Pilasters" unique_id=1590898454]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 1, -59.1)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Pilasters / Ribbed"
+font_size = 96
+outline_size = 18
+
+[node name="Stepped" type="Node3D" parent="." unique_id=852127686]
+
+[node name="Stepped_Cast" type="StaticBody3D" parent="Stepped" unique_id=71551289]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0, -96)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+style = 3
+texture = ExtResource("3_kmm7d")
+normal_map = ExtResource("4_pu6ob")
+roughness_map = ExtResource("5_v8krm")
+
+[node name="Stepped_Cast_Sign" type="Label3D" parent="Stepped" unique_id=1696419907]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 1, -91.1)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Stepped / Cast"
+font_size = 96
+outline_size = 18
+
+[node name="Stepped_Slabs" type="StaticBody3D" parent="Stepped" unique_id=137423273]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -96)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+style = 3
+look = 8
+texture = ExtResource("6_7mtbc")
+normal_map = ExtResource("7_rhdsm")
+roughness_map = ExtResource("8_5k1td")
+tile_size = 2.1
+
+[node name="Stepped_Slabs_Sign" type="Label3D" parent="Stepped" unique_id=923354035]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -91.1)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Stepped / Slabs"
+font_size = 96
+outline_size = 18
+
+[node name="Stepped_Ribbed" type="StaticBody3D" parent="Stepped" unique_id=948697502]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0, -96)
+script = ExtResource("2_iclik")
+width = 10.0
+height = 18.0
+depth = 3.0
+style = 3
+look = 11
+texture = ExtResource("15_pfwii")
+normal_map = ExtResource("16_ak0qs")
+roughness_map = ExtResource("17_2i02u")
+tile_size = 2.0
+
+[node name="Stepped_Ribbed_Sign" type="Label3D" parent="Stepped" unique_id=704864528]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 1, -91.1)
+pixel_size = 0.01
+billboard = 2
+modulate = Color(0.95, 0.93, 0.85, 1)
+text = "Stepped / Ribbed"
+font_size = 96
+outline_size = 18

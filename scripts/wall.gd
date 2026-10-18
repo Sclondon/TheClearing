@@ -24,6 +24,9 @@ enum Look {
 	CONCRETE = 6, CONCRETE_PANELS = 0, BOARD_MARKED = 1, WEATHERED = 2, MONOLITH = 3, STONE_BLOCKS = 4,
 	CUSTOM = 5,
 }
+## How it is built: Basic is a plain box, the rest add mouldings and piers (see style_boxes).
+enum Style { BASIC, CORNICE, PILASTERS, STEPPED }
+
 ## Each look's maps (a path with %s for diff, nor_gl and rough; or the name of a
 ## made texture and its _normal) and how many metres one tile of them covers.
 const LOOKS := {
@@ -162,6 +165,11 @@ void fragment() {
 	set(value):
 		depth = value
 		_build()
+## How it is built: a plain box (Basic), or with a footing and cornice, pilasters, or a stepped base.
+@export var style := Style.BASIC:
+	set(value):
+		style = value
+		_build()
 ## Its surface, chosen from LOOKS (which sets the textures and a fitting tile
 ## size), or Custom to keep textures of your own.
 @export var look := Look.CAST:
@@ -285,20 +293,71 @@ func _build() -> void:
 	if _shape == null or not is_instance_valid(_shape):
 		_shape = _own_child("Shape", CollisionShape3D) as CollisionShape3D
 	var size := Vector3(width, height, depth)
-	var box := BoxMesh.new()
-	box.size = size
-	_mesh.mesh = box
-	_mesh.position = Vector3(0.0, height * 0.5, 0.0)
+	var boxes := style_boxes(style, size)
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for part: Array in boxes:
+		MazeBuilder.box(tool, part[0], part[1])
+	_mesh.mesh = tool.commit()
+	_mesh.position = Vector3.ZERO
+	# A box to bump into for each part (the first is the one made before styles).
+	var shapes: Array[CollisionShape3D] = [_shape]
+	for child in get_children(true):
+		if child is CollisionShape3D and child != _shape and String(child.name).begins_with("Part"):
+			shapes.append(child)
+	while shapes.size() < boxes.size():
+		var more := CollisionShape3D.new()
+		more.name = "Part%d" % shapes.size()
+		add_child(more, false, Node.INTERNAL_MODE_BACK)
+		shapes.append(more)
+	for i in shapes.size():
+		shapes[i].disabled = i >= boxes.size()
+		if i < boxes.size():
+			var shape := BoxShape3D.new()
+			shape.size = boxes[i][1]
+			shapes[i].shape = shape
+			shapes[i].position = boxes[i][0]
 	var material := _mesh.material_override as ShaderMaterial
 	if material == null:
 		material = ShaderMaterial.new()
 		material.shader = shader()
 		_mesh.material_override = material
 	_apply(material, texture, normal_map, roughness_map, roughness, tile_size, relief, tint, break_up, variation, weathering)
-	var shape := BoxShape3D.new()
-	shape.size = size
-	_shape.shape = shape
-	_shape.position = _mesh.position
+
+
+## The boxes a wall of `style`, `size` overall body (width along X, height,
+## depth along Z, standing on the origin), is built of, as [middle, size]. The
+## first is always the body itself; the rest stand out from it.
+static func style_boxes(chosen: Style, size: Vector3) -> Array:
+	var h := size.y
+	var body := [Vector3(0.0, h * 0.5, 0.0), size]
+	match chosen:
+		Style.CORNICE:
+			# A stepped footing (two courses) and a deep cornice with a band under it.
+			return [body,
+				[Vector3(0.0, 0.8, 0.0), Vector3(size.x + 1.6, 1.6, size.z + 1.6)],
+				[Vector3(0.0, 2.1, 0.0), Vector3(size.x + 0.8, 1.0, size.z + 0.8)],
+				[Vector3(0.0, h - 0.9, 0.0), Vector3(size.x + 1.4, 1.8, size.z + 1.4)],
+				[Vector3(0.0, h - 2.4, 0.0), Vector3(size.x + 0.6, 1.2, size.z + 0.6)]]
+		Style.PILASTERS:
+			# Square piers standing out of both faces, every 6 m or so along it, and at its ends.
+			var parts := [body]
+			var long := size.x >= size.z
+			var length := size.x if long else size.z
+			var count := maxi(roundi(length / 6.0), 1)
+			for i in count + 1:
+				var along := -length * 0.5 + length * float(i) / count
+				var at := Vector3(along, h * 0.5, 0.0) if long else Vector3(0.0, h * 0.5, along)
+				var wide := 1.4
+				var out := (size.z if long else size.x) + 1.2
+				parts.append([at, Vector3(wide, h, out) if long else Vector3(out, h, wide)])
+			return parts
+		Style.STEPPED:
+			# A heavy base in two setbacks, a third and two thirds of the way up.
+			return [body,
+				[Vector3(0.0, h * 0.17, 0.0), Vector3(size.x + 2.4, h * 0.34, size.z + 2.4)],
+				[Vector3(0.0, h * 0.34, 0.0), Vector3(size.x + 1.2, h * 0.68, size.z + 1.2)]]
+	return [body]
 
 
 ## Gives any setting that is empty its default. (When the editor reloads this
@@ -306,7 +365,7 @@ func _build() -> void:
 ## settings it did not have before left empty.)
 func _fill_missing() -> void:
 	var defaults := {
-		"width": 14.0, "height": 34.0, "depth": 3.2, "look": Look.CAST, "relief": 1.0, "roughness": 0.9,
+		"width": 14.0, "height": 34.0, "depth": 3.2, "style": Style.BASIC, "look": Look.CAST, "relief": 1.0, "roughness": 0.9,
 		"tile_size": 2.16, "break_up": 1.0, "variation": 0.22, "weathering": 0.35, "tint": Color.WHITE,
 	}
 	for key: String in defaults:

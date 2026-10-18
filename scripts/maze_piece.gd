@@ -26,6 +26,11 @@ enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON }
 	set(value):
 		size = value
 		_refresh()
+## How a wall is built (Wall.Style: Basic, a plain box, or decorated).
+@export var style := Wall.Style.BASIC:
+	set(value):
+		style = value
+		_refresh()
 ## A wall between rings (only a note: thicker and higher walls are just bigger boxes).
 @export var great := false
 ## How tall a patch of ivy is, or how long a vine.
@@ -101,10 +106,8 @@ func _refresh() -> void:
 			var tool := SurfaceTool.new()
 			tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 			var s := box_size()
-			MazeBuilder.box(tool, Vector3(0.0, s.y * 0.5, 0.0), s)
-			if kind == Kind.WALL:
-				for moulding: Array in MazeBuilder.mouldings(s):
-					MazeBuilder.box(tool, moulding[0], moulding[1])
+			for part: Array in Wall.style_boxes(style if kind == Kind.WALL else Wall.Style.BASIC, s):
+				MazeBuilder.box(tool, part[0], part[1])
 			var mesh := MeshInstance3D.new()
 			mesh.mesh = tool.commit()
 			mesh.material_override = Wall.material_for(MazeBuilder.surface_of(self), true)

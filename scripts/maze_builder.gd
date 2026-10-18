@@ -101,13 +101,11 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 		# Built where it stands, then put into its square.
 		var built := SurfaceTool.new()
 		built.begin(Mesh.PRIMITIVE_TRIANGLES)
-		var middle := Vector3(0.0, size.y * 0.5, 0.0)
-		box(built, middle, size)
-		_collide(body, where, middle, size)
-		if piece.kind == MazePiece.Kind.WALL:
-			for moulding: Array in mouldings(size):
-				box(built, moulding[0], moulding[1])
-				_collide(body, where, moulding[0], moulding[1])
+		# (a wall in its style; piers and terraces always plain)
+		var chosen: Wall.Style = piece.style if piece.kind == MazePiece.Kind.WALL else Wall.Style.BASIC
+		for part: Array in Wall.style_boxes(chosen, size):
+			box(built, part[0], part[1])
+			_collide(body, where, part[0], part[1])
 		(chunks[key] as SurfaceTool).append_from(built.commit(), 0, where)
 	var materials := {}
 	for key: Array in chunks:
