@@ -9,7 +9,7 @@ editable .blend copies beside this file, which Godot does not import: this
 folder has a .gdignore).
 
 A creature of horror stories: something wearing a coyote's skin. Under it, a
-figure far too tall and too thin, pale grey-white and bare: the ghoul's
+figure far too tall and too thin, ash grey-brown, mottled and filthy, bare: the ghoul's
 starved frame (build_ghoul.py: the same bones and names as the boy, so
 CharacterRig can move it) with legs half as long again as they should be
 (`LEG_STRETCH`), long thin arms, and fingers far too long. Its face is a gaunt
@@ -39,6 +39,7 @@ import sys
 import bmesh
 import bpy
 from mathutils import Matrix, Vector
+from mathutils import noise as mnoise
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 COMPONENT = os.path.dirname(HERE)
@@ -94,10 +95,10 @@ kit.unsettled = unsettled
 SKIN, HOLLOW, EYES, PELT = range(4)
 MATERIALS = [
     # Pale dirty grey, a corpse's (darker where it sinks in: see SkinwalkerRig)
-    ("skin", (0.43, 0.41, 0.385)),
+    ("skin", (0.37, 0.345, 0.31)),
     ("hollow", (0.03, 0.025, 0.025)),
     ("eyes", (0.85, 0.8, 0.55)),
-    ("pelt", (0.37, 0.325, 0.27)),
+    ("pelt", (0.25, 0.22, 0.19)),
 ]
 
 # --- Its eyes ---
@@ -116,26 +117,33 @@ def eyes(b):
 # --- The skin it wears ---
 
 HEAD_TOP = ghoul.HEAD_CENTRE + V(0.0, 0.04, -0.004)
-# The coyote's head, worn: its skull over the top of the head, the muzzle out over the brow
-MASK_SKULL = HEAD_TOP + V(0.0, 0.012, -0.006)
-MASK_SIZE = V(0.078, 0.06, 0.09)
-# (along the muzzle from the front of the mask's skull: forward, height, half width, half height)
-MUZZLE = [(0.0, 0.032, 0.052, 0.048), (0.035, 0.024, 0.041, 0.038), (0.075, 0.018, 0.033, 0.03), (0.115, 0.014, 0.027, 0.025),
-          (0.155, 0.010, 0.022, 0.021), (0.188, 0.007, 0.018, 0.018), (0.207, 0.005, 0.013, 0.014)]
-MUZZLE_ROOT = MASK_SKULL + V(0.0, 0.0, 0.07)
-NOSE = MUZZLE_ROOT + V(0.0, 0.012, 0.22)
-SOCKET = V(0.045, 0.036, 0.078)
+# The coyote's head, worn: dried and shrunken over the top of the head, the
+# snout pulled down over the brow, so that the face under it is in its shadow
+MASK_SKULL = HEAD_TOP + V(0.0, 0.012, -0.004)
+MASK_SIZE = V(0.074, 0.056, 0.085)
+# (along the muzzle from its root: forward, height, half width, half height): shrunken to the bone
+MUZZLE = [(0.0, 0.03, 0.048, 0.044), (0.035, 0.022, 0.037, 0.034), (0.075, 0.016, 0.029, 0.026), (0.115, 0.012, 0.024, 0.021),
+          (0.155, 0.008, 0.019, 0.017), (0.186, 0.005, 0.015, 0.014), (0.204, 0.003, 0.011, 0.011)]
+MUZZLE_ROOT = MASK_SKULL + V(0.0, -0.012, 0.062)
+# (the snout is pulled down over the brow)
+MUZZLE_TILT = Matrix.Rotation(0.4, 3, "X")
+NOSE = MUZZLE_ROOT + MUZZLE_TILT @ V(0.0, 0.006, 0.212)
+SOCKET = V(0.044, 0.032, 0.074)
 # Its ears: root, middle, tip (the left one), gone limp and leaning out
-EAR = [MASK_SKULL + V(0.045, 0.05, -0.02), MASK_SKULL + V(0.075, 0.115, -0.04), MASK_SKULL + V(0.115, 0.16, -0.075)]
+EAR = [MASK_SKULL + V(0.045, 0.045, -0.02), MASK_SKULL + V(0.08, 0.1, -0.045), MASK_SKULL + V(0.125, 0.13, -0.085)]
 
-# The cloak of hide, from the nape down the back: (height, how far round from the
-# middle of the back either way, radians)
-CAPE_TOP = ghoul.HEAD_CENTRE.y - 0.03
-CAPE_BOTTOM = 0.6
-# The empty legs of the skin and its tail: (root, end), the left ones
-FORE_SKIN = (V(0.085, 1.165, 0.045), V(0.095, 0.915, 0.095))
-HIND_SKIN = (V(0.11, 0.70, -0.085), V(0.12, 0.42, -0.08))
-TAIL_SKIN = (V(0.0, 0.67, -0.105), V(0.0, 0.47, -0.13), V(0.0, 0.29, -0.11))
+# The hide, worn as a hooded cloak: over the crown and round the back and sides
+# of the head (the hood, open at the face), over the shoulders, and down the back
+# past the buttocks, its edges ragged.
+CAPE_TOP = HEAD_TOP.y + 0.03
+HOOD_BOTTOM = 1.2
+CAPE_BOTTOM = 0.55
+# The empty legs of the skin and its tail: (root, over, end), the left ones. The
+# forelegs are draped over the shoulders and hang down the chest; the hind legs
+# and the tail trail from the hem behind.
+FORE_SKIN = (V(0.1, 1.19, -0.03), V(0.112, 1.15, 0.07), V(0.1, 0.88, 0.105))
+HIND_SKIN = (V(0.11, 0.6, -0.115), V(0.118, 0.45, -0.125), V(0.12, 0.27, -0.12))
+TAIL_SKIN = (V(0.0, 0.6, -0.125), V(0.0, 0.37, -0.165), V(0.0, 0.13, -0.14))
 
 
 def body_round(y):
@@ -148,36 +156,43 @@ def body_round(y):
     else:
         rx, rz, fwd = 0.105, 0.075, 0.0
     # (over the shoulders, and the shoulder blades behind)
-    shoulders = math.exp(-((y - 1.14) / 0.07) ** 2)
-    rx = max(rx, 0.16 * shoulders + rx * (1.0 - shoulders))
-    rz = rz + 0.012 * math.exp(-((y - 1.08) / 0.06) ** 2)
+    shoulders = math.exp(-((y - 1.14) / 0.08) ** 2)
+    rx = max(rx, 0.17 * shoulders + rx * (1.0 - shoulders))
+    rz = rz + 0.014 * math.exp(-((y - 1.08) / 0.06) ** 2)
     # (the buttocks)
     rz = rz + 0.025 * math.exp(-((y - 0.68) / 0.06) ** 2)
     rx = max(rx, 0.11 * math.exp(-((y - 0.68) / 0.08) ** 2))
     return rx, rz, fwd
 
 
+def hood_point(angle, y):
+    """A point of the hood round the head, angle round from the back of the head."""
+    c = ghoul.HEAD_CENTRE
+    # (closing over the crown, flaring out below the jaw towards the shoulders)
+    above = (y - c.y) / (CAPE_TOP - c.y + 0.015)
+    shrink = math.sqrt(max(0.08, 1.0 - above * above)) if above > 0.0 else 1.0 + 0.6 * blend(c.y - 0.04, HOOD_BOTTOM, y)
+    return V(math.sin(angle) * 0.1 * shrink, y, c.z - 0.012 - math.cos(angle) * 0.108 * shrink)
+
+
 def cape_point(u, v):
-    """A point of the cloak: `u` across (-1 its right edge, 1 its left), `v` down (0 the nape, 1 the hem)."""
-    # (the hem is ragged: longer here, shorter there)
-    bottom = CAPE_BOTTOM + 0.05 * math.sin(u * 5.3 + 1.0) + 0.03 * math.sin(u * 13.1) - 0.04 * (1.0 - abs(u))
+    """A point of the cloak: u across (-1 its right edge, 1 its left), v down (0 the crown, 1 the hem)."""
+    # (the hem is ragged: longer here, shorter there; and so are its edges)
+    bottom = CAPE_BOTTOM + 0.06 * math.sin(u * 5.3 + 1.0) + 0.035 * math.sin(u * 13.1) + 0.02 * math.sin(u * 29.0) - 0.05 * (1.0 - abs(u))
     y = CAPE_TOP + (bottom - CAPE_TOP) * v
+    ragged = 1.0 + 0.07 * math.sin(v * 31.0) + 0.05 * math.sin(v * 67.0 + 2.0) * abs(u)
     rx, rz, fwd = body_round(y)
-    # How far round the body it reaches, either way: narrow at the nape, over the shoulders, round the back
-    reach = math.radians(62.0 + 28.0 * math.exp(-((y - 1.12) / 0.1) ** 2) + 20.0 * blend(1.0, 0.7, y))
+    # How far round the body it reaches, either way: right round the shoulders, round the back
+    reach = math.radians((72.0 + 55.0 * math.exp(-((y - 1.13) / 0.1) ** 2) + 15.0 * blend(1.0, 0.7, y)) * ragged)
     angle = u * reach
-    gap = 0.026 + 0.06 * v * v
-    x = math.sin(angle) * (rx + gap)
-    z = fwd - math.cos(angle) * (rz + gap)
-    # (at the nape it gathers into the back of the mask)
-    gather = blend(CAPE_TOP + 0.0, CAPE_TOP - 0.1, y)
-    x *= 0.55 + 0.45 * gather
-    z = z * (0.5 + 0.5 * gather) + (MASK_SKULL.z - 0.05) * (0.5 - 0.5 * gather)
-    return V(x, y, z)
+    gap = 0.03 + 0.07 * v * v
+    body = V(math.sin(angle) * (rx + gap), y, fwd - math.cos(angle) * (rz + gap))
+    hood = hood_point(u * math.radians(136.0 * ragged), y)
+    k = blend(HOOD_BOTTOM - 0.07, HOOD_BOTTOM + 0.05, y)
+    return body.lerp(hood, k)
 
 
 def cape(b):
-    across, down = (10, 8) if kit.LOW else (34, 30)
+    across, down = (12, 12) if kit.LOW else (40, 44)
     grid = []
     for j in range(down + 1):
         row = []
@@ -211,11 +226,11 @@ def mask(b):
     muzzle out over the brow, the cheek skin hanging down beside the face, the
     ears gone limp."""
     b.ellipsoid(MASK_SKULL, MASK_SIZE, None, 18, 10)
-    rings = [(MUZZLE_ROOT + V(0.0, y, z), X * rx, Y * ry) for z, y, rx, ry in MUZZLE]
-    b.tube(rings + kit.dome(rings[-1], Z, 0.012, 3), 16)
+    rings = [(MUZZLE_ROOT + MUZZLE_TILT @ V(0.0, y, z), X * rx, MUZZLE_TILT @ (Y * ry)) for z, y, rx, ry in MUZZLE]
+    b.tube(rings + kit.dome(rings[-1], MUZZLE_TILT @ Z, 0.01, 3), 16)
     # The brow over the empty eye holes
     for side in (1.0, -1.0):
-        b.ellipsoid(MASK_SKULL + V(side * 0.042, 0.052, 0.075), V(0.022, 0.012, 0.024), Matrix.Rotation(0.3, 3, "X"), 10, 5)
+        b.ellipsoid(MASK_SKULL + V(side * 0.038, 0.036, 0.068), V(0.018, 0.007, 0.02), Matrix.Rotation(0.3, 3, "X"), 10, 5)
         # The cheek skin hanging down beside the face, and the jowls of the ruff
         b.ellipsoid(MASK_SKULL + V(side * 0.074, -0.05, 0.02), V(0.012, 0.07, 0.042), Matrix.Rotation(side * 0.08, 3, "Z") @ Matrix.Rotation(-0.2, 3, "X"), 12, 6)
         b.ellipsoid(MASK_SKULL + V(side * 0.07, -0.11, 0.0), V(0.011, 0.04, 0.03), Matrix.Rotation(side * 0.05, 3, "Z"), 10, 5)
@@ -223,7 +238,7 @@ def mask(b):
         wide = V(side * 0.92, 0.0, -0.38).normalized()
         face = V(side * 0.38, 0.12, 0.92).normalized()
         ear = []
-        for t, half, thick in ((0.0, 0.034, 0.014), (0.12, 0.038, 0.009), (0.35, 0.032, 0.007), (0.6, 0.022, 0.006), (0.82, 0.011, 0.004), (1.0, 0.002, 0.002)):
+        for t, half, thick in ((0.0, 0.03, 0.012), (0.12, 0.033, 0.008), (0.35, 0.027, 0.006), (0.6, 0.019, 0.005), (0.82, 0.01, 0.004), (1.0, 0.003, 0.002)):
             ear.append((ear_point(t, side), wide * half, face * thick))
         b.tube(kit.dome(ear[0], -Y, 0.008, 2)[::-1] + ear, 10)
     # The back of the head of it, running into the cloak
@@ -243,56 +258,60 @@ def mask_teeth(b):
         for z, tall, radius in ((0.185, 0.008, 0.0028), (0.165, 0.024, 0.0048), (0.14, 0.009, 0.0034), (0.115, 0.01, 0.0038), (0.09, 0.011, 0.0042), (0.065, 0.009, 0.0042)):
             ring = [m for m in MUZZLE if m[0] >= z - 0.04][0]
             _z, y, rx, ry = ring
-            base = MUZZLE_ROOT + V(side * rx * 0.62, y - ry * 0.72, z)
-            kit.spike(b, base, base - Y * tall + V(0.0, 0.0, 0.002), radius, 5)
-        # (the dried lip along it)
-        b.strand([MUZZLE_ROOT + V(side * m[2] * 0.82, m[1] - m[3] * 0.6, m[0]) for m in MUZZLE[1:-1]], [0.006, 0.0065, 0.006, 0.0055, 0.005], 6)
+            base = MUZZLE_ROOT + MUZZLE_TILT @ V(side * rx * 0.62, y - ry * 0.72, z)
+            kit.spike(b, base, base + MUZZLE_TILT @ V(0.0, -tall, 0.002), radius, 5)
+        # (the dried lip along it, drawn back off the teeth)
+        b.strand([MUZZLE_ROOT + MUZZLE_TILT @ V(side * m[2] * 0.82, m[1] - m[3] * 0.55, m[0]) for m in MUZZLE[1:-1]], [0.006, 0.0065, 0.006, 0.0055, 0.005], 6)
 
 
 def skins(b):
-    """Its empty legs and its tail."""
+    """Its empty legs (flat, wide tubes of hide, a paw at the end of each) and its tail."""
     for side in (1.0, -1.0):
-        for (root, end), width in ((FORE_SKIN, 0.026), (HIND_SKIN, 0.03)):
-            a = V(root.x * side, root.y, root.z)
-            c = V(end.x * side, end.y, end.z)
-            along = (c - a).normalized()
-            out = V(side, 0.0, 0.0)
-            flat = along.cross(out).normalized()
+        for line, width in ((FORE_SKIN, 0.046), (HIND_SKIN, 0.05)):
+            a, m, c = (V(j.x * side, j.y, j.z) for j in line)
             rings = []
-            for t, w in ((0.0, 1.0), (0.2, 1.05), (0.45, 0.8), (0.7, 0.62), (0.9, 0.6), (1.0, 0.5)):
-                rings.append((a.lerp(c, t), out * width * w, flat * width * 0.38 * w))
-            b.tube(rings, 10)
-            # (the paw at its end, hanging)
-            b.ellipsoid(c + along * 0.015 + flat * 0.006, V(0.019, 0.024, 0.016), None, 8, 5)
-    # The tail: thin at its root, bushy, to a point
+            for t, w in ((0.0, 1.0), (0.15, 1.1), (0.32, 0.95), (0.5, 0.78), (0.68, 0.66), (0.84, 0.6), (1.0, 0.52)):
+                at = a.lerp(m, t * 2.0) if t < 0.5 else m.lerp(c, t * 2.0 - 1.0)
+                ahead = (m - a).normalized() if t < 0.5 else (c - m).normalized()
+                out = V(side, 0.0, 0.0)
+                flat_way = ahead.cross(out).normalized()
+                # (wrinkled: it is only skin)
+                w *= 1.0 + 0.12 * math.sin(t * 23.0 + side)
+                rings.append((at, out * width * w, flat_way * width * 0.3 * w))
+            b.tube(rings, 12)
+            b.ellipsoid(c + (c - m).normalized() * 0.014, V(0.017, 0.02, 0.01), None, 8, 5)
+            for toe in (-1.0, 0.0, 1.0):
+                b.ellipsoid(c + (c - m).normalized() * 0.036 + V(toe * 0.01, 0.0, 0.006), V(0.006, 0.012, 0.005), None, 6, 3)
+    # The tail: thin at its root, a bushy brush, to a point
     points = [TAIL_SKIN[0], TAIL_SKIN[0].lerp(TAIL_SKIN[1], 0.5), TAIL_SKIN[1], TAIL_SKIN[1].lerp(TAIL_SKIN[2], 0.5), TAIL_SKIN[2]]
-    b.strand(points, [0.016, 0.03, 0.04, 0.036, 0.016], 12)
+    b.strand(points, [0.018, 0.036, 0.048, 0.042, 0.016], 12)
 
 
 # --- Colouring the hide, and its fur's lie ---
 
 def pelt_colours(part, p, normal):
-    """(open, dark, pale, tawny) at a point of the hide, by where it is (p: modelled, unsettled)."""
+    """(open, dark, pale, tawny) at a point of the hide, by where it is (p: modelled, unsettled).
+    Long dead: matted, dirty, the colour gone out of it, darker where it is worn."""
     q = p - MASK_SKULL
+    grime = 0.5 + 0.5 * mnoise.noise(p * 11.0)
     if part == "mask":
-        lower = blend(-0.01, -0.06, q.y)
-        tawny = blend(0.05, 0.15, q.z) * blend(-0.02, 0.03, q.y) * 0.9 + 0.6 * blend(0.03, 0.09, q.y) * blend(0.0, -0.05, q.z)
-        dark = 0.6 * blend(0.17, 0.21, q.y) + 0.25 * blend(0.1, 0.2, q.z) * blend(0.02, 0.05, q.y)
-        return 1.0, min(dark, 1.0), 0.75 * lower, min(tawny, 1.0)
+        # Dried and dark: a little of the tawny left along the muzzle, the lips and ears darker still
+        lower = blend(-0.02, -0.07, q.y)
+        tawny = 0.6 * blend(0.04, 0.14, q.z) * blend(-0.04, 0.02, q.y) + 0.25
+        dark = 0.2 + 0.35 * blend(0.1, 0.15, q.y) + 0.2 * grime
+        return 0.9, min(dark, 1.0), 0.15 * lower, tawny
     if part == "skins":
-        _off, along = ghoul_chain(p, list(TAIL_SKIN))
-        if p.y < 0.68 and abs(p.x) < 0.06:
-            tip = blend(0.36, 0.3, p.y)
-            return 1.0, max(tip, 0.3 * blend(-0.2, 0.6, normal.z * -1.0)), 0.3 * (1.0 - tip), 0.15
-        return 0.9, 0.15, 0.25, 0.85
-    # The cloak: grizzled down its middle (the coyote's back), tawny to its edges
-    # (its flanks), the inside of it paler (the belly hide)
-    inside = normal.z > 0.2 and abs(normal.x) < 0.8
+        if p.y < 0.62 and abs(p.x) < 0.06:
+            tip = blend(0.24, 0.16, p.y)
+            return 1.0, max(tip, 0.4 + 0.2 * grime), 0.12, 0.15
+        return 0.9, 0.2 + 0.3 * grime, 0.12, 0.45
+    # The cloak: dark and matted down its middle (the coyote's back), dull at its
+    # edges (its flanks); the inside of it, the dried hide, dark and leathery
+    inside = normal.z > 0.2 and abs(normal.x) < 0.8 and p.y < HOOD_BOTTOM
     if inside:
-        return 0.8, 0.0, 0.85, 0.15
+        return 0.6, 0.3 + 0.3 * grime, 0.3, 0.15
     edge = min(abs(p.x) / 0.16, 1.0)
-    saddle = blend(0.5, 0.0, edge) * blend(CAPE_TOP - 0.05, CAPE_TOP - 0.2, p.y)
-    return 1.0, 0.55 * saddle, 0.35 * blend(0.75, 1.0, edge), 0.45 * blend(0.3, 0.9, edge)
+    return 1.0, 0.12 + 0.35 * blend(0.6, 0.0, edge) + 0.25 * grime, 0.12 * blend(0.7, 1.0, edge), 0.35 + 0.3 * blend(0.3, 0.9, edge)
 
 
 def ghoul_chain(p, joints):
@@ -349,7 +368,9 @@ def flat(shapes, value):
 def bones():
     listed = ghoul.bones()
     for side, suffix in ((1.0, "_l"), (-1.0, "_r")):
-        for name, (root, end), parent in (("pelt_fore", FORE_SKIN, "chest"), ("pelt_hind", HIND_SKIN, "hips")):
+        for name, line, parent in (("pelt_fore", FORE_SKIN, "chest"), ("pelt_hind", HIND_SKIN, "hips")):
+            # (the foreleg hangs from where it comes over the shoulder)
+            root, end = (line[1], line[2]) if name == "pelt_fore" else (line[0], line[2])
             listed.append((name + suffix, V(root.x * side, root.y, root.z), parent))
             listed.append((name + "_end" + suffix, V(end.x * side, end.y, end.z), name + suffix))
     listed.append(("pelt_tail", TAIL_SKIN[0], "hips"))
@@ -361,7 +382,7 @@ def bones():
 def cape_weights(p):
     made = ghoul.trunk_weights(p)
     # (at the nape it is the mask's: it goes with the head)
-    top = blend(CAPE_TOP - 0.08, CAPE_TOP - 0.01, p.y)
+    top = blend(HOOD_BOTTOM + 0.0, HOOD_BOTTOM + 0.09, p.y)
     if top > 0.0:
         made = {bone: weight * (1.0 - top) for bone, weight in made.items()}
         made["head"] = made.get("head", 0.0) + top
@@ -380,6 +401,7 @@ def weights(part, p):
         best = None
         for name, joints, parent in (("pelt_fore", FORE_SKIN, "chest"), ("pelt_hind", HIND_SKIN, "hips")):
             line = [V(j.x * side, j.y, j.z) for j in joints]
+            line = [line[0], line[-1]] if name == "pelt_hind" else line
             off, along = ghoul_chain(p, line)
             if best is None or off < best[0]:
                 best = (off, name + suffix, parent, along)
@@ -392,6 +414,36 @@ def weights(part, p):
         hung = blend(0.0, 0.2, along)
         return {parent: 1.0 - hung, bone: hung}
     return ghoul.weights(part, p)
+
+
+def dirt_of(part, p):
+    """How filthy its skin is at a point (0..1): the hands and feet worst, up the
+    shins and forearms, streaks and blotches elsewhere (p: modelled, unsettled)."""
+    blotch = 0.5 + 0.5 * mnoise.noise(p * 13.0)
+    if part in ("legs", "feet"):
+        return min(1.0, blend(0.62, 0.12, p.y) * 0.9 + 0.3 * blotch * blotch)
+    if part in ("hands", "fingers"):
+        return 0.75 + 0.2 * blotch
+    if part == "torso":
+        arm = blend(0.12, 0.16, abs(p.x)) * blend(1.08, 0.95, p.y)
+        return min(1.0, arm * blend(1.0, 0.5, p.y) * 0.9 + 0.5 * blotch * blotch * blotch)
+    return 0.05 + 0.35 * blotch * blotch * blotch
+
+
+def dirty(made_fn, part):
+    """A part of its skin with its filth (green) and mottling (blue) put into its
+    colour, beside how far each point is in a hollow (red)."""
+    def made(b):
+        mesh = made_fn(b)
+        cavity = mesh.color_attributes.get(ghoul.CAVITY)
+        if cavity is None:
+            return mesh
+        for vertex, item in zip(mesh.vertices, cavity.data):
+            q = unsettled(part, kit.from_blender(vertex.co))
+            mottle = 0.5 + 0.5 * mnoise.noise(q * 31.0 + Vector((3.1, 7.7, 1.3)))
+            item.color = (item.color[0], dirt_of(part, q), mottle, 1.0)
+        return mesh
+    return made
 
 
 def lifted_trunk(b):
@@ -408,12 +460,12 @@ def unlifted(extra):
 
 
 PARTS = [
-    ("torso", SKIN, ghoul.shaded(lifted_trunk, ghoul.TRUNK_FUSE, -0.014, unlifted(ghoul.trunk_hollows)), None),
-    ("legs", SKIN, ghoul.shaded(ghoul.legs, (0.0032, 3, 4200), -0.006), None),
-    ("feet", SKIN, ghoul.shaded(ghoul.feet, (0.003, 3, 1600), 0.0), None),
-    ("hands", SKIN, ghoul.shaded(ghoul.hands, flat=0.0), None),
-    ("fingers", SKIN, ghoul.shaded(ghoul.fingers, flat=0.3), None),
-    ("head", SKIN, ghoul.shaded(ghoul.head, None, -0.004, unlifted(ghoul.head_hollows)), None),
+    ("torso", SKIN, dirty(ghoul.shaded(lifted_trunk, ghoul.TRUNK_FUSE, -0.014, unlifted(ghoul.trunk_hollows)), "torso"), None),
+    ("legs", SKIN, dirty(ghoul.shaded(ghoul.legs, (0.0032, 3, 4200), -0.006), "legs"), None),
+    ("feet", SKIN, dirty(ghoul.shaded(ghoul.feet, (0.003, 3, 1600), 0.0), "feet"), None),
+    ("hands", SKIN, dirty(ghoul.shaded(ghoul.hands, flat=0.0), "hands"), None),
+    ("fingers", SKIN, dirty(ghoul.shaded(ghoul.fingers, flat=0.3), "fingers"), None),
+    ("head", SKIN, dirty(ghoul.shaded(ghoul.head, None, -0.004, unlifted(ghoul.head_hollows)), "head"), None),
     ("hollows", HOLLOW, ghoul.shaded(ghoul.hollows, flat=1.0), None),
 
     ("eyes", EYES, flat(eyes, 1.0), None),

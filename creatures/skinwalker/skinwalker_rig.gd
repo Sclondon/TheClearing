@@ -44,7 +44,9 @@ const DROP_TIME := 0.6
 const WALK: Array[float] = [0.25, 0.75, 0.0, 0.5]
 const BOUND: Array[float] = [0.52, 0.6, 0.0, 0.07]
 ## The colour of its skin where it sinks in (the model's "skin" is the rest).
-const SHADE := Color(0.3, 0.3, 0.32)
+const SHADE := Color(0.12, 0.11, 0.105)
+## The filth on it (where the model says, in the green of its vertex colours: hands, feet, shins, forearms, blotches).
+const GRIME := Color(0.1, 0.08, 0.06)
 
 ## 0 on all fours, 1 up on its legs: the body says which it should be (the rise is an act).
 var upright := false
@@ -135,7 +137,10 @@ func restyle() -> void:
 					part.set_surface_override_material(surface, skin_material(original.albedo_color))
 				"pelt":
 					var coat := CoyoteLook.coat_material(original.albedo_color, 0 if (low_poly or Settings.low_poly) else 2)
-					DogLook.tune(coat, {&"face": -100.0, &"fur_length": 0.03, &"droop": 0.6, &"clumps": Vector2(26.0, 9.0)})
+					# (long dead: matted into clumps, dull, filthy)
+					DogLook.tune(coat, {&"face": -100.0, &"fur_length": 0.036, &"droop": 0.8, &"clumps": Vector2(16.0, 6.0), &"clump_tone": 0.55,
+							&"tawny": Color(0.33, 0.25, 0.17), &"pale": Color(0.4, 0.36, 0.3), &"dark": Color(0.05, 0.045, 0.04), &"grizzle": 0.35,
+							&"rim_gain": 0.25, &"tip_bleach": 0.05})
 					part.set_surface_override_material(surface, coat)
 				"eyes":
 					_eyes = eye_material()
@@ -146,13 +151,15 @@ static func skin_material(colour: Color) -> ShaderMaterial:
 	if _skin_shader == null:
 		_skin_shader = Shader.new()
 		_skin_shader.code = Toon.SHADER.replace("uniform vec3 albedo : source_color = vec3(1.0);",
-				"uniform vec3 albedo : source_color = vec3(1.0);\nuniform vec3 shade : source_color = vec3(0.2);\nuniform float softness = 0.06;").replace(
+				"uniform vec3 albedo : source_color = vec3(1.0);\nuniform vec3 shade : source_color = vec3(0.2);\nuniform vec3 grime : source_color = vec3(0.1);\nuniform float softness = 0.06;").replace(
 				"ALBEDO = albedo * (1.0 - stripe * line);",
-				"float sunk = smoothstep(0.5 - softness - fwidth(COLOR.r), 0.5 + softness + fwidth(COLOR.r), COLOR.r);\n\tALBEDO = mix(albedo, shade, sunk) * (1.0 - stripe * line);")
+				# (red: how far in a hollow; green: how filthy; blue: mottling)
+				"float sunk = smoothstep(0.5 - softness - fwidth(COLOR.r), 0.5 + softness + fwidth(COLOR.r), COLOR.r);\n\tvec3 base = albedo * mix(0.62, 1.22, COLOR.b);\n\tbase = mix(base, grime, COLOR.g * 0.85);\n\tALBEDO = mix(base, shade, sunk) * (1.0 - stripe * line);")
 	var material := ShaderMaterial.new()
 	material.shader = _skin_shader
 	material.set_shader_parameter(&"albedo", colour)
 	material.set_shader_parameter(&"shade", SHADE)
+	material.set_shader_parameter(&"grime", GRIME)
 	material.set_shader_parameter(&"softness", 0.06)
 	return material
 
@@ -287,7 +294,7 @@ func _pose_extra(delta: float) -> void:
 		var side := 1.0 if k % 2 == 0 else -1.0
 		var at := fposmod(_gait - lerpf(WALK[k], BOUND[k], _run_blend), 1.0)
 		var half := stride * duty * 0.5 * moving
-		var home := Vector3(side * (0.15 if fore else 0.19), 0.0, (shoulder_crawl.z + 0.1) if fore else (hip_crawl.z - 0.16))
+		var home := Vector3(side * (0.12 if fore else 0.155), 0.0, (shoulder_crawl.z + 0.1) if fore else (hip_crawl.z - 0.16))
 		var step := Vector3.ZERO
 		if at < duty:
 			step.z = lerpf(half, -half, at / duty)
@@ -377,7 +384,7 @@ func _pose_extra(delta: float) -> void:
 		var turn := side * 0.5 * (1.0 - stand)
 		var basis_foot := Basis(Vector3.UP, turn) * Basis(Vector3.RIGHT, toes_up)
 		_toes[i].rotation.x = -toes_up * 0.9
-		_solve_leg(i, side, to_hips * target, (to_hips.basis * basis_foot).orthonormalized(), side * lerpf(1.0, 0.12, stand))
+		_solve_leg(i, side, to_hips * target, (to_hips.basis * basis_foot).orthonormalized(), side * lerpf(0.65, 0.12, stand))
 
 	# --- The arms ---
 	for i in 2:
