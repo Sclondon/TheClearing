@@ -58,6 +58,25 @@ extends Resource
 ## a jump over the ground.
 @export_range(0.0, 1.0) var wall_vines := 0.0
 
+@export_group("What hunts it")
+## How many of each thing that hunts are put in the ring's passages (by
+## MazeEnemies.populate, from the round's seed). Packs and colonies count as one.
+@export_range(0, 4) var snakes := 1
+@export_range(0, 6) var mummy_packs := 2
+## A ReDead-like ghoul each, standing in a dead end.
+@export_range(0, 6) var ghouls := 2
+@export_range(0, 3) var centipedes := 1
+## Giant spiders, each waiting high on a wall.
+@export_range(0, 4) var spiders := 2
+@export_range(0, 3) var abominations := 1
+## Walls of slime that fill a hall.
+@export_range(0, 3) var slime_walls := 1
+@export_range(0, 4) var bat_colonies := 2
+@export_range(0, 3) var baboon_troops := 1
+## Pairs of aliens (each pack two or three).
+@export_range(0, 3) var alien_packs := 1
+@export_range(0, 3) var dog_packs := 1
+
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
 
