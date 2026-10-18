@@ -240,11 +240,55 @@ func _begin(players: Array, my_slot: int, online: bool, seed_value: int) -> void
 	world = World.new()
 	world.name = "World"
 	add_child(world)
-	world.setup(seed_value, my_slot, players, online, Mazes.for_round(round_number))
+	# (a loading screen while the round is made, a stage at a time, so that it is not
+	# frozen; tests have it all at once)
+	if not testing:
+		_loading_page()
+		world.stepwise = true
+		world.building.connect(_loading_step)
+	await world.setup(seed_value, my_slot, players, online, Mazes.for_round(round_number))
 	voice.world = world
 	world.escaped.connect(_on_escaped)
 	world.caught.connect(func(_seat: int) -> void: _say("Caught! Back to the clearing."))
 	_show_hud()
+
+
+## The loading screen: the name, what is being made now, and how far along.
+var _loading_label: Label
+var _loading_bar: ProgressBar
+## About how many stages a round is made in (World and MazeBuilder say each).
+const LOADING_STAGES := 10
+
+
+func _loading_page() -> void:
+	var box := _new_page()
+	(_page as ColorRect).color = Color(0.05, 0.055, 0.05)
+	box.add_child(_label("WARREN", 66, INK))
+	_loading_label = _label("Making the maze...", 28, INK.darkened(0.15))
+	box.add_child(_loading_label)
+	_loading_bar = ProgressBar.new()
+	_loading_bar.max_value = LOADING_STAGES
+	_loading_bar.show_percentage = false
+	_loading_bar.custom_minimum_size = Vector2(520, 18)
+	_loading_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var back := StyleBoxFlat.new()
+	back.bg_color = STONE
+	back.border_color = MOSS.darkened(0.35)
+	back.set_border_width_all(2)
+	back.set_corner_radius_all(3)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = MOSS.darkened(0.15)
+	fill.set_corner_radius_all(3)
+	_loading_bar.add_theme_stylebox_override("background", back)
+	_loading_bar.add_theme_stylebox_override("fill", fill)
+	box.add_child(_loading_bar)
+
+
+func _loading_step(what: String) -> void:
+	if _loading_label == null or not is_instance_valid(_loading_label):
+		return
+	_loading_label.text = what + "..."
+	_loading_bar.value = minf(_loading_bar.value + 1.0, LOADING_STAGES - 0.5)
 
 
 func _end_world() -> void:

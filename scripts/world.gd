@@ -69,6 +69,20 @@ var _send_in := 0.0
 var _enemies_in := 0.0
 
 
+## For the loading screen (Main): with `stepwise` on, `setup` stops for a frame
+## between its stages and says which comes next (`building`), so that the screen
+## is not frozen while the round is made. Off (tests and tools), it is all done at
+## once and `setup` has finished when it returns.
+signal building(what: String)
+var stepwise := false
+
+
+func _breathe(what: String) -> void:
+	building.emit(what)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
 ## Builds the maze for `seed_value` and puts everyone in the clearing.
 ## `players` is [{slot, look}] for everyone, this player included.
 ## `layout_path`, if given, is a maze laid out in the editor (see Mazes) to play
@@ -79,6 +93,8 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	_sky()
 	var builder := MazeBuilder.new()
 	builder.name = "Maze"
+	builder.stepwise = stepwise
+	builder.building.connect(func(what: String) -> void: building.emit(what))
 	add_child(builder)
 	var laid_out: MazeLayout = null
 	if layout_path != "":
@@ -87,14 +103,16 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	if laid_out:
 		laid_out.name = "Layout"
 		builder.add_child(laid_out)
-		builder.realize(laid_out)
+		await builder.realize(laid_out)
 		maze = builder.maze
 	else:
 		# (by the rules set in the maze editor: Mazes.rules)
 		var rules := Mazes.rules()
 		maze = Maze.generate(seed_value, int(Flags.value("rings", str(RINGS))), rules[0], rules[1], rules[2])
-		builder.build(maze)
+		await builder.build(maze)
 	start_at_gate = DevTools.enabled() and Flags.value("start") != "middle"
+	if stepwise:
+		await _breathe("Day, weather and the gates")
 	# Day and night, and the clearing's gates shut through the night.
 	day = DayCycle.put(self)
 	day.dawn.connect(_shut_gates.bind(false))
@@ -102,6 +120,8 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	weather = Weather.put(self, seed_value, day, builder.ground_material)
 	_put_gates()
 
+	if stepwise:
+		await _breathe("Waking everyone in the clearing")
 	for entry: Dictionary in players:
 		var seat := int(entry["slot"])
 		var look: Dictionary = Looks.decode(str(entry.get("look", "")), seat)
@@ -155,7 +175,11 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	# (the hand button cuts a strung vine as well, as the act key does: see try_cut)
 	touch.act_pressed.connect(func() -> void: try_cut())
 
+	if stepwise:
+		await _breathe("Letting loose what hunts the maze")
 	_enemies(seed_value)
+	if stepwise:
+		await _breathe("The animals, the birds and what lies about")
 	wildlife = Wildlife.new()
 	wildlife.name = "Wildlife"
 	add_child(wildlife)

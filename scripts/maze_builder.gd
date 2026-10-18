@@ -59,13 +59,30 @@ var preview := false
 var round_sections: RoundBuilder
 
 
+## For a loading screen: with `stepwise` on, building stops for a frame between
+## its stages and says which comes next (`building`), so that the screen is not
+## frozen while the maze goes up. Off, it is all built at once, as before (and
+## `build` and `realize` then finish before they return, awaited or not).
+signal building(what: String)
+var stepwise := false
+
+
+func _breathe(what: String) -> void:
+	building.emit(what)
+	# (two frames: one to draw what it now says)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
 ## Builds the maze `plan`, laid out as it generates.
 func build(plan: Maze) -> void:
+	if stepwise:
+		await _breathe("Laying out the maze")
 	layout = MazeLayout.new()
 	layout.name = "Layout"
 	add_child(layout)
 	layout.lay_out(plan)
-	realize(layout, plan)
+	await realize(layout, plan)
 
 
 ## Builds the maze laid out by `pieces` (a MazeLayout, which may be another
@@ -74,26 +91,36 @@ func build(plan: Maze) -> void:
 func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 	layout = pieces
 	maze = plan if plan else pieces.plan()
+	if stepwise:
+		await _breathe("Raising the walls")
 	var body := StaticBody3D.new()
 	body.name = "Walls"
 	# (its shapes all put in before it goes into the world: put in one by one
 	# after, each would have the physics make the body over again)
 	_walls(body, pieces)
 	add_child(body)
+	if stepwise:
+		await _breathe("Growing the ivy and hanging the vines")
 	features = MazeFeatures.new()
 	features.name = "Features"
 	add_child(features)
 	features.realize(pieces)
+	if stepwise:
+		await _breathe("Sowing the grass")
 	if not preview:
 		_grass()
 	_ground()
 	if not preview:
 		_pond()
+	if stepwise:
+		await _breathe("Planting the trees")
 	_trees(pieces)
 	if not preview:
 		_undergrowth(pieces)
 	# The round sections outside the square ones, past the moor.
 	if maze.round_rings:
+		if stepwise:
+			await _breathe("Building the round sections")
 		round_sections = RoundBuilder.new()
 		round_sections.name = "Round"
 		round_sections.plan = maze.round_rings
