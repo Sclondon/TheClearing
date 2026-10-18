@@ -93,6 +93,23 @@ func _initialize() -> void:
 				if not _reaches_exit(maze, way[0] + way[1]):
 					shut_in += 1
 			check("%s: no gate a dead end" % name, shut_in == 0, "(%d of %d)" % [shut_in, maze.gates[0].size()])
+			# Each gate comes out into a hall across it: no way straight on past a hall's
+			# width, and open to both sides.
+			var straight_on := 0
+			for way: Array in maze.gates[0]:
+				var step: Vector2i = way[1]
+				var cell: Vector2i = way[0] + step
+				while maze.entrances.has(cell):
+					cell += step
+				var past := cell
+				var ahead := 0
+				while not maze.blocked(cell, step) and ahead <= maze.styles[0].span:
+					cell += step
+					ahead += 1
+				var side := Vector2i(step.y, step.x)
+				if ahead >= maze.styles[0].span or maze.blocked(past, side) or maze.blocked(past, -side):
+					straight_on += 1
+			check("%s: every gate into a hall across it" % name, straight_on == 0, "(%d of %d not)" % [straight_on, maze.gates[0].size()])
 			var first_ring := 0
 			for i in maze.size * maze.size:
 				var counted := Vector2i(i % maze.size, i / maze.size)
@@ -119,6 +136,25 @@ func _initialize() -> void:
 			inside_out += 1
 	check("wall boxes face out on every side", inside_out == 0, "(%d of %d triangles inside out)" % [inside_out, points.size() / 3])
 
+	# No face of a wall inside a ring lies in a face of a great wall facing the same
+	# way (they are different concretes, and would flicker).
+	for seed_value in [12345, 777, 4242]:
+		var laid := MazeLayout.new()
+		laid.lay_out(Maze.generate(seed_value))
+		var great: Array[AABB] = []
+		var plain: Array[AABB] = []
+		for piece: MazePiece in laid.pieces(MazePiece.Kind.WALL):
+			var at := piece.box_transform().origin
+			var size := piece.box_size()
+			(great if piece.great else plain).append(AABB(at - Vector3(size.x, 0.0, size.z) * 0.5, size))
+		var fighting := 0
+		for one: AABB in plain:
+			for other_box: AABB in great:
+				if _faces_meet(one, other_box):
+					fighting += 1
+		check("seed %d: no wall face in a great wall's face" % seed_value, fighting == 0, "(%d)" % fighting)
+		laid.free()
+
 	print("MAZE TEST %s" % ("PASSED" if failures == 0 else "FAILED (%d)" % failures))
 	quit(failures)
 
@@ -136,4 +172,27 @@ func _reaches_exit(maze: Maze, from: Vector2i) -> bool:
 			if maze.inside(next) and not seen.has(next) and not maze.in_clearing(next) and not maze.blocked(cell, step):
 				seen[next] = true
 				queue.push_back(next)
+	return false
+
+
+# Whether a face of `a` and a face of `b` facing the same way lie in one plane and
+# overlap (more than a sliver).
+func _faces_meet(a: AABB, b: AABB) -> bool:
+	for axis in 3:
+		for far in [false, true]:
+			# (bottoms are not drawn)
+			if axis == 1 and not far:
+				continue
+			var pa: float = (a.end if far else a.position)[axis]
+			var pb: float = (b.end if far else b.position)[axis]
+			if absf(pa - pb) > 0.01:
+				continue
+			var overlap := true
+			for other in 3:
+				if other == axis:
+					continue
+				if minf(a.end[other], b.end[other]) - maxf(a.position[other], b.position[other]) < 0.05:
+					overlap = false
+			if overlap:
+				return true
 	return false
