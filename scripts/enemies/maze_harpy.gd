@@ -26,9 +26,10 @@ extends MazeEnemy
 ## - Whatever happens it climbs away, flapping hard, back up over the walls;
 ##   circles again (at most `swoops` dives in all), or flies back to its perch
 ##   and lands, talons forward, braking.
-## - IT LOSES THEM under cover: anyone with something over their head (a ledge,
+## - IT LOSES THEM under cover: anyone with something over their head (a platform,
 ##   a bridge), or in a slot too narrow for its wings (`SLOT`), or with no hall
-##   for it to come down, cannot be dived at; it circles on, and if they stay
+##   for it to come down (straight, open to the sky, and wider than its wings,
+##   `WINGS_ROOM`, all the way along), cannot be dived at; it circles on, and if they stay
 ##   so for `lose_time` it gives up and goes home. A dive already begun is
 ##   broken off if they get under cover before its line is set. It never goes
 ##   after anyone in the clearing.
@@ -51,6 +52,8 @@ const MIN_RUN := 13.0
 const MAX_RUN := 24.0
 ## Narrower than this (metres between walls, either way) is a slot it cannot get into.
 const SLOT := 5.0
+## How wide a hall must be, wall to wall, all along its dive (its wings are about 4.5 m across).
+const WINGS_ROOM := 6.5
 ## Above the wall tops, as it circles and comes and goes.
 const OVER_WALLS := 6.0
 const CIRCLE_RADIUS := 11.0
@@ -261,9 +264,27 @@ func _run_for(player: Node3D) -> Array:
 		# (open sky over the end of the hall, to come down into)
 		if not _clear_line(end + Vector3.UP * 3.0, end + Vector3.UP * (_altitude + 5.0)):
 			continue
+		# (and wide enough for its wings all the way along, low and high: no slots)
+		if not _wide_all_along(feet, face, run):
+			continue
 		longest = run
 		best = [end, -face]
 	return best
+
+
+## Whether the hall from `feet` along `way` for `run` metres is wider than its
+## wings (`WINGS_ROOM` between the walls) all the way, at its height on the way
+## in (2 m) and higher up where it comes down (8 m).
+func _wide_all_along(feet: Vector3, way: Vector3, run: float) -> bool:
+	var across := way.cross(Vector3.UP)
+	var at := 0.0
+	while at <= run:
+		for high: float in [2.0, 8.0]:
+			var p := feet + way * at + Vector3.UP * high
+			if _free(p, across, WINGS_ROOM) + _free(p, -across, WINGS_ROOM) < WINGS_ROOM:
+				return false
+		at += 3.0
+	return true
 
 
 ## How far a ray goes from `from` along `way` before it meets the world (at most `far`).
@@ -632,20 +653,35 @@ func _find_perch(from: Vector3, reach := 40.0) -> Array:
 			continue
 		if not _clear_line(ahead + Vector3.UP * 1.0, ahead + Vector3.UP * 120.0):
 			continue
-		# How high is this wall? (down onto its top from high above, a little in from the face)
-		var top_hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(foot - out * 1.2 + Vector3.UP * 300.0, foot - out * 1.2 + Vector3.UP * (ground + 1.0), 1))
-		if top_hit.is_empty():
-			continue
-		var top_y: float = (top_hit["position"] as Vector3).y
+		# How high is this wall? (down onto its top from high above, at points
+		# further and further into it: the highest is its top)
+		var top_y := -INF
+		for inset: float in [0.4, 1.0, 1.8, 3.0, 5.0]:
+			var down := space.intersect_ray(PhysicsRayQueryParameters3D.create(foot - out * inset + Vector3.UP * 300.0, foot - out * inset + Vector3.UP * (ground + 1.0), 1))
+			if not down.is_empty():
+				top_y = maxf(top_y, (down["position"] as Vector3).y)
 		if top_y - ground < 8.0:
 			continue
-		# A ledge on its face, out over the hall?
+		# Where its face is up there (the wall may step back above a ledge).
+		var high := Vector3(foot.x, top_y - 0.8, foot.z) + out * 6.0
+		var upper := space.intersect_ray(PhysicsRayQueryParameters3D.create(high, high - out * 12.0, 1))
+		var upper_face: Vector3 = upper["position"] if not upper.is_empty() else foot
+		var set_back := (upper_face - foot).dot(-out)
 		var spot := Vector3.INF
-		var ledge := space.intersect_ray(PhysicsRayQueryParameters3D.create(foot + out * 0.55 + Vector3.UP * (top_y - ground - 1.0), foot + out * 0.55 + Vector3.UP * 4.0, 1))
-		if not ledge.is_empty() and ((ledge["normal"] as Vector3).y > 0.7) and (ledge["position"] as Vector3).y > ground + 5.0:
-			spot = ledge["position"]
-		else:
-			spot = Vector3(foot.x, top_y, foot.z) - out * 0.7
+		# A ledge to perch on: a step of the wall, between its lower face and the face above
+		# it; or a ledge standing out over the hall.
+		var probes: Array[Vector3] = []
+		if set_back > 0.7:
+			probes.append(foot - out * minf(set_back * 0.5, 0.7))
+		probes.append(foot + out * 0.55)
+		for at: Vector3 in probes:
+			var ledge := space.intersect_ray(PhysicsRayQueryParameters3D.create(Vector3(at.x, top_y - 1.0, at.z), Vector3(at.x, ground + 4.0, at.z), 1))
+			if not ledge.is_empty() and (ledge["normal"] as Vector3).y > 0.7 and (ledge["position"] as Vector3).y > ground + 5.0:
+				spot = ledge["position"]
+				break
+		if not spot.is_finite():
+			# Else the wall top, near the edge of its face.
+			spot = Vector3(upper_face.x, top_y, upper_face.z) - out * 0.7
 		nearest = d
 		best = [spot + Vector3.UP * Harpy.STAND_HEIGHT * SIZE, out]
 	return best

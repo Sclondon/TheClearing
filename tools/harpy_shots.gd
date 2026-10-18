@@ -6,8 +6,12 @@ extends SceneTree
 ## and from the front, gliding from below and above, the stoop, the strike
 ## (talons forward), braking to land, the feet gripping, the claws at the
 ## wrist. Then in a real round (World, the game's light and mist): on a ledge
-## up a wall seen from the hall, the screech, circling over the walls, the
-## swoop down the hall at the boy, close as it passes, and the game's camera.
+## up a wall seen from the hall, the screech, circling over the walls; then the
+## dive seen from behind the boy at about the game camera's height: the stoop
+## beginning, mid-dive, coming in, the talons passing over him as he ducks, and
+## a second dive taking him as he stands; and the game's camera. Every picture
+## of the round is checked for her (drawn again without her and compared), and
+## where she is on it printed; it ends saying whether she is in all of them.
 ## Says how many draws a frame takes. Needs a real window (the engine draws
 ## nothing headless); landscape by default:
 ##
@@ -231,15 +235,55 @@ var world
 var maze
 var boy
 var hunter: MazeHarpy
+var eye: Camera3D
+## Pictures in the round that did not show her (each one is checked).
+var missing: Array[String] = []
 
 
-## A picture of the round with the harpy held still for it (at its speed a frame is a long way).
+## Physics frames until `done` is true (or `seconds` of game time pass): the
+## harpy thinks in physics frames, so this is how to catch her at a moment.
+func until(seconds: float, done: Callable) -> bool:
+	for i in int(seconds * Engine.physics_ticks_per_second):
+		await physics_frame
+		if done.call():
+			return true
+	return false
+
+
+## A picture of the round with the harpy held still for it (at her speed a
+## frame is a long way), checked: drawn again with her hidden, and the
+## difference counted. Says where on the picture she is.
 func still(name: String) -> void:
 	hunter.process_mode = Node.PROCESS_MODE_DISABLED
 	hunter.look.frozen = true
 	await shot(name)
+	var with := root.get_texture().get_image()
+	hunter.look.visible = false
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var without := root.get_texture().get_image()
+	hunter.look.visible = true
+	var cam := root.get_viewport().get_camera_3d()
+	var seen := _differ(with, without)
+	var where := cam.unproject_position(hunter.global_position) if cam.is_position_in_frustum(hunter.global_position) else Vector2(-1, -1)
+	print("    %s: she covers %d pixels (%.2f%%), her middle at %s on screen, %.1f m from the camera, %s" % [name, seen, 100.0 * seen / (with.get_width() * with.get_height()), where.round(), cam.global_position.distance_to(hunter.global_position), MazeHarpy.Mode.keys()[hunter.mode]])
+	if seen < 200:
+		missing.append(name)
 	hunter.process_mode = Node.PROCESS_MODE_INHERIT
 	hunter.look.frozen = false
+
+
+## How many pixels (of a sample every other pixel each way, times four) differ between two pictures.
+func _differ(a: Image, b: Image) -> int:
+	var count := 0
+	for y in range(0, a.get_height(), 2):
+		for x in range(0, a.get_width(), 2):
+			var p := a.get_pixel(x, y)
+			var q := b.get_pixel(x, y)
+			if absf(p.r - q.r) + absf(p.g - q.g) + absf(p.b - q.b) > 0.06:
+				count += 4
+	return count
 
 
 func _maze() -> void:
@@ -251,7 +295,7 @@ func _maze() -> void:
 	boy = world.player
 	boy.takes_input = false
 	await wait(0.5)
-	# A harpy in a hallway, as MazeEnemies would put it (not caught by it: it is not hooked up to the round).
+	# A harpy in a hallway, as MazeEnemies would put it (not hooked up to the round: it catches nobody).
 	var nav := MazeNav.new(maze)
 	var harpy := MazeHarpy.new()
 	harpy.maze = maze
@@ -261,64 +305,104 @@ func _maze() -> void:
 	hunter = harpy
 	var cell: Vector2i = nav.lairs(4)[nav.lairs(4).size() / 2]
 	harpy.position = maze.world(cell) + Vector3.UP * 0.05
-	# (out of his sight while he is put in place)
+	# (out of her sight while he is put in place)
 	boy.global_position = maze.world(nav.lairs(1)[0]) + Vector3.UP * 0.1
 	world.add_child(harpy)
-	await wait(0.3)
+	await until(0.3, func() -> bool: return false)
 	var perch: Vector3 = harpy.perch
 	var out: Vector3 = harpy.perch_out
 	var across := out.cross(Vector3.UP)
 	print("perch at %s, %.1f m up, out %s" % [perch, perch.y, out])
-	var eye := Camera3D.new()
+	eye = Camera3D.new()
 	world.add_child(eye)
 	eye.fov = 50.0
 	eye.make_current()
-	# Up at it on its ledge from down the hall.
+	# Up at her on her perch from down the hall.
 	var floor_at := Vector3(perch.x, 0.0, perch.z) + out * 14.0 + across * 6.0
 	eye.look_at_from_position(floor_at + Vector3.UP * 1.6, perch)
-	await wait(0.5)
-	await shot("20_maze_perched_from_below")
+	await still("20_maze_perched_from_below")
 	eye.fov = 30.0
-	eye.look_at_from_position(perch + out * 5.0 + across * 2.5 + Vector3.DOWN * 1.0, perch + Vector3.DOWN * 0.3)
-	await wait(0.3)
-	await shot("21_maze_perched_close")
-	# He walks out into the hall in front of it: it screeches.
+	eye.look_at_from_position(perch + out * 6.0 + across * 2.5 + Vector3.DOWN * 1.5, perch + Vector3.DOWN * 0.3)
+	await still("21_maze_perched_close")
+	# He walks out into the hall in front of her: she screeches.
 	var stand := Vector3(perch.x, 0.0, perch.z) + out * 9.0
 	boy.global_position = stand + Vector3.UP * 0.1
 	boy.velocity = Vector3.ZERO
 	boy.rotation.y = atan2(-out.x, -out.z)
-	await wait(4.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.SCREECH)
-	await wait(0.7)
+	await until(4.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.SCREECH)
+	await until(0.7, func() -> bool: return false)
 	eye.fov = 34.0
-	eye.look_at_from_position(perch + out * 4.0 + across * -1.5 + Vector3.DOWN * 0.6, perch)
+	eye.look_at_from_position(perch + out * 5.0 + across * -1.5 + Vector3.DOWN * 1.0, perch)
 	await still("22_maze_screech")
 	eye.fov = 50.0
 	eye.look_at_from_position(stand + Vector3.UP * 1.2 - out * 3.0 + across * 2.0, perch)
 	await still("22b_maze_screech_from_him")
-	await wait(9.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.CIRCLE)
-	await wait(1.0)
+	await until(9.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.CIRCLE)
+	await until(1.0, func() -> bool: return false)
 	eye.fov = 60.0
 	eye.look_at_from_position(stand + Vector3.UP * 1.0 + across * 1.0, harpy.global_position)
 	await still("23_maze_circling")
 	eye.fov = 14.0
 	eye.look_at_from_position(stand + Vector3.UP * 1.0 + across * 1.0, harpy.global_position)
 	await still("23b_maze_circling_close")
-	eye.fov = 60.0
-	await wait(10.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.STOOP)
-	await wait(0.4)
-	eye.look_at_from_position(stand + Vector3.UP * 1.2 + across * 1.5, harpy.global_position)
-	await still("24_maze_stoop")
-	await wait(4.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.DIVE and harpy._time_to_target() < 1.3)
+
+	# The dive, seen from behind him at about the game camera's height, looking
+	# down the hall the way she comes. The first time he ducks as her line is
+	# set and the talons pass over him; the second time he stands, and she takes him.
+	await until(10.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.STOOP)
 	var along: Vector3 = harpy.dive_along
 	var side := along.cross(Vector3.UP)
-	eye.fov = 55.0
-	eye.look_at_from_position(boy.global_position + Vector3.UP * 1.0 + along * 2.5 + side * 2.0, harpy.global_position)
-	await still("25_maze_dive")
-	await wait(2.0, func() -> bool: return harpy._time_to_target() < 0.3)
-	eye.look_at_from_position(boy.global_position + Vector3.UP * 0.9 + along * 3.0 + side * 2.2, boy.global_position + Vector3.UP * 1.2 - along * 1.5)
-	await still("26_maze_talons")
-	await wait(0.25)
+	boy.rotation.y = atan2(-along.x, -along.z)
+	var behind: Vector3 = boy.global_position + along * 4.2 + side * 0.9 + Vector3.UP * 2.3
+	eye.fov = 62.0
+	var follow := func() -> void:
+		var head: Vector3 = boy.global_position + Vector3.UP * 1.2
+		# (she and he both in the picture: looking between them, nearer her)
+		eye.look_at_from_position(behind, head.lerp(harpy.global_position, 0.65))
+	await until(0.3, func() -> bool: return false)
+	# (she is still 40 m up over the far end of the hall: a longer lens, on her)
+	eye.fov = 30.0
+	eye.look_at_from_position(behind, harpy.global_position)
+	await still("30_dive_stoop_begins")
+	eye.fov = 62.0
+	await until(4.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.DIVE and harpy._time_to_target() < 1.6)
+	follow.call()
+	await still("31_dive_mid")
+	await until(2.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.DIVE and harpy._time_to_target() < 0.9)
+	follow.call()
+	await still("32_dive_coming_in")
+	# Her line is set: he ducks.
+	await until(2.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.DIVE and harpy._locked)
+	boy.takes_input = true
+	Input.action_press(&"duck")
+	await until(1.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.DIVE and harpy._time_to_target() < 0.1)
+	follow.call()
+	await still("33_dodge_talons_over_him_ducking")
+	await until(0.12, func() -> bool: return harpy._dive_t >= 1.0)
+	eye.look_at_from_position(behind, boy.global_position + Vector3.UP * 1.0)
+	await still("34_dodge_passing_over")
+	await until(1.0, func() -> bool: return harpy.mode != MazeHarpy.Mode.DIVE)
+	print("    the duck: %s (talons within %.2f m)" % ["missed him" if not harpy.snatched else "TOOK HIM", harpy.closest])
+	Input.action_release(&"duck")
+	boy.takes_input = false
+	# The second dive: he stands his ground.
+	await until(20.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.STOOP)
+	along = harpy.dive_along
+	side = along.cross(Vector3.UP)
+	boy.rotation.y = atan2(-along.x, -along.z)
+	behind = boy.global_position + along * 4.2 + side * 0.9 + Vector3.UP * 2.3
+	await until(5.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.DIVE and harpy._time_to_target() < 0.5)
+	follow.call()
+	await still("35_talons_out_at_him")
+	await until(1.0, func() -> bool: return harpy.mode == MazeHarpy.Mode.DIVE and harpy._time_to_target() < 0.06)
+	follow.call()
+	await still("36_talons_at_him")
+	# (the talons close on him a frame or two after this: what happened is known once she is past)
+	await until(1.0, func() -> bool: return harpy.snatched or harpy.mode != MazeHarpy.Mode.DIVE)
+	print("    standing: %s (talons within %.2f m, at %s from his feet; ducking %s, low %s, state %s, velocity %s)" % ["snatched" if harpy.snatched else "missed", harpy.closest, harpy.closest_at, boy.is_ducking, MazeHarpy.is_low(boy), boy.state, boy.velocity])
 	world.camera.make_current()
-	await still("27_maze_game_camera_passing")
-	await wait(1.0)
-	await still("28_maze_game_camera_after")
+	await still("37_game_camera_after")
+	if missing.is_empty():
+		print("SHE IS IN EVERY PICTURE OF THE ROUND")
+	else:
+		print("NOT IN: %s" % ", ".join(missing))
