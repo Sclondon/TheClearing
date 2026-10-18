@@ -306,13 +306,15 @@ func _run() -> void:
 	serpent.position = maze.world(far) + Vector3.UP * 0.05
 	stage.add_child(serpent)
 	var cells := {}
-	var snake_cells := {}
+	var snake_from := serpent.global_position
+	var snake_went := 0.0
 	for i in 60 * 25:
 		await physics_frame
 		cells[maze.cell_at(wanderer.global_position)] = true
-		snake_cells[maze.cell_at(serpent.global_position)] = true
+		snake_went = maxf(snake_went, serpent.global_position.distance_to(snake_from))
 	check("a mummy wanders with nobody about", cells.size() >= 3, "(%d cells visited)" % cells.size())
-	check("so does Apophis", snake_cells.size() >= 5, "(%d cells visited)" % snake_cells.size())
+	# (how far it gets, not how many cells: the first ring's halls are two cells wide)
+	check("so does Apophis", snake_went >= 20.0, "(%.0f m from where it started)" % snake_went)
 	var inside: bool = maze.inside(maze.cell_at(wanderer.global_position)) and maze.inside(maze.cell_at(serpent.global_position))
 	check("and they stay in the maze", inside)
 	boy.add_to_group(&"maze_players")

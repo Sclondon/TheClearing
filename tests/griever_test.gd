@@ -75,7 +75,8 @@ func feet_check(g: Griever, tally: Dictionary) -> void:
 func _run() -> void:
 	scene = Node3D.new()
 	root.add_child(scene)
-	maze = Maze.generate(Maze.seed_for("GRIEVE", 1))
+	# (halls a cell wide, as the rings past the first have: it braces on the walls of those)
+	maze = Maze.generate(Maze.seed_for("GRIEVE", 1), 1, [MazeStyle.warren()])
 	var builder := MazeBuilder.new()
 	scene.add_child(builder)
 	builder.build(maze)

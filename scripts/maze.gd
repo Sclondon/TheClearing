@@ -24,7 +24,7 @@ extends RefCounted
 ## Metres across one cell, from the middle of one wall to the middle of the next.
 const CELL := 14.0
 ## Cells across the clearing (odd, so that it has a middle cell).
-const CLEARING := 21
+const CLEARING := 41
 
 var size := CLEARING
 ## Cells along a side of the clearing.

@@ -288,6 +288,11 @@ var _materials: Array[ShaderMaterial] = []
 var _preset: Dictionary
 var _now := 0.0
 var _trail: Image
+## Where the camera was when the squares were last thinned for it.
+var _thinned_for := Vector3.INF
+## The squares by where they are ({Vector2i: [index]}), and those showing grass now.
+var _by_place := {}
+var _showing := {}
 var _trail_tex: ImageTexture
 var _trail_dirty := false
 var _trail_wait := 0.0
@@ -349,6 +354,9 @@ func build() -> void:
 		for mmi: Node in c.parts:
 			mmi.queue_free()
 	_chunks.clear()
+	_thinned_for = Vector3.INF
+	_by_place.clear()
+	_showing.clear()
 	_instances = 0
 	_preset = PRESETS[quality]
 	if _shader == null:
@@ -455,9 +463,30 @@ func _process(delta: float) -> void:
 		return
 	_now += delta
 	var camera := get_viewport().get_camera_3d()
-	if camera != null:
+	# (thinned again for where the camera is only once it has moved a metre: a big
+	# field has thousands of squares, too many to go over every frame)
+	if camera != null and camera.global_position.distance_squared_to(_thinned_for) > 1.0:
 		var eye := camera.global_position
-		for c: Dictionary in _chunks:
+		_thinned_for = eye
+		# (only the squares near enough to show grass, and those showing it now)
+		if _by_place.is_empty():
+			for i in _chunks.size():
+				var key := Vector2i((_chunks[i].rect as Rect2).get_center().floor() / chunk)
+				if not _by_place.has(key):
+					_by_place[key] = []
+				(_by_place[key] as Array).append(i)
+		var looked := {}
+		var reach := ceili(_preset.fade_end / chunk) + 1
+		var at := Vector2i((Vector2(eye.x, eye.z) / chunk).floor())
+		for y in range(at.y - reach, at.y + reach + 1):
+			for x in range(at.x - reach, at.x + reach + 1):
+				for i: int in _by_place.get(Vector2i(x, y), []):
+					looked[i] = true
+		for i: int in _showing:
+			looked[i] = true
+		_showing.clear()
+		for i: int in looked:
+			var c: Dictionary = _chunks[i]
 			var rect: Rect2 = c.rect
 			var near := Vector3(clampf(eye.x, rect.position.x, rect.end.x), clampf(eye.y, c.low, c.high), clampf(eye.z, rect.position.y, rect.end.y))
 			var dist := eye.distance_to(near)
@@ -469,8 +498,11 @@ func _process(delta: float) -> void:
 					c.grass.multimesh.mesh = wanted
 			for mmi: MultiMeshInstance3D in c.parts:
 				var count := ceili(mmi.multimesh.instance_count * share)
-				mmi.visible = count > 0
-				mmi.multimesh.visible_instance_count = count
+				if mmi.multimesh.visible_instance_count != count:
+					mmi.visible = count > 0
+					mmi.multimesh.visible_instance_count = count
+				if count > 0:
+					_showing[i] = true
 	# The nearest pushers to the camera (or to the field) go to the shader.
 	var found: Array = []
 	for node in get_tree().get_nodes_in_group(PUSHERS):
@@ -575,8 +607,11 @@ func _part(list: Array, mesh: Mesh, material: ShaderMaterial, box: AABB) -> Mult
 		buffer[o + 15] = (i + 0.5) / count
 	mm.buffer = buffer
 	mm.custom_aabb = box
+	# (none shown until the camera comes near enough: see _process)
+	mm.visible_instance_count = 0
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
+	mmi.visible = false
 	mmi.material_override = material
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mmi)

@@ -73,12 +73,12 @@ static func made(width_cells: int, hall_span: int, straightness: float, branches
 ## (about 25 m between walls) that run long and straight, few turns and few side
 ## branches. Its walls are massive, 12 m thick, so each way through a wall a
 ## cell long is a slot about three of him wide; and the wall round the clearing
-## is a rampart 40 m thick, each gate a slot through it.
+## is a rampart 54 m thick, each gate a slot through it.
 static func avenues() -> MazeStyle:
-	var style := made(8, 2, 0.5, 0.0, 0.0)
+	var style := made(9, 2, 0.5, 0.0, 0.0)
 	style.wall_thick = 12.0
-	# (the clearing's wall two cells thicker, 40 m in all, a slot through it at each gate)
-	style.rampart = 2
+	# (the clearing's wall three cells thicker, 54 m in all, a slot through it at each gate)
+	style.rampart = 3
 	# (nothing on its walls but vines hanging from their tops)
 	style.terraces = 0.0
 	style.top_bridges = 0.0
