@@ -254,37 +254,63 @@ func _carve() -> void:
 
 ## Grows one ring's passages from behind its ways in, by the ring's MazeStyle: over
 ## blocks of `span` x `span` cells, whose inside walls all come down (so a hall is
-## `span` cells wide), each new block joined to one already reached. The walk stays
+## `span` cells wide), each new block joined to one already reached. Each way in
+## is first a narrow entrance, one cell wide and `entrance` cells long, straight
+## out from the gate, that opens into the rest only at its far end. The walk stays
 ## in its ring: the walls between rings stand but for the gates.
 func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: RandomNumberGenerator) -> void:
 	var style: MazeStyle = styles[ring - 1]
 	var blocks := _blocks(ring, style.span)
 	var block_of: Dictionary = blocks[0]
 	var cells_of: Dictionary = blocks[1]
+	# The entrances: each its own block, a line of cells (taken out of the blocks it
+	# runs through), with the cell at its far end and the way on from it.
+	var ends := {}
+	for g in ways_in.size():
+		var step: Vector2i = ways_in[g][1]
+		var line: Array = []
+		var cell: Vector2i = ways_in[g][0] + step
+		while line.size() < style.entrance and inside(cell) and ring_of(cell) == ring and block_of[cell].x >= 0:
+			line.append(cell)
+			cell += step
+		if line.size() < 2:
+			continue
+		var key := Vector2i(-1 - g, -1)
+		for taken: Vector2i in line:
+			(cells_of[block_of[taken]] as Array).erase(taken)
+			block_of[taken] = key
+		cells_of[key] = line
+		ends[key] = [line.back(), step]
+	_split_apart(block_of, cells_of)
 	for block: Vector2i in cells_of:
 		for cell: Vector2i in cells_of[block]:
 			visited[index(cell)] = 1
 			for s: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
 				if block_of.get(cell + s, NO_BLOCK) == block:
 					_open(cell, s)
+	# Which blocks are next to which, and the way from one to the other.
+	var next_to := {}
+	for block: Vector2i in cells_of:
+		next_to[block] = {}
+	for block: Vector2i in cells_of:
+		for cell: Vector2i in cells_of[block]:
+			for s: Vector2i in STEPS:
+				var other: Vector2i = block_of.get(cell + s, NO_BLOCK)
+				if other != NO_BLOCK and other != block and _joins(cell, s, block, other, ends):
+					(next_to[block] as Dictionary)[other] = s
+
 	var reached := {}
 	var heading := {}
 	var active: Array[Vector2i] = []
 	for way: Array in ways_in:
 		var from: Vector2i = way[0]
 		var step: Vector2i = way[1]
-		var block: Vector2i = block_of[from + step]
-		# (a gate from the clearing as wide as the hall it opens into; from a ring, one cell)
-		if ring == 1:
-			for cell: Vector2i in cells_of[block]:
-				if in_clearing(cell - step):
-					_open(cell, -step)
-		else:
-			_open(from, step)
+		_open(from, step)
 		# (grown from the first way in only: the walk reaches the blocks behind the
 		# others in its time. Grown from each, a later one could find its block
 		# already walled round by the rest, a room with only the gate into it.)
 		if active.is_empty():
+			var block: Vector2i = block_of[from + step]
 			reached[block] = true
 			heading[block] = step
 			active.append(block)
@@ -295,28 +321,29 @@ func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: Rando
 			at = rng.randi_range(0, active.size() - 1)
 		var block: Vector2i = active[at]
 		var choices: Array[Vector2i] = []
-		for s: Vector2i in STEPS:
-			if cells_of.has(block + s) and not reached.has(block + s):
-				choices.append(s)
+		for other: Vector2i in next_to[block]:
+			if not reached.has(other):
+				choices.append(other)
 		if choices.is_empty():
 			active.remove_at(at)
 			continue
 		var pick: Vector2i = choices[rng.randi_range(0, choices.size() - 1)]
-		var was: Vector2i = heading[block]
-		if rng.randf() < style.straight and was in choices:
-			pick = was
-		_join(block, block + pick, block_of, cells_of)
-		reached[block + pick] = true
-		heading[block + pick] = pick
-		active.append(block + pick)
+		if rng.randf() < style.straight:
+			for other in choices:
+				if next_to[block][other] == heading[block]:
+					pick = other
+		_join(block, pick, block_of, cells_of, ends)
+		reached[pick] = true
+		heading[pick] = next_to[block][pick]
+		active.append(pick)
 
 	# A few walls between halls knocked through, for loops.
 	var all: Array = cells_of.keys()
 	for i in int(all.size() * style.loops):
 		var block: Vector2i = all[rng.randi_range(0, all.size() - 1)]
-		var s := Vector2i(1, 0) if rng.randf() < 0.5 else Vector2i(0, 1)
-		if cells_of.has(block + s):
-			_join(block, block + s, block_of, cells_of)
+		var others: Array = (next_to[block] as Dictionary).keys()
+		if not others.is_empty():
+			_join(block, others[rng.randi_range(0, others.size() - 1)], block_of, cells_of, ends)
 
 
 const NO_BLOCK := Vector2i(-1000, -1000)
@@ -357,12 +384,56 @@ static func _block_on(at: int, band: int, inner: int, span: int) -> int:
 	return deep + along + mini((at - band - inner) / span, deep - 1)
 
 
-## Opens the whole side between two blocks next to each other.
-func _join(a: Vector2i, b: Vector2i, block_of: Dictionary, cells_of: Dictionary) -> void:
-	var s := b - a
+## Gives what is left of a block in pieces (an entrance cut through it) a block
+## for each piece, and drops blocks left empty.
+func _split_apart(block_of: Dictionary, cells_of: Dictionary) -> void:
+	var fresh := 0
+	for block: Vector2i in cells_of.keys():
+		var cells: Array = cells_of[block]
+		if cells.is_empty():
+			cells_of.erase(block)
+			continue
+		var left := {}
+		for cell: Vector2i in cells:
+			left[cell] = true
+		var first := true
+		while not left.is_empty():
+			var start: Vector2i = left.keys()[0]
+			var piece: Array = [start]
+			left.erase(start)
+			var i := 0
+			while i < piece.size():
+				for s: Vector2i in STEPS:
+					var next: Vector2i = piece[i] + s
+					if left.has(next):
+						left.erase(next)
+						piece.append(next)
+				i += 1
+			var key := block if first else Vector2i(-100 - fresh, -100)
+			if not first:
+				fresh += 1
+				for cell: Vector2i in piece:
+					block_of[cell] = key
+			cells_of[key] = piece
+			first = false
+
+
+## Whether the side of `cell` the `s` way joins block `a` to block `b`: anywhere
+## between ordinary blocks, but an entrance only at its far end, going on.
+static func _joins(cell: Vector2i, s: Vector2i, a: Vector2i, b: Vector2i, ends: Dictionary) -> bool:
+	if ends.has(a) and not (cell == ends[a][0] and s == ends[a][1]):
+		return false
+	if ends.has(b) and not (cell + s == ends[b][0] and -s == ends[b][1]):
+		return false
+	return true
+
+
+## Opens the side between two blocks next to each other (all of it that joins them).
+func _join(a: Vector2i, b: Vector2i, block_of: Dictionary, cells_of: Dictionary, ends: Dictionary) -> void:
 	for cell: Vector2i in cells_of[a]:
-		if block_of.get(cell + s, NO_BLOCK) == b:
-			_open(cell, s)
+		for s: Vector2i in STEPS:
+			if block_of.get(cell + s, NO_BLOCK) == b and _joins(cell, s, a, b, ends):
+				_open(cell, s)
 
 
 ## Steps from the clearing to each cell, round the walls.

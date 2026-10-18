@@ -35,8 +35,9 @@ func _initialize() -> void:
 			var path := maze.path_out(maze.cell_at(Vector3.ZERO))
 			check("%s: a way out from the middle" % name, path.size() > maze.clearing / 2 + 4 * built, "(%d cells)" % path.size())
 			# Every ring wall is shut but for the gates: 4 out of the clearing (each as wide
-			# as the first ring's halls), 1 out of each ring after.
-			var span := maze.styles[0].span
+			# as the first ring's halls, or one cell where it has narrow entrances), 1 out
+			# of each ring after.
+			var span := maze.styles[0].span if maze.styles[0].entrance < 2 else 1
 			var from_clearing := 0
 			var openings := 0
 			var open := 0
@@ -55,8 +56,22 @@ func _initialize() -> void:
 			check("%s: rings shut but for their gates" % name, from_clearing >= 4 * span and from_clearing <= 4 * (span + 1) and openings == built - 1, "(%d from the clearing, %d after)" % [from_clearing, openings])
 			var ring_cells := maze.size * maze.size - maze.clearing * maze.clearing
 			check("%s: still a maze" % name, open < ring_cells * 1.7, "(%d open of %d cells)" % [open, ring_cells])
+			# Each way in from the clearing is a narrow entrance as long as the style says:
+			# walled both sides all along, but for where it opens up at its far end.
+			var entrance := maze.styles[0].entrance
+			var open_sided := 0
+			if entrance >= 2:
+				for way: Array in maze.gates[0]:
+					var step: Vector2i = way[1]
+					var side := Vector2i(-step.y, step.x)
+					for k in range(1, entrance):
+						var cell: Vector2i = way[0] + step * k
+						if not maze.blocked(cell, side) or not maze.blocked(cell, -side):
+							open_sided += 1
+			check("%s: long narrow entrances" % name, open_sided == 0, "(%d cells open at the side)" % open_sided)
 			# The first ring's halls are as wide as its style says: every cell in it opens
-			# on a neighbour both across and along.
+			# on a neighbour both across and along (but the entrances, and what they cut
+			# off beside them).
 			var narrow := 0
 			for i in maze.size * maze.size:
 				var cell := Vector2i(i % maze.size, i / maze.size)
@@ -73,7 +88,11 @@ func _initialize() -> void:
 				if not _reaches_exit(maze, way[0] + way[1]):
 					shut_in += 1
 			check("%s: no gate a dead end" % name, shut_in == 0, "(%d of %d)" % [shut_in, maze.gates[0].size()])
-			check("%s: wide halls in the first ring" % name, span < 2 or narrow == 0, "(%d cells in a narrow hall)" % narrow)
+			var first_ring := 0
+			for i in maze.size * maze.size:
+				if maze.ring_of(Vector2i(i % maze.size, i / maze.size)) == 1:
+					first_ring += 1
+			check("%s: wide halls in the first ring" % name, maze.styles[0].span < 2 or narrow < first_ring * 0.12, "(%d of %d cells in a narrow hall)" % [narrow, first_ring])
 			var middle := maze.size / 2
 			check("%s: clearing open" % name, not maze.blocked(Vector2i(middle, middle), Vector2i(1, 0)) and not maze.blocked(Vector2i(middle - 3, middle - 3), Vector2i(0, 1)))
 			var edge := maze.exit + maze.exit_side

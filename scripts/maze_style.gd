@@ -22,23 +22,28 @@ extends Resource
 @export_range(0.0, 1.0) var branching := 0.0
 ## The share of blocks with a wall knocked through afterwards.
 @export_range(0.0, 0.5) var loops := 0.06
+## How far each way in runs, in cells, as a narrow entrance (one cell wide) before
+## it opens into the ring's halls; 0 (or 1) for none.
+@export_range(0, 16) var entrance := 0
 
 
-static func made(width_cells: int, hall_span: int, straightness: float, branches: float, loop_share: float) -> MazeStyle:
+static func made(width_cells: int, hall_span: int, straightness: float, branches: float, loop_share: float, way_in := 0) -> MazeStyle:
 	var style := MazeStyle.new()
 	style.width = width_cells
 	style.span = hall_span
 	style.straight = straightness
 	style.branching = branches
 	style.loops = loop_share
+	style.entrance = way_in
 	return style
 
 
 ## Avenues: the first ring. The simplest maze, but big: halls two cells wide
 ## (about 25 m between walls) that run long and straight, few turns and few side
-## branches.
+## branches. The ways in from the clearing are narrow and deep: 6 cells (84 m)
+## of passage one cell wide, out through the ring before it opens up.
 static func avenues() -> MazeStyle:
-	return made(8, 2, 0.9, 0.0, 0.0)
+	return made(6, 2, 0.5, 0.0, 0.0, 4)
 
 
 ## Warren: a close maze of single halls that wind and fork (the first ring's

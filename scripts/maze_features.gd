@@ -142,10 +142,11 @@ const NOWHERE := Vector2i(-1, -1)
 
 ## The cell on the far side of the hall from `cell`, going the `across` way: the
 ## first with a wall that way, if the hall is open up to it and no more than
-## four cells across (NOWHERE if not). `cell` itself in a hall one cell wide.
+## two cells across (NOWHERE if not: a bridge any longer sags too far). `cell`
+## itself in a hall one cell wide.
 func _far_side(cell: Vector2i, across: Vector2i) -> Vector2i:
 	var at := cell
-	for i in 4:
+	for i in 2:
 		if _maze.blocked(at, across):
 			return at if _maze.ring_of(at) == 1 else NOWHERE
 		at += across
