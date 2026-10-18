@@ -123,6 +123,25 @@ extends Resource
 ## none, 1 all along every wall).
 @export_range(0.0, 1.0) var plant_density := 0.0
 
+@export_group("Water")
+## The share of hall cells with standing water in them (Ponds): a pond lying in
+## the hall, or a stretch of the hall flooded from wall to wall. The ground goes
+## down under it, so he wades, and in the deepest swims.
+@export_range(0.0, 0.3) var pond_share := 0.02
+## Of those, the share that flood a stretch of the hall, how many cells long at
+## most (the rest are ponds lying within one cell).
+@export_range(0.0, 1.0) var flooded_hall_share := 0.4
+@export_range(2, 8) var flooded_hall_length := 4
+## How deep a pond is, metres, from puddle-deep to wading (to his waist at 0.8).
+@export var pond_depth_range := Vector2(0.15, 0.8)
+## The share of ponds deep enough to swim, and how deep those are, metres.
+@export_range(0.0, 1.0) var swim_pond_share := 0.12
+@export_range(1.0, 3.0) var swim_pond_depth := 1.7
+## The share of ponds (no shallower than FishSchool.SHALLOWEST) with a school of
+## small fish in them, that dart off from whoever wades near; how many in each.
+@export_range(0.0, 1.0) var fish_share := 0.6
+@export_range(1, 40) var fish_per_school := 12
+
 @export_group("What hunts it")
 ## How many of each thing that hunts are put in the section's passages (by
 ## MazeEnemies.populate, from the round's seed). Packs and colonies count as one.

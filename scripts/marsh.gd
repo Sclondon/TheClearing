@@ -196,6 +196,8 @@ var lily_pad_count := 0
 var bulrush_tops := PackedVector3Array()
 ## And where each stands in the ground (the same order).
 var bulrush_roots := PackedVector3Array()
+## The schools of fish in its water (FishSchool).
+var fish: Array[FishSchool] = []
 
 var _heights := PackedFloat32Array()
 var _wets := PackedFloat32Array()
@@ -222,6 +224,8 @@ func realize(plan: Maze) -> void:
 	_water()
 	_grass()
 	_bulrushes_and_pads()
+	# (schools of small fish in its water, some in the flooded way to its gate)
+	fish = FishSchool.scatter(self, area.grow(-2.0), ClearingStyle.MARSH_LEVEL, depth_at, look.marsh_fish_schools, look.marsh_fish_per_school, maze.maze_seed + 5, water, look.marsh_flood_rect())
 
 
 ## How high the marsh's ground is at `point` (x, z), as its mesh has it (a point

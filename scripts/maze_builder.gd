@@ -57,6 +57,8 @@ var ground_material: ShaderMaterial
 var preview := false
 ## The round sections, if the maze has any.
 var round_sections: RoundBuilder
+## The standing water in the halls (Ponds).
+var ponds: Ponds
 
 
 ## Builds the maze `plan`, laid out as it generates.
@@ -87,6 +89,11 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 	if not preview:
 		_grass()
 	_ground()
+	# (the standing water in the halls, and the flooded marsh gate's slot)
+	ponds = Ponds.new()
+	ponds.name = "Ponds"
+	add_child(ponds)
+	ponds.realize(maze, pieces, ground_material, preview)
 	if not preview:
 		_pond()
 	_trees(pieces)
@@ -310,13 +317,22 @@ func _ground() -> void:
 	# shaped (it may go down below level, into the marsh).
 	var shaped := maze.clearing_style.shaped()
 	var hole := maze.clearing * Maze.CELL * 0.5 - 1.0 if shaped else 0.0
-	for part: Rect2 in _framed(size * 0.5, hole):
+	# (cut away over the standing water, whose ground is lower: Ponds; then all
+	# of it one mesh)
+	var parts := _framed(size * 0.5, hole)
+	var wet := Ponds.holes(maze)
+	if not wet.is_empty():
+		parts = Ponds.cut(parts, wet)
+		body.add_child(Ponds.flat(parts, material))
+	for part: Rect2 in parts:
 		var shape := BoxShape3D.new()
 		shape.size = Vector3(part.size.x, 2.0, part.size.y)
 		var collider := CollisionShape3D.new()
 		collider.shape = shape
 		collider.position = Vector3(part.get_center().x, -1.0, part.get_center().y)
 		body.add_child(collider)
+		if not wet.is_empty():
+			continue
 		var plane := PlaneMesh.new()
 		plane.size = part.size
 		var visual := MeshInstance3D.new()

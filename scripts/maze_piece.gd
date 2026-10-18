@@ -16,9 +16,12 @@ extends Node3D
 ## the middle of its floor. A bridge runs from
 ## its origin to its child `End` (move that to move the far end), and so does a
 ## vine strung across a hall (a strand). A tree stands
-## at its origin, as big as its scale.
+## at its origin, as big as its scale. A pond (standing water in a hall: Ponds)
+## lies with its origin in the middle of its still surface, `size` across (x and
+## z) and as deep (y) at its deepest, its corners as round as `length`, with
+## `width` fish in it; it is never turned.
 
-enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE }
+enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, POND }
 
 @export var kind := Kind.WALL:
 	set(value):
@@ -39,12 +42,13 @@ enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE }
 ## A ledge along a wall (MazeStyle.mezzanine_height): a step of it, standing from
 ## the ground or the level under it (only a note: the plan of the maze ignores it).
 @export var ledge := false
-## How tall a patch of ivy is, how long a vine, or a pipe from mouth to mouth.
+## How tall a patch of ivy is, how long a vine, or a pipe from mouth to mouth
+## (for a pond, how round its corners are).
 @export var length := 6.5:
 	set(value):
 		length = value
 		_refresh()
-## How wide a patch of ivy is.
+## How wide a patch of ivy is (for a pond, how many fish swim in it).
 @export var width := 1.8:
 	set(value):
 		width = value
@@ -157,6 +161,8 @@ func _refresh() -> void:
 			pipe.length = length
 			pipe.wall = width
 			_shown = pipe
+		Kind.POND:
+			_shown = Ponds.sheet(size)
 	if _shown:
 		# (shown, but not part of the scene: it is made again whenever it is opened)
 		add_child(_shown, false, Node.INTERNAL_MODE_BACK)

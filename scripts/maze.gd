@@ -64,6 +64,14 @@ var entrances := {}
 ## The cells of solid stone in the ramparts round the inside of rings (see
 ## `rampart`): no way into them, walls all round.
 var solid := {}
+## The standing water in the halls (Ponds: each {rect, level, depth, round, fish,
+## seed}), as the layout's pond pieces have it; the ground is lower under it.
+var ponds: Array = []:
+	set(value):
+		ponds = value
+		_pond_cells = Ponds.index(value)
+## [cell] -> the ponds over it.
+var _pond_cells := {}
 
 
 ## A seed for a room's maze on a given round: the same on every copy of the game.
@@ -201,7 +209,28 @@ func ground_height(point: Vector3) -> float:
 	# (the dunes of the desert outside the square sections, if there are round ones)
 	if round_rings and maxf(absf(point.x), absf(point.z)) > extent() * 0.5:
 		return round_rings.desert_height(point.x, point.z)
-	return clearing_style.height_at(point.x, point.z, maze_seed)
+	var height := clearing_style.height_at(point.x, point.z, maze_seed)
+	# (lower under standing water: Ponds)
+	if not _pond_cells.is_empty():
+		height = minf(height, pond_ground(point))
+	return height
+
+
+## How high the ground under the standing water at `point` is (Ponds), or INF
+## where there is none.
+func pond_ground(point: Vector3) -> float:
+	var lowest := INF
+	for pond: Dictionary in _pond_cells.get(Vector2i(floori(point.x / CELL), floori(point.z / CELL)), []):
+		lowest = minf(lowest, Ponds.ground_of(pond, Vector2(point.x, point.z)))
+	return lowest
+
+
+## The pond (Ponds) whose water `point` (x, z) is under, or an empty one.
+func pond_at(point: Vector3) -> Dictionary:
+	for pond: Dictionary in _pond_cells.get(Vector2i(floori(point.x / CELL), floori(point.z / CELL)), []):
+		if (pond.rect as Rect2).has_point(Vector2(point.x, point.z)) and Ponds.ground_of(pond, Vector2(point.x, point.z)) < pond.level - 0.02:
+			return pond
+	return {}
 
 
 ## How high the wall on the `step` side of `cell` is: a wall between rings as
