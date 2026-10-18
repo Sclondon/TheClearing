@@ -1,0 +1,8 @@
+# A brachiosaurus (Brachiosaurus altithorax, life size, 13 m tall): its look, every move (the slow walk with planted feet and warning foot shadows, browsing, looking down, the bellow), its sounds and its low model far off, for any game (no thinking)
+creatures/brachiosaurus/brachiosaurus.gd
+creatures/brachiosaurus/brachiosaurus_look.gd
+creatures/brachiosaurus/brachiosaurus_rig.gd
+creatures/brachiosaurus/models/brachiosaurus.glb
+creatures/brachiosaurus/models/brachiosaurus_lo.glb
+creatures/brachiosaurus/tools/.gdignore
+creatures/brachiosaurus/tools/build_brachiosaurus.py
