@@ -37,7 +37,7 @@ const HUNTERS := [
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD],
 	["BEETLES", "beetles", AHEAD], ["FISH PERSON", "fish_person", AHEAD], ["ANGEL", "angel", SNAKE_AHEAD],
 	["FROG", "frog", AHEAD], ["FROG SWARM", "frog_swarm", AHEAD],
-	["PAIR", "flesh_pair", AHEAD], ["AMALGAM", "amalgam", AHEAD], ["STRIDER", "strider", AHEAD],
+	["PAIR", "flesh_pair", AHEAD], ["AMALGAM", "amalgam", AHEAD], ["STRIDER", "strider", AHEAD], ["BALL", "ball", SNAKE_AHEAD],
 	["ABOMINATION", "flesh_mound", SNAKE_AHEAD],
 	["HARPY", "harpy", AHEAD], ["BOAR", "boar", SNAKE_AHEAD], ["CHICKENS", "chickens", AHEAD],
 	["CHICKENS (TAME)", "tame_chickens", AHEAD], ["GARGOYLE", "gargoyle", AHEAD],
@@ -245,10 +245,12 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = [_flesh(2)]
 		"amalgam":
 			made = [_flesh(3)]
+		"ball":
+			made = [_flesh(7)]
 		"strider":
 			made = [_flesh(5)]
 		"flesh_mound":
-			made = [_flesh(8)]
+			made = [_flesh(9)]
 		"aliens":
 			made = [Alien.new(), Alien.new()]
 		"beetles":
@@ -606,7 +608,7 @@ func to_desert() -> void:
 
 ## Kinds of the things put in (HUNTERS' kinds), by the heading they are listed under.
 const HEADINGS := {
-	"flesh_pair": "Flesh", "amalgam": "Flesh", "strider": "Flesh", "flesh_mound": "Flesh",
+	"flesh_pair": "Flesh", "amalgam": "Flesh", "strider": "Flesh", "ball": "Flesh", "flesh_mound": "Flesh",
 	"abomination": "Flesh", "slime": "Flesh",
 	"crows": "Birds and bugs", "ravens": "Birds and bugs", "blue_jays": "Birds and bugs",
 	"bats": "Birds and bugs", "beetles": "Birds and bugs",

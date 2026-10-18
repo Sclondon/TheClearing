@@ -3,7 +3,7 @@
 People grown together, for Godot 4.7 (works in GL Compatibility, so on the web
 and phones). One creature in many sizes: `bodies` says how many are in it,
 and that says its form (`form()`, `FleshMoundLook.Form`): a pair, an amalgam,
-a strider or a mound.
+a strider, a ball or a mound.
 
 - **A pair, 2 bodies.** Two boys grown together back to back along their
   length, the one under on all fours, the one on top lying face up, his head
@@ -22,7 +22,11 @@ a strider or a mound.
   floor: it walks on ten or twelve legs and faces every way, the ring turning
   slowly as it goes. It grabs (`grab(target)`): the ring tips and lunges at
   the target and the boys facing it throw their arms at it.
-- **A mound, 7 to 10 bodies.** A heaving mound of grown-together flesh, bigger the
+- **A ball, 7 or 8 bodies.** The boys grown together into a sphere as high as
+  two men, heads, shoulders and arms out all round it. It rolls wherever it
+  goes, turning on its own axle by how fast it moves, the arms that come
+  round under it slapping down on the ground.
+- **A mound, 9 or 10 bodies.** A heaving mound of grown-together flesh, bigger the
   more are in it (at 10 about 6 m across and 4 high, its limbs reaching
   further). The boys lie sunk in it face up (their mask faces out) or face down
   (their backs out), or rise from it to the waist; men lie sunk in it to their ribs;
@@ -34,7 +38,7 @@ a strider or a mound.
   backwards, arms reaching out of it) and it gains one; `merge_into(other)`
   reaches for another, stretches a bridge of skin to it and
   pours itself along it into the other, which then `grow`s by its bodies. Past a form's most
-  bodies it is the next form: 2 a pair, 3 and 4 an amalgam, 5 and 6 a strider, 7 up a mound.
+  bodies it is the next form: 2 a pair, 3 and 4 an amalgam, 5 and 6 a strider, 7 and 8 a ball, 9 up a mound.
 
 No mouth, no teeth, hardly any blood: one pallid, waxy, matte skin (greys and ashen
 yellows, bruise purples in patches) flowing

@@ -161,7 +161,7 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
 		taken.append(cell)
 		var mound := MazeFleshMound.new()
-		mound.bodies = rng.randi_range(7, 8)
+		mound.bodies = rng.randi_range(9, 10)
 		add(mound, cell, rng.randf_range(-PI, PI), rng.randi())
 	for i in style.amalgams:
 		var cell := _far_from(taken, lairs, rng)
@@ -181,6 +181,13 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var strider := MazeFleshMound.new()
 		strider.bodies = rng.randi_range(5, 6)
 		add(strider, cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.balls:
+		# (in a straight hall, where it rolls fastest)
+		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		taken.append(cell)
+		var ball := MazeFleshMound.new()
+		ball.bodies = rng.randi_range(7, 8)
+		add(ball, cell, rng.randf_range(-PI, PI), rng.randi())
 	for i in style.bat_colonies:
 		var cell := _far_from(taken, lairs, rng)
 		taken.append(cell)

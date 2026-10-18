@@ -163,10 +163,26 @@ func _run() -> void:
 	check("it grows by one, still a strider", six and ring.look.form() == FleshMoundLook.Form.STRIDER)
 	ring.free()
 
+	# --- A ball rolls down the hall at him, gathering speed ---
+	caught_by.clear()
+	put_boy(maze.world(cell))
+	var ball := spawn(7, maze.world(cell) + along * Maze.CELL * 3.5, maze.world(cell))
+	ball._age = 10.0
+	ball.notice(boy)
+	await wait(0.1)
+	check("a ball is made", ball.look.form() == FleshMoundLook.Form.BALL)
+	var fastest_ball := [0.0]
+	var rolled_over := await wait(15.0, func() -> bool:
+		fastest_ball[0] = maxf(fastest_ball[0], Vector2(ball.velocity.x, ball.velocity.z).length())
+		return not caught_by.is_empty())
+	check("down a straight hall it rolls faster than a sprint", fastest_ball[0] > 5.6, "(%.1f m/s)" % fastest_ball[0])
+	check("rolled over, he is caught", rolled_over and caught_by[0][0] == boy)
+	ball.free()
+
 	# --- A big one: the grab ---
 	caught_by.clear()
 	put_boy(maze.world(cell))
-	var big := spawn(8, maze.world(cell) + along * 12.0, maze.world(cell))
+	var big := spawn(9, maze.world(cell) + along * 12.0, maze.world(cell))
 	big._age = 10.0
 	big.notice(boy)
 	var grabbing := await wait(15.0, func() -> bool: return big.look.grab_stage() == FleshMound.Stage.WIND_UP)
@@ -176,7 +192,7 @@ func _run() -> void:
 	big.free()
 	caught_by.clear()
 	put_boy(maze.world(cell))
-	var dodged := spawn(8, maze.world(cell) + along * 12.0, maze.world(cell))
+	var dodged := spawn(9, maze.world(cell) + along * 12.0, maze.world(cell))
 	dodged._age = 10.0
 	dodged.notice(boy)
 	await wait(15.0, func() -> bool: return dodged.look.grab_stage() == FleshMound.Stage.WIND_UP)
@@ -188,7 +204,7 @@ func _run() -> void:
 	boy.add_to_group(&"maze_players")
 	dodged.free()
 	caught_by.clear()
-	var lump := spawn(8, maze.world(cell) + along * 6.0, maze.world(cell))
+	var lump := spawn(9, maze.world(cell) + along * 6.0, maze.world(cell))
 	lump.grab_range = 0.0
 	await wait(0.3)
 	put_boy(lump.global_position + along * 1.0)
@@ -213,7 +229,7 @@ func _run() -> void:
 		heard_merging[0] = heard_merging[0] or copy_b.look.merging() >= 0.0
 		return b.gone())
 	check("one is gone, the other has both their bodies", merged and a.bodies == 7, "(%d bodies)" % a.bodies)
-	check("it is big now, a mound", not a.small() and not a.look.small())
+	check("it is a ball of bodies now", a.look.form() == FleshMoundLook.Form.BALL and not a.small())
 	await wait(0.5, func() -> bool:
 		copy_a.from_bytes(a.state_bytes())
 		copy_b.from_bytes(b.state_bytes())
@@ -227,7 +243,7 @@ func _run() -> void:
 	# --- A puppet follows its host ---
 	caught_by.clear()
 	put_boy(maze.world(cell))
-	var host := spawn(8, far_off, maze.world(cell))
+	var host := spawn(9, far_off, maze.world(cell))
 	host._age = 10.0
 	var puppet := spawn(3, far_off, maze.world(cell), true)
 	var worst := 0.0

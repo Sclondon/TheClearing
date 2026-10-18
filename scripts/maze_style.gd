@@ -161,6 +161,9 @@ extends Resource
 ## Striders: five or six bodies joined at the hips in a ring that walks on all
 ## their legs and grabs with those facing you (and grows: past six, a mound).
 @export_range(0, 3) var striders := 1
+## Balls: seven or eight bodies grown into a sphere that rolls after you, faster
+## and faster down a straight hall, slow to turn a corner (and grows: past eight, a mound).
+@export_range(0, 3) var balls := 1
 ## Flesh mounds: many bodies grown together into a mound that nearly fills a hall.
 @export_range(0, 3) var flesh_mounds := 1
 ## Harpies, each perched high on a wall (its ledge, or its top) over a hallway.
