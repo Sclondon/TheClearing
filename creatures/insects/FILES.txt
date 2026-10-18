@@ -1,0 +1,6 @@
+# Insects: the swarm (look and flight), the insects' meshes and shader, and their models (and a carcass)
+creatures/insects/insect_swarm.gd
+creatures/insects/insect_look.gd
+creatures/insects/insect.gdshader
+creatures/insects/models/insects.glb
+creatures/insects/models/carcass.glb

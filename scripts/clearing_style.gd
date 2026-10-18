@@ -117,6 +117,37 @@ var entrance_spots: Array = []
 ## Flocks of tame chickens (TameChickens) foraging in the clearing: hens and a
 ## rooster that hunt nobody, the first at the edge of the woods.
 @export_range(0, 6) var chicken_flocks := 2
+## Families of blue jays (BlueJays) in the pines at the edge of the woods,
+## flitting about the branches and down to the ground.
+@export_range(0, 6) var blue_jay_families := 3
+## Small flocks of crows in the tops of the pines, foraging out in the meadow by the woods.
+@export_range(0, 4) var crow_flocks := 1
+## Dragonflies over the marsh (Insects), about this many in all, in patches
+## along its pools, perching on the bulrushes.
+@export_range(0, 120) var marsh_dragonflies := 36
+## Clouds of moths out over the grass, in the evening and through the night (Insects).
+@export_range(0, 8) var dusk_moth_clouds := 3
+## Packs of coyotes out in the meadow (Wildlife: tame, they stare, shadow, yip and
+## run off, and are never bold).
+@export_range(0, 4) var coyote_packs := 1
+
+@export_group("What lies about")
+## Things left lying about the clearing to find (Loot), how many of each: among
+## the edge of the woods, in the tall grass, by the pond and out in the field,
+## never in the middle where everyone wakes nor on the ways to the gates. (More
+## lie by the camps.)
+@export_range(0, 6) var loot_hooks := 1
+@export_range(0, 6) var loot_backpacks := 1
+@export_range(0, 6) var loot_spears := 2
+@export_range(0, 6) var loot_torches := 2
+@export_range(0, 6) var loot_flares := 1
+@export_range(0, 6) var loot_maps := 1
+@export_range(0, 6) var loot_ladders := 1
+## Camps (Campsite): left behind (a cold fire, a thing or two by it), and with
+## runners resting at them round a fire whose smoke is seen from afar (the first
+## at the edge of the woods).
+@export_range(0, 6) var abandoned_camps := 3
+@export_range(0, 4) var occupied_camps := 2
 
 var _noise: FastNoiseLite
 var _noise_seed := -1

@@ -63,6 +63,10 @@ var chasing := false
 @export var keep_out_of_clearing := true
 ## How often it looks about, seconds.
 @export var look_every := 0.2
+## Whether fire keeps it off (FireWard): nobody within a lit torch's or a
+## campfire's reach of the flame can be gone after. (The swarms: Beetles,
+## MazeImpSwarm, MazeFrogSwarm.)
+@export var fears_fire := false
 
 var _forget := 0.0
 var _last_seen := Vector3.INF
@@ -109,6 +113,8 @@ func huntable(player: Node3D) -> bool:
 	if player.get(&"escaped") == true or player.get(&"is_limp") == true:
 		return false
 	if _spared.has(player) and _spared[player] > 0.0:
+		return false
+	if fears_fire and FireWard.near(get_tree(), player.global_position):
 		return false
 	return maze == null or maze.inside(maze.cell_at(player.global_position))
 

@@ -244,6 +244,16 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     tells every hunter nearby where you are (they fetch bigger things). Three on at once for a moment bring you down.
     A jump or two shakes them off; a roll, slide or dive throws them all off; thrown off, one tumbles and throws a
     tantrum before it comes again. They give up when they lose you and climb back to their perch.
+  - **Crows** (added 2026-10-18, the user: "add crows /ravens and blue jays"): murders of seven to thirteen American
+    crows sitting along the edges of the wall tops and ledges over a hall (the lowest ledges if there is room on
+    them), side on, looking about, preening, shuffling, now and then a caw (a bow forward, tail flicked, bill wide).
+    They are the maze's watchers. Walk in a hall below them, in their sight, and every head turns to you; as you go
+    they follow along the walls in short flights, one after another, leapfrogging to keep over you (never far from
+    home, never into the clearing). Walking calls nobody. Run near them, or sprint within a longer way, and the murder
+    erupts cawing and wheels over you, following you round, and its cawing calls every hunter within 45 m to you,
+    over and over, for about nine seconds; then they settle on the walls where they are, slow to go off again for a
+    while. When something catches someone near them they rise and wheel over the place, cawing, for half a minute:
+    a sign to everyone else. They catch nobody. Walk, do not run, under crows.
   - **Imp swarm**: a crack at the foot of a wall. Come near (or run near) and it chitters for a second, then dozens of
     imps pour out as a tide along the floor and up and along the walls. Those that reach you run up you and cling,
     slowing you; ten on you for a second and you are down. A roll throws them off; a sprint outruns them; getting up
@@ -270,6 +280,44 @@ ring has is its style's choice. The wall tops are a second level you can travel 
   - Now and then, crawling beside the clearing's wall, it rears up, leans its hands on the top and looks over: from
     the clearing, a gaunt figure over the wall with two pale eyes. It cannot reach in.
   - Its limbs as ways up (riding it over the walls) are not done: see below.
+  - **Coyotes** (added 2026-10-18 at the user's request, "there should be a coyote, and coyote skinwalker as well"):
+    real coyotes, lean and rangy, grizzled grey-tan with a cream throat and belly, big upright ears, yellow eyes, a
+    bushy black-tipped tail carried low. Packs of three to five trot about the halls, sniff, stand and stare. Mostly
+    skittish: seeing someone they shadow them at a distance (about 15 m), stopping to stare whenever they look round;
+    now and then the pack breaks into its yip-howl chorus. Come close or run at one and it gallops off and slinks back.
+    One alone, or a pair, never does more. Only a pack of three or more round someone **alone** (nobody else within
+    12 m) grows bold over about seven seconds: they circle, closing in low and snarling, a yip as the warning, and
+    after a couple of seconds of it the one behind you darts in and snaps. Turn on one and it backs off; run at one and
+    the pack loses its nerve; running gets away (they close in slower than a run); a friend coming near ends it.
+    After a snap the pack scatters and is not bold again for a while. Tame coyotes live in the clearing too
+    (ClearingStyle "Wildlife"): they stare, yip and run off, and are never bold.
+  - **Skinwalker** (the internet-horror figure, kept to horror fiction): something wearing a coyote's skin, hidden
+    in one of the packs as one of them. Look closely: it is bigger, its joints bend the wrong ways, its eyes shine too
+    much, it never joins the chorus, and when the coyotes run from you it does not: it stares. From round a corner it
+    calls out to you, a voice made in code (a "hey?", a "hel-lo", a coyote's yip turned human; never anyone's real
+    voice). Look straight at it from close, or walk up to it, and it stops pretending: it freezes, turns its head to
+    you and rises (the warning, nearly two seconds) onto long gaunt legs, the hide hanging down its back, the coyote's
+    head a mask over a pale human face; its pack scatters. Then it runs you down on all fours in bursts: down flat and
+    a jerk of the head (the wind-up), a burst far faster than a sprint, then it stops dead, twitching. Bursts need a
+    straight line to you; out of its sight it crawls after you slower than a run. Turn corners, get up high (it cannot
+    climb: it stands under you and gives up) or get into the clearing (it will not follow). Lost, it goes back to its
+    pack. The first ring has two coyote packs and one skinwalker hidden in one of them.
+  - **Tripod** (the user: "a giant 3 legged tripod enemy like from war of the worlds"; then "the tripod legs should
+    be more fluid, noodly"): a Martian fighting-machine far taller than the walls. A low cowl of weathered bronze
+    plate some 60 m up, half lost in the mist, a pale eye glowing in the dark under its brow; three long, whippy legs
+    of segmented metal that coil up as they lift, swing high over the walls and uncoil to plant in the halls with a
+    boom that shakes the ground; cable tentacles and a clawed grasper hanging under it; a heat ray on a jointed arm;
+    red weed trailing off it. It does not chase: it patrols round its ring in great slow strides (slower than a
+    walk), its searchlight crossing the wall tops and sweeping slowly down one hall after another. Lit in the open
+    for half a second, you are found: its horn sounds, a deep, distorted "ULLA" heard across the maze (the warning),
+    its light stays on you and its hood turns to you. Near under it, its grasper uncoils high over you and comes down
+    slowly; get away or out of its sight and it draws back, stay and its claws lift you away. Further off, its arm
+    swings round and the emitter charges (about two and a half seconds: it glows brighter and its hum rises); then
+    the ray comes down the hall at you from well up it and burns along it through where you stood, drifting after
+    you only slowly. Step out of its line, into a side passage or a slot, under a ledge or behind a buttress, and it
+    burns past, leaving a black scorch with a glowing seam and steam rising off it. The walls cut its light and its
+    ray as they do its sight: against the near wall, under a ledge, in the ivy, you are hidden. One in a ring at
+    most (it is huge); the first ring has one.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
@@ -316,11 +364,109 @@ agree.
 Not everything in the clearing and the maze is a threat. Added 2026-10-18 at the user's request ("there should be
 non hostile regular deer and elk and chicken as well. Some should be in the clearing"):
 
+- **Birds** (added 2026-10-18, the user: "add crows /ravens and blue jays"). Real anatomy and a real wingbeat (the
+  wing straight and fingered on the downstroke, folded at the wrist on the upstroke, a flick at the top), take-offs
+  with a jump, glides, banking, landings with a flare; their calls are made in code.
+  - **Blue jays**: families of three to six in the pines at the edge of the woods nearest the middle (ClearingStyle,
+    "Wildlife"): vivid blue, barred black, white below, a black necklace, crested. One of the very few colour accents
+    in the near-colourless clearing, so they are small and few. They flit from branch tip to branch tip and tree to
+    tree in bounding flights, drop to the ground in front of the trees to hop about and peck, and fly back up;
+    "jay! jay!" with a bob and the crest up, a squeaky "queedle", and now and then (as real jays do) a red-tailed
+    hawk's scream. Walk in under their trees and they gather on the branches over you and scold, crests up; run
+    through those on the ground and they go up into the branches. Something that hunts near the trees, they scold
+    too: a tell.
+  - **Crows in the clearing**: a small flock in the treetops of a stand by the woods, walking (with the crow's
+    swagger) and pecking in the meadow in front of it. Walk near and those on the ground fly up into the trees; run
+    at them and the whole flock goes up cawing, wheels over the trees and settles. They call nobody.
+  - **Ravens**: a pair (or one) on the wall tops of a ring (MazeStyle, "Wildlife"): a third bigger than a crow, a
+    wedge tail, a shaggy throat, a heavy bill; deep croaks and hollow knocking. An omen: when someone comes near and
+    something that hunts waits in the halls ahead of them, the ravens fly ahead, croaking, to sit on the walls over
+    it, and stay there while it stays. Those who notice where the ravens went know what lies there.
 - **Tame chickens**: ordinary farmyard hens and a rooster that forage, cluck and crow. Run through them and they
   scatter a few steps, squawking, and settle; walk near and they edge away. They never call the hunters and never mob.
   The clearing has a couple of flocks (ClearingStyle, "Wildlife"), the first pecking at the edge of the woods, all well
   away from the middle and the paths to the gates; a ring can have some in its halls too (MazeStyle, "Wildlife", none
   by default). Placed from the round's seed, so everyone in a room sees the same flocks.
+- **Insects** (added 2026-10-18: "moths and flys", "dragon flys"). Mostly atmosphere, and a tell or two:
+  - **Moths**: pale, dusty moths fluttering erratically in clouds round every light in the mist: the angel's burning
+    heart, fires and torches, the pale light past the exit; they blunder into the light and bounce off it, and a few
+    rest on the wall by it and scatter as you come. Big ones (luna moths, death's-head hawkmoths among the plain ones)
+    rest on the walls of the halls with their wings spread flat, and burst off as you pass, flutter about and settle
+    again. At dusk and through the night clouds of them come out over the clearing's grass.
+  - **Flies**: buzzing clouds of blowflies (red eyes, metallic blue-green bodies) round anything dead or of meat: the
+    flesh mounds, the meat beast, the slime wall, carcasses lying in dead ends, the boar's lair; and for a while
+    wherever someone was caught. Their buzz carries a few metres: flies mean something dead, or something of meat, is
+    near. Stand still among them and a few land on you and crawl on your head and shoulders until you move.
+  - **Dragonflies**: over the marsh, in patches along its pools: darting fast and straight, stopping dead to hover,
+    turning at right angles, perching on the bulrushes' tips with their wings held out flat; blue-green, the one
+    colour in the grey. They take off as you come near.
+  - They catch nobody, call nobody, and nothing about them is sent between players: each machine makes its own from
+    the round's seed. How many: MazeStyle "Wildlife" (moths per light, big moths on the walls, flies per carrion,
+    carcasses in dead ends) and ClearingStyle "Wildlife" (dragonflies over the marsh, moth clouds at dusk). Each swarm
+    is one draw, and is drawn and moved only near the camera.
+
+## What lies about
+
+Added 2026-10-18 at the user's request ("there should be grappling hooks, backpacks, spears, torches to find, and
+other abandoned loot through the clearing, and abandoned (or occupied) campsites"). Others were here before you, and
+left things behind. **They are tools to get away with, never weapons** (pillar 2): nothing found kills, or even hurts,
+what hunts the maze. A spear buys a moment; a torch keeps the small things off; a flare sends them looking elsewhere.
+
+- **Grappling hook.** Out of your hand with the act button at the lip of a ledge in reach above you (a mezzanine, a
+  terrace, the platform under a sewer pipe, a buttress's top: any ledge's edge the hook can feel for, up to about 13
+  m: never the wall tops, which stay out of reach), or at anything marked as a grapple point. It bites, you swing on
+  its rope and climb it, and at the top pull yourself over the lip. A big new way up, but its rope frays: six catches
+  and it parts.
+- **Backpack.** Worn as soon as it is taken: room for four things instead of two. Full, it slows you a little.
+- **Spear.** A sharpened sapling with a shard of iron lashed to it. Thrown (act), it staggers the first thing that
+  hunts it passes near: knocked back a couple of metres, rocking, for three seconds, and it catches nobody in that
+  time. Then it comes on again. It lies where it fell, to be taken up again. The swarms are not staggered by it.
+- **Torch.** A stick with a head of pitch-black rag. Lit when taken into the hand (put away, it is snuffed), it lights
+  the halls round you (its own light and flame, GameCommon's fire) and burns for four minutes, low for the last half
+  minute, then is out. The swarms (beetles, the imp swarm, the frog swarm) fear fire: within five metres of a burning
+  torch, in a hand or lying where it was thrown, they will not come at you, and give up and go home. Held to a cold
+  campfire it lights it; a burnt-out torch held to a burning one is lit again.
+- **Flare.** A road flare. Thrown, it is struck: a hard red light for 45 seconds, and what hunts within 45 m and is
+  after nobody goes to see; when it lands, what is chasing someone further off than the flare is drawn off too.
+  Dropped, it is not struck.
+- **Map scrap.** A page torn from an exercise book: read (from the inventory), it shows the halls round you in
+  pencil and the way to the gate out of where you are (the clearing's nearest gate, or your section's way out) for a
+  few seconds, and crumbles. There is still no map.
+- **Rope ladder.** Hung (from the inventory) standing at the edge of a drop of 2.4 to 16 m, it hangs from there to
+  the ground: a way down, and back up, for everyone, for the rest of the round.
+
+Each lies in the grass or the mud with a small glint now and then off it (wet metal, a bit of glass), never lit up like
+a prize. The act button near one takes it (the boy stoops for it); "E TAKE THE TORCH" at the foot of the screen says
+so. Two slots, four with a backpack; tap a slot (or 1 to 4; on a pad the d-pad and Y) to take a tool into your hand or
+put it back, or to read a map or hang a ladder; DROP (X) puts it down. With something in your hand you cannot take
+hold of ivy or a vine, so walking into ivy puts it away for you. Held, a torch is held up, a spear carried point up
+and levelled over the shoulder to throw, the hook's coil hangs from the hand; the backpack is worn.
+
+**Where (the rules, ClearingStyle and MazeStyle "What lies about"):** in the clearing, a set number of each (one hook,
+backpack, flare, map and ladder, two spears and two torches by default), among the edge of the woods, in the tall
+grass, by the pond and out in the field, never within 40 m of the middle where everyone wakes nor near the ways from
+the middle to the gates; the grass is trodden thin round each. In the maze, six in each square section's halls, in the
+ends of halls first (the cells with the most walls), never by its gates; mostly flares, maps and torches. More lie by
+the camps. Placed from the round's seed: everyone in a room finds the same things in the same places.
+
+**Together:** only the room's maker says who gets what (a guest asks); taken, it is gone for everyone. What anyone
+holds is seen in their hand; what is dropped or thrown is seen to fall and lie; torches lit and out, campfires lit and
+ladders hung are seen by all. A guest's spear asks the maker to stagger what it hit.
+
+## Camps
+
+- **Left behind** (three in the clearing, one in each square section's halls): a cold ring of stones round a bed of
+  ash and charred stubs, a lean-to of tarp over a ridge pole on forked sticks (sometimes fallen in), bedrolls laid out
+  or rolled, a log to sit on, a pot, a broken crate, a sack, sticks and stones scattered; in the clearing often a post
+  with tally marks cut in its board, in the maze tallies scratched on the wall at the end of the hall. Sometimes a
+  struggle: the lean-to down, the pot kicked over, two furrows where something was dragged away. A thing or two of what
+  lies about is left by each. Hold a lit torch to its fire to light it: a fire ward of seven metres, for good.
+- **With people at them** (two in the clearing, the first at the edge of the woods): the same, kept, a fire burning
+  with its light, and smoke going up high enough to be seen from far across the clearing, so you can find them. Two or
+  three runners rest round the fire between runs (one asleep on a bedroll): the same boy as everyone, in runners'
+  shirts. Come up and one looks up and points you to what is worth taking lying near the camp (or beckons you in to
+  the fire if there is nothing). Nothing hunts in the clearing, so they are never hunted there.
+- The ground round a camp in the clearing is trodden: the grass worn thin, raggedly, never bare.
 
 ## Playing together
 
@@ -345,7 +491,10 @@ non hostile regular deer and elk and chicken as well. Some should be in the clea
 
 - Rings 2 and 3 (styles exist; not built or played yet), and what changes between rings beyond the style.
 - Moving walls, doors that shut at night, a day/night cycle.
-- A map, sound and music, player names.
+- A map, sound and music, player names. (A map scrap shows the way for a moment; there is no map.)
+- Loot: a knife, a canteen or a whistle (thought of, not made); the hunters do not use the rope ladders; a friend's
+  grappling hook rope is not seen by others (only them on it); the runners in the maze do not yet stop at camps (the
+  ones at camps stay there).
 - Enemies using the ways up (terraces, bridges, wall tops).
 - Climbing the colossus: its limbs, fur and stone as ways up, riding it over the walls (the ivy's `Ladder` would
   have to move with a bone, and the character controller does not carry a climber on a moving body).

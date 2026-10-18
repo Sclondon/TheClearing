@@ -171,27 +171,10 @@ extends Resource
 ## Gargoyles, each crouched as a statue on a ledge over a hall (a terrace's edge or a
 ## wall top), dropping on whoever passes beneath.
 @export_range(0, 4) var gargoyles := 2
-
-@export_group("Who else is in it")
-## How many runners run the section's passages (MazeRunners, from the round's
-## seed): other boys, driven by the computer, who know their section. They lead
-## anyone who comes up to them to its gate out, draw what hunts away, and are
-## hunted themselves. Each one poses a whole boy, so keep it small.
-@export_range(0, 6) var runners := 2
 ## Herds of deer (four or five each, one of them wrong), standing in the halls.
 @export_range(0, 3) var deer_herds := 1
 ## Bull elk, each holding a stretch of halls as his own.
 @export_range(0, 3) var elk := 1
-
-@export_group("Wildlife")
-## Herds of ordinary deer in the halls (Wildlife: peaceful, they run from you;
-## not among what hunts it).
-@export_range(0, 4) var wild_deer_herds := 1
-@export_range(0, 4) var wild_elk_herds := 1
-
-@export_group("Wildlife")
-## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
-@export_range(0, 4) var tame_chicken_flocks := 0
 ## Gangs of tiny imps (three or four), each perched on a wall.
 @export_range(0, 4) var imp_gangs := 2
 ## Swarms of imps, each a crack at the foot of a wall that dozens pour out of.
@@ -200,6 +183,54 @@ extends Resource
 ## stand 260 m tall). The Avenues and the Galleries, whose walls are thick and
 ## far apart, have one.
 @export_range(0, 1) var colossi := 0
+## Packs of coyotes (three to five each): skittish, they shadow people at a
+## distance and yip, but three or more of them can grow bold round someone alone.
+@export_range(0, 4) var coyote_packs := 2
+## Skinwalkers, each hidden among a pack of coyotes as one of them (one more
+## pack is put in for any there is no pack for).
+@export_range(0, 2) var skinwalkers := 1
+## Martian tripods (MazeTripod), each striding round the ring over the walls,
+## its searchlight sweeping the halls. One at most: it is huge.
+@export_range(0, 1) var tripods := 1
+## Murders of crows (Crows), each sitting along the wall tops over a hall: they
+## follow whoever passes along the walls, and erupt cawing at anyone who runs,
+## which calls the hunters.
+@export_range(0, 4) var crow_murders := 2
+
+@export_group("Who else is in it")
+## How many runners run the section's passages (MazeRunners, from the round's
+## seed): other boys, driven by the computer, who know their section. They lead
+## anyone who comes up to them to its gate out, draw what hunts away, and are
+## hunted themselves. Each one poses a whole boy, so keep it small.
+@export_range(0, 6) var runners := 2
+
+@export_group("Wildlife")
+## Herds of ordinary deer in the halls (Wildlife: peaceful, they run from you;
+## not among what hunts it).
+@export_range(0, 4) var wild_deer_herds := 1
+@export_range(0, 4) var wild_elk_herds := 1
+## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
+@export_range(0, 4) var tame_chicken_flocks := 0
+## Pairs of ravens (Ravens) on the wall tops, which hunt nobody: omens, that fly
+## ahead of whoever comes near to sit over a hunter waiting there.
+@export_range(0, 4) var raven_pairs := 2
+## Insects (Insects): moths round each light in its halls (the angel, fires,
+## the light past the exit), big moths resting on its walls that scatter as
+## you pass, flies round each thing of meat in it (flesh mounds, the meat
+## beast, the slime wall, the boar's lair, carcasses), and carcasses lying in
+## its dead ends.
+@export_range(0, 60) var moths_per_light := 18
+@export_range(0, 30) var wall_moths := 8
+@export_range(0, 80) var flies_per_carrion := 26
+@export_range(0, 8) var carcasses := 3
+
+@export_group("What lies about")
+## Things left lying in its halls to find (Loot): in the ends of halls first
+## (the most walls round them), then anywhere, never by its gates.
+@export_range(0, 20) var loot_items := 6
+## Camps left behind in its halls (cold fires, tallies scratched on the wall
+## beside them, often signs of a struggle).
+@export_range(0, 4) var abandoned_camps := 1
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []

@@ -1,0 +1,4 @@
+# Blue jays: a CorvidFlock of jays (needs godot/crow) and the jay's models (full and low; built by the crow's tools/build_corvids.py)
+creatures/blue_jay/blue_jays.gd
+creatures/blue_jay/models/blue_jay.glb
+creatures/blue_jay/models/blue_jay_lo.glb

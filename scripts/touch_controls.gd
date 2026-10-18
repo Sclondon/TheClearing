@@ -154,6 +154,11 @@ func _press(index: int, pos: Vector2) -> void:
 	# The top right corner belongs to the menu button.
 	if pos.y < 64.0 and pos.x > size.x - 130.0:
 		return
+	# (and anything on the screen in the group `touch_blockers` belongs to itself: an inventory's slots)
+	for blocker: Node in get_tree().get_nodes_in_group(&"touch_blockers"):
+		var control := blocker as Control
+		if control and control.is_visible_in_tree() and control.get_global_rect().has_point(get_global_transform() * pos):
+			return
 	if wanted():
 		_hint_alpha = 1.0
 	var reach := _button_radius() * 1.3

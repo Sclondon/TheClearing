@@ -1,0 +1,10 @@
+# A coyote: its look, every move and its yips and howls, for any game (no thinking). Needs godot/dog.
+creatures/coyote/coyote.gd
+creatures/coyote/coyote_look.gd
+creatures/coyote/coyote_rig.gd
+creatures/coyote/models/coyote_a.glb
+creatures/coyote/models/coyote_a_lo.glb
+creatures/coyote/models/coyote_b.glb
+creatures/coyote/models/coyote_b_lo.glb
+creatures/coyote/tools/.gdignore
+creatures/coyote/tools/build_coyote.py

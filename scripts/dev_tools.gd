@@ -37,6 +37,9 @@ const HUNTERS := [
 	["CHICKENS (TAME)", "tame_chickens", AHEAD], ["GARGOYLE", "gargoyle", AHEAD],
 	["DEER", "deer", SNAKE_AHEAD], ["ELK", "elk", SNAKE_AHEAD],
 	["IMPS", "imps", AHEAD], ["IMP SWARM", "imp_swarm", AHEAD], ["COLOSSUS", "colossus", COLOSSUS_AHEAD],
+	["COYOTES", "coyotes", SNAKE_AHEAD], ["SKINWALKER", "skinwalker", SNAKE_AHEAD],
+	["TRIPOD", "tripod", SNAKE_AHEAD],
+	["CROWS", "crows", AHEAD], ["RAVENS", "ravens", AHEAD], ["BLUE JAYS", "blue_jays", AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -125,8 +128,12 @@ func _init(in_world: World) -> void:
 		grid.add_child(_button("+ " + String(one[0]), spawn_hunter.bind(one[1], one[2])))
 	grid.add_child(_button("+ RUNNER", spawn_runner))
 	grid.add_child(_button("+ RUNNERS", spawn_runners))
+	for one: Array in Loot.DEV:
+		grid.add_child(_button(String(one[0]), spawn_loot.bind(one[1])))
 	for one: Array in WILDLIFE:
 		grid.add_child(_button("+ " + String(one[0]), spawn_wildlife.bind(one[1])))
+	for one: Array in [["MOTHS", InsectLook.Kind.MOTH], ["FLIES", InsectLook.Kind.FLY], ["DRAGONFLIES", InsectLook.Kind.DRAGONFLY]]:
+		grid.add_child(_button("+ " + String(one[0]), spawn_insects.bind(one[1])))
 	grid.add_child(_button("CLEAR ALL", clear))
 	grid.add_child(_button("TO GATE", to_gate))
 	grid.add_child(_button("TO MIDDLE", to_middle))
@@ -273,6 +280,27 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = [MazeImpSwarm.new()]
 		"colossus":
 			made = [MazeColossus.new()]
+		"coyotes":
+			made = MazeCoyote.pack_of(4, randi())
+		"skinwalker":
+			# (hidden among a pack of three, as in the maze: the second of the row is it)
+			var pack_now := MazeCoyote.pack_of(3, randi())
+			var walker := MazeSkinwalker.new()
+			walker.pack_id = pack_now[0].pack_id
+			made = [pack_now[0], walker, pack_now[1], pack_now[2]]
+		"tripod":
+			# (it stands over the hall ahead, its light on the ground in front of him)
+			made = [MazeTripod.new()]
+		"crows":
+			made = [Crows.new()]
+		"ravens":
+			# (wildlife: on the walls round where they are put, not among the hunters)
+			world.birds.add_ravens_at(at)
+			return
+		"blue_jays":
+			# (wildlife: in the trees near, or on the walls, or the ground)
+			world.birds.add_jays_at(at)
+			return
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 
@@ -295,10 +323,22 @@ func spawn_runners() -> void:
 func _add_runner(at: Vector3, turn: float) -> MazeRunner:
 	var ring := clampi(world.maze.ring_of(world.maze.cell_at(at)), 1, world.maze.rings)
 	return world.runners.add(ring, at - Vector3.UP * 0.05, _facing_him(at) + PI + turn, randi())
+## Puts something to find (or a camp) down ahead of him (Loot.DEV).
+func spawn_loot(what: String) -> void:
+	if world.loot:
+		world.loot.dev_drop(what)
+
+
 ## Puts a peaceful herd (Wildlife) in ahead of him, grazing.
 func spawn_wildlife(kind: Wildlife.Kind) -> void:
 	var at := _ahead(SNAKE_AHEAD)
 	world.wildlife.add_herd(kind, at, world.maze.in_clearing(world.maze.cell_at(at)), randi())
+
+
+## Puts insects in ahead of him (Insects.put): moths round a lantern, flies on a
+## carcass, a patch of dragonflies.
+func spawn_insects(kind: InsectLook.Kind) -> void:
+	world.insects.put(kind, _ahead(7.0))
 
 
 ## Takes away everything that hunts (the Griever World put in is only put to

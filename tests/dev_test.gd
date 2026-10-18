@@ -100,6 +100,11 @@ func _run() -> void:
 	for one: Array in world.dev.HUNTERS:
 		# (tame chickens are wildlife: they go in beside the hunters, not among them)
 		var list: Array = world.tame_chickens if one[1] == "tame_chickens" else world.enemies.enemies
+		# (and so are ravens and blue jays)
+		if one[1] == "ravens":
+			list = world.birds.ravens
+		elif one[1] == "blue_jays":
+			list = world.birds.jays
 		var had: int = list.size()
 		world.dev.spawn_hunter(one[1], one[2])
 		await frames(2)
