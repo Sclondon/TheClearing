@@ -1,0 +1,6 @@
+# Beetle swarm: the swarm (look and motion), the beetles' mesh and shader, and their model
+creatures/beetle_swarm/beetle_swarm.gd
+creatures/beetle_swarm/beetle_look.gd
+creatures/beetle_swarm/beetle.gdshader
+creatures/beetle_swarm/models/beetles.glb
+creatures/beetle_swarm/tools/build_beetles.py

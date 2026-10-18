@@ -123,6 +123,12 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     (between a run and a sprint), lunge-bite. Climbing breaks the trail.
   - **Aliens**: twos and threes that walk calmly and blink ahead of you when unwatched (a shimmering column
     warns first; looking at it stops it), then raise a hand and catch you in a pale light.
+  - **Beetles** (after Outside's scarabs): a swarm of several hundred glossy black beetles with an oily sheen
+    (ground beetles and dor beetles) waits in cracks at the foot of a wall, in a dead end or along a hall. When
+    someone comes down the hall they pour out and flood along the floor after them, lapping up the wall feet, a
+    little faster than a run and slower than a sprint. Those that reach you run up your legs; enough of them for
+    a moment and you are caught. Sprint away, or get up onto a terrace, the ivy or a vine (they climb no higher
+    than about a metre up a wall); when they get no nearer for a few seconds they stream home into the cracks.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
