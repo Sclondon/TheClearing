@@ -177,6 +177,8 @@ func _enemies(seed_value: int) -> void:
 	var style: MazeStyle = maze.styles[0]
 	enemies.populate(maze, hash("enemies/%d" % seed_value), style.mummy_packs, style.snakes)
 	enemies.add_hunters(style, hash("hunters/%d" % seed_value))
+	# (and the tame coyotes of the clearing, run and sent with them)
+	enemies.add_wildlife(maze.clearing_style, hash("coyotes/%d" % seed_value))
 	griever = Griever.new()
 	griever.name = "Griever"
 	add_child(griever)

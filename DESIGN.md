@@ -270,6 +270,28 @@ ring has is its style's choice. The wall tops are a second level you can travel 
   - Now and then, crawling beside the clearing's wall, it rears up, leans its hands on the top and looks over: from
     the clearing, a gaunt figure over the wall with two pale eyes. It cannot reach in.
   - Its limbs as ways up (riding it over the walls) are not done: see below.
+  - **Coyotes** (added 2026-10-18 at the user's request, "there should be a coyote, and coyote skinwalker as well"):
+    real coyotes, lean and rangy, grizzled grey-tan with a cream throat and belly, big upright ears, yellow eyes, a
+    bushy black-tipped tail carried low. Packs of three to five trot about the halls, sniff, stand and stare. Mostly
+    skittish: seeing someone they shadow them at a distance (about 15 m), stopping to stare whenever they look round;
+    now and then the pack breaks into its yip-howl chorus. Come close or run at one and it gallops off and slinks back.
+    One alone, or a pair, never does more. Only a pack of three or more round someone **alone** (nobody else within
+    12 m) grows bold over about seven seconds: they circle, closing in low and snarling, a yip as the warning, and
+    after a couple of seconds of it the one behind you darts in and snaps. Turn on one and it backs off; run at one and
+    the pack loses its nerve; running gets away (they close in slower than a run); a friend coming near ends it.
+    After a snap the pack scatters and is not bold again for a while. Tame coyotes live in the clearing too
+    (ClearingStyle "Wildlife"): they stare, yip and run off, and are never bold.
+  - **Skinwalker** (the internet-horror figure, kept to horror fiction): something wearing a coyote's skin, hidden
+    in one of the packs as one of them. Look closely: it is bigger, its joints bend the wrong ways, its eyes shine too
+    much, it never joins the chorus, and when the coyotes run from you it does not: it stares. From round a corner it
+    calls out to you, a voice made in code (a "hey?", a "hel-lo", a coyote's yip turned human; never anyone's real
+    voice). Look straight at it from close, or walk up to it, and it stops pretending: it freezes, turns its head to
+    you and rises (the warning, nearly two seconds) onto long gaunt legs, the hide hanging down its back, the coyote's
+    head a mask over a pale human face; its pack scatters. Then it runs you down on all fours in bursts: down flat and
+    a jerk of the head (the wind-up), a burst far faster than a sprint, then it stops dead, twitching. Bursts need a
+    straight line to you; out of its sight it crawls after you slower than a run. Turn corners, get up high (it cannot
+    climb: it stands under you and gives up) or get into the clearing (it will not follow). Lost, it goes back to its
+    pack. The first ring has two coyote packs and one skinwalker hidden in one of them.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.

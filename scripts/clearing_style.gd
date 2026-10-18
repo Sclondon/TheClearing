@@ -117,6 +117,9 @@ var entrance_spots: Array = []
 ## Flocks of tame chickens (TameChickens) foraging in the clearing: hens and a
 ## rooster that hunt nobody, the first at the edge of the woods.
 @export_range(0, 6) var chicken_flocks := 2
+## Packs of coyotes out in the meadow (Wildlife: tame, they stare, shadow, yip and
+## run off, and are never bold).
+@export_range(0, 4) var coyote_packs := 1
 
 var _noise: FastNoiseLite
 var _noise_seed := -1

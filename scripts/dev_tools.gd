@@ -36,6 +36,7 @@ const HUNTERS := [
 	["CHICKENS (TAME)", "tame_chickens", AHEAD], ["GARGOYLE", "gargoyle", AHEAD],
 	["DEER", "deer", SNAKE_AHEAD], ["ELK", "elk", SNAKE_AHEAD],
 	["IMPS", "imps", AHEAD], ["IMP SWARM", "imp_swarm", AHEAD], ["COLOSSUS", "colossus", COLOSSUS_AHEAD],
+	["COYOTES", "coyotes", SNAKE_AHEAD], ["SKINWALKER", "skinwalker", SNAKE_AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -251,6 +252,14 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = [MazeImpSwarm.new()]
 		"colossus":
 			made = [MazeColossus.new()]
+		"coyotes":
+			made = MazeCoyote.pack_of(4, randi())
+		"skinwalker":
+			# (hidden among a pack of three, as in the maze: the second of the row is it)
+			var pack_now := MazeCoyote.pack_of(3, randi())
+			var walker := MazeSkinwalker.new()
+			walker.pack_id = pack_now[0].pack_id
+			made = [pack_now[0], walker, pack_now[1], pack_now[2]]
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 

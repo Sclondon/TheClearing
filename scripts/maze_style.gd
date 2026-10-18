@@ -200,6 +200,12 @@ extends Resource
 ## stand 260 m tall). The Avenues and the Galleries, whose walls are thick and
 ## far apart, have one.
 @export_range(0, 1) var colossi := 0
+## Packs of coyotes (three to five each): skittish, they shadow people at a
+## distance and yip, but three or more of them can grow bold round someone alone.
+@export_range(0, 4) var coyote_packs := 2
+## Skinwalkers, each hidden among a pack of coyotes as one of them (one more
+## pack is put in for any there is no pack for).
+@export_range(0, 2) var skinwalkers := 1
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []

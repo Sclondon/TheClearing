@@ -46,4 +46,6 @@ if dog.bite_hits(their_chest): ...
   `blender --background --python tools/build_dog.py`
 - `example.gd`: put it on a Node3D in an empty scene. Two dogs go through every move.
 
+A rig for another animal on the same bones can extend DogRig and give its own model and materials (`_model_path`, `_dress`): godot/coyote does.
+
 Needs nothing else at run time (no textures, no other components).
