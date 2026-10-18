@@ -48,9 +48,14 @@ var south := PackedByteArray()
 ## it, as [cell inside it, the step into it]; and the way out of it into the next.
 var gates: Array = []
 var exits: Array = []
-## The cell on the outer edge that leads out, and which way out is from it.
+## The cell on the outer edge that leads out, and which way out is from it (the
+## first of `ways_out`).
 var exit := Vector2i.ZERO
 var exit_side := Vector2i.ZERO
+## Every way out through the outer edge, as [cell, step]: one, or with the desert
+## built past the square maze (`sides_out`), one into each of its quarters.
+var ways_out: Array = []
+var sides_out := false
 ## Steps from the clearing to every cell (-1 inside the clearing).
 var distance := PackedInt32Array()
 ## The cells of the narrow entrances into each ring (see MazeStyle.entrance_corridor_cells),
@@ -81,6 +86,8 @@ static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] 
 	while square < maze.styles.size() and not maze.styles[square].round_section:
 		square += 1
 	maze.rings = clampi(built, 1, maxi(square, 1))
+	# (with the desert past it, the square maze has a way out into each of its quarters)
+	maze.sides_out = built > square and maze.rings == square
 	maze.size = maze.ring_sizes[maze.rings]
 	maze.clearing = CLEARING
 	maze.maze_seed = seed_value
@@ -229,6 +236,9 @@ func inner_height(ring: int) -> float:
 func blocked(cell: Vector2i, step: Vector2i) -> bool:
 	var other := cell + step
 	if not inside(other):
+		for way: Array in ways_out:
+			if way[0] == cell and way[1] == step:
+				return false
 		return not (cell == exit and step == exit_side)
 	if step.x == 1:
 		return east[index(cell)] == 1
@@ -368,8 +378,70 @@ func _carve() -> void:
 		exits.append([out, _outward(out)])
 		_open(out, _outward(out))
 		ways_in = [[out, _outward(out)]]
-	exit = exits.back()[0]
-	exit_side = exits.back()[1]
+		if ring == rings and sides_out:
+			# Out of the last into the desert: one way into each of its quarters
+			# (they are walled apart), the furthest round from the way in on each side.
+			ways_in = _furthest_by_side(ring, ways_in[0], rng)
+		elif ring < rings:
+			# Into the next, as many gates as its style says, spread apart.
+			ways_in = _spread_out(ring, ways_in, styles[ring].entrance_count, rng)
+	ways_out = ways_in
+	exit = ways_out[0][0]
+	exit_side = ways_out[0][1]
+
+
+## For each side of `ring`'s outside, the cell on it furthest round the walls from
+## the way in (`first` on its own side), each opened: the ways into the desert's quarters.
+func _furthest_by_side(ring: int, first: Array, rng: RandomNumberGenerator) -> Array:
+	var found: Array = []
+	for side: Vector2i in STEPS:
+		if side == first[1]:
+			found.append(first)
+			continue
+		var best := -1
+		var out := Vector2i(-1, -1)
+		for i in size * size:
+			var cell := Vector2i(i % size, i / size)
+			if ring_of(cell) != ring or _outward(cell) != side or ring_of(cell + side) == ring:
+				continue
+			# (not at a corner: a quarter's way in stands well along its side)
+			var along: int = absi(cell.y - size / 2) if side.x != 0 else absi(cell.x - size / 2)
+			if along > size / 3:
+				continue
+			var score := distance[i] * 4 + rng.randi_range(0, 3)
+			if score > best:
+				best = score
+				out = cell
+		if out.x >= 0:
+			_open(out, side)
+			found.append([out, side])
+	return found
+
+
+## `ways` (the first way on, out of `ring`) and more, up to `count`: cells on its
+## outside each as far as can be from those already chosen, each opened.
+func _spread_out(ring: int, ways: Array, count: int, rng: RandomNumberGenerator) -> Array:
+	var found: Array = ways.duplicate()
+	while found.size() < count:
+		var best := -1
+		var out := Vector2i(-1, -1)
+		for i in size * size:
+			var cell := Vector2i(i % size, i / size)
+			if ring_of(cell) != ring or ring_of(cell + _outward(cell)) == ring:
+				continue
+			var apart := 1 << 30
+			for way: Array in found:
+				var other: Vector2i = way[0]
+				apart = mini(apart, absi(cell.x - other.x) + absi(cell.y - other.y))
+			var score := apart * 4 + rng.randi_range(0, 3)
+			if apart > 2 and score > best:
+				best = score
+				out = cell
+		if out.x < 0:
+			break
+		_open(out, _outward(out))
+		found.append([out, _outward(out)])
+	return found
 
 
 ## Grows one ring's passages from behind its ways in, by the ring's MazeStyle: over
@@ -610,12 +682,16 @@ func set_walls(is_wall: Callable) -> void:
 		var cell := Vector2i(i % size, i / size)
 		east[i] = 1 if cell.x < size - 1 and is_wall.call(cell, Vector2i(1, 0)) else (1 if cell.x == size - 1 else 0)
 		south[i] = 1 if cell.y < size - 1 and is_wall.call(cell, Vector2i(0, 1)) else (1 if cell.y == size - 1 else 0)
-	if is_wall.call(exit, exit_side):
-		for i in size * size:
-			var cell := Vector2i(i % size, i / size)
-			for step: Vector2i in STEPS:
-				if not inside(cell + step) and not is_wall.call(cell, step):
-					exit = cell
-					exit_side = step
-					break
+	# (the ways out are the gaps in the outer edge as the walls now stand)
+	var gaps: Array = []
+	for i in size * size:
+		var cell := Vector2i(i % size, i / size)
+		for step: Vector2i in STEPS:
+			if not inside(cell + step) and not is_wall.call(cell, step):
+				gaps.append([cell, step])
+	if not gaps.is_empty():
+		ways_out = gaps
+		if is_wall.call(exit, exit_side):
+			exit = gaps[0][0]
+			exit_side = gaps[0][1]
 	_measure()

@@ -4,9 +4,9 @@ extends RefCounted
 ## The round sections of the maze, outside the square ones (Maze): rings of
 ## passages between great circular walls, each made as its RoundStyle says (the
 ## round sections of MazeLayout). Between the square maze's outer wall and the first
-## circle is a desert of dunes (Maze.desert_style), cut into quarters by great walls from the
-## square's corners (a gate through each), that the square maze's way out comes onto;
-## each circle has a few gates through it, and the last one way out.
+## circle is the desert ring (Maze.desert_style), cut into quarters by unbroken great walls
+## from the square's corners, each its own biome, entered by its own way out of the square maze
+## and left by its own gate in the first circle; each circle has a few gates, and the last one way out.
 ##
 ## Each section is rows of cells, one hall wide (hallway diameter cells x
 ## Maze.CELL) from wall to wall; a row has as many cells round it as fit at
@@ -37,16 +37,20 @@ class Ring:
 
 ## The middle of the great wall the moor ends at (the first circle).
 var inner_radius := 0.0
-## The desert inside it: half the square maze's width, how it is made
-## (Maze.desert_style), the square maze's way out into it and
-## which way that goes.
+## The desert ring inside it: half the square maze's width, how it is made
+## (Maze.desert_style), the square maze's ways out into it (a door into each
+## quarter) and which way each goes, and the gates out of it through the first
+## circle (one out of each quarter). `door` and `way_in` are the first.
 var square_half := 0.0
 var desert: DesertStyle
+var doors: Array[Vector2] = []
+var ways_in: Array[Vector2] = []
 var door := Vector2.ZERO
 var way_in := Vector2.RIGHT
+var desert_gates: Array[float] = []
 var noise_seed := 0
 var _noise: FastNoiseLite
-# Where the dunes are level: the gaps in the diagonal walls, the door, the gates.
+# Where the dunes are level: round the doors and the gates.
 var _level: Array[Vector2] = []
 var rings: Array[Ring] = []
 ## The way out: the angle it is at, round the last circle.
@@ -64,10 +68,15 @@ static func generate(maze: Maze, count: int) -> RoundMaze:
 	made.desert = maze.desert_style if maze.desert_style else DesertStyle.new()
 	made.inner_radius = half * sqrt(2.0) + made.desert.desert_width
 	made.noise_seed = maze.maze_seed
-	# (the square maze's way out, and the quarter of the desert it comes into)
-	made.way_in = Vector2(maze.exit_side.x, maze.exit_side.y)
-	var door := maze.world(maze.exit)
-	made.door = Vector2(door.x, door.z) + made.way_in * Maze.CELL * 0.5
+	# (the square maze's ways out, one into each quarter, and which way each goes;
+	# `door` and `way_in` are the first)
+	for way: Array in (maze.ways_out if not maze.ways_out.is_empty() else [[maze.exit, maze.exit_side]]):
+		var step: Vector2i = way[1]
+		var at := maze.world(way[0])
+		made.doors.append(Vector2(at.x, at.z) + Vector2(step.x, step.y) * Maze.CELL * 0.5)
+		made.ways_in.append(Vector2(step.x, step.y))
+	made.door = made.doors[0]
+	made.way_in = made.ways_in[0]
 	var radius := made.inner_radius
 	for k in count:
 		var style: MazeStyle = maze.styles[maze.rings + k]
@@ -86,11 +95,11 @@ static func generate(maze: Maze, count: int) -> RoundMaze:
 		made.rings.append(ring)
 	# (each section's gates in where the one inside it has its ways out)
 	var gates: Array[float] = []
-	# (the first circle's gates all in the quarter of the desert the square maze's
-	# way out comes into: the diagonal walls part the quarters)
-	var facing := made.way_in.angle()
-	for g in GATES:
-		gates.append(fposmod(facing + (g - (GATES - 1) * 0.5) * 0.42 + made._rng.randf_range(-0.08, 0.08), TAU))
+	# (the first circle's gates: one out of each quarter of the desert ring, about
+	# the middle of it, well clear of the diagonal walls that part them)
+	for side: Vector2 in [Vector2(0, -1), Vector2(1, 0), Vector2(0, 1), Vector2(-1, 0)]:
+		gates.append(fposmod(side.angle() + made._rng.randf_range(-0.3, 0.3), TAU))
+	made.desert_gates = gates.duplicate()
 	for k in made.rings.size():
 		gates = made._carve(made.rings[k], gates, k == made.rings.size() - 1)
 	made.exit_angle = gates[0]
@@ -100,24 +109,15 @@ static func generate(maze: Maze, count: int) -> RoundMaze:
 ## The angles of the great walls across the desert from the square's corners to
 ## the first circle.
 const DIAGONALS: Array[float] = [PI * 0.25, PI * 0.75, PI * 1.25, PI * 1.75]
-## How wide the gap is through each, at its middle, and how far from the doors
-## and gates the dunes keep (level there), metres.
-const DIAGONAL_GAP := 10.0
+## How far from the doors and gates the dunes keep (level there), metres.
 const LEVEL_ROUND := 45.0
 
 
-## Where the middle of each diagonal wall's gap is (x, z).
-func diagonal_gaps() -> Array[Vector2]:
-	var found: Array[Vector2] = []
-	for a: float in DIAGONALS:
-		found.append(Vector2(cos(a), sin(a)) * (square_half * sqrt(2.0) + inner_radius) * 0.5)
-	return found
-
-
-## How high the desert's dunes are at (x, z): nothing in the square maze or past
-## the first circle, little near the walls, and level round the doors and gates.
+## How high the dunes are at (x, z): only in a desert quarter (DesertStyle.Biome),
+## nothing in the square maze or past the first circle, little near the walls, and
+## level round the doors and gates.
 func desert_height(x: float, z: float) -> float:
-	if desert == null or desert.dune_height <= 0.0:
+	if desert == null or desert.dune_height <= 0.0 or desert.biome_at(x, z) != DesertStyle.Biome.DESERT:
 		return 0.0
 	var p := Vector2(x, z)
 	var from_square := maxf(absf(x), absf(z)) - square_half
@@ -130,9 +130,8 @@ func desert_height(x: float, z: float) -> float:
 		var along := Vector2(cos(a), sin(a))
 		shown *= smoothstep(8.0, 40.0, absf(p.cross(along)))
 	if _level.is_empty():
-		_level = diagonal_gaps()
-		_level.append(door)
-		for g: float in rings[0].gates_in if not rings.is_empty() else []:
+		_level = doors.duplicate()
+		for g: float in desert_gates:
 			_level.append(Vector2(cos(g), sin(g)) * inner_radius)
 	for spot: Vector2 in _level:
 		shown *= smoothstep(LEVEL_ROUND * 0.3, LEVEL_ROUND, p.distance_to(spot))

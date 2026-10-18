@@ -177,6 +177,15 @@ uniform float maze_half = 50.0;
 uniform float desert_radius = 0.0;
 uniform vec3 sand : source_color = vec3(0.66, 0.59, 0.46);
 uniform vec3 sand_dark : source_color = vec3(0.5, 0.44, 0.34);
+// What each quarter of the desert ring is (DesertStyle.Biome: 0 desert, 1 forest,
+// 2 swamp, 3 plains), north (-z), east, south, west; and whether the desert ones
+// are left to the sand (SandGround) laid over them: not drawn here at all.
+uniform vec4 quarter_biomes = vec4(0.0);
+uniform float sand_laid = 0.0;
+uniform vec3 forest_floor : source_color = vec3(0.17, 0.14, 0.09);
+uniform vec3 swamp_mud : source_color = vec3(0.12, 0.13, 0.08);
+uniform vec3 plains_grass : source_color = vec3(0.34, 0.36, 0.24);
+uniform vec3 plains_rock : source_color = vec3(0.42, 0.41, 0.38);
 // Where walls stand (MazeStone.wall_feet), over a square `feet_half` metres each
 // way from the middle (none if 0): r, grown out by the strip of moss at their
 // foot; g, by the wet ground the rain runs off them onto.
@@ -312,7 +321,14 @@ void fragment() {
 	colour = mix(colour, grass * (0.85 + 0.3 * patches(at * 0.35)), grassy);
 	float ripple = 0.5 + 0.5 * sin(dot(at, vec2(0.83, 0.55)) * 2.6 + patches(at * 0.15) * 6.0);
 	vec3 sand_colour = mix(sand_dark, sand, patches(at / 40.0 + 5.0) * 0.6 + 0.4 * smoothstep(0.0, 1.0, place.y / 8.0)) * (0.94 + 0.08 * ripple * near);
-	colour = mix(colour, sand_colour, sandy);
+	// (each quarter of the desert ring its biome's ground: the diagonal walls part them)
+	float biome = abs(at.x) > abs(at.y) ? (at.x > 0.0 ? quarter_biomes.y : quarter_biomes.w) : (at.y > 0.0 ? quarter_biomes.z : quarter_biomes.x);
+	if (sandy > 0.5 && biome < 0.5 && sand_laid > 0.5) {
+		discard;
+	}
+	vec3 rocky = mix(plains_grass * (0.8 + 0.4 * patches(at * 0.3)), plains_rock * (0.85 + 0.3 * patches(at * 1.7)), smoothstep(0.55, 0.75, patches(at / 18.0 + 3.0)));
+	vec3 biome_colour = biome < 0.5 ? sand_colour : (biome < 1.5 ? forest_floor * (0.8 + 0.4 * patches(at * 0.5)) : (biome < 2.5 ? swamp_mud * (0.75 + 0.5 * patches(at * 0.2)) : rocky));
+	colour = mix(colour, biome_colour, sandy);
 
 	// A puddle shows what is over it, most of all seen at a low angle: the walls
 	// round it, and the sky over them. Which, is found by following the bounced

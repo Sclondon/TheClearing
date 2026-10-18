@@ -35,7 +35,7 @@ func _initialize() -> void:
 			var path := maze.path_out(maze.cell_at(Vector3.ZERO))
 			check("%s: a way out from the middle" % name, path.size() > maze.clearing / 2 + 4 * built, "(%d cells)" % path.size())
 			# Every ring wall is shut but for the gates, each a cell long: 4 out of the
-			# clearing, 1 out of each ring after.
+			# clearing, and into each ring after as many as its style says (entrance count).
 			var span := 1
 			var from_clearing := 0
 			var openings := 0
@@ -52,7 +52,10 @@ func _initialize() -> void:
 							openings += 1
 					if not maze.in_clearing(cell) and not maze.blocked(cell, step):
 						open += 1
-			check("%s: rings shut but for their gates" % name, from_clearing >= 4 * span and from_clearing <= 4 * (span + 1) and openings == built - 1, "(%d from the clearing, %d after)" % [from_clearing, openings])
+			var gates_after := 0
+			for ring in range(2, built + 1):
+				gates_after += maze.gates[ring - 1].size()
+			check("%s: rings shut but for their gates" % name, from_clearing >= 4 * span and from_clearing <= 4 * (span + 1) and openings == gates_after and (built < 2 or maze.gates[1].size() == maze.styles[1].entrance_count), "(%d from the clearing, %d after, %d gates)" % [from_clearing, openings, gates_after])
 			var ring_cells := maze.size * maze.size - maze.clearing * maze.clearing
 			check("%s: still a maze" % name, open < ring_cells * 1.7, "(%d open of %d cells)" % [open, ring_cells])
 			# Each way in from the clearing is a narrow entrance as long as the style says:

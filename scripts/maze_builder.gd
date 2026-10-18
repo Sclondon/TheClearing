@@ -347,9 +347,45 @@ func _ground() -> void:
 		body.add_child(on_hills)
 	# The desert's dunes outside the square maze, if there are round sections.
 	if maze.round_rings:
+		var look := maze.round_rings.desert
 		material.set_shader_parameter(&"desert_radius", maze.round_rings.inner_radius)
-		_dunes(body, material)
+		material.set_shader_parameter(&"quarter_biomes", Vector4(look.north_quarter, look.east_quarter, look.south_quarter, look.west_quarter))
+		# (in the game, Outside's sand in each desert quarter; the editor, which
+		# cannot run it, shows plain dunes)
+		if Engine.is_editor_hint():
+			_dunes(body, material)
+		else:
+			material.set_shader_parameter(&"sand_laid", 1.0)
+			_sand_quarters()
 	add_child(body)
+
+
+## Sand (SandGround, from GameCommon's godot/sand, after Outside) in each quarter
+## of the desert ring that is desert (DesertStyle.Biome), its dunes the ring's own
+## (RoundMaze.desert_height): a ground over the quarter, trimmed to its wedge
+## between the square maze, the diagonal walls and the first circle.
+func _sand_quarters() -> void:
+	var plan := maze.round_rings
+	var near := plan.square_half
+	var far := plan.inner_radius
+	for side: Vector2 in [Vector2(0, -1), Vector2(1, 0), Vector2(0, 1), Vector2(-1, 0)]:
+		if plan.desert.biome_of(Vector2i(side)) != DesertStyle.Biome.DESERT:
+			continue
+		var sand := SandGround.new()
+		sand.name = "Sand"
+		var middle := side * (near + far) * 0.5
+		sand.position = Vector3(middle.x, 0.0, middle.y)
+		var deep := (far - near) * 0.5
+		var wide := far * sqrt(0.5)
+		sand.half = Vector2(wide, deep) if side.x == 0.0 else Vector2(deep, wide)
+		# (dunes a hundred metres apart want no finer grid, and fast runners furrows, not boot prints)
+		sand.cell = 4.0
+		sand.dent_cell = 0.1
+		sand.clip = true
+		sand.wedge = Vector4(side.angle(), PI * 0.25, near, far)
+		sand.wedge_apex = Vector2.ZERO
+		sand.height = func(x: float, z: float) -> float: return plan.desert_height(x + middle.x, z + middle.y)
+		add_child(sand)
 
 
 ## The marsh in front of the flooded entrance (ClearingStyle.Entrance.MARSH), if

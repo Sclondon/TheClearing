@@ -27,18 +27,15 @@ var _parts := {}
 func _ready() -> void:
 	var body := StaticBody3D.new()
 	body.name = "Walls"
-	# The great walls across the desert from the square's corners to the first
-	# circle, a gate through the middle of each.
+	# The great walls across the desert ring from the square's corners to the first
+	# circle, unbroken: its quarters are walled apart.
 	if plan.desert:
 		var corner := plan.square_half * sqrt(2.0)
-		var middle := (corner + plan.inner_radius) * 0.5
-		var gap := RoundMaze.DIAGONAL_GAP * 0.5 + MazeBuilder.RING_THICK * 0.5
 		for a: float in RoundMaze.DIAGONALS:
-			_radial(0, a, corner, middle - gap, MazeBuilder.RING_THICK, plan.desert.diagonal_wall_height, true)
-			_radial(0, a, middle + gap, plan.inner_radius, MazeBuilder.RING_THICK, plan.desert.diagonal_wall_height, true)
-		# (the desert the last ring built: its far wall, with the way out through it)
+			_radial(0, a, corner, plan.inner_radius, MazeBuilder.RING_THICK, plan.desert.diagonal_wall_height, true)
+		# (the desert ring the last built: its far wall, with a way out of each quarter)
 		if plan.rings.is_empty():
-			_circle(0, plan.inner_radius, MazeBuilder.RING_THICK, plan.desert.far_wall_height, [plan.exit_angle] as Array[float])
+			_circle(0, plan.inner_radius, MazeBuilder.RING_THICK, plan.desert.far_wall_height, plan.desert_gates)
 	for k in plan.rings.size():
 		var ring: RoundMaze.Ring = plan.rings[k]
 		var style := ring.style

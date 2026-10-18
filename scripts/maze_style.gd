@@ -26,6 +26,9 @@ extends Resource
 @export_range(1, 16) var section_width_cells := 4
 ## How wide its hallways are, in cells.
 @export_range(1, 4) var hallway_diameter_cells := 1
+## How many gates lead into it from the section inside it, spread round the wall
+## between them. (The first section's are the clearing's four, one on each side.)
+@export_range(1, 8) var entrance_count := 1
 
 @export_group("Walls")
 ## How thick the maze walls inside the section are, metres. (A way through a wall
@@ -309,6 +312,8 @@ static func avenues() -> MazeStyle:
 static func galleries() -> MazeStyle:
 	var style := made(6, 2, 0.5, 0.0, 0.0)
 	style.maze_wall_diameter = 12.0
+	# (three ways in from the Avenues)
+	style.entrance_count = 3
 	style.mezzanine_height = 8.0
 	style.mezzanine_depth = 2.4
 	style.mezzanine_levels = 3
@@ -329,7 +334,10 @@ static func galleries() -> MazeStyle:
 ## Warren: a close maze of single hallways that wind and fork, with terraces, ivy,
 ## vines and rope bridges to climb.
 static func warren() -> MazeStyle:
-	return made(4, 1, 0.0, 0.0, 0.06)
+	var style := made(4, 1, 0.0, 0.0, 0.06)
+	# (three ways in from the Galleries)
+	style.entrance_count = 3
+	return style
 
 
 ## Tangle: single hallways that branch often and loop back on themselves, so that

@@ -58,12 +58,20 @@ func _run() -> void:
 	env.fog_density = fog
 	env.fog_height_density = fog_height
 	camera.fov = 65.0
-	# The desert, from just outside the square maze's way out.
-	var out := Vector3(maze.exit_side.x, 0.0, maze.exit_side.y)
-	var gap: Vector3 = maze.world(maze.exit) + out * 14.0
-	camera.position = gap + Vector3.UP * 1.7
-	camera.look_at(gap + out * 40.0 + Vector3.UP * 4.0)
-	await _shot(folder + "/desert.png")
+	# Each quarter of the desert ring, from just outside the square maze's way into
+	# it (the boy there too: the sand's fine mesh follows him).
+	for q in plan.doors.size():
+		var way := plan.ways_in[q]
+		var out := Vector3(way.x, 0.0, way.y)
+		var gap := Vector3(plan.doors[q].x, 0.0, plan.doors[q].y) + out * 14.0
+		gap.y = maze.ground_height(gap)
+		world.put_player(gap, 0.0)
+		for i in 10:
+			await physics_frame
+		camera.position = gap + Vector3.UP * 1.7
+		camera.look_at(gap + out * 40.0 + Vector3.UP * 4.0)
+		var name: String = DesertStyle.Biome.keys()[plan.desert.biome_of(DesertStyle.quarter_at(gap.x, gap.z))].to_lower()
+		await _shot("%s/quarter_%s.png" % [folder, name])
 	# A hallway in each round section: in the middle of a cell of its middle row.
 	for k in plan.rings.size():
 		var ring: RoundMaze.Ring = plan.rings[k]
