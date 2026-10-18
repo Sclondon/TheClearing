@@ -548,6 +548,9 @@ func _sleep_far() -> void:
 		var thing := node as Node3D
 		if thing == null or not is_instance_valid(thing) or thing == player:
 			continue
+		# (a hunter felled by a shot is gone for good: Stagger.fell)
+		if thing.has_meta(&"felled"):
+			continue
 		var nearest := INF
 		for eye in eyes:
 			nearest = minf(nearest, eye.distance_to(thing.global_position))

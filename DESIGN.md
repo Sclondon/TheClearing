@@ -16,8 +16,9 @@ own), seen and lit like *Inside*. A secret cart in the Scareathon arcade (code *
 
 1. **Built for something bigger.** The maze dwarfs you. Walls are huge, high, thick and damp; gaps through them are
    slots you squeeze through; the clearing is vast. Scale is the main feeling.
-2. **Quiet dread, not combat.** You cannot fight what hunts the maze. You run, hide, climb and get out. Being caught
-   costs you ground (back to the clearing), not the game.
+2. **Quiet dread, not combat.** You run, hide, climb and get out. You can fight back a little (a stick, a bat, a
+   sword, and rarely a gun with a round or two: "Fighting back"), but it only ever buys a moment or one less thing
+   after you; you never clear the maze. Being caught costs you ground (back to the clearing), not the game.
 3. **Together, close by.** Friends in a room run the same maze, hear each other only when near, and lose each other
    round corners.
 4. **Every maze new, every maze fair.** Mazes are generated from rules, a fresh one each round, the same for everyone
@@ -419,8 +420,8 @@ non hostile regular deer and elk and chicken as well. Some should be in the clea
 
 Added 2026-10-18 at the user's request ("there should be grappling hooks, backpacks, spears, torches to find, and
 other abandoned loot through the clearing, and abandoned (or occupied) campsites"). Others were here before you, and
-left things behind. **They are tools to get away with, never weapons** (pillar 2): nothing found kills, or even hurts,
-what hunts the maze. A spear buys a moment; a torch keeps the small things off; a flare sends them looking elsewhere.
+left things behind. **They are tools to get away with** (pillar 2): a spear buys a moment; a torch keeps the small
+things off; a flare sends them looking elsewhere. (What there is to fight with came later: "Fighting back", below.)
 
 - **Grappling hook.** Out of your hand with the act button at the lip of a ledge in reach above you (a mezzanine, a
   terrace, the platform under a sewer pipe, a buttress's top: any ledge's edge the hook can feel for, up to about 13
@@ -462,6 +463,41 @@ the camps. Placed from the round's seed: everyone in a room finds the same thing
 **Together:** only the room's maker says who gets what (a guest asks); taken, it is gone for everyone. What anyone
 holds is seen in their hand; what is dropped or thrown is seen to fall and lie; torches lit and out, campfires lit and
 ladders hung are seen by all. A guest's spear asks the maker to stagger what it hit.
+
+## Fighting back
+
+Added 2026-10-18 at the user's request ("sticks, bats and swords to use, and rarely guns and very little ammo"). They
+lie about with the rest (taken, held, dropped and shared the same way) and are held in both hands, as Outside's boy
+holds a bat. With one in your hand and something that hunts within seven metres, the act button fights instead of
+taking what is at your feet.
+
+- **Stick.** A branch broken off a tree. Common. Swung (act), it staggers the first thing that hunts in front of you
+  for about a second, barely shoving it, and snaps after three to six blows that land.
+- **Bat.** An old baseball bat. Staggers for two seconds and knocks it well back (four metres or so); splits after a
+  dozen or more blows.
+- **Sword.** An old straight sword, rare. The best: staggers for three and a half seconds, cuts through everything in
+  its sweep, never breaks.
+- A blow cannot hold a hunter down: one still reeling, or come out of it within a second and a half, is only knocked
+  on a little. The swarms are not hit by a blow, nor by a shot.
+- **Revolver** (six rounds) and **shotgun** (two, held in both hands): rare, and found with only one to three rounds
+  in them. Act brings it up and fires. A shot fells what it hits for good (it goes over, lies, sinks into the ground
+  and is gone for the round) if it is one of the ordinary hunters and near enough (the revolver 30 m, the shotgun's
+  spread 11 m); the great and the unnatural (the snake, the colossus, the tripod, the angel, the gargoyle, the slime
+  wall, the flesh mounds, the meat beast, the centipede, the skinwalker, the Griever) and anything further off are
+  only staggered for five seconds. A shot is loud: everything that hunts within 90 m comes to see where it was, and
+  within 40 m it knows who fired.
+- **Rounds** and **shells**: a box of two to four, rarer still than the guns. Taken, they go loose in your pocket (no
+  slot) and load an empty gun of their kind; the HUD shows what is in the gun and what is spare while you hold it.
+  Empty, with nothing spare, it clicks.
+
+**Where (the rules):** MazeStyle "What lies about": stick, bat and sword weights against the rest of what lies in its
+halls (3, 2, 1 by default; no swords in the first section, more in the third), `gun_chance` (each thing is a gun 4% of
+the time; 3% in the first section, 6% in the third), `shotgun_share`, `rounds_in_gun` (1 to 3), `ammo_chance` (2.5%)
+and `rounds_per_box` (2 to 4). ClearingStyle: three sticks and a bat in the clearing, a 15% chance of a gun lying
+somewhere in it and 8% of a box, and their own small chances by the camps. Camps left behind also have sticks and bats.
+
+**Together:** a swing is seen by all; a shot is seen and heard by all where it was; rounds left in a gun go with it.
+The maker staggers and fells (a guest asks), and everyone sees the felled one fall.
 
 ## Camps
 
@@ -510,6 +546,8 @@ ladders hung are seen by all. A guest's spear asks the maker to stagger what it 
 - Rings 2 and 3 (styles exist; not built or played yet), and what changes between rings beyond the style.
 - Moving walls, doors that shut at night, a day/night cycle.
 - A map, sound and music, player names. (A map scrap shows the way for a moment; there is no map.)
+- Fighting back: a kill on a guest's copy is drawn falling only when the maker says so (a moment late); felled hunters
+  are not put back during the round; the runners do not pick up weapons.
 - Loot: a knife, a canteen or a whistle (thought of, not made); the hunters do not use the rope ladders; a friend's
   grappling hook rope is not seen by others (only them on it); the runners in the maze do not yet stop at camps (the
   ones at camps stay there).

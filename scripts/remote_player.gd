@@ -9,8 +9,20 @@ extends Figure
 var slot := 0
 var escaped := false
 ## What they have in their hand (shown there: Loot), for the rig to hold it as
-## the Player's does (a torch held up, a hook's coil).
+## the Player's does (a torch held up, a hook's coil, a bat in both hands, a gun).
 var carried: RigidBody3D
+
+## They have fired the gun they hold (the rig takes the kick, as the Player's does).
+signal shot(kick: float)
+
+## As the Player's, for the rig: a swing of what they hold (Loot tells of each:
+## `swung`), and a gun brought up to fire and its aim (`fired`).
+var swing_progress := 1.0
+var swing_time := 0.6
+var gun_handling := true
+var gun_raise := 0.0
+var gun_aim := Vector3.FORWARD
+var _aim_hold := 0.0
 
 var _target := Vector3.ZERO
 var _target_velocity := Vector3.ZERO
@@ -57,7 +69,31 @@ func _physics_process(delta: float) -> void:
 	_curr_pos = global_position
 
 
+## They have begun a swing of what they hold.
+func swung() -> void:
+	var kind: Variant = carried.get(&"kind") if is_instance_valid(carried) else null
+	swing_time = LootItem.MELEE[kind]["swing"] if kind != null and kind in LootItem.MELEE else 0.6
+	swing_progress = 0.0
+
+
+## They have fired the gun they hold, along `aim`.
+func fired(kick: float, aim: Vector3) -> void:
+	gun_aim = aim
+	gun_raise = 1.0
+	_aim_hold = 1.3
+	shot.emit(kick)
+
+
 func _process(delta: float) -> void:
 	super(delta)
 	if Vector2(_target_velocity.x, _target_velocity.z).length() < 0.3:
 		facing_yaw = lerp_angle(facing_yaw, _target_yaw, 1.0 - exp(-8.0 * delta))
+	if swing_progress < 1.0:
+		swing_progress = minf(swing_progress + delta / swing_time, 1.0)
+	if gun_raise > 0.0:
+		_aim_hold -= delta
+		if _aim_hold <= 0.0:
+			gun_raise = move_toward(gun_raise, 0.0, delta / 0.45)
+	else:
+		# (lowered, a gun points the way they face)
+		gun_aim = Vector3(sin(facing_yaw), 0.0, cos(facing_yaw))

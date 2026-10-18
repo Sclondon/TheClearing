@@ -20,6 +20,8 @@ loop_share = 0.0
 terrace_share = 0.0
 wall_top_bridge_share = 0.0
 hanging_vine_share = 0.1
+sword_weight = 0
+gun_chance = 0.03
 
 [sub_resource type="Resource" id="Resource_5ge7g"]
 script = ExtResource("2_83lp3")
@@ -29,6 +31,10 @@ loop_share = 0.0
 
 [sub_resource type="Resource" id="Resource_h67si"]
 script = ExtResource("2_83lp3")
+stick_weight = 2
+sword_weight = 2
+gun_chance = 0.06
+ammo_chance = 0.035
 
 [sub_resource type="Resource" id="Resource_owt5n"]
 script = ExtResource("4_round")

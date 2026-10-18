@@ -10,8 +10,9 @@ extends Control
 ## up uses it, down drops, Y takes the last tool back into his hand or puts it away.
 ##
 ## Under the slots, a line now and then ("NO ROOM: DROP SOMETHING"); at the
-## foot of the screen what the act button would take ("E  TAKE THE TORCH"); and
-## a map scrap, while it is read.
+## foot of the screen what the act button would take ("E  TAKE THE TORCH"), and
+## over it, while he holds a gun, its rounds and his spare ones ("2 / 6  SPARE 3");
+## and a map scrap, while it is read.
 
 const FONT := preload("res://fonts/SpecialElite-Regular.ttf")
 const INK := Color(0.93, 0.9, 0.8)
@@ -27,6 +28,7 @@ var _bar: HBoxContainer
 var _buttons: Array[Button] = []
 var _drop: Button
 var _prompt: Label
+var _ammo: Label
 var _toast: Label
 var _toast_time := 0.0
 var _map_panel: PanelContainer
@@ -63,6 +65,18 @@ func _ready() -> void:
 	_toast.offset_right = 300
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_toast)
+
+	# (the rounds in the gun in his hand, and his spare ones: only while he holds one)
+	_ammo = _label("", 30)
+	_ammo.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_ammo.offset_top = -196
+	_ammo.offset_bottom = -158
+	_ammo.offset_left = -260
+	_ammo.offset_right = 260
+	_ammo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_ammo.add_theme_color_override("font_color", INK)
+	_ammo.visible = false
+	add_child(_ammo)
 
 	_prompt = _label("", 32)
 	_prompt.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
@@ -168,10 +182,14 @@ func _show() -> void:
 			words = "BURNT"
 		elif kind == LootItem.Kind.HOOK:
 			words = "HOOK %d" % int(item.get(&"bites"))
+		elif kind in LootItem.GUNS:
+			words = "%s %d" % [words, int(item.get(&"uses"))]
 		button.text = ("" if button.icon else words + "\n") + ("%d %s" % [i + 1, words] if button.icon else str(i + 1))
 	_drop.visible = loot.hand >= 0
 	if loot.hand >= 0:
 		_last_hand = loot.hand
+	_ammo.text = loot.ammo_text()
+	_ammo.visible = _ammo.text != ""
 	var near := loot.in_reach
 	if near and is_instance_valid(near):
 		var key := "" if Gamepad.using == Gamepad.Using.TOUCH else ("X  " if Gamepad.using == Gamepad.Using.PAD else "E  ")

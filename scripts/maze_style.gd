@@ -232,6 +232,23 @@ extends Resource
 ## Camps left behind in its halls (cold fires, tallies scratched on the wall
 ## beside them, often signs of a struggle).
 @export_range(0, 4) var abandoned_camps := 1
+## How likely each thing lying in its halls is to be a stick (common, weak, it
+## snaps), a bat (knocks a hunter back) or a sword (the best: never breaks),
+## weighed against the rest of what lies there (flares and maps 3 each, torches
+## and spears 2, a hook, a ladder and a backpack 1).
+@export_range(0, 12) var stick_weight := 3
+@export_range(0, 12) var bat_weight := 2
+@export_range(0, 12) var sword_weight := 1
+## The chance that any one thing lying in its halls (or by its camps) is a gun:
+## rare. A shotgun `shotgun_share` of the time, a revolver otherwise; and found
+## with a few rounds in it (`rounds_in_gun`, of six or two).
+@export_range(0.0, 1.0, 0.005) var gun_chance := 0.04
+@export_range(0.0, 1.0, 0.05) var shotgun_share := 0.3
+@export var rounds_in_gun := Vector2i(1, 3)
+## The chance that any one is a box of rounds for one (rarer still), and how
+## many are left in a box (revolver rounds or shotgun shells, as `shotgun_share`).
+@export_range(0.0, 1.0, 0.005) var ammo_chance := 0.025
+@export var rounds_per_box := Vector2i(2, 4)
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
