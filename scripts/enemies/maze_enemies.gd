@@ -6,7 +6,7 @@ extends Node3D
 ## `populate(maze, seed)` puts Apophis and packs of mummies in the passages, out
 ## of the clearing and well away from it, and `add_hunters(style, seed)` the
 ## rest of what a ring's MazeStyle asks for (ghouls, centipedes, spiders,
-## abominations, slime walls, bats, baboons, dogs, aliens, beetles, fish people: each kind's own
+## abominations, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels: each kind's own
 ## script is in scripts/enemies/, its look and motion in creatures/). The same maze and seed always give the
 ## same ones in the same places in the same order, so every machine in a room
 ## can build the same set without it being sent; then one machine (the host)
@@ -93,6 +93,7 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ## - Baboon troops, dogs and aliens go about in packs, put round one cell.
 ## - Beetle swarms wait in cracks at the foot of a wall, in a dead end and a
 ##   hall in turn.
+## - Angels hang over the middle of a straight hall (where they see furthest).
 func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	var nav := MazeNav.new(maze)
 	var rng := RandomNumberGenerator.new()
@@ -160,6 +161,13 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var cell := _far_from(taken, places, rng)
 		taken.append(cell)
 		add(Beetles.new(), cell, 0.0, rng.randi())
+	for i in style.angels:
+		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		if along == Vector2i.ZERO:
+			along = Vector2i(0, 1)
+		add(MazeAngel.new(), cell, atan2(float(along.x), float(along.y)), rng.randi())
 
 
 ## Puts a pack round `middle`: one to a cell within two steps of it, and two

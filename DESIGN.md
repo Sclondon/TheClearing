@@ -139,6 +139,15 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     in short bursts when it sees you near, then stands gulping for breath; a sprint or a corner loses it. It lunges
     and grabs with both hands. It cannot stay out of the water: after half a minute, or once it has lost you, it goes
     back to its pool and sinks.
+  - **Angel** (a "biblically accurate" one, after Ezekiel's ophanim and Isaiah's seraphim): three great wheels of
+    pale gold one within another, turning slowly, their rims full of real eyes that blink out of step, round a
+    burning white-gold heart half hidden by six wings. Huge (7 m across), silent, floating over the halls; the one
+    warm bright thing in the mist, lighting the walls round it. It drifts slowly and everyone passes under it, but
+    its eyes look every way, so there is no creeping past behind it. Being SEEN is the danger: while you stand in its
+    sight in the open its gaze builds on you over about four seconds (quicker near it), and everyone can see and hear
+    it build: every eye turns on you, the wheels stop, the wings before its face part, a cone of pale light reaches
+    down and pools at your feet, and a choir swells and rises. If it reaches the full you are drawn up into the light
+    and taken. Break its sight (a corner, a slot, onto the ivy) and the gaze falls away. One in the first ring.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.

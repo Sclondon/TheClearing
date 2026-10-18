@@ -131,6 +131,9 @@ extends Resource
 @export_range(0, 3) var baboon_troops := 1
 ## Pairs of aliens (each pack two or three).
 @export_range(0, 3) var alien_packs := 1
+## "Biblically accurate" angels (MazeAngel): wheels of eyes drifting over the
+## halls, whose gaze takes whoever stays in it.
+@export_range(0, 2) var angels := 1
 @export_range(0, 3) var dog_packs := 1
 ## Swarms of beetles, each waiting in cracks at the foot of a wall (in a dead end or along a hall).
 @export_range(0, 4) var beetle_swarms := 2
