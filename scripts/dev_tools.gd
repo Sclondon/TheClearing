@@ -26,6 +26,7 @@ const HUNTERS := [
 	["GHOUL", "ghoul", AHEAD], ["CENTIPEDE", "centipede", SNAKE_AHEAD], ["SPIDER", "spider", AHEAD],
 	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD],
+	["FISH PERSON", "fish_person", AHEAD],
 ]
 
 var world: World
@@ -184,6 +185,8 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = MazeDog.pack_of(4, randi())
 		"aliens":
 			made = [Alien.new(), Alien.new()]
+		"fish_person":
+			made = [MazeFishPerson.new()]
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 

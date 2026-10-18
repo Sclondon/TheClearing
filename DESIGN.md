@@ -123,6 +123,15 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     (between a run and a sprint), lunge-bite. Climbing breaks the trail.
   - **Aliens**: twos and threes that walk calmly and blink ahead of you when unwatched (a shimmering column
     warns first; looking at it stops it), then raise a hand and catch you in a pale light.
+  - **Fish people** (deep ones, out of Innsmouth; the user asked 2026-10-18 for "a fish person enemy that uses the
+    character controller as a base"): tall, stooped, grey-green and scaled, a fish's head with glassy eyes and needle
+    teeth, gills, a fin down the back, webbed hands and feet. Each lies in a black pool of its own in a hall, sunk to
+    its eyes: a puddle with two eyes in it, if you look. Down there it hears only what is close or loud: walk softly
+    past along the far wall and it stays down; run near it, or step in its pool, and it rises and croaks, and its
+    croak brings up every other fish person within about 40 m. It shambles below a walk, but lopes faster than a run
+    in short bursts when it sees you near, then stands gulping for breath; a sprint or a corner loses it. It lunges
+    and grabs with both hands. It cannot stay out of the water: after half a minute, or once it has lost you, it goes
+    back to its pool and sinks.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.

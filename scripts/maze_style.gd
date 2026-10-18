@@ -89,6 +89,8 @@ extends Resource
 ## Pairs of aliens (each pack two or three).
 @export_range(0, 3) var alien_packs := 1
 @export_range(0, 3) var dog_packs := 1
+## Fish people, each lurking in a pool of black water in a hall.
+@export_range(0, 6) var fish_people := 2
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []

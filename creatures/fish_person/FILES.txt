@@ -1,0 +1,8 @@
+# The fish person: how it looks, moves and sounds, and the pool it lurks in (needs godot/character-controller installed too)
+creatures/fish_person/fish_person.gd
+creatures/fish_person/fish_person_rig.gd
+creatures/fish_person/fish_pool.gd
+creatures/fish_person/models/fish_person.glb
+creatures/fish_person/models/fish_person_lo.glb
+creatures/fish_person/tools/.gdignore
+creatures/fish_person/tools/build_fish_person.py
