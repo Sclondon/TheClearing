@@ -45,6 +45,15 @@ feathers.
 - **Uneasy** (`uneasy`, points): they walk off from anyone within `shy_distance`, clucking, without panicking.
 - **Mob** (`mob_target`, a point, a head): the rooster puffs up, hackles flared; the flock runs round it, leaps up at
   it beating their wings, hangs there pecking at it, falls and leaps again.
+- **Tame** (`tame = true`): ordinary farmyard birds. Scared, they scatter a few steps squawking (hardly one takes
+  wing) and settle at once; they never mob.
+
+## Sounds and phones
+
+- `ChickenVoice.new(flock)`, added as a child of the flock, plays clucks, squawks (signal `squawked`) and the
+  rooster's crow (heard far off), all made in code the first time one is made (no sound files).
+- `low_poly = true` (before it goes in) draws the low-detail bird, `models/chicken_lo.glb`: the same parts with fewer,
+  bigger feathers and coarser legs, about 2100 triangles a bird against 5500. The build script writes both.
 
 ## Putting it in a game
 
@@ -73,14 +82,14 @@ flock.mob_target = head               # every frame, while they mob; Vector3.INF
 - `home`, `roam`, `keep_in`, `ground_height`, `uneasy`, `mob_target`; `scare(from)`, `calm()`, `crow()`.
 - `panicking()`, `flying()`, `mobbing()`, `centre()`, `bird_position(i)`, `is_rooster(i)`, `act_of(i)`
   (`ChickenFlock.Act`), `loose_feathers()`, `place_bird(i, at, yaw)`.
-- Signals `startled` (the first squawk of a panic), `crowed(at)`, `clucked(at)`, `furious` (a new `mob_target`), for
-  sounds (it makes none).
+- Signals `startled` (the first squawk of a panic), `squawked(at)`, `crowed(at)`, `clucked(at)`, `furious` (a new
+  `mob_target`), for sounds (ChickenVoice plays them, or play your own).
 - For pictures: `frozen = true` and `pose_bird(i, at, yaw, legs, head, turn, beak, puff, wings, pitch)`.
 
 ## Tuning
 
 Exported: `count` (up to 16), `roosters`, `flock_seed`, `home`, `roam`, `size`, `walk_speed`, `run_speed`,
-`flight_speed`, `fly_share`, `shy_distance`, `filth`, `molt`, `colours`, `view_range`, `cast_shadows`. The joints are
+`flight_speed`, `fly_share`, `shy_distance`, `filth`, `molt`, `colours`, `view_range`, `cast_shadows`, `tame`, `low_poly`. The joints are
 `ChickenBody.NECK_BASE`, `HEAD`, `KNEE`, `HOCK`, `FOOT`; the shader and the Blender script keep their own copies,
 which must stay in step.
 
@@ -94,4 +103,4 @@ flock does no work and is not drawn. The model is about 5500 triangles a bird.
 ## What it needs from a game
 
 Nothing: no autoloads, groups, input actions or project settings. The files must sit at `res://creatures/chicken/`
-(ChickenBody loads the shader and the model from there).
+(ChickenBody loads the shader and the models from there).

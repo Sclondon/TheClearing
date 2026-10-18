@@ -264,6 +264,16 @@ gallop; elk trotting, then galloping), and settle to graze where they stop; a bu
 catch nobody and are nothing to be afraid of, which makes the ones that are wrong worse. How many: ClearingStyle and
 MazeStyle, "Wildlife". Each machine runs its own copy from the round's seed, frightened by the same players, so they
 agree.
+## Wildlife
+
+Not everything in the clearing and the maze is a threat. Added 2026-10-18 at the user's request ("there should be
+non hostile regular deer and elk and chicken as well. Some should be in the clearing"):
+
+- **Tame chickens**: ordinary farmyard hens and a rooster that forage, cluck and crow. Run through them and they
+  scatter a few steps, squawking, and settle; walk near and they edge away. They never call the hunters and never mob.
+  The clearing has a couple of flocks (ClearingStyle, "Wildlife"), the first pecking at the edge of the woods, all well
+  away from the middle and the paths to the gates; a ring can have some in its halls too (MazeStyle, "Wildlife", none
+  by default). Placed from the round's seed, so everyone in a room sees the same flocks.
 
 ## Playing together
 

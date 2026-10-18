@@ -27,17 +27,11 @@ const HUNTERS := [
 	["GHOUL", "ghoul", AHEAD], ["CENTIPEDE", "centipede", SNAKE_AHEAD], ["SPIDER", "spider", AHEAD],
 	["MEAT BEAST", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD],
-	["BEETLES", "beetles", AHEAD],
-	["FISH PERSON", "fish_person", AHEAD],
-	["ANGEL", "angel", SNAKE_AHEAD],
+	["BEETLES", "beetles", AHEAD], ["FISH PERSON", "fish_person", AHEAD], ["ANGEL", "angel", SNAKE_AHEAD],
 	["FROG", "frog", AHEAD], ["FROG SWARM", "frog_swarm", AHEAD],
 	["AMALGAM", "amalgam", AHEAD], ["ABOMINATION", "flesh_mound", SNAKE_AHEAD],
-	["HARPY", "harpy", AHEAD],
-	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
-	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD], ["BOAR", "boar", SNAKE_AHEAD],
-	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
-	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD], ["CHICKENS", "chickens", AHEAD],
-	["GARGOYLE", "gargoyle", AHEAD],
+	["HARPY", "harpy", AHEAD], ["BOAR", "boar", SNAKE_AHEAD], ["CHICKENS", "chickens", AHEAD],
+	["CHICKENS (TAME)", "tame_chickens", AHEAD], ["GARGOYLE", "gargoyle", AHEAD],
 	["DEER", "deer", SNAKE_AHEAD], ["ELK", "elk", SNAKE_AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
@@ -241,6 +235,13 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = MazeDeer.herd_of(5, randi())
 		"elk":
 			made = [MazeElk.new()]
+		"tame_chickens":
+			# (wildlife, not a hunter: put in beside the rest, not among them)
+			var flock := TameChickens.new(world.maze, randi())
+			flock.position = at
+			world.add_child(flock)
+			world.tame_chickens.append(flock)
+			return
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 

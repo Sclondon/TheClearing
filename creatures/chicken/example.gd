@@ -41,6 +41,7 @@ func _ready() -> void:
 	flock.startled.connect(func() -> void: print("squawk!"))
 	flock.crowed.connect(func(_at: Vector3) -> void: print("cock-a-doodle-doo"))
 	flock.furious.connect(func() -> void: print("the rooster is furious"))
+	flock.add_child(ChickenVoice.new(flock))
 	flock.crow()
 
 

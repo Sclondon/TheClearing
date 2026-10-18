@@ -45,6 +45,8 @@ signal startled
 signal crowed(at: Vector3)
 signal clucked(at: Vector3)
 signal furious
+## A bird squawks (bolting, leaping at someone).
+signal squawked(at: Vector3)
 
 ## The most birds a flock can have (the shader's arrays hold this many).
 const MOST := 16
@@ -75,6 +77,11 @@ enum Act { IDLE, WALK, PECK, SCRATCH, PREEN, CROW, SHAKE, RUN, FLY, MOB, AWAY }
 @export var colours := Vector4(0.45, 0.2, 0.15, 0.2)
 @export var view_range := 75.0
 @export var cast_shadows := true
+## Tame: ordinary farmyard birds. Scared, they only scatter a few steps (hardly
+## ever taking wing) and settle at once; they never mob (`mob_target` is ignored).
+@export var tame := false
+## The low-detail bird (about a third of the triangles), for phones.
+@export var low_poly := false
 
 ## Optional: Callable(point: Vector3) -> Vector3, where a bird at `point` may be instead.
 var keep_in := Callable()
@@ -165,7 +172,7 @@ func _ready() -> void:
 	_mesh.material_override = _material
 	var many := MultiMesh.new()
 	many.transform_format = MultiMesh.TRANSFORM_3D
-	many.mesh = ChickenBody.mesh()
+	many.mesh = ChickenBody.mesh(low_poly)
 	many.instance_count = mini(count, MOST)
 	_mesh.multimesh = many
 	add_child(_mesh)
@@ -212,12 +219,12 @@ func _make_birds() -> void:
 func scare(from: Vector3) -> void:
 	var first := _panic_left <= 0.0
 	_scared_from = from
-	_panic_left = 4.0
+	_panic_left = 2.0 if tame else 4.0
 	# (the nearest two always go up)
 	var order := _birds.duplicate()
 	order.sort_custom(func(p: Bird, q: Bird) -> bool: return p.at.distance_squared_to(from) < q.at.distance_squared_to(from))
 	for k in order.size():
-		(order[k] as Bird).flies = k < 2 or _rng.randf() < fly_share
+		(order[k] as Bird).flies = (k == 0 and _rng.randf() < 0.3) or _rng.randf() < 0.05 if tame else k < 2 or _rng.randf() < fly_share
 	for bird in _birds:
 		if bird.act == Act.MOB:
 			continue
@@ -225,7 +232,9 @@ func scare(from: Vector3) -> void:
 		if bird.act == Act.RUN or bird.act == Act.FLY:
 			# (already running: on again, away from this)
 			bird.flee = _away(bird.at, from)
-			bird.left = maxf(bird.left, 1.5)
+			# (a runner runs on; a bird in the air does not climb higher for it)
+			if bird.act == Act.RUN:
+				bird.left = maxf(bird.left, 0.8 if tame else 1.5)
 			continue
 		bird.startle_in = clampf(far * 0.05, 0.0, 0.35) + _rng.randf_range(0.0, 0.12)
 	if first:
@@ -337,7 +346,7 @@ func _process(delta: float) -> void:
 		_update_feathers(delta)
 		return
 	var camera := get_viewport().get_camera_3d()
-	var calm_now := _panic_left <= 0.0 and not mob_target.is_finite() and _loose.is_empty()
+	var calm_now := _panic_left <= 0.0 and not mob_target.is_finite() and _loose.is_empty() and panicking() == 0 and flying() == 0
 	var far := camera != null and camera.global_position.distance_to(home) > view_range
 	_mesh.visible = not (far and calm_now)
 	if far and calm_now:
@@ -345,6 +354,8 @@ func _process(delta: float) -> void:
 	delta = minf(delta, 0.05)
 	_time += delta
 	_panic_left -= delta
+	if tame:
+		mob_target = Vector3.INF
 	if mob_target.is_finite() and not _mob_was.is_finite():
 		furious.emit()
 		for bird in _birds:
@@ -461,7 +472,7 @@ func _start(bird: Bird, act: Act) -> void:
 			bird.left = 2.6
 			bird.crow_in = _rng.randf_range(20.0, 45.0)
 		Act.RUN:
-			bird.left = _rng.randf_range(1.8, 3.2)
+			bird.left = _rng.randf_range(0.7, 1.4) if tame else _rng.randf_range(1.8, 3.2)
 		Act.FLY:
 			bird.left = _rng.randf_range(0.35, 0.7)
 			bird.climb = _rng.randf_range(3.0, 4.2)
@@ -474,6 +485,8 @@ func _start(bird: Bird, act: Act) -> void:
 
 # Starts a startled bird off: up into the air or away on foot.
 func _bolt(bird: Bird) -> void:
+	if not tame or _rng.randf() < 0.5:
+		squawked.emit(bird.at)
 	bird.flee = _away(bird.at, _scared_from)
 	_spill(bird, _rng.randi_range(1, 3))
 	if bird.flies:
@@ -516,7 +529,7 @@ func _move(bird: Bird, delta: float) -> void:
 			wish = to.normalized() * walk_speed * bird.scale
 		Act.RUN:
 			_tether(bird)
-			wish = bird.flee * run_speed * (0.85 + 0.3 * bird.mark)
+			wish = bird.flee * run_speed * (0.85 + 0.3 * bird.mark) * (0.6 if tame else 1.0)
 			turn_rate = 12.0
 			_spill_now_and_then(bird, delta, 0.6)
 		Act.AWAY:
@@ -611,6 +624,7 @@ func _mob(bird: Bird, delta: float) -> void:
 			bird.climb = sqrt(2.0 * 9.0 * rise)
 			bird.height = 0.01
 			bird.hover = _rng.randf_range(0.35, 0.9) * (1.4 if bird.rooster else 1.0)
+			squawked.emit(bird.at)
 			_spill(bird, 1)
 	else:
 		var near_top := bird.climb < 1.0

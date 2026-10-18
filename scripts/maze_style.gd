@@ -178,6 +178,10 @@ extends Resource
 @export_range(0, 4) var wild_deer_herds := 1
 @export_range(0, 4) var wild_elk_herds := 1
 
+@export_group("Wildlife")
+## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
+@export_range(0, 4) var tame_chicken_flocks := 0
+
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
 

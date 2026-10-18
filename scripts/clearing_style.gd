@@ -84,6 +84,9 @@ var entrance_spots: Array = []
 @export_range(0, 4) var deer_herds := 2
 ## Herds of elk (a bull, cows and calves) grazing out in the meadow.
 @export_range(0, 4) var elk_herds := 1
+## Flocks of tame chickens (TameChickens) foraging in the clearing: hens and a
+## rooster that hunt nobody, the first at the edge of the woods.
+@export_range(0, 6) var chicken_flocks := 2
 
 var _noise: FastNoiseLite
 var _noise_seed := -1

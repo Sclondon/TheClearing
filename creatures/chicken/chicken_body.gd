@@ -71,18 +71,26 @@ const HOCK := Vector3(0.056, 0.122, -0.032)
 const FOOT := Vector3(0.052, 0.026, 0.012)
 
 const MODEL := "res://creatures/chicken/models/chicken.glb"
+const MODEL_LO := "res://creatures/chicken/models/chicken_lo.glb"
 const MATERIALS := {
 	"feather": FEATHER, "down": DOWN, "comb": SKIN, "lobe": LOBE, "beak": BEAK, "leg": LEG,
 	"claw": CLAW, "eye": EYE, "nostril": NOSTRIL,
 }
 
 static var _mesh: ArrayMesh
+static var _mesh_low: ArrayMesh
 static var _shader: Shader
 
 
-static func mesh() -> ArrayMesh:
+## The mesh; `low`: the low-detail bird (models/chicken_lo.glb, about a third of
+## the triangles: fewer, bigger feathers), for phones.
+static func mesh(low := false) -> ArrayMesh:
+	if low:
+		if _mesh_low == null:
+			_mesh_low = _make(MODEL_LO)
+		return _mesh_low
 	if _mesh == null:
-		_mesh = _make()
+		_mesh = _make(MODEL)
 	return _mesh
 
 
@@ -96,14 +104,14 @@ static func material() -> ShaderMaterial:
 	return made
 
 
-static func _make() -> ArrayMesh:
+static func _make(path: String) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for c in 4:
 		st.set_custom_format(c, SurfaceTool.CUSTOM_RGBA_FLOAT)
-	var scene := load(MODEL) as PackedScene
+	var scene := load(path) as PackedScene
 	if scene == null:
-		push_error("ChickenBody: no model at %s (build it with creatures/chicken/tools/build_chicken.py)" % MODEL)
+		push_error("ChickenBody: no model at %s (build it with creatures/chicken/tools/build_chicken.py)" % path)
 		return st.commit()
 	var root := scene.instantiate()
 	for piece: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):

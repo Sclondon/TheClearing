@@ -98,11 +98,13 @@ func _run() -> void:
 		root.get_texture().get_image().save_png(picture.replace(".png", "_spawned.png"))
 	# Each of the other kinds, from its own button
 	for one: Array in world.dev.HUNTERS:
-		var had: int = world.enemies.enemies.size()
+		# (tame chickens are wildlife: they go in beside the hunters, not among them)
+		var list: Array = world.tame_chickens if one[1] == "tame_chickens" else world.enemies.enemies
+		var had: int = list.size()
 		world.dev.spawn_hunter(one[1], one[2])
 		await frames(2)
-		var put: int = world.enemies.enemies.size() - had
-		var last = world.enemies.enemies.back()
+		var put: int = list.size() - had
+		var last = list.back()
 		check("+ %s" % one[0], put >= 1 and is_instance_valid(last) and last.is_inside_tree(), "(%d put in)" % put)
 	# Runners ahead: one, then three.
 	var had_runners: int = world.runners.runners.size()
