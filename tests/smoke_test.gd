@@ -62,6 +62,20 @@ func _run() -> void:
 		await physics_frame
 	check("walls stop him", player.global_position.x < wall_x, "(x %.2f, wall at %.2f)" % [player.global_position.x, wall_x])
 
+	# Through a gate from the clearing (a slot through a thick wall): he fits.
+	var gate: Array = maze.gates[0][0]
+	var into := Vector3(gate[1].x, 0.0, gate[1].y)
+	var before_gate: Vector3 = maze.world(gate[0])
+	player.global_position = before_gate + Vector3.UP * 0.1
+	player.velocity = Vector3.ZERO
+	await frames(10)
+	for i in 240:
+		player.velocity.x = into.x * 5.0
+		player.velocity.z = into.z * 5.0
+		await physics_frame
+	var through: float = (player.global_position - before_gate).dot(into)
+	check("through a gate", through > Maze.CELL * 1.2, "(%.1f m on, the wall %.1f thick)" % [through, maze.wall_thick(gate[0], gate[1])])
+
 	# Out past the exit.
 	var path: Array = maze.path_out(maze.cell_at(Vector3.ZERO))
 	check("a way out", path.size() > 10, "(%d cells)" % path.size())

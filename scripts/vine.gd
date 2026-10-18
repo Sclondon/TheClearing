@@ -5,8 +5,10 @@ extends Rope
 ## boy catches it, climbs it and leaps off it as he does a rope), drawn as a
 ## green stem with leaves along it that go where the stem goes.
 
-## Leaves along each piece of the stem.
+## Leaves along each piece of the stem: at least LEAVES, and one for every
+## LEAF_REACH metres of it (so a long vine is as leafy as a short one).
 const LEAVES := 4
+const LEAF_REACH := 0.4
 
 static var _leaf_mesh: ArrayMesh
 static var _stem: StandardMaterial3D
@@ -43,9 +45,10 @@ func _ready() -> void:
 	multi.transform_format = MultiMesh.TRANSFORM_3D
 	multi.use_colors = true
 	multi.mesh = _leaf_mesh
-	multi.instance_count = PIECES * LEAVES
+	var each := maxi(LEAVES, roundi(length / PIECES / LEAF_REACH))
+	multi.instance_count = PIECES * each
 	for i in multi.instance_count:
-		_placing.append([i / LEAVES, rng.randf(), rng.randf() * TAU, rng.randf_range(0.7, 1.3)])
+		_placing.append([i / each, rng.randf(), rng.randf() * TAU, rng.randf_range(0.7, 1.3)])
 		multi.set_instance_color(i, Color(0.16, 0.27, 0.12).lightened(rng.randf_range(-0.1, 0.25)))
 	_leaves = MultiMeshInstance3D.new()
 	_leaves.multimesh = multi

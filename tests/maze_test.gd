@@ -34,10 +34,9 @@ func _initialize() -> void:
 			check("%s: every cell reachable" % name, unreached == 0, "(%d not)" % unreached)
 			var path := maze.path_out(maze.cell_at(Vector3.ZERO))
 			check("%s: a way out from the middle" % name, path.size() > maze.clearing / 2 + 4 * built, "(%d cells)" % path.size())
-			# Every ring wall is shut but for the gates: 4 out of the clearing (each as wide
-			# as the first ring's halls, or one cell where it has narrow entrances), 1 out
-			# of each ring after.
-			var span := maze.styles[0].span if maze.styles[0].entrance < 2 else 1
+			# Every ring wall is shut but for the gates, each a cell long: 4 out of the
+			# clearing, 1 out of each ring after.
+			var span := 1
 			var from_clearing := 0
 			var openings := 0
 			var open := 0
@@ -69,6 +68,12 @@ func _initialize() -> void:
 						if not maze.blocked(cell, side) or not maze.blocked(cell, -side):
 							open_sided += 1
 			check("%s: long narrow entrances" % name, open_sided == 0, "(%d cells open at the side)" % open_sided)
+			# The gates from the clearing are slots through its wall: wide enough for him
+			# (about three of him), and no wider than a cell.
+			var slots: Array[float] = []
+			for way: Array in maze.gates[0]:
+				slots.append(Maze.CELL - maze.wall_thick(way[0], way[1]))
+			check("%s: gates a slot he can get through" % name, slots.min() >= 1.5 and slots.max() <= Maze.CELL, str(slots))
 			# The first ring's halls are as wide as its style says: every cell in it opens
 			# on a neighbour both across and along (but the entrances, and what they cut
 			# off beside them).

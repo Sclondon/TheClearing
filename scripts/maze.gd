@@ -47,6 +47,9 @@ var exit := Vector2i.ZERO
 var exit_side := Vector2i.ZERO
 ## Steps from the clearing to every cell (-1 inside the clearing).
 var distance := PackedInt32Array()
+## The cells of the narrow entrances into each ring (see MazeStyle.entrance),
+## as {cell: the way out along it}.
+var entrances := {}
 
 
 ## A seed for a room's maze on a given round: the same on every copy of the game.
@@ -104,6 +107,24 @@ func in_clearing(cell: Vector2i) -> bool:
 ## ring from another (the clearing's wall included). These are the great walls.
 func ring_wall(cell: Vector2i, step: Vector2i) -> bool:
 	return ring_of(cell) != ring_of(cell + step)
+
+
+## How thick the wall on the `step` side of `cell` is: as its ring's style says
+## (MazeStyle.wall_thick), and a wall between rings as the thicker of the two,
+## and no thinner than MazeBuilder.RING_THICK.
+func wall_thick(cell: Vector2i, step: Vector2i) -> float:
+	var here := _thick_in(ring_of(cell))
+	var there := _thick_in(ring_of(cell + step))
+	if ring_wall(cell, step):
+		return maxf(MazeBuilder.RING_THICK, maxf(here, there))
+	return here
+
+
+## How thick the walls in a ring are (the clearing's none).
+func _thick_in(ring: int) -> float:
+	if ring < 1 or ring > styles.size():
+		return 0.0
+	return styles[ring - 1].wall_thick
 
 
 ## Whether there is a wall between `cell` and its neighbour the `step` way
@@ -273,8 +294,10 @@ func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: Rando
 		while line.size() < style.entrance and inside(cell) and ring_of(cell) == ring and block_of[cell].x >= 0:
 			line.append(cell)
 			cell += step
-		if line.size() < 2:
+		if line.is_empty():
 			continue
+		for taken: Vector2i in line:
+			entrances[taken] = step
 		var key := Vector2i(-1 - g, -1)
 		for taken: Vector2i in line:
 			(cells_of[block_of[taken]] as Array).erase(taken)

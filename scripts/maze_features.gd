@@ -19,16 +19,7 @@ extends Node3D
 ## the wall's face.
 const LOWER := Vector2(6.5, 3.0)
 const UPPER := Vector2(13.0, 1.8)
-## The share of wall faces with a terrace, of those the upper too, of terraces
-## matched by one across the hall with a bridge between, of upper terraces with
-## ivy on up to the top of the wall, of terraces with a vine, and of halls with
-## a bridge from wall top to wall top.
-const TERRACES := 0.13
-const UPPERS := 0.55
-const PAIRED := 0.45
-const TO_TOP := 0.35
-const VINES := 0.5
-const TOP_BRIDGES := 0.05
+## (How many of each there are is the ring's MazeStyle's to say.)
 ## How high the end of a vine hangs over the ground (or terrace) under it: out
 ## of reach standing, so that it takes a jump to catch.
 const VINE_CLEAR := 2.6
@@ -37,6 +28,8 @@ const VINE_OUT := 1.1
 ## The beam of stone a vine hangs from: how thick, and how far past the vine it
 ## reaches.
 const BEAM := Vector2(0.8, 0.4)
+## How far out from the face of a wall a vine hung from its top hangs.
+const WALL_VINE_OUT := 0.7
 
 ## What is in the maze, for tests and tools: where each terrace stands, and each
 ## IvyClimb, Vine and RopeBridge made.
@@ -50,6 +43,8 @@ var footprints: Array[Rect2] = []
 var _maze: Maze
 var _layout: MazeLayout
 var _rng := RandomNumberGenerator.new()
+## The style of the ring being laid out.
+var _style: MazeStyle
 var _taken := {}
 
 
@@ -98,20 +93,28 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 	_rng.seed = hash("features/%d" % plan.maze_seed)
 	for i in plan.size * plan.size:
 		var cell := Vector2i(i % plan.size, i / plan.size)
-		# (in the first ring only: the clearing's walls are left bare)
-		if plan.ring_of(cell) != 1:
+		# (in the rings, as their styles say: the clearing's walls are left bare, and
+		# so are the entrances)
+		var ring := plan.ring_of(cell)
+		if ring < 1 or ring > plan.rings or plan.entrances.has(cell):
 			continue
+		_style = plan.styles[ring - 1]
 		for step: Vector2i in Maze.STEPS:
 			if not plan.blocked(cell, step) or _taken.has([cell, step]):
 				continue
-			if _rng.randf() >= TERRACES:
+			if _rng.randf() >= _style.terraces:
+				# (or a vine hanging from the top of the wall)
+				if _rng.randf() < _style.wall_vines:
+					_taken[[cell, step]] = true
+					var top := MazeBuilder.RING_HEIGHT if plan.ring_wall(cell, step) else MazeBuilder.WALL_HEIGHT
+					_vine(cell, step, WALL_VINE_OUT, _rng.randf_range(-0.35, 0.35) * Maze.CELL, top, VINE_CLEAR, false)
 				continue
-			var upper := _rng.randf() < UPPERS
+			var upper := _rng.randf() < _style.upper_terraces
 			var along := _rng.randf_range(-0.2, 0.2) * Maze.CELL
 			var across := -step
 			# A terrace across the hall too (however wide it is), and a bridge between them.
 			var far := _far_side(cell, across)
-			var paired := _rng.randf() < PAIRED and far != NOWHERE and not _taken.has([far, across])
+			var paired := _rng.randf() < _style.bridges and far != NOWHERE and not _taken.has([far, across])
 			_terrace(cell, step, upper or paired, along)
 			if paired:
 				# (along that wall runs the other way)
@@ -124,14 +127,16 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 	# (from the cell at one side of the hall to the one at the other).
 	for i in plan.size * plan.size:
 		var cell := Vector2i(i % plan.size, i / plan.size)
-		if plan.ring_of(cell) != 1:
+		var ring := plan.ring_of(cell)
+		if ring < 1 or ring > plan.rings or plan.entrances.has(cell):
 			continue
+		_style = plan.styles[ring - 1]
 		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
 			if not plan.blocked(cell, -step) or plan.ring_wall(cell, -step):
 				continue
 			var far := _far_side(cell, step)
 			if far != NOWHERE and not plan.ring_wall(far, step):
-				if _rng.randf() < TOP_BRIDGES:
+				if _rng.randf() < _style.top_bridges:
 					var a := _edge(far, step, MazeBuilder.CORNICE.x, 0.0) + Vector3.UP * MazeBuilder.WALL_HEIGHT
 					var b := _edge(cell, -step, MazeBuilder.CORNICE.x, 0.0) + Vector3.UP * MazeBuilder.WALL_HEIGHT
 					_bridge(a, b)
@@ -148,13 +153,13 @@ func _far_side(cell: Vector2i, across: Vector2i) -> Vector2i:
 	var at := cell
 	for i in 2:
 		if _maze.blocked(at, across):
-			return at if _maze.ring_of(at) == 1 else NOWHERE
+			return at if _maze.ring_of(at) == _maze.ring_of(cell) and not _maze.entrances.has(at) else NOWHERE
 		at += across
 	return NOWHERE
 
 
 func _thick(cell: Vector2i, step: Vector2i) -> float:
-	return MazeBuilder.RING_THICK if _maze.ring_wall(cell, step) else MazeBuilder.WALL_THICK
+	return _maze.wall_thick(cell, step)
 
 
 ## A point on the ground in front of the face (cell, step), `out` metres out
@@ -183,7 +188,7 @@ func _terrace(cell: Vector2i, step: Vector2i, upper: bool, along: float) -> void
 	# Ivy up its face, somewhere along it.
 	var ivy_along := _rng.randf_range(-0.3, 0.3) * length
 	_climb(_edge(cell, step, LOWER.y, ivy_along), step, LOWER.x)
-	if _rng.randf() < VINES:
+	if _rng.randf() < _style.terrace_vines:
 		_vine(cell, step, LOWER.y + VINE_OUT, _away_from(ivy_along, length), LOWER.x, VINE_CLEAR)
 	if not upper:
 		return
@@ -192,11 +197,11 @@ func _terrace(cell: Vector2i, step: Vector2i, upper: bool, along: float) -> void
 	# Ivy from the lower terrace up the upper's face, away from the one below.
 	var up_along := along + (_rng.randf_range(0.1, 0.35) if ivy_along < along else _rng.randf_range(-0.35, -0.1)) * upper_length
 	_climb(_edge(cell, step, UPPER.y, up_along) + Vector3.UP * LOWER.x, step, UPPER.x - LOWER.x)
-	if _rng.randf() < VINES:
+	if _rng.randf() < _style.terrace_vines:
 		# (out past the lower terrace's edge, over the hall: jumped to from that edge)
 		_vine(cell, step, LOWER.y + 1.0, along + _away_from(up_along - along, upper_length), UPPER.x, LOWER.x + 1.6)
 	# And now and then on up the wall to its top (stood off it by the cornice).
-	if not _maze.ring_wall(cell, step) and _rng.randf() < TO_TOP:
+	if not _maze.ring_wall(cell, step) and _rng.randf() < _style.ivy_to_top:
 		var top_along := along + _rng.randf_range(-0.3, 0.3) * upper_length
 		_climb(_edge(cell, step, MazeBuilder.CORNICE.x, top_along) + Vector3.UP * UPPER.x, step, MazeBuilder.WALL_HEIGHT - UPPER.x)
 
@@ -205,9 +210,13 @@ func _climb(at: Vector3, step: Vector2i, high: float) -> void:
 	_layout.add_piece(MazePiece.Kind.IVY, Transform3D(_facing_out(step), at), {"length": high})
 
 
-## A vine `out` from the face (cell, step) and `along` it, hanging from a beam of
-## stone out of the wall whose top is `top` high, down to `end` over the ground.
-func _vine(cell: Vector2i, step: Vector2i, out: float, along: float, top: float, end: float) -> void:
+## A vine `out` from the face (cell, step) and `along` it, down to `end` over the
+## ground: hanging from a beam of stone out of the wall whose top is `top` high,
+## or (`beam` false) from the top of the wall itself, `top` high.
+func _vine(cell: Vector2i, step: Vector2i, out: float, along: float, top: float, end: float, beam := true) -> void:
+	if not beam:
+		_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, _edge(cell, step, out, along) + Vector3.UP * top), {"length": top - end})
+		return
 	var s := Vector3(step.x, 0.0, step.y)
 	var side := Vector3(-s.z, 0.0, s.x)
 	var reach := out + BEAM.y

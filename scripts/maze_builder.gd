@@ -350,7 +350,8 @@ static func beacon_light() -> Node3D:
 ## and round the terraces, but not under them. The ground shader's grass goes on
 ## under it and beyond, so its edge is not seen.
 func _grass() -> void:
-	var half := maze.clearing * Maze.CELL * 0.5 - RING_THICK * 0.5 - FOOT.x - 0.2
+	var gate: Array = maze.gates[0][0]
+	var half := maze.clearing * Maze.CELL * 0.5 - maze.wall_thick(gate[0], gate[1]) * 0.5 - FOOT.x - 0.2
 	var field := Rect2(-half, -half, half * 2.0, half * 2.0)
 	# (only the terraces in the field: it is asked of every tuft)
 	var footprints: Array[Rect2] = []

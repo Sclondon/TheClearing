@@ -29,13 +29,15 @@ func own(node: Node, root: Node) -> void:
 
 func _run() -> void:
 	await process_frame
+	# (a ring with terraces to move: the game's first ring has only vines)
+	MazeStyle.chosen = [MazeStyle.warren()]
 	var seed_value := Maze.seed_for("LAYOUT", 1)
 	var maze := Maze.generate(seed_value)
 	var layout := MazeLayout.new()
 	root.add_child(layout)
 	layout.lay_out(maze)
 	var walls: Array = layout.pieces(MazePiece.Kind.WALL)
-	check("laid out as pieces", walls.size() > 20 and layout.pieces(MazePiece.Kind.IVY).size() > 5, "(%d walls, %d ivy)" % [walls.size(), layout.pieces(MazePiece.Kind.IVY).size()])
+	check("laid out as pieces", walls.size() > 20 and layout.pieces(MazePiece.Kind.VINE).size() > 5, "(%d walls, %d vines)" % [walls.size(), layout.pieces(MazePiece.Kind.VINE).size()])
 	var read := layout.plan()
 	check("its plan is the maze's", read.east == maze.east and read.south == maze.south and read.exit == maze.exit)
 
