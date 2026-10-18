@@ -1,0 +1,7 @@
+# The hydra: its body, necks and heads, how they move and strike, and its hiss (needs nothing else)
+creatures/hydra/hydra.gd
+creatures/hydra/hydra_look.gd
+creatures/hydra/models/hydra.glb
+creatures/hydra/models/hydra_lo.glb
+creatures/hydra/tools/.gdignore
+creatures/hydra/tools/build_hydra.py
