@@ -136,6 +136,10 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	for i in style.baboon_troops:
 		var troop: Array = MazeBaboon.troop(rng.randi_range(4, 5))
 		_add_pack(troop, _far_from(taken, lairs, rng), nav, rng, taken)
+	for i in style.dog_packs:
+		# (a pack's den is a dead end: they go out from it on the scent)
+		var den := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		_add_pack(MazeDog.pack_of(rng.randi_range(3, 4), rng.randi()), den, nav, rng, taken)
 	for i in style.alien_packs:
 		var aliens: Array = []
 		for a in rng.randi_range(2, 3):
