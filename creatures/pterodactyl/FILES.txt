@@ -1,0 +1,4 @@
+# The pterodactyl: how it looks, moves and sounds (stands alone)
+creatures/pterodactyl/pterodactyl.gd
+creatures/pterodactyl/pterodactyl_look.gd
+creatures/pterodactyl/models/pterodactyl.glb
