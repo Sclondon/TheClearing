@@ -94,10 +94,34 @@ func _run() -> void:
 
 	# Low across the whole of it, at his eye height, from out in the field.
 	player.visible = false
-	var far := gate + inward * (look.marsh_distance + look.marsh_reach * 0.95) + side * 20.0
-	camera.position = Vector3(far.x, maze.ground_height(Vector3(far.x, 0.0, far.y)) + 1.5, far.y)
+	# (from open water on its far side, clear of the reeds)
+	var far := _find(marsh, look, maze, rng, func(p: Vector2) -> bool:
+		return (p - gate).dot(inward) > look.marsh_reach * 0.7 and look.marsh_wet_at(p, maze.maze_seed) > 0.6 \
+				and marsh.depth_at(p) > 0.15 and marsh.reed_at(p) <= 0.0 and marsh.sedge_at(p) < 0.15)
+	if not far.is_finite():
+		far = gate + inward * (look.marsh_distance + look.marsh_reach * 0.95) + side * 20.0
+	camera.position = Vector3(far.x, maxf(maze.ground_height(Vector3(far.x, 0.0, far.y)), ClearingStyle.MARSH_LEVEL) + 1.5, far.y)
 	camera.look_at(Vector3(gate.x, 0.0, gate.y) + Vector3(inward.x, 0.0, inward.y) * 40.0)
 	await _shot(folder + "/6_across.png")
+
+	# Close to a clump of bulrushes, from a little off: the nearest bulrush to
+	# where he waded, of those drawn.
+	var nearest := Vector3.INF
+	var near_to := Vector3(wade.x, 0.0, wade.y) if wade.is_finite() else Vector3(gate.x, 0.0, gate.y)
+	for found: Node in marsh.get_children():
+		if found is MultiMeshInstance3D and (found as MultiMeshInstance3D).material_override is ShaderMaterial:
+			var multi := (found as MultiMeshInstance3D).multimesh
+			for i in multi.instance_count:
+				var at := multi.get_instance_transform(i).origin
+				if Vector2(at.x - near_to.x, at.z - near_to.z).length() < Vector2(nearest.x - near_to.x, nearest.z - near_to.z).length():
+					nearest = at
+	if nearest.is_finite():
+		var off := (Vector3(near_to.x, 0.0, near_to.z) - Vector3(nearest.x, 0.0, nearest.z)).normalized()
+		if not off.is_finite() or off.length() < 0.5:
+			off = Vector3(inward.x, 0.0, inward.y)
+		camera.position = nearest + off * 2.6 + Vector3.UP * 1.45
+		camera.look_at(nearest + Vector3.UP * 1.1)
+		await _shot(folder + "/10_bulrushes.png")
 
 	# From above at an angle: the whole of it, the mist thinned.
 	var env: Environment = null
