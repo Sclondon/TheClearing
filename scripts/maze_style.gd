@@ -152,6 +152,8 @@ extends Resource
 @export_range(0, 4) var harpies := 1
 ## Giant boars, each rooting in a dead end or a wide hall.
 @export_range(0, 3) var boars := 1
+## Flocks of feral chickens (a rooster and his hens), foraging in a hall.
+@export_range(0, 4) var chicken_flocks := 2
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []

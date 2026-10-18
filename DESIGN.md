@@ -192,6 +192,13 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     straight line, far faster than a sprint and barely able to turn. Step aside (a side passage, a slot, a way up)
     and it thunders past and skids, or slams into the wall and stands stunned a few seconds, then forgets you a
     while. In its way, you are tossed and caught. It cannot reach anyone up a wall.
+  - **Chickens** (added at the user's request, "lets also add chickens"): flocks of scruffy feral hens and a rooster
+    foraging in the halls, pecking and scratching at the mud, heads bobbing with the chicken head-lock; filthy and
+    molting, a rooster crowing in the fog, and a little comic relief. Like the bats they catch nobody: run or
+    sprint near them, or walk upright close by, and they explode in a squawking, flapping panic (some flying, feathers
+    everywhere), and the racket calls every hunter within 40 m. Creep past crouched. Run into one and the rooster
+    flies into a rage (after Zelda's cuccos): the flock mobs you, leaping and beating round your head, pecking,
+    slowing you, calling the hunters all the while, until you get away.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
