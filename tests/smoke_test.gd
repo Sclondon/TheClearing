@@ -72,7 +72,7 @@ func _run() -> void:
 	# (out past the far face of the wall: from the middle of the cell before it,
 	# through the wall's own cell-line, the rampart's cells and half a wall)
 	var deep: float = Maze.CELL * (0.5 + maze.styles[0].rampart) + maze.wall_thick(gate[0], gate[1]) * 0.5 + 1.0
-	for i in int(deep / 5.0 * 60.0) + 60:
+	for i in int(deep / 5.0 * 60.0) + 240:
 		player.velocity.x = into.x * 5.0
 		player.velocity.z = into.z * 5.0
 		await physics_frame

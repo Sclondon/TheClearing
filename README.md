@@ -10,6 +10,9 @@ round. Apophis, packs of mummies and a Griever hunt the passages; the walls do n
 Every player is Inside's boy:
 no face, a plain shirt (its colour by seat, the first red) and dark trousers.
 
+What the game is meant to be (pillars, art direction, the maze's rules, enemies, playing together) is in
+[DESIGN.md](DESIGN.md); this file is how it is built and run.
+
 Godot 4.7, GL Compatibility, portrait first (it also fills a landscape window). Web build in `build/`, served at
 https://sclondon.github.io/TheClearing/build/.
 
@@ -39,12 +42,13 @@ from the seed. Generate again replaces everything in the layout.
 
 ## How it works
 
-- `scripts/maze.gd` (`Maze`): the plan. Square cells 14 m across (halls about 10 m wide). `Maze.RINGS` gives the clearing (7 cells
-  across, 98 m, open) and the ring round it after ring, middle out; `rings` of them are built (1 for now) and
-  the grid runs to the outside of the last. Each ring is carved on its own by a depth-first walk from its way in
-  (into the first, a gate in the middle of each side of the clearing; into each later one, the gate out of the
-  ring inside it), with 6% more walls knocked through for loops, and its gate out put on its outside as far
-  round the walls from its way in as there is. The gate out of the last ring is the exit. The same seed always
+- `scripts/maze.gd` (`Maze`): the plan. Square cells 14 m across. `Maze.CLEARING` cells across the clearing (41),
+  then each ring as its `MazeStyle` (`scripts/maze_style.gd`) says: depth, hall width (it carves over blocks of
+  cells), wall thickness, a rampart of solid cells round its inside, straightness, branching, loops, entrances, and
+  what is on its walls (see DESIGN.md). `rings` of them are built (1 for now) and the grid runs to the outside of
+  the last. Each ring is grown from its first way in (into the first, a gate in the middle of each side of the
+  clearing; into each later one, the gate out of the ring inside it), and its gate out put on its outside as far
+  round the walls from its ways in as there is. The gate out of the last ring is the exit. The same seed always
   gives the same maze: `Maze.seed_for(room code, round)`.
 - `scripts/maze_layout.gd` (`MazeLayout`) and `scripts/maze_piece.gd` (`MazePiece`): a maze as pieces, generated
   or laid out by hand (above). `MazeBuilder.build(plan)` lays out a generated maze and realizes it; `realize(layout)`
@@ -87,9 +91,9 @@ from the seed. Generate again replaces everything in the layout.
   packs of mummies and a Griever; alone or as the host they are run there and their state goes to guests ten times a
   second (K_ENEMIES), where copies follow it. Caught, a player is put back in the clearing; out, nobody is hunted.
 - `scripts/remote_player.gd` (`RemotePlayer`): a friend, a `Figure` on the boy's rig chasing their news.
-- `scripts/looks.gd` (`Looks`): each player is the boy as Inside has him (no face, cropped hair, no cap, shirt,
-  dark trousers and boots). The shirt's colour goes by seat; skin and hair by a seed that goes round the room as
-  the server's "hero" word (`p123456`).
+- `scripts/looks.gd` (`Looks`): every player is the same boy, as Inside has him (no face, a basin cut, no cap,
+  shirt, dark trousers and boots). Only the shirt's colour differs, by seat.
+- `scripts/voice.gd` (`Voice`): proximity voice in rooms (web only), WebRTC signalled through the room.
 - `scripts/net.gd` (autoload `Net`): the rooms connection, copied from October Valley. Server side:
   `server/routes/theClearing.js` in scareathon-v3 at `/the-clearing/ws`, which reuses
   `server/eightBitEvilV2/rooms.js` (four seats, four-letter codes, the maker hosts, seats held through
