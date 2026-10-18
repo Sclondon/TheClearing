@@ -66,6 +66,7 @@ in whatever pose it is in, the glow goes out of it, and after that nothing at al
 | `gather(seconds)` | The wind-up for a pounce: sinks into a crouch, raises its wings high, snarls with a grinding of stone. `gathering()` while it lasts |
 | `slam()` | It has come down hard: lands low on its hands with a crash and a cloud of stone dust. Emits `slammed` |
 | `snarl()` | A grinding growl, jaw wide, head thrust out, wings flared |
+| `crumble(seconds)` | Grit and pebbles shaken off from under it, falling to the ground and ticking as they land, with a louder grinding: a warning for someone below who is not looking up |
 | `show_shadow(point, strength, radius)` | A dark blot on the ground where it will land (`Vector3.INF` hides it) |
 | `life()` | How alive it is now, 0 (stone) to 1 |
 | `settle()` | Puts it still as it is told it is, with nothing going on |

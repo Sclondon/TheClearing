@@ -126,6 +126,9 @@ var _wings_sound: AudioStreamPlayer3D
 var _shed: CPUParticles3D
 var _burst: CPUParticles3D
 var _shadow: MeshInstance3D
+var _pebbles: CPUParticles3D
+var _crumble_left := 0.0
+var _tick_in := 0.0
 
 static var _sounds := {}
 
@@ -218,6 +221,17 @@ func slam() -> void:
 	slammed.emit()
 
 
+## Grit and pebbles shaken off from under it for `seconds` (falling the whole
+## way to the ground below a ledge, ticking as they land), with the grinding of
+## stone: the warning, for someone below who is not looking up.
+func crumble(seconds := 1.3) -> void:
+	_crumble_left = seconds
+	if _pebbles:
+		_pebbles.emitting = true
+	if _shed:
+		_shed.emitting = true
+
+
 ## A grinding growl, its jaw wide and head thrust out.
 func snarl() -> void:
 	_snarl = 0.0
@@ -259,6 +273,7 @@ func _process(delta: float) -> void:
 	# Setting into stone it slows, and stops dead; then nothing more is done for it.
 	var pace := smoothstep(0.0, 0.7, _life)
 	_gather_left = maxf(_gather_left - delta, 0.0)
+	_crumbling(delta)
 	_slam += delta
 	_snarl += delta
 	if _life <= 0.0 and _posed:
@@ -323,7 +338,28 @@ func _noise(delta: float) -> void:
 		if want <= 0.03 and _grind.playing:
 			_grind.stop()
 	if _shed:
-		_shed.emitting = (_work > 0.25 and not airborne) or (setting > 0.2)
+		_shed.emitting = (_work > 0.25 and not airborne) or (setting > 0.2) or _crumble_left > 0.0
+
+
+func _crumbling(delta: float) -> void:
+	if _crumble_left <= 0.0:
+		return
+	_crumble_left -= delta
+	if _crumble_left <= 0.0:
+		if _pebbles:
+			_pebbles.emitting = false
+		return
+	# (the grinding, loud while it lasts; pebbles ticking on the ground below)
+	if _grind:
+		if not _grind.playing:
+			_grind.play()
+		_grind.volume_db = volume_db + 2.0
+	_tick_in -= delta
+	if _tick_in <= 0.0 and _knock:
+		_tick_in = _rng.randf_range(0.08, 0.3)
+		_knock.volume_db = volume_db - 9.0
+		_knock.pitch_scale = _rng.randf_range(2.2, 3.2)
+		_knock.play()
 
 
 func _quiet() -> void:
@@ -862,6 +898,33 @@ func _make_dust() -> void:
 	_burst.mesh = _puff_mesh(puff)
 	_burst.material_override = puff
 	add_child(_burst)
+	# Pebbles: small chips of its stone, tumbling down from under it.
+	_pebbles = CPUParticles3D.new()
+	_pebbles.amount = 24
+	_pebbles.lifetime = 2.2
+	_pebbles.emitting = false
+	_pebbles.local_coords = false
+	_pebbles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	_pebbles.emission_box_extents = Vector3(0.5, 0.05, 0.15) * size
+	_pebbles.position = Vector3(0.0, 0.05, 0.35) * size
+	_pebbles.direction = Vector3(0.0, -0.3, 1.0)
+	_pebbles.spread = 35.0
+	_pebbles.initial_velocity_min = 0.4
+	_pebbles.initial_velocity_max = 1.4
+	_pebbles.gravity = Vector3(0.0, -9.8, 0.0)
+	_pebbles.angular_velocity_min = -400.0
+	_pebbles.angular_velocity_max = 400.0
+	_pebbles.particle_flag_rotate_y = true
+	_pebbles.scale_amount_min = 0.5
+	_pebbles.scale_amount_max = 1.3
+	var chip := BoxMesh.new()
+	chip.size = Vector3(0.07, 0.05, 0.06) * size
+	var chip_stone := StandardMaterial3D.new()
+	chip_stone.albedo_color = Color(0.5, 0.49, 0.45)
+	chip_stone.roughness = 1.0
+	chip.material = chip_stone
+	_pebbles.mesh = chip
+	add_child(_pebbles)
 
 
 static var _puff: StandardMaterial3D
