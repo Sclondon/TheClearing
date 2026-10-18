@@ -137,46 +137,73 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 ## of blocks and one of plain boxes in each for every height of stone (the ivy
 ## curtains of the stone hang from its top, so each height has its own material).
 func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
-	# [look, square, section] -> SurfaceTool (each section's walls their own moss: MazeStyle.wall_moss_height).
+	# [look, square, section] -> WallMesh (each section's walls their own moss:
+	# MazeStyle.wall_moss_height, and their own rounding: wall_edge_rounding).
 	var chunks := {}
 	var boxes: Array[MazePiece] = pieces.pieces(MazePiece.Kind.WALL) + pieces.pieces(MazePiece.Kind.PIER) + pieces.pieces(MazePiece.Kind.TERRACE)
 	for piece in boxes:
 		var size := piece.box_size()
 		var where := piece.box_transform()
-		var key := [_look_of(piece), Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK)), clampi(maze.ring_of(maze.cell_at(where.origin)), 1, maxi(maze.rings, 1))]
+		var look := _look_of(piece)
+		var section := clampi(maze.ring_of(maze.cell_at(where.origin)), 1, maxi(maze.rings, 1))
+		var key := [look, Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK)), section]
 		if not chunks.has(key):
-			var tool := SurfaceTool.new()
-			tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-			chunks[key] = tool
-		# Built where it stands, then put into its square.
-		var built := SurfaceTool.new()
-		built.begin(Mesh.PRIMITIVE_TRIANGLES)
+			chunks[key] = WallMesh.new()
+		var rounding := edge_rounding(_style_of(section), piece.great, look == LEDGE_LOOK)
 		# (a wall in its style; piers and terraces always plain)
 		var chosen: Wall.Style = piece.style if piece.kind == MazePiece.Kind.WALL else Wall.Style.BASIC
 		for part: Array in Wall.style_boxes(chosen, size):
-			box(built, part[0], part[1])
+			(chunks[key] as WallMesh).add_box(where, part[0], part[1], rounding, true, true, edge_spacing(piece.great))
 			_collide(body, where, part[0], part[1])
-		(chunks[key] as SurfaceTool).append_from(built.commit(), 0, where)
 	var materials := {}
 	for key: Array in chunks:
 		var kind := [key[0], key[2]]
+		var style := _style_of(key[2])
 		if not materials.has(kind):
 			# (laid on in the world's space, so that the pieces meet without seams)
 			materials[kind] = Wall.material_for(key[0], true, LEDGE_TINT if key[0] == LEDGE_LOOK else Color.WHITE)
 			if key[0] == GREAT_LOOK:
 				# (the great walls are so big that their concrete is drawn bigger too)
 				materials[kind].set_shader_parameter(&"tile_size", Wall.LOOKS[GREAT_LOOK][1] * GREAT_TILE_SCALE)
-			var style: MazeStyle = maze.styles[key[2] - 1] if key[2] - 1 < maze.styles.size() else null
 			moss(materials[kind], style)
+			weather(materials[kind], style, key[0] == GREAT_LOOK, key[0] == LEDGE_LOOK)
 			# (the maze walls' concrete laid on as big as the section says: MazeStyle.wall_texture_scale)
 			if style and key[0] != GREAT_LOOK:
 				materials[kind].set_shader_parameter(&"tile_size", Wall.LOOKS[key[0]][1] * style.wall_texture_scale)
 		var walls := MeshInstance3D.new()
-		walls.mesh = (chunks[key] as SurfaceTool).commit()
+		walls.mesh = (chunks[key] as WallMesh).mesh()
 		walls.material_override = materials[kind]
 		# (lost in the mist past this; the editor, seen from high over it all, shows all)
 		walls.visibility_range_end = 0.0 if Engine.is_editor_hint() else WALL_FAR
 		body.add_child(walls)
+
+
+## Section `section`'s style (counting from 1; null if it has none).
+func _style_of(section: int) -> MazeStyle:
+	return maze.styles[section - 1] if section >= 1 and section - 1 < maze.styles.size() else null
+
+
+## How far a wall's edges are worn round, metres, as `style` says
+## (MazeStyle.wall_edge_rounding, border_wall_edge_rounding; a ledge half a wall's).
+static func edge_rounding(style: MazeStyle, great: bool, ledge := false) -> float:
+	if style == null:
+		return 0.4 if great else 0.14
+	if great:
+		return style.border_wall_edge_rounding
+	return style.wall_edge_rounding * (0.5 if ledge else 1.0)
+
+
+## How far apart the vertices along a wall's edges are, metres (so that its
+## rounding can wander along it): further on the great walls.
+static func edge_spacing(great: bool) -> float:
+	return 6.0 if great else 3.0
+
+
+## Gives a wall material the weathering of its edges and tops `style` says
+## (MazeStyle.wall_weathering), and how far round they are.
+static func weather(material: ShaderMaterial, style: MazeStyle, great: bool, ledge := false) -> void:
+	material.set_shader_parameter(&"edge_size", edge_rounding(style, great, ledge))
+	material.set_shader_parameter(&"edge_weathering", style.wall_weathering if style else 0.5)
 
 
 ## Gives a wall material the moss `style` says (MazeStyle.wall_moss_height and

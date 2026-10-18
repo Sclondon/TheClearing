@@ -40,7 +40,11 @@ own), seen and lit like *Inside*. A secret cart in the Scareathon arcade (code *
   in the editor).
 - **Walls.** Brutalist concrete: cast concrete inside the rings, precast slabs between them; photographed textures
   without visible tiling, rain stains running down from ledges. Plain boxes by default (no crowning or footing);
-  decorated styles are for particular places. Solid, never planes.
+  decorated styles are for particular places. Solid, never planes. "Maze walls should be very slightly weathered
+  and rounded rather than perfect squares" (2026-10-18): their top edges and corners are worn round (unevenly: deeper
+  in places, nearly sharp in others; rounder on the great walls), paler where worn, with chips, grime where the rain
+  runs off their tops, and faces very slightly uneven. Still clearly huge brutalist concrete. Rules per section:
+  wall edge rounding, border wall edge rounding, wall weathering (WallMesh builds them; collision stays boxes).
 - **Ground.** Damp dirt and mud in the halls (cracked dry patches, stones, wet mud, moss along the wall feet,
   puddles that reflect the walls), at the quality of Outside's sand. Real 3D grass in the clearing that bends round
   you and stands back up, never mown.
