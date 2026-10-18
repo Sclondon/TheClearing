@@ -1,10 +1,15 @@
 class_name DevTools
 extends Control
 ## God mode for trying the maze out: a DEV button under the clock opens a panel
-## that puts things that hunt (and runners, MazeRunner) into the maze ahead of
-## the boy, clears or stops them, makes him uncatchable or lets him fly anywhere,
-## and moves him to a gate,
-## the middle, any ring, the desert or the exit.
+## docked down the left, as an editor's are:
+## - a toolbar of switches, lit while on: GOD (nothing catches him), FLY (through
+##   anything), FREEZE (what hunts stops), and CLEAR (takes it all away);
+## - Spawn: everything that can be put in ahead of him (hunters, runners, animals,
+##   loot), under headings, with a search: tap a row and one is put in;
+## - Travel: a map of the whole maze (tap it and he is there; the wheel zooms on
+##   him) and the places by name: the clearing, each ring, each desert quarter, the way out;
+## - World: the time of day (a slider, and dawn, noon, dusk, night) and the weather;
+## - along its foot, where he is and the frame rate.
 ## Keys: ` opens it, G god, F fly, M a mummy, N the snake, B a Griever.
 ##
 ## On when the game is run from the Godot editor, or with the flag `dev`
@@ -53,13 +58,25 @@ var god := false
 ## What hunts the maze is stopped where it is.
 var frozen := false
 
+## The panel: docked down the left like an editor's, with a toolbar of switches,
+## tabs (Spawn, Travel, World) and a status line along its foot.
+## (in the HUD's units: it is laid out for 720 x 1280, so on a 1280 x 720 window a unit is
+## a little over half a pixel)
+const DOCK_WIDTH := 640.0
 var _panel: PanelContainer
 var _god_button: Button
 var _freeze_button: Button
-var _kind_button: Button
-var _weather_button: Button
 var _fly_button: Button
-var _scroll: ScrollContainer
+var _spawn_tree: Tree
+var _search: LineEdit
+var _travel_tree: Tree
+var _map: DevMap
+var _hour: HSlider
+var _hour_label: Label
+var _weather: OptionButton
+var _status: Label
+var _status_in := 0.0
+var _open: Button
 ## He flies where he looks, through anything (FLY, or F): move to go, jump to
 ## rise, duck to sink, sprint to go fast.
 var flying := false
@@ -87,83 +104,70 @@ func _init(in_world: World) -> void:
 	name = "DevTools"
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var open := _button("DEV", toggle)
+	_open = _button("DEV", toggle)
+	var open := _open
 	open.position = Vector2(16, 64)
 	open.custom_minimum_size = Vector2(84, 48)
 	add_child(open)
 
 	_panel = PanelContainer.new()
-	var box := StyleBoxFlat.new()
-	box.bg_color = STONE
-	box.border_color = MOSS.darkened(0.2)
-	box.set_border_width_all(2)
-	box.set_content_margin_all(12)
-	_panel.add_theme_stylebox_override("panel", box)
-	_panel.position = Vector2(16, 120)
+	_panel.theme = _theme()
+	_panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	_panel.offset_left = 8.0
+	# (below the clock)
+	_panel.offset_top = 72.0
+	_panel.offset_bottom = -8.0
+	_panel.offset_right = 8.0 + DOCK_WIDTH
 	_panel.visible = false
 	add_child(_panel)
-	var grid := GridContainer.new()
-	# (three across, so that it all fits on a phone held either way)
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 8)
-	grid.add_theme_constant_override("v_separation", 8)
-	# (scrolled, when there are more buttons than fit the window's height)
-	_scroll = ScrollContainer.new()
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_scroll.custom_minimum_size = Vector2(0, 560)
-	_panel.add_child(_scroll)
-	_scroll.add_child(grid)
-	_god_button = _button("", toggle_god)
-	grid.add_child(_god_button)
-	_fly_button = _button("", toggle_fly)
-	grid.add_child(_fly_button)
-	_freeze_button = _button("", toggle_freeze)
-	grid.add_child(_freeze_button)
-	_kind_button = _button("", next_kind)
-	grid.add_child(_kind_button)
-	grid.add_child(_button("+ MUMMY", spawn_mummy))
-	grid.add_child(_button("+ PACK", spawn_pack))
-	grid.add_child(_button("+ SNAKE", spawn_snake))
-	grid.add_child(_button("+ GRIEVER", spawn_griever))
-	for one: Array in HUNTERS:
-		grid.add_child(_button("+ " + String(one[0]), spawn_hunter.bind(one[1], one[2])))
-	grid.add_child(_button("+ RUNNER", spawn_runner))
-	grid.add_child(_button("+ RUNNERS", spawn_runners))
-	for one: Array in Loot.DEV:
-		grid.add_child(_button(String(one[0]), spawn_loot.bind(one[1])))
-	for one: Array in WILDLIFE:
-		grid.add_child(_button("+ " + String(one[0]), spawn_wildlife.bind(one[1])))
-	for one: Array in [["MOTHS", InsectLook.Kind.MOTH], ["FLIES", InsectLook.Kind.FLY], ["DRAGONFLIES", InsectLook.Kind.DRAGONFLY]]:
-		grid.add_child(_button("+ " + String(one[0]), spawn_insects.bind(one[1])))
-	grid.add_child(_button("CLEAR ALL", clear))
-	grid.add_child(_button("TO GATE", to_gate))
-	grid.add_child(_button("TO MIDDLE", to_middle))
-	grid.add_child(_button("TO EXIT", to_exit))
-	for ring in range(1, world.ring_count() + 1):
-		var desert: bool = world.maze.round_rings and ring == world.maze.rings + 1
-		grid.add_child(_button("TO RING %d%s" % [ring, " (DESERT)" if desert else ""], to_ring.bind(ring)))
-		# (and each quarter of the desert ring, walled apart: named for its side and what it is)
-		if desert:
-			var outer: RoundMaze = world.maze.round_rings
-			for q in outer.doors.size():
-				var quarter := DesertStyle.quarter_at(outer.doors[q].x, outer.doors[q].y)
-				var side: String = {Vector2i(0, -1): "N", Vector2i(1, 0): "E", Vector2i(0, 1): "S", Vector2i(-1, 0): "W"}[quarter]
-				var biome: String = DesertStyle.Biome.keys()[outer.desert.biome_of(quarter)]
-				grid.add_child(_button("TO %s (%s)" % [biome, side], to_quarter.bind(q)))
-	grid.add_child(_button("TO DUSK", to_hour.bind(DayCycle.SUNSET - 0.4)))
-	grid.add_child(_button("TO DAWN", to_hour.bind(DayCycle.DAWN - 0.4)))
-	_weather_button = _button("", next_weather)
-	grid.add_child(_weather_button)
-	grid.add_child(_button("CLOSE", toggle))
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	_panel.add_child(column)
+	# The title, and a way to shut it.
+	var header := HBoxContainer.new()
+	var title := Label.new()
+	title.text = "DEV TOOLS"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_color_override("font_color", MOSS.lightened(0.25))
+	header.add_child(title)
+	var shut := _tool("X", toggle, "Close (`)")
+	shut.toggle_mode = false
+	header.add_child(shut)
+	column.add_child(header)
+	# The switches, lit while on.
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 4)
+	_god_button = _tool("GOD", toggle_god, "Nothing can catch him (G)")
+	_fly_button = _tool("FLY", toggle_fly, "Fly where the camera looks, through anything: jump up, duck down, sprint fast (F)")
+	_freeze_button = _tool("FREEZE", toggle_freeze, "Everything that hunts stops where it is")
+	var wipe := _tool("CLEAR", clear, "Take away everything that hunts")
+	wipe.toggle_mode = false
+	for one: Button in [_god_button, _fly_button, _freeze_button, wipe]:
+		one.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar.add_child(one)
+	column.add_child(bar)
+	var tabs := TabContainer.new()
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tabs.add_child(_spawn_page())
+	tabs.add_child(_travel_page())
+	tabs.add_child(_world_page())
+	column.add_child(tabs)
+	_status = Label.new()
+	_status.add_theme_font_size_override("font_size", 22)
+	_status.add_theme_color_override("font_color", INK.darkened(0.25))
+	_status.clip_text = true
+	column.add_child(_status)
 	_show()
 
 
 func toggle() -> void:
 	_panel.visible = not _panel.visible
-	_scroll.custom_minimum_size.y = maxf(get_viewport_rect().size.y - 150.0, 200.0)
+	# (the panel lies over the button: it is shut with its own X, or `)
+	_open.visible = not _panel.visible
 	# (fingers on the panel are not to move him or turn the camera)
 	if world.touch:
 		world.touch.set_process_input(not _panel.visible)
+	_show()
 
 
 func toggle_god() -> void:
@@ -175,11 +179,6 @@ func toggle_freeze() -> void:
 	frozen = not frozen
 	for hunter in _hunters():
 		hunter.process_mode = Node.PROCESS_MODE_DISABLED if frozen else Node.PROCESS_MODE_INHERIT
-	_show()
-
-
-func next_kind() -> void:
-	_kind = (_kind + 1) % Mummy.Kind.size()
 	_show()
 
 
@@ -442,13 +441,6 @@ func to_exit() -> void:
 	world.put_player(world.maze.world(world.maze.exit) - out * 3.0 + Vector3.UP * 0.05, atan2(out.x, out.z))
 
 
-## The weather: as the spells have it, or always one kind (overcast, cloudy, a sprinkle, rain, a downpour, a thunderstorm).
-func next_weather() -> void:
-	if world.weather:
-		world.weather.forced = world.weather.forced + 1 if world.weather.forced < Weather.Kind.THUNDERSTORM else -1
-	_show()
-
-
 ## On to `hour` o'clock (a little before sunset, or dawn, to see the gates go).
 func to_hour(hour: float) -> void:
 	if world.day:
@@ -480,14 +472,15 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _show() -> void:
-	_god_button.text = "GOD: ON" if god else "GOD: OFF"
-	_fly_button.text = "FLY: ON" if flying else "FLY: OFF"
-	_fly_button.modulate = Color(0.75, 1.0, 0.7) if flying else Color.WHITE
-	_god_button.modulate = Color(0.75, 1.0, 0.7) if god else Color.WHITE
-	_freeze_button.text = "UNFREEZE" if frozen else "FREEZE"
-	_kind_button.text = String(Mummy.Kind.keys()[_kind])
+	# (the switches show what is on; the world page what the day and weather are)
+	_god_button.set_pressed_no_signal(god)
+	_fly_button.set_pressed_no_signal(flying)
+	_freeze_button.set_pressed_no_signal(frozen)
 	var forced: int = world.weather.forced if world.weather else -1
-	_weather_button.text = "WEATHER: " + ("SPELLS" if forced < 0 else String(Weather.Kind.keys()[forced]))
+	_weather.select(forced + 1)
+	if world.day:
+		_hour.set_value_no_signal(world.day.hour)
+		_hour_label.text = _clock(world.day.hour)
 
 
 func _button(text: String, pressed: Callable) -> Button:
@@ -607,3 +600,335 @@ func to_quarter(q: int) -> void:
 ## In the desert, a little way out from the square maze's way out, facing on out.
 func to_desert() -> void:
 	to_quarter(0)
+
+
+# --- The panel's pages ------------------------------------------------------
+
+## Kinds of the things put in (HUNTERS' kinds), by the heading they are listed under.
+const HEADINGS := {
+	"flesh_pair": "Flesh", "amalgam": "Flesh", "strider": "Flesh", "flesh_mound": "Flesh",
+	"abomination": "Flesh", "slime": "Flesh",
+	"crows": "Birds and bugs", "ravens": "Birds and bugs", "blue_jays": "Birds and bugs",
+	"bats": "Birds and bugs", "beetles": "Birds and bugs",
+	"tame_chickens": "Tame animals",
+}
+
+
+## Spawn: everything that can be put in ahead of him, under headings, with a
+## search; a tap on a row puts one in.
+func _spawn_page() -> Control:
+	var page := VBoxContainer.new()
+	page.name = "Spawn"
+	_search = LineEdit.new()
+	_search.placeholder_text = "Search..."
+	_search.clear_button_enabled = true
+	_search.text_changed.connect(_filter)
+	page.add_child(_search)
+	_spawn_tree = _tree()
+	page.add_child(_spawn_tree)
+	var top := _spawn_tree.create_item()
+	var headings := {}
+	var under := func(heading: String) -> TreeItem:
+		if not headings.has(heading):
+			var item := _spawn_tree.create_item(top)
+			item.set_text(0, heading)
+			item.set_selectable(0, false)
+			item.set_custom_color(0, MOSS.lightened(0.2))
+			headings[heading] = item
+		return headings[heading]
+	var row := func(heading: String, text: String, action: Callable) -> void:
+		var item := _spawn_tree.create_item(under.call(heading))
+		item.set_text(0, text)
+		item.set_metadata(0, action)
+	for kind in Mummy.Kind.size():
+		var named := String(Mummy.Kind.keys()[kind]).capitalize()
+		row.call("Mummies", "Mummy: " + named, _spawn_mummy_kind.bind(kind, false))
+	for kind in Mummy.Kind.size():
+		var named := String(Mummy.Kind.keys()[kind]).capitalize()
+		row.call("Mummies", "Pack led by a " + named.to_lower(), _spawn_mummy_kind.bind(kind, true))
+	row.call("Hunters", "Snake (Apophis)", spawn_snake)
+	row.call("Hunters", "Griever", spawn_griever)
+	for one: Array in HUNTERS:
+		row.call(HEADINGS.get(one[1], "Hunters"), String(one[0]).capitalize(), spawn_hunter.bind(one[1], one[2]))
+	for one: Array in WILDLIFE:
+		row.call("Tame animals", String(one[0]).capitalize(), spawn_wildlife.bind(one[1]))
+	for one: Array in [["Moths", InsectLook.Kind.MOTH], ["Flies", InsectLook.Kind.FLY], ["Dragonflies", InsectLook.Kind.DRAGONFLY]]:
+		row.call("Birds and bugs", one[0], spawn_insects.bind(one[1]))
+	row.call("Runners", "Runner", spawn_runner)
+	row.call("Runners", "Three runners", spawn_runners)
+	for one: Array in Loot.DEV:
+		row.call("Loot and camps", String(one[0]).trim_prefix("+ ").capitalize(), spawn_loot.bind(one[1]))
+	_spawn_tree.item_selected.connect(_picked.bind(_spawn_tree))
+	return page
+
+
+## Travel: the map (tap to go there) and the places by name.
+func _travel_page() -> Control:
+	var page := VBoxContainer.new()
+	page.name = "Travel"
+	_map = DevMap.new(self)
+	page.add_child(_map)
+	_travel_tree = _tree()
+	page.add_child(_travel_tree)
+	var top := _travel_tree.create_item()
+	var maze: Maze = world.maze
+	var outer: RoundMaze = maze.round_rings
+	var group := func(text: String) -> TreeItem:
+		var item := _travel_tree.create_item(top)
+		item.set_text(0, text)
+		item.set_selectable(0, false)
+		item.set_custom_color(0, MOSS.lightened(0.2))
+		return item
+	var place := func(under: TreeItem, text: String, action: Callable) -> void:
+		var item := _travel_tree.create_item(under)
+		item.set_text(0, text)
+		item.set_metadata(0, action)
+	var clearing: TreeItem = group.call("Clearing")
+	place.call(clearing, "Middle", to_middle)
+	place.call(clearing, "In front of the next gate", to_gate)
+	var square: TreeItem = group.call("Square sections")
+	for ring in range(1, maze.rings + 1):
+		place.call(square, "Ring %d" % ring, to_ring.bind(ring))
+	if outer:
+		var desert: TreeItem = group.call("Desert ring (ring %d)" % (maze.rings + 1))
+		for q in outer.doors.size():
+			var quarter := DesertStyle.quarter_at(outer.doors[q].x, outer.doors[q].y)
+			var side: String = {Vector2i(0, -1): "N", Vector2i(1, 0): "E", Vector2i(0, 1): "S", Vector2i(-1, 0): "W"}[quarter]
+			var biome := String(DesertStyle.Biome.keys()[outer.desert.biome_of(quarter)]).capitalize()
+			place.call(desert, "%s quarter (%s)" % [biome, side], to_quarter.bind(q))
+		if not outer.rings.is_empty():
+			var round: TreeItem = group.call("Round sections")
+			for k in outer.rings.size():
+				var ring := maze.rings + 2 + k
+				place.call(round, "Ring %d" % ring, to_ring.bind(ring))
+	place.call(group.call("Out"), "The way out", to_exit)
+	_travel_tree.item_selected.connect(_picked.bind(_travel_tree))
+	return page
+
+
+## World: the time of day and the weather.
+func _world_page() -> Control:
+	var page := VBoxContainer.new()
+	page.name = "World"
+	page.add_theme_constant_override("separation", 8)
+	var time := HBoxContainer.new()
+	var heading := Label.new()
+	heading.text = "Time of day"
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	time.add_child(heading)
+	_hour_label = Label.new()
+	time.add_child(_hour_label)
+	page.add_child(time)
+	_hour = HSlider.new()
+	_hour.min_value = 0.0
+	_hour.max_value = 24.0
+	_hour.step = 0.25
+	_hour.custom_minimum_size.y = 56.0
+	_hour.value_changed.connect(func(value: float) -> void:
+		to_hour(value)
+		_hour_label.text = _clock(value))
+	page.add_child(_hour)
+	var jumps := HBoxContainer.new()
+	for one: Array in [["Dawn", DayCycle.DAWN - 0.4], ["Noon", 12.0], ["Dusk", DayCycle.SUNSET - 0.4], ["Night", 0.0]]:
+		var jump := _tool(one[0], func() -> void:
+			to_hour(one[1])
+			_show(), "On to %s" % _clock(one[1]))
+		jump.toggle_mode = false
+		jump.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		jumps.add_child(jump)
+	page.add_child(jumps)
+	var heading_weather := Label.new()
+	heading_weather.text = "Weather"
+	page.add_child(heading_weather)
+	_weather = OptionButton.new()
+	_weather.add_item("As the spells have it")
+	for kind in Weather.Kind.size():
+		_weather.add_item(String(Weather.Kind.keys()[kind]).capitalize())
+	_weather.item_selected.connect(func(index: int) -> void:
+		if world.weather:
+			world.weather.forced = index - 1)
+	page.add_child(_weather)
+	return page
+
+
+## A row picked in the spawn or travel list: done, and let go again, so that the
+## same row can be tapped again at once.
+func _picked(tree: Tree) -> void:
+	var item := tree.get_selected()
+	if item == null:
+		return
+	var action: Variant = item.get_metadata(0)
+	if action is Callable:
+		(action as Callable).call()
+		_status.text = "%s: %s" % ["Put in" if tree == _spawn_tree else "Went to", item.get_text(0)]
+		_status_in = 1.5
+	tree.deselect_all.call_deferred()
+
+
+## Only the rows whose names have `text` in them (the headings with any such rows, open).
+func _filter(text: String) -> void:
+	var wanted := text.strip_edges().to_lower()
+	var heading := _spawn_tree.get_root().get_first_child()
+	while heading:
+		var any := false
+		var item := heading.get_first_child()
+		while item:
+			var shown := wanted == "" or item.get_text(0).to_lower().contains(wanted)
+			item.visible = shown
+			any = any or shown
+			item = item.get_next()
+		heading.visible = any
+		if wanted != "":
+			heading.collapsed = false
+		heading = heading.get_next()
+
+
+## A mummy of `kind`, alone or leading a pack.
+func _spawn_mummy_kind(kind: int, pack: bool) -> void:
+	_kind = kind
+	if pack:
+		spawn_pack()
+	else:
+		spawn_mummy()
+
+
+## Puts him at a place on the ground (x, z) from the map: in the square maze, in
+## the middle of the nearest cell he could stand in (not inside a rampart).
+func travel_to(at: Vector2) -> void:
+	var maze: Maze = world.maze
+	var spot := Vector3(at.x, 0.0, at.y)
+	var cell := maze.cell_at(spot)
+	if maze.inside(cell) and not maze.in_clearing(cell):
+		var best := cell
+		var nearest := INF
+		for y in range(cell.y - 6, cell.y + 7):
+			for x in range(cell.x - 6, cell.x + 7):
+				var other := Vector2i(x, y)
+				if maze.inside(other) and not maze.solid.has(other) and Vector2(other - cell).length() < nearest:
+					nearest = Vector2(other - cell).length()
+					best = other
+		spot = maze.world(best)
+	spot.y = maze.ground_height(spot) + 0.1
+	world.put_player(spot, world.player.facing_yaw)
+	_status.text = "Went to %.0f, %.0f" % [spot.x, spot.z]
+	_status_in = 1.5
+
+
+func _process(delta: float) -> void:
+	if not _panel.visible or world.player == null:
+		return
+	_status_in -= delta
+	if _status_in > 0.0:
+		return
+	_status_in = 0.25
+	var at: Vector3 = world.player.global_position
+	_status.text = "%.0f, %.0f, %.0f   %s   %d fps" % [at.x, at.y, at.z, _where(at), Engine.get_frames_per_second()]
+	if world.day and not _hour.has_focus():
+		_hour.set_value_no_signal(world.day.hour)
+		_hour_label.text = _clock(world.day.hour)
+
+
+## Which part of the maze a place is in, by name.
+func _where(at: Vector3) -> String:
+	var maze: Maze = world.maze
+	var outer: RoundMaze = maze.round_rings
+	var cell := maze.cell_at(at)
+	if maze.inside(cell):
+		return "the clearing" if maze.in_clearing(cell) else "ring %d" % maze.ring_of(cell)
+	if outer == null:
+		return "out"
+	var out := Vector2(at.x, at.z).length()
+	if out < outer.inner_radius:
+		return "%s quarter" % String(DesertStyle.Biome.keys()[outer.desert.biome_at(at.x, at.z)]).to_lower()
+	for k in outer.rings.size():
+		if out < outer.rings[k].outer:
+			return "ring %d" % (maze.rings + 2 + k)
+	return "out"
+
+
+static func _clock(hour: float) -> String:
+	return "%02d:%02d" % [int(hour) % 24, int(fposmod(hour, 1.0) * 60.0)]
+
+
+## A list in the panel: rows under headings, no root shown.
+func _tree() -> Tree:
+	var tree := Tree.new()
+	tree.hide_root = true
+	tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tree.focus_mode = Control.FOCUS_NONE
+	tree.select_mode = Tree.SELECT_ROW
+	return tree
+
+
+## A toolbar switch (lit while pressed), with what it does on hovering.
+func _tool(text: String, pressed: Callable, tip: String) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.toggle_mode = true
+	button.tooltip_text = tip
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = Vector2(0, 64)
+	button.pressed.connect(pressed)
+	return button
+
+
+## The panel's look: dark stone, moss edges, the game's typewriter face, small.
+func _theme() -> Theme:
+	var theme := Theme.new()
+	theme.default_font = FONT
+	theme.default_font_size = 26
+	var box := func(fill: Color, edge: Color, width := 2, margin := 10.0) -> StyleBoxFlat:
+		var made := StyleBoxFlat.new()
+		made.bg_color = fill
+		made.border_color = edge
+		made.set_border_width_all(width)
+		made.set_corner_radius_all(3)
+		made.set_content_margin_all(margin)
+		return made
+	var edge := MOSS.darkened(0.35)
+	var well := Color(0.06, 0.07, 0.06, 0.9)
+	var clear := Color(0, 0, 0, 0)
+	theme.set_stylebox(&"panel", &"PanelContainer", box.call(STONE, edge, 3, 16.0))
+	for state: StringName in [&"normal", &"focus", &"disabled"]:
+		theme.set_stylebox(state, &"Button", box.call(STONE.lightened(0.05), edge))
+	theme.set_stylebox(&"hover", &"Button", box.call(STONE.lerp(MOSS, 0.2), edge))
+	theme.set_stylebox(&"pressed", &"Button", box.call(STONE.lerp(MOSS, 0.55), MOSS))
+	theme.set_stylebox(&"hover_pressed", &"Button", box.call(STONE.lerp(MOSS, 0.65), MOSS))
+	for colour: StringName in [&"font_color", &"font_hover_color", &"font_focus_color"]:
+		theme.set_color(colour, &"Button", INK)
+	for colour: StringName in [&"font_pressed_color", &"font_hover_pressed_color"]:
+		theme.set_color(colour, &"Button", Color.WHITE)
+	theme.set_color(&"font_color", &"Label", INK)
+	theme.set_stylebox(&"panel", &"Tree", box.call(well, edge, 2, 8.0))
+	theme.set_stylebox(&"focus", &"Tree", box.call(clear, clear, 0))
+	theme.set_stylebox(&"selected", &"Tree", box.call(STONE.lerp(MOSS, 0.5), MOSS))
+	theme.set_stylebox(&"selected_focus", &"Tree", box.call(STONE.lerp(MOSS, 0.5), MOSS))
+	theme.set_stylebox(&"hovered", &"Tree", box.call(STONE.lerp(MOSS, 0.2), clear, 0))
+	theme.set_color(&"font_color", &"Tree", INK)
+	theme.set_color(&"font_hovered_color", &"Tree", Color.WHITE)
+	theme.set_constant(&"v_separation", &"Tree", 14)
+	theme.set_constant(&"item_margin", &"Tree", 26)
+	theme.set_stylebox(&"panel", &"TabContainer", box.call(clear, clear, 0, 6.0))
+	theme.set_stylebox(&"tab_selected", &"TabContainer", box.call(STONE.lerp(MOSS, 0.45), MOSS, 2, 14.0))
+	theme.set_stylebox(&"tab_unselected", &"TabContainer", box.call(STONE, edge, 2, 14.0))
+	theme.set_stylebox(&"tab_hovered", &"TabContainer", box.call(STONE.lerp(MOSS, 0.25), edge, 2, 14.0))
+	theme.set_color(&"font_selected_color", &"TabContainer", Color.WHITE)
+	theme.set_color(&"font_unselected_color", &"TabContainer", INK.darkened(0.2))
+	theme.set_color(&"font_hovered_color", &"TabContainer", INK)
+	theme.set_stylebox(&"normal", &"LineEdit", box.call(well, edge))
+	theme.set_stylebox(&"focus", &"LineEdit", box.call(well, MOSS))
+	theme.set_color(&"font_color", &"LineEdit", INK)
+	theme.set_stylebox(&"normal", &"OptionButton", box.call(STONE.lightened(0.05), edge))
+	theme.set_stylebox(&"hover", &"OptionButton", box.call(STONE.lerp(MOSS, 0.2), edge))
+	theme.set_stylebox(&"pressed", &"OptionButton", box.call(STONE.lerp(MOSS, 0.4), MOSS))
+	theme.set_color(&"font_color", &"OptionButton", INK)
+	theme.set_stylebox(&"slider", &"HSlider", box.call(well, edge, 2, 6.0))
+	theme.set_stylebox(&"grabber_area", &"HSlider", box.call(MOSS.darkened(0.2), MOSS, 2, 6.0))
+	theme.set_stylebox(&"grabber_area_highlight", &"HSlider", box.call(MOSS, MOSS, 2, 6.0))
+	theme.set_stylebox(&"panel", &"TooltipPanel", box.call(STONE, MOSS))
+	theme.set_color(&"font_color", &"TooltipLabel", INK)
+	theme.set_stylebox(&"panel", &"PopupMenu", box.call(STONE, MOSS))
+	theme.set_color(&"font_color", &"PopupMenu", INK)
+	theme.set_color(&"font_hover_color", &"PopupMenu", Color.WHITE)
+	theme.set_stylebox(&"hover", &"PopupMenu", box.call(STONE.lerp(MOSS, 0.4), clear, 0))
+	return theme

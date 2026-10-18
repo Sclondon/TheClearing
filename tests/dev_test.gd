@@ -151,8 +151,14 @@ func _run() -> void:
 	# Each quarter of the desert ring: put in it, on its ground.
 	var outer: RoundMaze = maze.round_rings
 	if outer:
-		var names: Array = world.dev.find_children("*", "Button", true, false).map(func(b: Button) -> String: return b.text).filter(func(t: String) -> bool: return t.ends_with("(N)") or t.ends_with("(E)") or t.ends_with("(S)") or t.ends_with("(W)"))
-		check("a button to each quarter in the panel", names.size() == 4, str(names))
+		var names: Array = []
+		var group: TreeItem = world.dev._travel_tree.get_root().get_first_child()
+		while group:
+			for item: TreeItem in group.get_children():
+				if item.get_text(0).contains(" quarter ("):
+					names.append(item.get_text(0))
+			group = group.get_next()
+		check("each quarter in the panel's places", names.size() == 4, str(names))
 		for q in outer.doors.size():
 			world.dev.to_quarter(q)
 			await frames(20)
