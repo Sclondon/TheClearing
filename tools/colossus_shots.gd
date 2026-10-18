@@ -1,23 +1,26 @@
 extends SceneTree
 ## Pictures of the colossus (creatures/colossus/, and MazeColossus, its hunter
-## in the maze). Needs a real window (the engine draws nothing headless):
+## in the maze), in a real round. Needs a real window (the engine draws nothing
+## headless):
 ##
-##     godot --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/colossus_shots.gd -- <folder> [model|maze|all]
+##     godot --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/colossus_shots.gd -- <folder> [maze|clearing|all]
 ##
-## model: on a bare floor in the maze's light, between two walls as high as the
-## first ring's: the whole of it from the front, three quarters, the side and
-## behind; its face; a stride over a wall (frames through it); a reach (frames
-## through it). maze: in a real round: from the boy's height in a hall as it
-## strides over (the money shot), a foot coming down in the hall, the hand
-## reaching into a hall, from the middle of the clearing as it hauls itself up
-## to look over the great wall, the same from over the maze, and how many draws
-## it costs. clearing: only those last two.
+## maze: the whole of it crawling over the maze (the mist thinned, from far and
+## high); from the boy's height in a hall under it as it crawls over (the money
+## shot); a hand coming down on a wall top; its eye peering down between the
+## walls with its finger over him; the fingertip coming down at him; the finger
+## pressing where he was, and him in a slot; and how many draws it costs.
+## clearing: from the middle of the clearing as it rears up to look over the
+## great wall, and the same from over the maze.
 
 var folder := "colossus_shots"
 var what := "all"
 var camera: Camera3D
-var giant: Colossus
-var stage: Node3D
+var world: Node3D
+var maze: Maze
+var boy: Player
+var hunter: MazeColossus
+var environment: Environment
 
 
 func _initialize() -> void:
@@ -56,116 +59,41 @@ func look(from: Vector3, at: Vector3, fov := 50.0) -> void:
 
 
 func _run() -> void:
-	if what in ["model", "all"]:
-		await _model()
-	if what in ["maze", "all", "clearing"]:
-		await _round()
+	await _round()
 	if what in ["maze", "all"]:
 		await _maze()
-	if what in ["maze", "all", "clearing"]:
+	if what in ["clearing", "all"]:
 		await _from_the_clearing()
 	quit()
 
 
-# --- On its own ---
-
-func _box(at: Vector3, size: Vector3, colour: Color) -> StaticBody3D:
-	var body := StaticBody3D.new()
-	body.position = at
-	var shape := CollisionShape3D.new()
-	shape.shape = BoxShape3D.new()
-	(shape.shape as BoxShape3D).size = size
-	body.add_child(shape)
-	var mesh := MeshInstance3D.new()
-	mesh.mesh = BoxMesh.new()
-	(mesh.mesh as BoxMesh).size = size
-	var material := StandardMaterial3D.new()
-	material.albedo_color = colour
-	mesh.material_override = material
-	body.add_child(mesh)
-	stage.add_child(body)
-	return body
-
-
-func _model() -> void:
-	stage = Node3D.new()
-	root.add_child(stage)
-	MazeLight.put(stage)
-	# (the mist thinned, to see the whole of it)
-	for child in stage.get_children():
-		if child is WorldEnvironment:
-			(child as WorldEnvironment).environment.fog_density = 0.0012
-	_box(Vector3(0, -0.5, 0), Vector3(1200, 1, 1200), Color(0.33, 0.31, 0.28))
-	# Two walls as the first ring's: 34 m high, 12 m thick, a hall of 16 m between.
-	_box(Vector3(-14, 17, 0), Vector3(12, 34, 400), Color(0.52, 0.52, 0.5))
-	_box(Vector3(14, 17, 60), Vector3(12, 34, 280), Color(0.52, 0.52, 0.5))
-	camera = Camera3D.new()
-	camera.far = 3000.0
-	stage.add_child(camera)
-	camera.make_current()
-	var boy: Node3D = load("res://player.tscn").instantiate()
+## A round of the game, with nothing hunting in it, and a camera of our own.
+func _round() -> void:
+	world = load("res://scripts/world.gd").new()
+	world.name = "World"
+	root.add_child(world)
+	world.setup(Maze.seed_for("SHOT", 2), 0, [{"slot": 0, "look": "p11"}], false)
+	maze = world.maze
+	boy = world.player
 	boy.takes_input = false
-	stage.add_child(boy)
-	boy.global_position = Vector3(3.0, 0.05, 30.0)
-	boy.rotation.y = PI
-	giant = Colossus.new()
-	giant.sound = false
-	stage.add_child(giant)
-	giant.put(Vector3(0, 0, 0), 0.0)
-	await wait(1.0)
-	var middle := Vector3(0, 50, 0)
-	look(Vector3(0, 40, 190), middle, 45)
-	await shot("m1_front")
-	look(Vector3(140, 50, 130), middle, 45)
-	await shot("m2_three_quarter")
-	look(Vector3(190, 45, 0), middle, 45)
-	await shot("m3_side")
-	look(Vector3(-110, 70, -150), middle, 45)
-	await shot("m4_behind")
-	look(giant.eye() + Vector3(18, -4, 40), giant.eye() + Vector3(0, -6, 0), 40)
-	await shot("m5_face")
-	look(Vector3(3.5, 1.6, 34), Vector3(0, 40, 0), 70)
-	await shot("m6_up_from_the_boy")
-	# A stride over the wall on its right.
-	var to := Vector3(-28, 0, 22)
-	giant.facing = -0.6
-	giant.step(Colossus.RIGHT, to, -0.6, 34.0)
-	var marks := [0.2, 0.45, 0.7, 0.9]
-	for k in marks.size():
-		await wait(30.0, func() -> bool: return giant.step_progress() >= marks[k] or giant.stepping() < 0)
-		look(Vector3(120, 40, 140), Vector3(-10, 40, 10), 50)
-		await shot("w%d_stride_%d" % [k + 1, int(marks[k] * 100)])
-	await wait(4.0)
-	# A reach, at the boy.
-	giant.facing = 0.3
-	await wait(2.0)
-	giant.reach(boy.global_position)
-	for stage_name: String in ["HOVER", "STRIKE", "SWEEP"]:
-		await wait(15.0, func() -> bool: return Colossus.Reach.keys()[giant.reach_stage()] == stage_name)
-		if stage_name == "STRIKE":
-			await wait(0.4)
-		look(Vector3(110, 30, 110), Vector3(0, 30, 15), 50)
-		await shot("r_%s" % stage_name.to_lower())
-	stage.queue_free()
-	await wait(0.2)
-
-
-# --- In the maze ---
-
-var world: Node3D
-var maze: Maze
-var boy: Player
-var hunter: MazeColossus
+	for child in world.get_children():
+		if child is MazeEnemy or child is Griever or child is MazeEnemies:
+			child.queue_free()
+		if child is WorldEnvironment:
+			environment = (child as WorldEnvironment).environment
+	camera = Camera3D.new()
+	camera.far = 4000.0
+	world.add_child(camera)
+	camera.make_current()
+	await wait(0.5)
 
 
 ## A cell in the first ring with a long straight run of hall on from it (`run`
-## cells open each way along), and that way; the deepest such run first.
-func _long_hall(run: int, near_clearing := false) -> Array:
-	var nav := MazeNav.new(maze)
-	for c: Vector2i in nav.lairs(1):
-		if maze.ring_of(c) != 1:
-			continue
-		if near_clearing and maze.depth_in_ring(c) != maze.styles[0].border_wall_thickness_cells:
+## cells open each way along), and that way.
+func _long_hall(run: int) -> Array:
+	for c: Vector2i in MazeNav.new(maze).lairs(3):
+		# (out in the ring, away from the great wall round the clearing)
+		if maze.ring_of(c) != 1 or maze.depth_in_ring(c) < maze.styles[0].border_wall_thickness_cells + 3:
 			continue
 		for step: Vector2i in Maze.STEPS:
 			var ok := true
@@ -187,131 +115,181 @@ func _spawn_at(at: Vector3, yaw: float) -> MazeColossus:
 	hunter.seed_choices(3)
 	hunter.position = at
 	hunter.rotation.y = yaw
+	# (held still until it is told where to go)
+	hunter._pause = 1e9
 	world.add_child(hunter)
 	await process_frame
 	return hunter
 
 
-## A round of the game, with nothing hunting in it, and a camera of our own.
-func _round() -> void:
-	world = load("res://scripts/world.gd").new()
-	world.name = "World"
-	root.add_child(world)
-	world.setup(Maze.seed_for("SHOT", 2), 0, [{"slot": 0, "look": "p11"}], false)
-	maze = world.maze
-	boy = world.player
-	boy.takes_input = false
-	for child in world.get_children():
-		if child is MazeEnemy or child is Griever or child is MazeEnemies:
-			child.queue_free()
-	camera = Camera3D.new()
-	camera.far = 3000.0
-	world.add_child(camera)
-	camera.make_current()
-	await wait(0.5)
+## The middle of the hall through `cell` (between it and its neighbour across, if the hall is two wide).
+func _hall_middle(cell: Vector2i, across: Vector3) -> Vector3:
+	for side: float in [1.0, -1.0]:
+		var step := Vector2i(int(across.x * side), int(across.z * side))
+		if not maze.blocked(cell, step) and maze.ring_of(cell + step) == 1:
+			return (maze.world(cell) + maze.world(cell + step)) * 0.5
+	return maze.world(cell)
 
 
 func _maze() -> void:
-	# The money shot: from the boy's height in a long hall, it striding over towards him.
-	var found := _long_hall(4)
+	var found := _long_hall(3)
 	if found.is_empty():
 		print("no long hall")
 		return
 	var cell: Vector2i = found[0]
 	var step: Vector2i = found[1]
 	var along := Vector3(step.x, 0, step.y)
-	# (the middle of the hall: between this cell and its neighbour across, if the hall is two wide)
 	var across := Vector3(step.y, 0, step.x)
-	var middle := maze.world(cell)
-	for side: float in [1.0, -1.0]:
-		var other := cell + Vector2i(int(across.x * side), int(across.z * side))
-		if not maze.blocked(cell, Vector2i(int(across.x * side), int(across.z * side))) and maze.ring_of(other) == 1:
-			middle = (maze.world(cell) + maze.world(other)) * 0.5
-			break
+	var middle := _hall_middle(cell, across)
 	world.put_player(middle + Vector3.UP * 0.05, atan2(along.x, along.z))
 	await wait(0.5)
-	var giant := await _spawn_at(middle + along * 110.0, atan2(-along.x, -along.z))
-	giant.sense_range = 0.0
-	giant._goal = middle - along * 300.0
-	# (step by step until it is near, a foot in the air)
-	for k in 14:
-		await wait(14.0, func() -> bool: return giant.figure.stepping() >= 0 and giant.figure.step_progress() > 0.45)
-		var d := Vector2(giant.figure.pelvis().x - middle.x, giant.figure.pelvis().z - middle.z).length()
-		if d < 60.0:
-			break
-		await wait(14.0, func() -> bool: return giant.figure.stepping() < 0)
-	look(middle - along * 6.0 + across * 2.5 + Vector3.UP * 1.5, giant.figure.pelvis() + Vector3.UP * 25.0, 72.0)
-	await shot("a1_money_striding")
-	look(middle - along * 9.0 - across * 3.0 + Vector3.UP * 1.2, giant.figure.eye() * 0.5 + giant.figure.pelvis() * 0.5, 80.0)
-	await shot("a1b_money_wide")
-	# A foot coming down in the hall: its shadow, and the dust when it lands.
-	await wait(12.0, func() -> bool: return giant.figure.stepping() >= 0 and giant.figure.step_progress() < 0.3)
-	var foot := giant.figure.stepping()
-	var landing := giant.figure.landing(foot)
-	await wait(12.0, func() -> bool: return giant.figure.step_progress() > 0.84)
-	var to_land := landing - middle
-	to_land.y = 0.0
-	look(landing - to_land.normalized() * 30.0 + across * 4.0 + Vector3.UP * 1.6, landing + Vector3.UP * 12.0, 70.0)
-	await shot("b1_foot_coming_down")
-	await wait(4.0, func() -> bool: return giant.figure.stepping() < 0)
-	await wait(0.6)
-	await shot("b2_foot_down_dust")
 
-	# The hand reaching into the hall for him.
+	# It crawls over him: from well up the hall, on over him and beyond.
+	var giant := await _spawn_at(middle + along * 18.0, atan2(-along.x, -along.z))
+	giant.sense_range = 0.0
+	giant._goal = middle - along * 400.0
+	giant._pause = 0.0
+	await wait(20.0, func() -> bool: return giant.figure.stepping() >= 0 and giant.figure.step_progress() > 0.4)
+	print("  its middle is %.0f m from him, %.0f m up" % [Vector2(giant.figure.pelvis().x - middle.x, giant.figure.pelvis().z - middle.z).length(), giant.figure.pelvis().y])
+	# (from his height, straight up at its underside: its body, its limbs arching over the walls)
+	look(middle + across * 2.0 + Vector3.UP * 1.5, giant.figure.pelvis() + Vector3.UP * 5.0, 90.0)
+	await shot("a1_money_underneath")
+	look(middle - along * 6.0 - across * 2.5 + Vector3.UP * 1.3, giant.figure.pelvis() + along * 30.0 + Vector3.UP * 40.0, 85.0)
+	await shot("a2_money_looking_up_the_hall")
+	# A hand coming down on a wall top (dust and stones raining into the hall).
+	await wait(20.0, func() -> bool: return giant.figure.stepping() == Colossus.HAND_L or giant.figure.stepping() == Colossus.HAND_R)
+	var limb := giant.figure.stepping()
+	var landing := giant.figure.landing(limb)
+	await wait(10.0, func() -> bool: return giant.figure.step_progress() > 0.8)
+	var below := Vector3(landing.x, 0.0, landing.z)
+	var spot := below
+	for r: float in [12.0, 16.0, 20.0, 26.0]:
+		for k in 8:
+			var p := below + Vector3(cos(TAU * k / 8.0), 0.0, sin(TAU * k / 8.0)) * r
+			if giant.clear_of_walls(p, 2.0):
+				spot = p
+				break
+		if spot != below:
+			break
+	look(spot + Vector3.UP * 1.6, landing + Vector3.UP * 4.0, 75.0)
+	await shot("b1_hand_coming_down")
+	await wait(3.0, func() -> bool: return giant.figure.stepping() < 0)
+	await wait(0.5)
+	await shot("b2_hand_down_dust")
+	# The whole of it over the maze, far and high (the mist thinned).
+	var fog := environment.fog_density if environment else 0.0
+	if environment:
+		environment.fog_density = 0.0016
+	var centre := giant.figure.pelvis()
+	# (from outside the ring, where no great wall is in the way)
+	var outward := Vector3(signf(centre.x), 0, 0) if absf(centre.x) > absf(centre.z) else Vector3(0, 0, signf(centre.z))
+	var sideways := Vector3(outward.z, 0, outward.x)
+	look(centre + outward * 230.0 + sideways * 140.0 + Vector3.UP * 190.0, centre + Vector3.UP * 40.0, 50.0)
+	await shot("f1_whole_over_the_maze")
+	look(centre + outward * 330.0 - sideways * 60.0 + Vector3.UP * 55.0, centre + Vector3.UP * 70.0, 45.0)
+	await shot("f2_whole_from_the_side")
+	if environment:
+		environment.fog_density = fog
+
+	# The finger: it sees him out in the open, peers down, presses.
 	giant.queue_free()
 	hunter = null
 	await wait(0.3)
 	world.put_player(middle + Vector3.UP * 0.05, atan2(along.x, along.z))
-	var reacher := await _spawn_at(middle + along * 38.0, atan2(-along.x, -along.z))
-	reacher.sense_range = 120.0
+	var presser := await _spawn_at(middle + along * 75.0, atan2(-along.x, -along.z))
+	presser.sense_range = 0.0
+	await wait(0.5)
+	# (somewhere out in the open that its eyes can see, ahead of it, along a straight hall)
+	var target := Vector3.INF
+	var hall := Vector3.ZERO
+	var facing := Basis(Vector3.UP, presser.figure.body_yaw()).z
+	for d: float in [70.0, 60.0, 80.0, 50.0, 90.0, 100.0]:
+		for spread: float in [0.0, 0.25, -0.25, 0.5, -0.5, 0.75, -0.75]:
+			var p := presser.figure.pelvis() + Basis(Vector3.UP, spread) * facing * d
+			p.y = 0.0
+			if maze.ring_of(maze.cell_at(p)) != 1 or not presser.clear_of_walls(p, 4.0):
+				continue
+			var way := presser.hall_along(p)
+			if not presser.clear_of_walls(p + way * 14.0, 2.0) or not presser.clear_of_walls(p - way * 14.0, 2.0):
+				continue
+			world.put_player(p + Vector3.UP * 0.05, 0.0)
+			await wait(0.1)
+			if not presser.hidden(boy, presser.figure.eye()):
+				target = p
+				hall = way
+				break
+		if target.is_finite():
+			break
+	if not target.is_finite():
+		print("  nowhere it can see him")
+		return
+	var side := hall.cross(Vector3.UP)
+	# (behind him in his hall: the camera, at a boy's height)
+	var behind := target - hall * 13.0 if (target - hall * 13.0).distance_to(presser.figure.pelvis()) > (target + hall * 13.0).distance_to(presser.figure.pelvis()) else target + hall * 13.0
+	presser.sense_range = 200.0
+	presser._press_in = 0.0
 	boy.add_to_group(&"maze_players")
-	await wait(10.0, func() -> bool: return reacher.figure.reach_stage() == Colossus.Reach.HOVER)
-	await wait(0.8)
-	look(middle - along * 22.0 + across * 3.0 + Vector3.UP * 1.6, middle + Vector3.UP * 18.0, 75.0)
-	await shot("c1_hand_hovering")
-	look(middle + across * 6.0 - along * 4.0 + Vector3.UP * 1.4, reacher.figure.hand_point(), 80.0)
-	await shot("c2_hand_overhead")
-	await wait(10.0, func() -> bool: return reacher.figure.reach_stage() == Colossus.Reach.SWEEP)
-	print("  the hand came down %.1f m from him, %.1f m up" % [Vector2(reacher.figure.hand_point().x - boy.global_position.x, reacher.figure.hand_point().z - boy.global_position.z).length(), reacher.figure.hand_point().y])
-	look(middle - along * 26.0 + across * 2.0 + Vector3.UP * 2.0, reacher.figure.hand_point() + Vector3.UP * 4.0, 70.0)
-	await shot("c3_hand_down")
+	await wait(25.0, func() -> bool: return presser.figure.press_stage() == Colossus.Press.HOVER)
+	await wait(1.2)
+	print("  pressing: stage %s, tip %s, boy %s" % [Colossus.Press.keys()[presser.figure.press_stage()], presser.figure.fingertip(), boy.global_position])
+	# (up past him at its head peering down between the walls, its finger over him)
+	look(behind + side * 1.5 + Vector3.UP * 1.3, presser.figure.eye() * 0.4 + presser.figure.fingertip() * 0.6, 85.0)
+	await shot("c1_eye_peering_down")
+	await wait(10.0, func() -> bool: return presser.figure.press_stage() == Colossus.Press.DESCEND and presser.figure._press_t > presser.figure.descend_time * 0.55)
+	var tip := presser.figure.fingertip()
+	look(behind - side * 1.5 + Vector3.UP * 1.4, Vector3(tip.x, tip.y * 0.6, tip.z), 80.0)
+	await shot("c2_fingertip_coming_down")
+	# He runs for the foot of the wall: the finger presses where he was.
+	var safe := Vector3.INF
+	for r in range(2, 40):
+		for k in 16:
+			var p := target + Vector3(cos(TAU * k / 16.0), 0.0, sin(TAU * k / 16.0)) * r * 0.5
+			if presser.clear_of_walls(p, 0.35) and not presser.clear_of_walls(p, 0.9):
+				safe = p
+				break
+		if safe.is_finite():
+			break
+	if safe.is_finite():
+		world.put_player(safe + Vector3.UP * 0.05, atan2(side.x, side.z))
+	await wait(8.0, func() -> bool: return presser.figure.press_stage() == Colossus.Press.PRESS)
+	var under := presser.figure.fingertip()
+	under.y = 0.0
+	look(behind + side * 2.0 + Vector3.UP * 1.6, under + Vector3.UP * 7.0, 80.0)
+	await shot("c3_finger_pressing_he_got_away")
+	print("  he is %.1f m from the fingertip (caught: %s)" % [Vector2(boy.global_position.x - under.x, boy.global_position.z - under.z).length(), not presser._spared.is_empty()])
 	boy.remove_from_group(&"maze_players")
-	reacher.queue_free()
+	presser.queue_free()
 	hunter = null
 
 
 func _from_the_clearing() -> void:
-	# From the clearing: over its great wall (in the first hall beyond it, near the middle of a side).
+	# In the first hall beyond the great wall, near the middle of a side.
 	var wall_cell := Vector2i(-1, -1)
 	var best := INF
 	for c: Vector2i in MazeNav.new(maze).lairs(1):
-		if maze.ring_of(c) == 1 and maze.depth_in_ring(c) == maze.styles[0].border_wall_thickness_cells:
+		if maze.ring_of(c) == 1 and maze.depth_in_ring(c) == maze.styles[0].border_wall_thickness_cells + 1:
 			var at := maze.world(c)
 			var across_side := minf(absf(at.x), absf(at.z))
-			if across_side > 30.0 and across_side < best:
+			if across_side > 60.0 and across_side < best:
 				best = across_side
 				wall_cell = c
-	if wall_cell.x >= 0:
-		var spot := maze.world(wall_cell)
-		var giant2 := await _spawn_at(spot, 0.0)
-		giant2.sense_range = 0.0
-		var out := spot.normalized()
-		out.y = 0.0
-		var square := Vector3(signf(out.x), 0, 0) if absf(out.x) > absf(out.z) else Vector3(0, 0, signf(out.z))
-		# (it leans on the top of the great wall and looks over)
-		giant2._pause = 1e9
-		print("  peering: %s" % giant2._start_peering())
-		await wait(9.0)
-		var inner_face := maze.clearing * Maze.CELL * 0.5
-		# (from the middle of the clearing, and from nearer its wall, at his eyes' height)
-		var standing := Vector3(spot.x, 0.0, spot.z) - square * (spot.dot(square) - 0.0)
-		world.put_player(standing + Vector3.UP * (maze.ground_height(standing) + 0.1), atan2(square.x, square.z))
-		await wait(1.0)
-		var eyes := standing - square * 5.0 + Vector3(square.z, 0, square.x) * 2.0
-		eyes.y = maze.ground_height(eyes) + 1.6
-		look(eyes, Vector3(spot.x, 80.0, spot.z), 40.0)
-		await shot("d1_from_the_clearing")
-		# And from above the maze, the whole of it among the walls.
-		look(spot - square * 160.0 + Vector3.UP * 95.0 + Vector3(square.z, 0, square.x) * 120.0, giant2.figure.pelvis() + Vector3.UP * 10.0, 50.0)
-		await shot("e1_over_the_maze")
-	print("done")
+	if wall_cell.x < 0:
+		return
+	var spot := maze.world(wall_cell)
+	var out := spot.normalized()
+	var square := Vector3(signf(out.x), 0, 0) if absf(out.x) > absf(out.z) else Vector3(0, 0, signf(out.z))
+	var giant := await _spawn_at(spot + square * 30.0, atan2(-square.x, -square.z))
+	giant.sense_range = 0.0
+	giant._pause = 1e9
+	await wait(1.0)
+	print("  peering: %s" % giant._start_peering())
+	await wait(10.0)
+	var standing := Vector3(spot.x, 0.0, spot.z) - square * spot.dot(square)
+	world.put_player(standing + Vector3.UP * (maze.ground_height(standing) + 0.1), atan2(square.x, square.z))
+	await wait(1.0)
+	var eyes := standing - square * 5.0 + Vector3(square.z, 0, square.x) * 2.0
+	eyes.y = maze.ground_height(eyes) + 1.6
+	look(eyes, Vector3(spot.x, 95.0, spot.z), 45.0)
+	await shot("d1_from_the_clearing")
+	look(spot - square * 200.0 + Vector3.UP * 100.0 + Vector3(square.z, 0, square.x) * 150.0, giant.figure.pelvis() + Vector3.UP * 30.0, 50.0)
+	await shot("d2_over_the_great_wall")

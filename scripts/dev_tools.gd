@@ -20,7 +20,7 @@ const STONE := Color(0.13, 0.14, 0.13, 0.86)
 const AHEAD := 12.0
 ## The snake is long: further off, so that he is not on top of him.
 const SNAKE_AHEAD := 20.0
-## The colossus stands over the maze: far off, out over the walls, not brought short of them.
+## The colossus crawls over the maze: far off, out over the walls, not brought short of them.
 const COLOSSUS_AHEAD := 80.0
 ## The other kinds the panel puts in (spawn_hunter): the button, the kind, and
 ## how far ahead (the big ones further off, like the snake).

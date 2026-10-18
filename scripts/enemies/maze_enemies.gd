@@ -89,7 +89,7 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ## - Spiders, abominations and bat colonies wait in any passage well out of the
 ##   clearing (a spider climbs the nearest high wall; bats roost on one).
 ## - Baboon troops, dogs and aliens go about in packs, put round one cell.
-## - A colossus stands over the ring, far from the rest, facing round it.
+## - A colossus crouches over the ring on its wall tops, far from the rest, facing round it.
 func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	var nav := MazeNav.new(maze)
 	var rng := RandomNumberGenerator.new()

@@ -95,9 +95,9 @@ from the seed. Generate again replaces everything in the layout.
   procedural robotic spider legs that plant on walls and ground, with a stinger. Then the newer kinds, each a thin
   `MazeEnemy` driving a creature from `creatures/` (installed from GameCommon): `MazeGhoul`, `Centipede`,
   `MazeSpider`, `Abomination`, `MazeSlimeWall`, `Bats`, `MazeBaboon`, `MazeDog`, `Alien`; and `MazeColossus`, a
-  giant 120 m tall that walks the ring over the walls (its own footholds on the hall floors, not `MazeNav`), crushes
-  whoever is under a foot, sees whoever is in the open from above and reaches down for them, and hauls itself up on
-  the clearing's wall to look over it. How many of each a ring
+  spindly giant 260 m tall that crawls over the ring on the wall tops (its own list of them, not `MazeNav`), sees
+  whoever is in the open from above and presses one long finger down at them, and rears up over the clearing's
+  wall to look in. How many of each a ring
   has is its `MazeStyle` ("What hunts it"); `World` asks `MazeEnemies` for the first ring's (`populate`, then
   `add_hunters`) and puts in a Griever; alone or as the host they are run there and their state goes to guests ten
   times a second (K_ENEMIES), where copies follow it. Caught, a player is put back in the clearing; out, nobody is

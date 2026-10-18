@@ -55,29 +55,35 @@ PREVIEW_DIR = sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv and len(sys
 
 # --- The skeleton (Godot space, units of 10 m) ---
 
-PELVIS = Vector((0.0, 5.0, 0.0))
-WAIST = Vector((0.0, 5.85, -0.08))
-CHEST = Vector((0.0, 6.85, -0.2))
-NECK = Vector((0.0, 7.95, -0.05))
-HEAD = Vector((0.0, 8.3, 0.4))
-HEAD_TIP = Vector((0.0, 9.3, 0.6))
-ARM_OUT = math.radians(22.0)
+PELVIS = Vector((0.0, 7.0, 0.0))
+WAIST = Vector((0.0, 7.55, -0.08))
+CHEST = Vector((0.0, 8.3, -0.2))
+NECK = Vector((0.0, 9.1, -0.12))
+HEAD = Vector((0.0, 10.2, 0.22))
+HEAD_TIP = Vector((0.0, 10.9, 0.38))
+ARM_OUT = math.radians(18.0)
+# How big its head is, as a share of the mask modelled in `head` (small, on a long neck).
+HEAD_SCALE = 0.55
 
 
 def side_v(v, s):
     return Vector((v.x * s, v.y, v.z))
 
 
-SHOULDER = Vector((1.55, 7.7, -0.15))
-# (long arms, like an ape's: hanging, its hands are at its knees)
-UPPER_ARM = 2.3
-FOREARM = 2.2
+SHOULDER = Vector((0.78, 8.95, -0.14))
+# (arms and legs far longer than its body: a spindly thing that crawls like a spider)
+UPPER_ARM = 3.3
+FOREARM = 3.3
 PALM = 0.55
-FINGERS = 0.5
-HIP = Vector((0.66, 4.92, 0.0))
-KNEE = Vector((0.74, 2.7, 0.14))
-ANKLE = Vector((0.78, 0.52, -0.04))
-TOE = Vector((0.82, 0.12, 0.85))
+# Half the width of the palm.
+PALM_HALF = 0.26
+FINGERS = 0.8
+# The index finger, long and slender: what it crushes with.
+INDEX = 1.1
+HIP = Vector((0.38, 6.9, 0.0))
+KNEE = Vector((0.46, 3.55, 0.14))
+ANKLE = Vector((0.5, 0.36, -0.04))
+TOE = Vector((0.52, 0.04, 1.05))
 
 
 def arm_dir(s):
@@ -92,6 +98,20 @@ def arm_joints(s):
     kn = wr + d * PALM
     tip = kn + d * FINGERS
     return sh, el, wr, kn, tip
+
+
+def index_joints(s):
+    """The index finger's knuckle and tip (beside the thumb, on the inside of the hand)."""
+    sh, el, wr, kn, tip = arm_joints(s)
+    d = arm_dir(s)
+    # (the hand's own left, square to it: see frame_of)
+    y = -d
+    x = (Vector((1, 0, 0)) - y * y.x)
+    z = Vector((0, 0, 1)) - y * y.z
+    z.normalize()
+    x = (x - z * z.x).normalized()
+    base = kn + x * (-s) * PALM_HALF * 0.78
+    return base, base + d * INDEX
 
 
 def leg_joints(s):
@@ -115,6 +135,7 @@ def bone_segments():
         seg["forearm_" + name] = (el, wr)
         seg["hand_" + name] = (wr, kn)
         seg["fingers_" + name] = (kn, tip)
+        seg["index_" + name] = index_joints(s)
         hp, k, a, t = leg_joints(s)
         seg["thigh_" + name] = (hp, k)
         seg["shin_" + name] = (k, a)
@@ -125,6 +146,7 @@ def bone_segments():
 BONES = ["pelvis", "spine", "chest", "neck", "head"]
 for _n, _s in SIDES:
     BONES += ["upper_arm_" + _n, "forearm_" + _n, "hand_" + _n, "fingers_" + _n, "thigh_" + _n, "shin_" + _n, "foot_" + _n]
+BONES += ["index_l", "index_r"]
 SEGMENTS = bone_segments()
 
 # --- Colours ---
@@ -286,7 +308,7 @@ class Colossus:
 
     def body(self):
         mball = bpy.data.metaballs.new("Body")
-        mball.resolution = 0.16 if self.low else 0.085
+        mball.resolution = 0.1 if self.low else 0.05
         mball.render_resolution = mball.resolution
         mball.threshold = 0.6
         obj = bpy.data.objects.new("BodyBall", mball)
@@ -320,35 +342,38 @@ class Colossus:
             e.rotation = Vector((1, 0, 0)).rotation_difference(to_b(d).normalized())
             e.stiffness = stiff
 
-        # The trunk: a great barrel of a chest over a lighter belly and heavy hips.
-        ellipsoid(PELVIS + Vector((0, -0.05, -0.05)), (1.05, 0.75, 0.78))
-        ellipsoid(WAIST + Vector((0, 0.1, 0.05)), (0.82, 0.8, 0.7))
-        ellipsoid(CHEST + Vector((0, 0.15, 0.05)), (1.5, 1.05, 0.95))
-        ellipsoid(CHEST + Vector((0, 0.75, -0.1)), (1.62, 0.7, 0.92))
-        # The hump of its back, over the shoulders, that the head hangs forward from.
-        ellipsoid(NECK + Vector((0, 0.05, -0.55)), (1.05, 0.75, 0.75))
-        ellipsoid(NECK + Vector((0, 0.15, 0.05)), (0.62, 0.55, 0.6))
-        capsule(NECK, HEAD + Vector((0, 0.1, 0)), 0.55)
-        # Its chest muscles, and the belly hanging under them.
-        for s in (1.0, -1.0):
-            ellipsoid(CHEST + Vector((0.55 * s, 0.25, 0.55)), (0.65, 0.45, 0.4))
-            ellipsoid(PELVIS + Vector((0.55 * s, -0.15, -0.35)), (0.6, 0.6, 0.55))
-        ellipsoid(WAIST + Vector((0, -0.2, 0.45)), (0.75, 0.6, 0.45))
+        # A narrow cage of ribs over a sunken belly and a small pelvis; a hunched
+        # spine of knobs down its back; a long, stringy neck.
+        ellipsoid(PELVIS + Vector((0, -0.05, -0.04)), (0.46, 0.34, 0.32))
+        capsule(PELVIS, CHEST, 0.2)
+        ellipsoid(WAIST + Vector((0, 0.05, 0.02)), (0.3, 0.32, 0.24))
+        ellipsoid(CHEST + Vector((0, 0.15, 0.05)), (0.56, 0.62, 0.4))
+        ellipsoid(CHEST + Vector((0, 0.55, -0.05)), (0.62, 0.32, 0.36))
+        for k in range(9):
+            at = WAIST.lerp(NECK, k / 8.0) + Vector((0, 0, -0.3 - 0.12 * math.sin(math.pi * k / 8.0)))
+            ball(at, 0.11 + 0.03 * math.sin(math.pi * k / 8.0))
+        capsule(NECK, HEAD + Vector((0, 0.15, 0)), 0.12)
+        for k in range(4):
+            ball(NECK.lerp(HEAD, (k + 0.5) / 4.0) + Vector((0, 0, -0.1)), 0.13)
         for name, s in SIDES:
             sh, el, wr, kn, tip = arm_joints(s)
-            # Shoulders like boulders, thick arms, and forearms thicker still.
-            ellipsoid(sh + Vector((0.05 * s, 0.1, 0.0)), (0.82, 0.8, 0.8))
-            capsule(sh, el, 0.52)
-            ellipsoid(sh.lerp(el, 0.45) + Vector((0, 0, 0.12)), (0.5, 0.95, 0.52), along=el - sh)
-            capsule(el, wr, 0.45)
-            ellipsoid(el.lerp(wr, 0.3), (0.6, 0.85, 0.6), along=wr - el)
-            ball(wr, 0.38)
-            hp, k, a, t = leg_joints(s)
-            capsule(hp, k, 0.62)
-            ellipsoid(hp.lerp(k, 0.35) + Vector((0.05 * s, 0, 0.1)), (0.72, 1.0, 0.7), along=k - hp)
-            capsule(k, a, 0.46)
-            ellipsoid(k.lerp(a, 0.3) + Vector((0, 0, -0.18)), (0.52, 0.8, 0.55), along=a - k)
-            ball(a + Vector((0, 0.05, 0)), 0.34)
+            hp, k_, a, t = leg_joints(s)
+            # Collarbones and points of shoulder; long thin arms with knobs of elbows.
+            capsule(NECK + Vector((0.1 * s, -0.1, 0.05)), sh, 0.08)
+            ball(sh, 0.21)
+            capsule(sh, el, 0.15)
+            ball(el, 0.22)
+            capsule(el, wr, 0.13)
+            ellipsoid(el.lerp(wr, 0.22), (0.17, 0.5, 0.17), along=wr - el)
+            ball(wr, 0.15)
+            # Long thin legs, knobs of knees, stringy shins.
+            ball(hp, 0.26)
+            capsule(hp, k_, 0.19)
+            ellipsoid(hp.lerp(k_, 0.3), (0.24, 0.8, 0.24), along=k_ - hp)
+            ball(k_, 0.27)
+            capsule(k_, a, 0.14)
+            ellipsoid(k_.lerp(a, 0.25) + Vector((0, 0, -0.06)), (0.18, 0.6, 0.18), along=a - k_)
+            ball(a, 0.17)
 
         bpy.context.view_layer.update()
         mesh = evaluated_mesh(obj)
@@ -376,8 +401,8 @@ class Colossus:
         for v in bm.verts:
             p = from_b(v.co)
             n = from_b(v.normal)
-            lump = fbm(p * 1.6, 3) * 0.06
-            streak = noise.noise(Vector((p.x * 7.0, p.y * 1.1, p.z * 7.0))) * 0.05
+            lump = fbm(p * 2.4, 3) * 0.025
+            streak = noise.noise(Vector((p.x * 12.0, p.y * 1.5, p.z * 12.0))) * 0.018
             v.co = to_b(p + n * (lump + streak))
         bm.normal_update()
         self.body_bm = bm.copy()
@@ -746,7 +771,7 @@ class Colossus:
         faces = [f for f in self.body_bm.faces]
         areas = [f.calc_area() for f in faces]
         total = sum(areas)
-        count = 280 if self.low else 850
+        count = 120 if self.low else 380
         stone = self.stone_bvh
         made = 0
         tries = 0
@@ -778,22 +803,23 @@ class Colossus:
             down = Vector((0, -1, 0))
             if bone.startswith(("upper_arm", "forearm", "thigh", "shin")):
                 down = (b - a).normalized() * 0.6 + down * 0.4
-            length = rng.uniform(0.22, 0.5)
+            # (tatters: long thin strands hanging off the bones)
+            length = rng.uniform(0.2, 0.5)
             if bone in ("chest", "neck") and n.z < 0.0:
                 length *= 1.6
             if bone.startswith("forearm") and n.y < 0.0:
                 length *= 2.0
             if bone.startswith(("thigh", "pelvis")) and n.z < 0.0:
                 length *= 1.5
-            width = length * rng.uniform(0.36, 0.5)
+            width = length * rng.uniform(0.18, 0.28)
             colour = scale_c(self.fur_colour(p, n), rng.uniform(0.75, 1.15))
             self.clump(p - n * 0.02, down, length, width, n, colour, nearest_bones(p), rings=2 if self.low else 3)
             made += 1
         # Shaggy fur round the ankles, hanging over the stone of the feet.
         for _name, s in SIDES:
             ankle = leg_joints(s)[2]
-            for k in range(14 if self.low else 40):
-                a = math.tau * k / (14 if self.low else 40) + rng.uniform(-0.1, 0.1)
+            for k in range(8 if self.low else 18):
+                a = math.tau * k / (8 if self.low else 18) + rng.uniform(-0.1, 0.1)
                 d = Vector((math.cos(a), 0.0, math.sin(a)))
                 hit, hn = self.on_body(ankle + Vector((0, 0.35, 0)), d)
                 if hit is None:
@@ -802,7 +828,7 @@ class Colossus:
                 colour = scale_c(mix(FUR, EARTH, rng.random() * 0.6), rng.uniform(0.8, 1.15))
                 self.clump(hit - hn * 0.03, Vector((0, -1, 0)), length, length * 0.4, hn, colour, nearest_bones(hit, count=2), rings=2 if self.low else 3)
         # The mane: long hair hanging from the neck, round and under the mask.
-        mane = 40 if self.low else 120
+        mane = 24 if self.low else 70
         for k in range(mane):
             # (round the sides and the back of the mask, and a beard under it)
             a = rng.uniform(0.9, 2.9) * rng.choice((1.0, -1.0)) if k % 4 else rng.uniform(-0.8, 0.8)
@@ -929,53 +955,61 @@ class Colossus:
                 self.model.flat(pts, GLOW, (0.8, STONE_KIND), weights, normal=Vector((0, 0, 1)))
 
     def hand(self, name, s):
+        """A long bony hand: a narrow palm of hide with a sliver of stone on its
+        back, three long knuckled fingers curled a little, a thumb, and the index
+        finger longer than the rest, on a bone of its own (it crushes with it)."""
         sh, el, wr, kn, tip = arm_joints(s)
         d = arm_dir(s)
         x, y, z = frame_of(-d)
-        # (y up the arm; z its front, x its left)
-        palm_w = 0.5
+        palm_w = PALM_HALF
         hand_w = {"hand_" + name: 1.0}
-        # The palm: a broad block of dark hide with a slab of stone over its back.
-        self.box(wr.lerp(kn, 0.5), (x, y, z), (palm_w, PALM * 0.58, 0.19), HIDE, hand_w, FUR_KIND, round_k=0.35)
-        self.box(wr.lerp(kn, 0.45) + z * -0.15, (x, y, z), (palm_w * 0.92, PALM * 0.5, 0.07), STONE, hand_w, STONE_KIND, round_k=0.2, chunky=True)
-        # Fingers of stone blocks, three joints each, a little spread and curled.
-        fw = {"fingers_" + name: 1.0}
+        self.box(wr.lerp(kn, 0.5), (x, y, z), (palm_w, PALM * 0.55, 0.075), HIDE, hand_w, FUR_KIND, round_k=0.3)
+        self.box(wr.lerp(kn, 0.45) + z * -0.07, (x, y, z), (palm_w * 0.8, PALM * 0.42, 0.03), STONE, hand_w, STONE_KIND, round_k=0.2, chunky=True)
+
+        def finger(base, length, bend, width, weights, joints=3):
+            along = -y
+            p0 = base
+            for k in range(joints):
+                seg = length * (0.4, 0.33, 0.27)[k]
+                p1 = p0 + (along + z * bend * (k + 1)).normalized() * seg
+                c = mix(HIDE, STONE_DARK, 0.4 + 0.3 * random.Random(int(abs(base.x) * 1000) + k).random())
+                w = width * (1.0 - 0.15 * k)
+                self.box(p0.lerp(p1, 0.5), basis_along(p0 - p1, x), (w, seg * 0.5, w), c, weights, FUR_KIND, round_k=0.35)
+                # (a knob of knuckle at each joint)
+                self.box(p1, (x, y, z), (w * 1.25, w * 1.1, w * 1.2), scale_c(c, 1.1), weights, FUR_KIND, round_k=0.45)
+                p0 = p1
+
         for f in range(4):
             u = (f - 1.5) / 1.5
-            off = u * palm_w * 0.78
-            fan = u * 0.12
-            length = FINGERS * 1.25 * (0.86 + 0.14 * (1.0 - abs(u)))
-            along = (-y * math.cos(fan) + x * math.sin(fan)).normalized()
-            p0 = kn + x * off + y * 0.04
-            for k in range(3):
-                seg = length * (0.4, 0.33, 0.27)[k]
-                bend = along + z * 0.12 * (k + 1)
-                p1 = p0 + bend.normalized() * seg
-                c = mix(STONE_DARK, STONE, random.Random(f * 7 + k).random())
-                w = 0.115 * (1.0 - 0.12 * k)
-                self.box(p0.lerp(p1, 0.5), basis_along(p0 - p1, x), (w, seg * 0.5, w * 1.05), c, fw, STONE_KIND, round_k=0.32)
-                p0 = p1
-        # The thumb, from the inside of the palm, two joints.
-        tb = wr.lerp(kn, 0.3) + x * (-s * palm_w * 0.95) + z * 0.08
-        mid = tb - y * 0.24 + x * (-s * 0.14) + z * 0.16
-        tt = mid - y * 0.2 + z * 0.12
-        self.box(tb.lerp(mid, 0.5), basis_along(tb - mid, z), (0.12, 0.16, 0.12), STONE, hand_w, STONE_KIND, round_k=0.3)
-        self.box(mid.lerp(tt, 0.5), basis_along(mid - tt, z), (0.1, 0.13, 0.1), STONE_DARK, hand_w, STONE_KIND, round_k=0.3)
+            base = kn + x * u * palm_w * 0.78 + y * 0.03
+            if abs(u + s) < 0.01:
+                # The index finger: long, slender, straight.
+                finger(base, INDEX, 0.02, 0.05, {"index_" + name: 1.0})
+            else:
+                finger(base, FINGERS * (0.85 + 0.15 * (1.0 - abs(u))), 0.14, 0.048, {"fingers_" + name: 1.0})
+        tb = wr.lerp(kn, 0.3) + x * (-s * palm_w * 0.95) + z * 0.05
+        mid = tb - y * 0.22 + x * (-s * 0.08) + z * 0.12
+        tt = mid - y * 0.2 + z * 0.1
+        self.box(tb.lerp(mid, 0.5), basis_along(tb - mid, z), (0.05, 0.13, 0.05), HIDE, hand_w, FUR_KIND, round_k=0.35)
+        self.box(mid.lerp(tt, 0.5), basis_along(mid - tt, z), (0.045, 0.11, 0.045), STONE_DARK, hand_w, FUR_KIND, round_k=0.35)
 
     def foot(self, name, s):
+        """A long bony foot: a narrow sole of hide, a heel like a knob of stone,
+        four long toes."""
         hp, k, a, t = leg_joints(s)
         w = {"foot_" + name: 1.0}
-        fwd = Vector((0, 0, 1))
-        # A block of stone like the footing of a wall: wide, flat underneath,
-        # sloping to the toes, toes cut as three heavy steps.
-        # (its print, about the point under the ankle: 0.34 either side, 0.36 back
-        # and 0.82 forward: Colossus.PRINT_*)
-        centre = Vector((a.x, 0.2, 0.16))
-        self.box(centre, (Vector((1, 0, 0)), Vector((0, 1, 0)), fwd), (0.34, 0.2, 0.5), STONE, w, STONE_KIND, round_k=0.25, chunky=True)
-        self.box(Vector((a.x, 0.43, 0.0)), (Vector((1, 0, 0)), Vector((0, 1, 0)), fwd), (0.3, 0.14, 0.34), STONE_DARK, w, STONE_KIND, round_k=0.3, chunky=True)
-        for f in range(3):
-            off = (f - 1) * 0.21
-            self.box(Vector((a.x + off, 0.1, 0.72)), (Vector((1, 0, 0)), Vector((0, 1, 0)), fwd), (0.1, 0.1, 0.1), mix(STONE, STONE_DARK, 0.3 * f), w, STONE_KIND, round_k=0.4, chunky=True)
+        X, Y, Z = Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1))
+        self.box(Vector((a.x, 0.14, 0.3)), (X, Y, Z), (0.17, 0.09, 0.45), HIDE, w, FUR_KIND, round_k=0.35)
+        self.box(Vector((a.x, 0.16, -0.14)), (X, Y, Z), (0.15, 0.13, 0.13), STONE, w, STONE_KIND, round_k=0.35, chunky=True)
+        self.box(Vector((a.x, 0.22, 0.32)), (X, Y, Z), (0.13, 0.04, 0.32), STONE_DARK, w, STONE_KIND, round_k=0.25, chunky=True)
+        for f in range(4):
+            off = (f - 1.5) * 0.09
+            base = Vector((a.x + off, 0.08, 0.72))
+            p0 = base
+            for j in range(2):
+                p1 = p0 + Vector((off * 0.15, -0.02 * j, 0.17 - 0.03 * j))
+                self.box(p0.lerp(p1, 0.5), basis_along(p0 - p1, X), (0.04, 0.09, 0.04), mix(HIDE, STONE_DARK, 0.5), w, FUR_KIND, round_k=0.35)
+                p0 = p1
 
     def box(self, centre, axes, half, colour, weights, kind, round_k=0.3, chunky=False):
         """A block of stone (or hide): a cube with its edges cut off, a little out of true."""
@@ -1008,40 +1042,35 @@ class Colossus:
     # --- All of it -------------------------------------------------------
 
     def armour(self):
-        """Where the stone is: few, great slabs, as if the stone came first and
-        the beast grew round it."""
+        """Where the stone is: a few slabs on the thin frame, as if the stone came
+        first and the thing grew round it, and wasted away."""
         P = math.pi
-        up = Vector((0, 1, 0))
-        # The chest: one great carved slab, with runes down it.
-        self.plate("chest", (0, 1), (0, 1), thick=0.17, cells=(22, 18), runes=3, bands=(0.14,), seed=1, tufts=0.25, fringe=0.35,
-                   cap=(CHEST + Vector((0, 0.4, -0.45)), Vector((0, 0.1, 1)), 0.92, 0.66))
-        # The back: a slab over the hump, mossed and grassed, and one under it.
-        self.plate("chest", (0, 1), (0, 1), thick=0.18, cells=(18, 14), bands=(0.45,), seed=2, tufts=0.7, vines=3,
-                   cap=(CHEST + Vector((0, 0.7, 0.2)), Vector((0, 0.75, -1)), 0.8, 0.62))
-        self.plate("spine", (0, 1), (0, 1), thick=0.14, cells=(10, 8), seed=3, tufts=0.3,
-                   cap=(WAIST + Vector((0, 0.3, 0.2)), Vector((0, 0.1, -1)), 0.6, 0.45))
-        # A belt of stone round the hips, front and back.
-        self.plate("pelvis", (0.15, 0.7), (-1.5, 1.5), thick=0.14, cells=(22, 5), bands=(0.5,), seed=4, tufts=0.2, vines=2, fringe=0.9)
-        self.plate("pelvis", (0.15, 0.7), (P - 1.3, P + 1.3), thick=0.14, cells=(16, 5), seed=5)
+        # A slab on the chest with runes, slabs down the hunched back (moss, grass, vines).
+        self.plate("chest", (0, 1), (0, 1), thick=0.08, cells=(14, 12), runes=2, bands=(0.15,), seed=1, tufts=0.2, fringe=0.3,
+                   cap=(CHEST + Vector((0, 0.2, -0.1)), Vector((0, 0.1, 1)), 0.6, 0.55))
+        self.plate("chest", (0, 1), (0, 1), thick=0.1, cells=(12, 12), bands=(0.45,), seed=2, tufts=0.7, vines=3, fringe=0.4,
+                   cap=(CHEST + Vector((0, 0.35, 0.1)), Vector((0, 0.7, -1)), 0.62, 0.55))
+        self.plate("spine", (0, 1), (0, 1), thick=0.08, cells=(8, 8), seed=3, tufts=0.3,
+                   cap=(WAIST + Vector((0, 0.2, 0.05)), Vector((0, 0.1, -1)), 0.5, 0.5))
+        self.plate("pelvis", (0.1, 0.75), (-1.2, 1.2), thick=0.07, cells=(14, 5), seed=4, tufts=0.2, vines=2, fringe=0.9)
         for name, s in SIDES:
             out = s * P * 0.5
-            sh, el, wr, kn, tip = arm_joints(s)
-            hp, k, a, t = leg_joints(s)
+            sh = arm_joints(s)[0]
+            k = leg_joints(s)[1]
             side = Vector((s, 0, 0))
 
             def round_out(centre, half):
                 return (centre - half, centre + half)
 
-            # Pauldrons like boulders over the shoulders: mossed, grassed, hung with vines.
-            self.plate("upper_arm_" + name, (0, 1), (0, 1), thick=0.2, cells=(18, 16), bands=(0.3,), seed=10 + int(s), tufts=0.85, vines=4, fringe=0.8,
-                       cap=(sh - side * 0.25 - up * 0.2, (side * 0.6 + up * 0.8 + Vector((0, 0, -0.05))).normalized(), 0.95, 0.9))
-            # Bracers, with runes.
-            self.plate("forearm_" + name, (0.28, 0.92), round_out(out * 0.8, 1.35), thick=0.12, cells=(12, 14), runes=2, bands=(0.08, 0.92), seed=20 + int(s), fringe=0.5)
-            # A slab down the outside of the thigh, a cap over the knee, a greave down the shin.
-            self.plate("thigh_" + name, (0.12, 0.78), round_out(out * 0.8, 0.85), thick=0.13, cells=(10, 14), runes=1, seed=30 + int(s), tufts=0.2)
-            self.plate("shin_" + name, (0, 1), (0, 1), thick=0.16, cells=(10, 10), seed=40 + int(s), tufts=0.4,
-                       cap=(k + Vector((0, 0.05, -0.15)), Vector((0, 0.15, 1)), 0.75, 0.6))
-            self.plate("shin_" + name, (0.22, 0.78), round_out(out * 0.15, 0.95), thick=0.14, cells=(12, 14), seed=50 + int(s), tufts=0.15, fringe=0.6)
+            # A cap of stone on each shoulder, mossed, grassed, hung with vines.
+            self.plate("upper_arm_" + name, (0, 1), (0, 1), thick=0.1, cells=(12, 10), seed=10 + int(s), tufts=0.85, vines=3, fringe=0.5,
+                       cap=(sh - side * 0.08, (side * 0.5 + Vector((0, 0.85, -0.05))).normalized(), 0.85, 0.8))
+            # A bracer on each forearm, with runes; greaves on the shins; caps on the knees.
+            self.plate("forearm_" + name, (0.3, 0.72), round_out(out * 0.8, 1.2), thick=0.06, cells=(10, 14), runes=2, bands=(0.08, 0.92), seed=20 + int(s), fringe=0.4)
+            self.plate("shin_" + name, (0, 1), (0, 1), thick=0.08, cells=(8, 8), seed=40 + int(s), tufts=0.4,
+                       cap=(k + Vector((0, 0.0, -0.1)), Vector((0, 0.2, 1)), 0.8, 0.7))
+            self.plate("shin_" + name, (0.25, 0.7), round_out(out * 0.15, 0.95), thick=0.07, cells=(10, 12), seed=50 + int(s), tufts=0.15, fringe=0.4)
+            self.plate("thigh_" + name, (0.15, 0.55), round_out(out * 0.8, 0.8), thick=0.07, cells=(8, 10), runes=1, seed=30 + int(s), tufts=0.2)
         # (everything made of stone, to keep the fur out from under it)
         bm = bmesh.new()
         for faces in self.plate_bms:
@@ -1061,7 +1090,10 @@ class Colossus:
         counts.append(("body", self.model.tris()))
         self.armour()
         counts.append(("stone", self.model.tris()))
+        first = len(self.model.co)
         self.head()
+        for i in range(first, len(self.model.co)):
+            self.model.co[i] = HEAD + (self.model.co[i] - HEAD) * HEAD_SCALE
         counts.append(("head", self.model.tris()))
         for name, s in SIDES:
             self.hand(name, s)
@@ -1148,7 +1180,7 @@ class Colossus:
         camera.data.clip_end = 500
         scene.collection.objects.link(camera)
         scene.camera = camera
-        views = [("front", Vector((0.0, 0.25, 1.0)), Vector((0, 5.0, 0)), 19.0), ("quarter", Vector((0.8, 0.3, 0.7)), Vector((0, 5.0, 0)), 19.0),
+        views = [("front", Vector((0.0, 0.25, 1.0)), Vector((0, 5.5, 0)), 24.0), ("quarter", Vector((0.8, 0.3, 0.7)), Vector((0, 5.0, 0)), 19.0),
                  ("back", Vector((-0.5, 0.4, -1.0)), Vector((0, 5.5, 0)), 19.0), ("side", Vector((1.0, 0.1, 0.0)), Vector((0, 5.0, 0)), 19.0),
                  ("face", Vector((0.35, 0.1, 1.0)), HEAD + Vector((0, 0.6, 0.4)), 4.5), ("low", Vector((0.4, -0.25, 1.0)), Vector((0, 6.0, 0)), 12.0)]
         for view, direction, target, far in views:

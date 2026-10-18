@@ -124,22 +124,27 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     (between a run and a sprint), lunge-bite. Climbing breaks the trail.
   - **Aliens**: twos and threes that walk calmly and blink ahead of you when unwatched (a shimmering column
     warns first; looking at it stops it), then raise a hand and catch you in a pale light.
-- **The colossus** (added 2026-10-18, "and a colossus"): what the maze might have been built for. A giant 120 m
-  tall after *Shadow of the Colossus* (and *Attack on Titan*'s wall-high giants): dark matted fur over earth, great
-  slabs of weathered, carved stone grown over with moss and grass and hung with vines, a stone mask of a face with
-  a pale light in its eyes and in its runes. One walks each ring wide enough for its feet (the Avenues and the
-  Galleries), over the walls, not through the passages: each foot comes down on a hall's floor, never near a wall,
-  and is lifted over any wall in its way; its upper body is lost in the mist. It never sets foot outside its ring.
-  - Its feet crush: a shadow grows where one will land, dust and stones fall, a rumble rises; whoever is under it
-    is caught. The foot of a wall is always safe. Its legs, planted, block a hall but for a gap at each wall foot.
+- **The colossus** (added 2026-10-18: "and a colossus", then "even bigger, crawl over the top of the maze, and
+  try to use just 1 fingertip to crush you", and "more lanky and spindly"): what the maze might have been built
+  for. A gaunt giant 260 m tall if it stood, after *Shadow of the Colossus* (and *Attack on Titan*'s giants over the
+  wall): impossibly long thin arms and legs, knobbly joints, a narrow ribcage and hunched spine, a small stone mask
+  of a head on a long neck with pale eyes, sparse slabs of weathered stone with moss, grass, vines and glowing
+  runes, tatters of dark fur, long bony fingers. One crawls over each ring wide enough (the Avenues and the
+  Galleries) like a spider, on the wall tops, never in the halls: its hands and feet come down only on wall tops of
+  its ring, its elbows and knees bent high above, its body slung low over the maze, the halls in its shadow; dust
+  and stones rain into the halls where a hand comes down. Its upper body is lost in the mist. It never crosses the
+  clearing.
+  - It hunts with one finger. Whoever it sees out in the open, it stops, bends its head down to peer between the
+    walls, and holds its long index finger over them (its shadow growing on the ground, following slowly), then
+    presses it down, grinds, lifts and tries again where they ran, four times at most; under the fingertip is
+    caught. The finger cannot get into a slot, right up to the foot of a wall, or under a ledge. Lose it and it
+    gives up and crawls on.
   - It sees from above whoever is out in the open in front of it; not in a slot, flat against a wall, under a
-    ledge or bridge, or behind a wall. Standing still halves how far it sees. Running hard near its feet makes it
-    stop and look round.
-  - Seen within reach, it squats, holds its great hand over them (its shadow on them, following slowly), strikes
-    and sweeps along the hall. Get into a slot, a side passage, under a ledge, or flat against a wall.
-  - Now and then, walking beside the clearing's wall, it hauls itself up on its top and looks over: from the
-    clearing, a stone head with two pale eyes over the wall. It cannot reach in.
-  - Its fur and ledges as ways up (riding it over the walls) are not done: see below.
+    ledge or bridge, or behind a wall from where its eyes are. Standing still halves how far it sees. Running hard
+    near one of its hands or feet makes it stop and peer about.
+  - Now and then, crawling beside the clearing's wall, it rears up, leans its hands on the top and looks over: from
+    the clearing, a gaunt figure over the wall with two pale eyes. It cannot reach in.
+  - Its limbs as ways up (riding it over the walls) are not done: see below.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
@@ -170,7 +175,7 @@ ring has is its style's choice. The wall tops are a second level you can travel 
 - Moving walls, doors that shut at night, a day/night cycle.
 - A map, sound and music, player names.
 - Enemies using the ways up (terraces, bridges, wall tops).
-- Climbing the colossus: its fur and the ledges of its stone as ways up, riding it over the walls (the ivy's
-  `Ladder` would have to move with a bone, and the character controller does not carry a climber on a moving body).
+- Climbing the colossus: its limbs, fur and stone as ways up, riding it over the walls (the ivy's `Ladder` would
+  have to move with a bone, and the character controller does not carry a climber on a moving body).
 - Reconnecting mid-round past the server's 90 seconds; a relay (TURN) server for voice behind strict networks.
 - Whether the score should reward helping friends out.

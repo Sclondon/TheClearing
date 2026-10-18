@@ -30,9 +30,9 @@ uniform vec3 glow_colour : source_color = vec3(0.78, 0.92, 1.0);
 uniform float glow_energy = 1.6;
 // Its own mist: from mist_from to mist_to metres up (world), as much as mist_amount, of mist_colour.
 uniform vec3 mist_colour : source_color = vec3(0.6, 0.64, 0.63);
-uniform float mist_from = 60.0;
-uniform float mist_to = 135.0;
-uniform float mist_amount = 0.4;
+uniform float mist_from = 75.0;
+uniform float mist_to = 200.0;
+uniform float mist_amount = 0.45;
 // The grain of the stone (soft blotches) and its cracks (cells), made in code
 // (ColossusLook.grain_texture, crack_texture), and how often they repeat in
 // one of the model's units.
@@ -249,7 +249,7 @@ static func stones(size: float) -> CPUParticles3D:
 	rain.angular_velocity_max = 200.0
 	rain.scale_amount_min = size * 0.4
 	rain.scale_amount_max = size * 1.2
-	rain.color = Color(0.22, 0.2, 0.17)
+	rain.color = Color(0.42, 0.4, 0.36)
 	var rock := BoxMesh.new()
 	rock.size = Vector3(1.0, 0.7, 0.8)
 	var material := StandardMaterial3D.new()
