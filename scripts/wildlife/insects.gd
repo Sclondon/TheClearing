@@ -724,7 +724,7 @@ func _fireflies() -> void:
 		var heights := Vector2(0.25, 1.5)
 		var reach := 7.0
 		if share < 0.35 and meadow.is_finite():
-			var spot := meadow + Vector2.from_angle(pick.randf() * TAU) * look.tall_grass_radius * 0.85 * sqrt(pick.randf())
+			var spot: Vector2 = look.tall_grass_spot(pick)
 			at = Vector3(spot.x, 0.0, spot.y)
 			heights = Vector2(0.9, 2.6)
 		elif share < 0.6 and not trees.is_empty():

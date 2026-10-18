@@ -138,7 +138,7 @@ func _round() -> void:
 	for k in field.patch_count():
 		var at := field.patch_middle(k)
 		var ring := maze.ring_of(maze.cell_at(at))
-		var where := "ring" if ring == 1 else ("marsh" if look.marsh_rect().has_point(Vector2(at.x, at.z)) else ("tall_grass" if meadow.is_finite() and Vector2(at.x, at.z).distance_to(meadow) < look.tall_grass_radius else "woods_or_meadow"))
+		var where := "ring" if ring == 1 else ("marsh" if look.marsh_rect().has_point(Vector2(at.x, at.z)) else ("tall_grass" if meadow.is_finite() and look.tall_grass_rect().has_point(Vector2(at.x, at.z)) else "woods_or_meadow"))
 		if not places.has(where):
 			places[where] = at
 	for hour: float in [DayCycle.SUNSET + 0.6, 23.0]:
