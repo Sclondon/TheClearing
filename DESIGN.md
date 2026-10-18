@@ -123,6 +123,18 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     (between a run and a sprint), lunge-bite. Climbing breaks the trail.
   - **Aliens**: twos and threes that walk calmly and blink ahead of you when unwatched (a shimmering column
     warns first; looking at it stops it), then raise a hand and catch you in a pale light.
+  - **Tiny imps** (added 2026-10-18, "add tiny imps and imp swarm"): knee-high devils, sooty red-brown, pot-bellied,
+    bat-eared, needle-toothed. Gangs of three or four perch head down on a wall face like gargoyles, chittering. They
+    pester rather than kill: noticing you, they cackle, scurry down the wall and scuttle after you (faster than a run,
+    slower than a sprint), leap on and cling (back, thigh, shoulder). Each one on you holds you back, and its cackle
+    tells every hunter nearby where you are (they fetch bigger things). Three on at once for a moment bring you down.
+    A jump or two shakes them off; a roll, slide or dive throws them all off; thrown off, one tumbles and throws a
+    tantrum before it comes again. They give up when they lose you and climb back to their perch.
+  - **Imp swarm**: a crack at the foot of a wall. Come near (or run near) and it chitters for a second, then dozens of
+    imps pour out as a tide along the floor and up and along the walls. Those that reach you run up you and cling,
+    slowing you; ten on you for a second and you are down. A roll throws them off; a sprint outruns them; getting up
+    onto anything (a terrace, ivy, a vine) or out of reach and they give up and stream home, and rest before coming
+    out again.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.

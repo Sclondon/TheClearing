@@ -6,7 +6,7 @@ extends Node3D
 ## `populate(maze, seed)` puts Apophis and packs of mummies in the passages, out
 ## of the clearing and well away from it, and `add_hunters(style, seed)` the
 ## rest of what a ring's MazeStyle asks for (ghouls, centipedes, spiders,
-## abominations, slime walls, bats, baboons, dogs, aliens: each kind's own
+## abominations, slime walls, bats, baboons, dogs, aliens, imps and imp swarms: each kind's own
 ## script is in scripts/enemies/, its look and motion in creatures/). The same maze and seed always give the
 ## same ones in the same places in the same order, so every machine in a room
 ## can build the same set without it being sent; then one machine (the host)
@@ -89,6 +89,8 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ## - Spiders, abominations and bat colonies wait in any passage well out of the
 ##   clearing (a spider climbs the nearest high wall; bats roost on one).
 ## - Baboon troops, dogs and aliens go about in packs, put round one cell.
+## - Gangs of imps are put round one cell and each climbs the nearest wall to
+##   perch; an imp swarm's crack is at the foot of a wall in a straight hall.
 func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	var nav := MazeNav.new(maze)
 	var rng := RandomNumberGenerator.new()
@@ -145,6 +147,19 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		for a in rng.randi_range(2, 3):
 			aliens.append(Alien.new())
 		_add_pack(aliens, _far_from(taken, lairs, rng), nav, rng, taken)
+	for i in style.imp_gangs:
+		# (each finds the nearest wall to where it is put and climbs it)
+		var gang: Array = MazeImp.gang(rng.randi_range(3, 4))
+		var middle := _far_from(taken, lairs, rng)
+		taken.append(middle)
+		for k in gang.size():
+			var round_about := rng.randf_range(0.0, TAU)
+			add(gang[k], middle, rng.randf_range(-PI, PI), rng.randi(), Vector3(cos(round_about), 0.0, sin(round_about)) * 1.5)
+	for i in style.imp_swarms:
+		# (their crack is at the foot of a wall in a hall: they come down it at you)
+		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(MazeImpSwarm.new(), cell, 0.0, rng.randi())
 
 
 ## Puts a pack round `middle`: one to a cell within two steps of it, and two

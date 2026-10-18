@@ -111,6 +111,10 @@ extends Resource
 ## Pairs of aliens (each pack two or three).
 @export_range(0, 3) var alien_packs := 1
 @export_range(0, 3) var dog_packs := 1
+## Gangs of tiny imps (three or four), each perched on a wall.
+@export_range(0, 4) var imp_gangs := 2
+## Swarms of imps, each a crack at the foot of a wall that dozens pour out of.
+@export_range(0, 3) var imp_swarms := 1
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
