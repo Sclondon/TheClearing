@@ -1,41 +1,66 @@
 class_name BatBody
-## What a bat looks like: one low mesh, made here in code, and its material
+## What a bat looks like: one mesh, made here in code, and its material
 ## (creatures/bats/bat.gdshader). BatColony draws a whole colony with these as
 ## one MultiMesh, so a colony is one draw however many bats are in it.
 ##
 ## The mesh is a big dark bat with a wingspan of 1 (scale it up by the span you
-## want), facing +Z, its back up (+Y), wings out along X, open flat:
+## want), facing +Z, its back up (+Y), wings out along X, open, at rest:
 ##
-## - a round body, darker on the rump and belly, with a lighter mantle of fur
-##   over the shoulders and chest and a ragged ruff of tufts round the neck and
-##   along its flanks;
-## - a round head on the neck with a short snout, two small dark eyes that
-##   catch the light, and two big upright ears, cupped forward, paler inside;
-## - wings of thin dark skin on long fingers whose bones show as dark lines,
-##   scalloped between the fingertips, thinner (and so brighter against the
-##   light) towards their trailing edge, a small hooked thumb at each wrist;
-## - hind legs trailing behind, with the skin of the tail between them.
+## - a round furry body, darker on the rump and belly, with a lighter mantle
+##   over the shoulders and chest and a ragged ruff round the neck and flanks;
+## - a round head with a short snout, two small dark eyes that catch the
+##   light, and two big upright ears, cupped forward, paler inside;
+## - two wings that are hands. Each has a skeleton, drawn as thin dark rods
+##   with knuckles: the upper arm (humerus) from the shoulder, the forearm to
+##   the wrist, a clawed thumb at the wrist, and four long fingers (digits 2 to
+##   5), each a metacarpal and then its phalanges. Digit 2 runs along the
+##   leading edge, 3 (the longest) out to the wingtip, 4 and 5 fan back to the
+##   trailing edge. Skin is stretched between them: in front of the arm (the
+##   propatagium), between the fingers, from the fifth finger and the arm back
+##   to the body and the hind leg (the plagiopatagium), and between the legs
+##   and the tail (the uropatagium). The trailing edge is scalloped between
+##   the fingertips. The skin is thin: lighter where it is thinnest, with fine
+##   creases across it;
+## - hind legs with little hooked toes, trailing behind, and a tail between them.
 ##
-## Nothing in the mesh moves: the shader beats, bends and folds the wings, and
-## bows the head when the bat hangs, from each bat's custom data (see the
-## shader's comment); everything else is the bat's transform.
-##
-## What each vertex is, for the shader: CUSTOM0.r its part (FUR, SKIN, EAR, EYE),
-## CUSTOM0.g how light it is (fur: the mantle; skin: how thin, towards the edge;
-## ear: unused), UV.y near 0 along a bone line (where UV.x is 1) or, on an eye,
-## out from its middle; UV2.y 1 on a wing (UV2.x 0 left, 1 right).
+## Nothing in the mesh moves by itself. Every vertex of a wing or a leg says
+## which bones carry it (two, and how much of each: the skin between two
+## fingers is carried by both), and the shader poses the bones, from each
+## bat's custom data, through the wingbeat, the glide, the hover and the fold
+## (see the shader). A vertex's bones are CUSTOM1 (bone, other bone, how much
+## of the other); what it is is CUSTOM0 (part, how thin or light, how far it
+## billows); UV is where it lies on its panel of skin (for the creases) or,
+## on an eye, how far out from its middle; UV2 is (which side, 1 if it is on
+## a wing or leg).
 
-## Where the wing's joints are, as modelled (x out, z along the body; y up).
-## The shader hinges the wing at SHOULDER and WRIST: keep them in step with it.
-const SHOULDER := Vector2(0.035, 0.045)
-const WRIST := Vector2(0.22, 0.075)
-const TIP := Vector2(0.5, -0.03)
-## The ends of the three fingers that spread the back of the wing, and where the
-## wing's skin meets the leg at the ankle.
-const FINGERS: Array[Vector2] = [Vector2(0.42, -0.17), Vector2(0.3, -0.215), Vector2(0.175, -0.185)]
-const ANKLE := Vector2(0.042, -0.13)
-## How far each scallop of the trailing edge is drawn in towards the wrist.
-const SCALLOP := 0.3
+## The bones, as the shader numbers them. A finger `k` (0 for digit 2 ... 3
+## for digit 5) is its metacarpal DIGIT + 2k and its phalanges DIGIT + 2k + 1.
+const BODY_BONE := 0
+const HUMERUS := 1
+const FOREARM := 2
+const HAND := 3
+const THUMB := 4
+const DIGIT := 5
+const LEG := 13
+
+## The joints at rest, on the right (+X) wing, wingspan 1. Keep these and the
+## shader's in step.
+const SHOULDER := Vector3(0.035, 0.012, 0.045)
+const ELBOW := Vector3(0.115, 0.012, 0.012)
+const WRIST := Vector3(0.245, 0.014, 0.062)
+## Each finger's knuckle (the end of its metacarpal) and its tip: digits 2 to 5.
+const KNUCKLES: Array[Vector3] = [Vector3(0.335, 0.014, 0.07), Vector3(0.355, 0.013, 0.046), Vector3(0.335, 0.012, 0.0), Vector3(0.298, 0.012, -0.017)]
+const TIPS: Array[Vector3] = [Vector3(0.402, 0.012, 0.054), Vector3(0.5, 0.008, -0.02), Vector3(0.405, 0.004, -0.135), Vector3(0.292, 0.0, -0.182)]
+const THUMB_KNUCKLE := Vector3(0.24, 0.02, 0.083)
+const THUMB_TIP := Vector3(0.233, 0.013, 0.096)
+const HIP := Vector3(0.03, -0.004, -0.075)
+const ANKLE := Vector3(0.062, -0.006, -0.135)
+const TAIL_ROOT := Vector3(0.0, -0.004, -0.105)
+const TAIL := Vector3(0.0, -0.006, -0.178)
+## How deep the scallops of the trailing edge are, as a share of the way back
+## to the wrist (or the shoulder).
+const SCALLOP := 0.24
+
 ## The body, tail to neck, and the head, neck to nose: (along, half width,
 ## half height, height of its middle).
 const BODY: Array[Vector4] = [
@@ -65,8 +90,9 @@ const ROUND := 12
 
 ## Parts, as the shader tells them apart (CUSTOM0.r).
 const FUR := 0.0
-const SKIN := 0.33
-const EAR := 0.66
+const SKIN := 0.25
+const BONE := 0.5
+const EAR := 0.75
 const EYE := 1.0
 
 static var _mesh: ArrayMesh
@@ -100,19 +126,19 @@ static func material(fur := Color(0.13, 0.115, 0.11), mantle := Color(0.22, 0.18
 static func _make() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	# (what each vertex is goes in CUSTOM0, as floats: COLOR is taken as sRGB
-	# and turned linear on the way to the shader, which scrambles codes kept in it)
+	# (what each vertex is, and its bones, go in CUSTOM0 and CUSTOM1 as floats:
+	# COLOR is taken as sRGB and turned linear on its way to the shader, which
+	# scrambles codes kept in it)
 	st.set_custom_format(0, SurfaceTool.CUSTOM_RGBA_FLOAT)
-	_loft(st, BODY, func(z: float, _k: int) -> float: return _mantle(z))
-	_loft(st, HEAD, func(z: float, _k: int) -> float: return 0.12 + 0.4 * smoothstep(0.112, 0.13, z) - 0.3 * smoothstep(0.15, 0.158, z))
+	st.set_custom_format(1, SurfaceTool.CUSTOM_RGBA_FLOAT)
+	_loft(st, BODY, func(z: float) -> float: return _mantle(z))
+	_loft(st, HEAD, func(z: float) -> float: return 0.12 + 0.4 * smoothstep(0.112, 0.13, z) - 0.3 * smoothstep(0.15, 0.158, z))
 	_ruff(st)
-	_tail(st)
-	for side in [-1.0, 1.0]:
+	_rod(st, TAIL_ROOT, TAIL, 0.004, 0.0015, BODY_BONE, 0.0)
+	for side: float in [-1.0, 1.0]:
 		_wing(st, side)
-		_thumb(st, side)
 		_ear(st, side)
 		_eye(st, side)
-		_leg(st, side)
 		_flank(st, side)
 	return st.commit()
 
@@ -122,18 +148,39 @@ static func _mantle(z: float) -> float:
 	return smoothstep(-0.05, 0.0, z) * (1.0 - smoothstep(0.05, 0.075, z))
 
 
-# One corner: where, which way it faces, what part, how light; and for a wing,
-# where the bones run (`line` 0 on a bone, with `boned` 1) and which wing (`side`).
-static func _vert(st: SurfaceTool, at: Vector3, normal: Vector3, part: float, light := 0.0, side := 0.0, line := 1.0, boned := 0.0) -> void:
-	st.set_custom(0, Color(part, light, 0.0, 0.0))
-	st.set_normal(normal.normalized())
-	st.set_uv(Vector2(boned, line))
-	st.set_uv2(Vector2(1.0 if side > 0.0 else 0.0, 1.0 if side != 0.0 else 0.0))
-	st.add_vertex(at)
+# One corner: where (on the right side: `side` -1 mirrors it), which way it
+# faces, what it is and how light or thin, which bones carry it, where it lies
+# on its panel, and how far it billows.
+static func _vert(st: SurfaceTool, at: Vector3, normal: Vector3, part: float, light := 0.0, side := 0.0, bone := 0, other := 0, share := 0.0, uv := Vector2.ZERO, billow := 0.0) -> void:
+	var mirror := Vector3(-1.0 if side < 0.0 else 1.0, 1.0, 1.0)
+	st.set_custom(0, Color(part, light, billow, 0.0))
+	st.set_custom(1, Color(bone, other, share, 0.0))
+	st.set_normal((normal * mirror).normalized())
+	st.set_uv(uv)
+	st.set_uv2(Vector2(1.0 if side >= 0.0 else 0.0, 1.0 if bone > 0 or other > 0 else 0.0))
+	st.add_vertex(at * mirror)
+
+
+# A triangle, wound so that its front faces `out` (and mirrored with it).
+static func _tri(st: SurfaceTool, corners: Array, out: Vector3, part: float, light: float, side: float, bone: int) -> void:
+	var a: Vector3 = corners[0]
+	var b: Vector3 = corners[1]
+	var c: Vector3 = corners[2]
+	var normal := (b - a).cross(c - a)
+	if normal.dot(out) < 0.0:
+		var swap := b
+		b = c
+		c = swap
+	if side < 0.0:
+		var swap := b
+		b = c
+		c = swap
+	for at: Vector3 in [a, b, c]:
+		_vert(st, at, out, part, light, side, bone, bone)
 
 
 # A round tube through `sections` (along, half width, half height, height of
-# its middle), smooth-shaded, lit along it by `light`(along, k).
+# its middle), smooth-shaded, lit along it by `light`(along).
 static func _loft(st: SurfaceTool, sections: Array[Vector4], light: Callable) -> void:
 	var rings: Array[PackedVector3Array] = []
 	var normals: Array[PackedVector3Array] = []
@@ -157,16 +204,14 @@ static func _loft(st: SurfaceTool, sections: Array[Vector4], light: Callable) ->
 			var j := (k + 1) % ROUND
 			for corner in [[r, k], [r + 1, k], [r + 1, j], [r, k], [r + 1, j], [r, j]]:
 				var at: Vector3 = rings[corner[0]][corner[1]]
-				_vert(st, at, normals[corner[0]][corner[1]], FUR, light.call(at.z, corner[1]))
+				_vert(st, at, normals[corner[0]][corner[1]], FUR, light.call(at.z))
 
 
 # A tuft of fur: a little ragged triangle standing out from the body at `root`,
 # pointing `out` (and back), `size` long.
 static func _tuft(st: SurfaceTool, root: Vector3, out: Vector3, across: Vector3, size: float, light: float) -> void:
 	var tip := root + (out + Vector3(0, 0, -0.9)).normalized() * size
-	var a := root + across * size * 0.45
-	var b := root - across * size * 0.45
-	for at: Vector3 in [a, tip, b]:
+	for at: Vector3 in [root + across * size * 0.45, tip, root - across * size * 0.45]:
 		_vert(st, at, out, FUR, light)
 
 
@@ -197,71 +242,141 @@ static func _section_at(z: float) -> Vector4:
 	return BODY[-1]
 
 
-static func _wing_point(at: Vector2, side: float) -> Vector3:
-	# (bowed a little, so that it is not a flat board, and sagging to the back)
-	var bow := 0.014 * sin(PI * clampf(at.x / TIP.x, 0.0, 1.0)) - 0.012 * maxf(-at.y, 0.0)
-	return Vector3(at.x * side, bow, at.y)
+# --- The wing ---
 
-
+# A wing (and its leg): the bones, then the skin between them.
 static func _wing(st: SurfaceTool, side: float) -> void:
-	var tips: Array[Vector2] = [TIP]
-	tips.append_array(FINGERS)
-	tips.append(ANKLE)
-	var scallops: Array[Vector2] = []
-	for i in tips.size() - 1:
-		scallops.append(((tips[i] + tips[i + 1]) * 0.5).lerp(WRIST, SCALLOP))
-	var inner := Vector2(0.12, -0.03)
-	var front := WRIST + Vector2(-0.07, 0.035)
-	# How thin the skin is at each point (the shader lets more light through
-	# where it is thin): thinnest at the trailing edge, thickest at the arm.
-	var thin := {WRIST: 0.0, SHOULDER: 0.0, inner: 0.35, ANKLE: 0.5, front: 0.7, TIP: 0.6}
-	for point in FINGERS:
-		thin[point] = 0.85
-	for point in scallops:
-		thin[point] = 1.0
-	# Each finger: from the wrist out to its tip, the skin either side of it.
-	var triangles := []
-	for i in FINGERS.size() + 1:
-		var tip: Vector2 = tips[i]
-		if i > 0:
-			triangles.append([[WRIST, 0.0], [scallops[i - 1], 1.0], [tip, 0.0], true])
-		triangles.append([[WRIST, 0.0], [tip, 0.0], [scallops[i], 1.0], true])
-	# The skin between the arm, the body and the leg.
-	triangles.append([[WRIST, 1.0], [scallops[-1], 1.0], [inner, 1.0], false])
-	triangles.append([[inner, 1.0], [scallops[-1], 1.0], [ANKLE, 1.0], false])
-	triangles.append([[WRIST, 0.0], [inner, 1.0], [SHOULDER, 0.0], true])
-	triangles.append([[inner, 1.0], [ANKLE, 1.0], [SHOULDER, 1.0], false])
-	# (and a little skin in front of the arm, from the shoulder to the wrist)
-	triangles.append([[SHOULDER, 0.0], [front, 1.0], [WRIST, 0.0], true])
-	for tri: Array in triangles:
-		var corners := [tri[0], tri[1], tri[2]]
-		if side < 0.0:
-			corners.reverse()
-		for corner: Array in corners:
-			_vert(st, _wing_point(corner[0], side), Vector3.UP, SKIN, thin.get(corner[0], 0.5), side, corner[1], 1.0 if tri[3] else 0.0)
-
-
-# The thumb: a little hooked claw at the wrist, on the leading edge, pointing forward.
-static func _thumb(st: SurfaceTool, side: float) -> void:
-	var root := _wing_point(WRIST, side) + Vector3(0.0, 0.004, 0.004)
-	var knuckle := root + Vector3(-0.004 * side, 0.004, 0.02)
-	var tip := knuckle + Vector3(-0.007 * side, -0.006, 0.009)
-	var w := 0.0045
-	var ring := [Vector3(w * side, 0, 0), Vector3(0, w, 0), Vector3(-w * side, 0, 0), Vector3(0, -w * 0.6, 0)]
+	# The bones, as rods, thick at the body and fine at the tips, with knuckles.
+	_rod(st, SHOULDER, ELBOW, 0.0058, 0.0048, HUMERUS, side)
+	_rod(st, ELBOW, WRIST, 0.005, 0.0038, FOREARM, side)
+	_knuckle(st, ELBOW, 0.0068, FOREARM, side)
+	_knuckle(st, WRIST, 0.0062, HAND, side)
+	_rod(st, WRIST, THUMB_KNUCKLE, 0.0034, 0.0026, THUMB, side)
+	_knuckle(st, THUMB_KNUCKLE, 0.003, THUMB, side)
+	_rod(st, THUMB_KNUCKLE, THUMB_TIP, 0.0026, 0.0, THUMB, side)
 	for k in 4:
-		var a: Vector3 = ring[k]
-		var b: Vector3 = ring[(k + 1) % 4]
-		var out := (a + b).normalized()
-		for at: Vector3 in [root + a, knuckle + a * 0.6, knuckle + b * 0.6, root + a, knuckle + b * 0.6, root + b, knuckle + a * 0.6, tip, knuckle + b * 0.6]:
-			_vert(st, at, out, FUR, 0.0, side, 1.0, 0.0)
+		var thick := 0.0036 - k * 0.0003
+		_rod(st, WRIST, KNUCKLES[k], thick, thick * 0.8, DIGIT + 2 * k, side)
+		_knuckle(st, KNUCKLES[k], thick * 1.25, DIGIT + 2 * k + 1, side)
+		_rod(st, KNUCKLES[k], TIPS[k], thick * 0.8, 0.0008, DIGIT + 2 * k + 1, side)
+	_rod(st, HIP, ANKLE, 0.0048, 0.0034, LEG, side)
+	_knuckle(st, ANKLE, 0.0045, LEG, side)
+	for t in 3:
+		var root := ANKLE + Vector3((t - 1) * 0.004, 0.0, -0.004)
+		var toe := root + Vector3((t - 1) * 0.004, 0.003, -0.013)
+		_rod(st, root, toe, 0.0018, 0.0012, LEG, side)
+		_rod(st, toe, toe + Vector3(0.0, -0.007, 0.003), 0.0012, 0.0, LEG, side)
 
+	# The skin. Each panel is a sheet between two lines of bone, carried by
+	# both; `free` says which end of it is the free, scalloped edge.
+	var fingers: Array = []
+	for k in 4:
+		fingers.append([[WRIST, KNUCKLES[k], TIPS[k]], [DIGIT + 2 * k, DIGIT + 2 * k + 1]])
+	# (the skin between the second and third fingers reaches only part way along the third)
+	var third_short := [[WRIST, KNUCKLES[1], KNUCKLES[1].lerp(TIPS[1], 0.55)], [DIGIT + 2, DIGIT + 3]]
+	_panel(st, fingers[0], third_short, 6, 3, 1.0, 0.1, side)
+	_panel(st, fingers[1], fingers[2], 9, 5, 1.0, SCALLOP, side)
+	_panel(st, fingers[2], fingers[3], 9, 4, 1.0, SCALLOP, side)
+	# The plagiopatagium: from the fifth finger, the wrist, the forearm and the
+	# upper arm, back to the body's flank and the leg. Its free edge runs from
+	# the fifth fingertip to the ankle.
+	var arm := [[TIPS[3], KNUCKLES[3], WRIST, ELBOW, SHOULDER], [DIGIT + 7, DIGIT + 6, FOREARM, HUMERUS]]
+	var flank := [[ANKLE, HIP, Vector3(0.042, 0.004, -0.02), Vector3(0.042, 0.008, 0.03)], [LEG, BODY_BONE, BODY_BONE]]
+	_panel(st, arm, flank, 11, 6, 0.0, 0.2, side)
+	# The propatagium, in front of the arm from the shoulder to the wrist.
+	var front_edge := [[SHOULDER + Vector3(0.0, 0.0, 0.006), (SHOULDER + WRIST) * 0.5 + Vector3(0.0, 0.002, 0.034), WRIST + Vector3(-0.004, 0.0, 0.012)], [HUMERUS, FOREARM]]
+	_panel(st, [[SHOULDER, ELBOW, WRIST], [HUMERUS, FOREARM]], front_edge, 6, 2, -1.0, 0.0, side)
+	# The uropatagium: from the leg to the tail, its free edge from the ankle to the tail's tip.
+	_panel(st, [[HIP, ANKLE], [LEG]], [[TAIL_ROOT, TAIL], [BODY_BONE]], 4, 3, 1.0, 0.18, side)
+
+
+# A point `u` (0..1) of the way along a line of bones, by length: where, and
+# which bone carries it.
+static func _along(line: Array, u: float) -> Array:
+	var points: Array = line[0]
+	var bones: Array = line[1]
+	var lengths: Array[float] = []
+	var total := 0.0
+	for i in points.size() - 1:
+		var length: float = (points[i + 1] - points[i]).length()
+		lengths.append(length)
+		total += length
+	var want := clampf(u, 0.0, 1.0) * total
+	for i in lengths.size():
+		if want <= lengths[i] or i == lengths.size() - 1:
+			var t := clampf(want / maxf(lengths[i], 0.0001), 0.0, 1.0)
+			return [(points[i] as Vector3).lerp(points[i + 1], t), bones[i]]
+		want -= lengths[i]
+	return [points.back(), bones.back()]
+
+
+# A sheet of skin between two lines of bone `a` and `b`, `across` steps along
+# them and `between` steps from one to the other. `free` is the end (1, 0) of
+# the lines where its edge is free, scalloped `scallop` deep in the middle
+# between them (-1: no free end). Each vertex is carried by the bones of the
+# two points it lies between, as much by each as it is near it.
+static func _panel(st: SurfaceTool, a: Array, b: Array, across: int, between: int, free: float, scallop: float, side: float) -> void:
+	var grid: Array = []
+	for i in across + 1:
+		var row: Array = []
+		for j in between + 1:
+			var u := float(i) / across
+			var v := float(j) / between
+			# (towards the free edge, the middle of the sheet is drawn in: the scallop)
+			var bulge := sin(PI * v) * scallop
+			var w := u * (1.0 - bulge) if free > 0.5 else (1.0 - (1.0 - u) * (1.0 - bulge) if free > -0.5 else u)
+			var from: Array = _along(a, w)
+			var to: Array = _along(b, w)
+			var at := (from[0] as Vector3).lerp(to[0], v)
+			# How thin the skin is (most at the free edge), and how far it billows (most in the middle).
+			var thin := w if free > 0.5 else (1.0 - w if free > -0.5 else 0.6 * v)
+			row.append([at, from[1], to[1], v, Vector2(w, v), thin, sin(PI * v) * sin(PI * clampf(w, 0.0, 1.0))])
+		grid.append(row)
+	for i in across:
+		for j in between:
+			var quad: Array = [grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]]
+			for corners: Array in [[quad[0], quad[1], quad[2]], [quad[0], quad[2], quad[3]]]:
+				if side < 0.0:
+					corners = [corners[0], corners[2], corners[1]]
+				for c: Array in corners:
+					_vert(st, c[0], Vector3.UP, SKIN, c[5], side, c[1], c[2], c[3], c[4], c[6])
+
+
+# A bone: a thin tapering rod from `from` to `to`, four-sided, carried by `bone`.
+static func _rod(st: SurfaceTool, from: Vector3, to: Vector3, thick: float, thin: float, bone: int, side: float) -> void:
+	var along := (to - from).normalized()
+	var one := along.cross(Vector3.UP)
+	if one.length() < 0.1:
+		one = along.cross(Vector3.RIGHT)
+	one = one.normalized()
+	var two := along.cross(one).normalized()
+	var round_it := [one, two, -one, -two]
+	for k in 4:
+		var p: Vector3 = round_it[k]
+		var q: Vector3 = round_it[(k + 1) % 4]
+		var out := (p + q).normalized()
+		_tri(st, [from + p * thick, to + p * thin, to + q * thin], out, BONE, 0.0, side, bone)
+		_tri(st, [from + p * thick, to + q * thin, from + q * thick], out, BONE, 0.0, side, bone)
+
+
+# A knuckle: a little eight-sided bead at a joint, carried by `bone`.
+static func _knuckle(st: SurfaceTool, at: Vector3, size: float, bone: int, side: float) -> void:
+	var axes := [Vector3.RIGHT, Vector3.UP, Vector3.BACK]
+	for sx in [-1.0, 1.0]:
+		for sy in [-1.0, 1.0]:
+			for sz in [-1.0, 1.0]:
+				var corners := [at + axes[0] * sx * size, at + axes[1] * sy * size, at + axes[2] * sz * size]
+				_tri(st, corners, Vector3(sx, sy, sz), BONE, 0.0, side, bone)
+
+
+# --- The head ---
 
 # An ear: a tall cupped shell standing up from the top of the head, leaning
-# out, its hollow facing forward (the front faces of its triangles: the shader
-# paints them paler).
+# out, its hollow facing forward (its normals face out of the hollow: the
+# shader paints that side paler).
 static func _ear(st: SurfaceTool, side: float) -> void:
-	var base := Vector3(0.021 * side, 0.044, 0.084)
-	var up := Vector3(0.38 * side, 1.0, -0.12).normalized()
+	var base := Vector3(0.021, 0.044, 0.084)
+	var up := Vector3(0.38, 1.0, -0.12).normalized()
 	var across := (Vector3.RIGHT - up * up.x).normalized()
 	var back := across.cross(up).normalized()
 	if back.z > 0.0:
@@ -286,21 +401,19 @@ static func _ear(st: SurfaceTool, side: float) -> void:
 	for c in 4:
 		tris.append([rows[3][c], rows[3][c + 1], tip])
 	for tri: Array in tris:
-		var corners := tri.duplicate()
-		var normal: Vector3 = (corners[1] - corners[0]).cross(corners[2] - corners[0]).normalized()
-		# (wound so that the front faces look forward, out of the hollow)
+		var normal: Vector3 = (tri[1] - tri[0]).cross(tri[2] - tri[0]).normalized()
 		if normal.dot(-back) < 0.0:
-			corners.reverse()
 			normal = -normal
+		var corners := tri if side > 0.0 else [tri[0], tri[2], tri[1]]
 		for at: Vector3 in corners:
-			_vert(st, at, normal, EAR)
+			_vert(st, at, normal, EAR, 0.0, side * 0.0001)
 
 
 # An eye: a small dark bead on the side of the face; UV.y runs from 0 in its
 # middle to 1 at its rim, for the shader's glint.
 static func _eye(st: SurfaceTool, side: float) -> void:
-	var out := Vector3(0.78 * side, 0.5, 0.38).normalized()
-	var middle := Vector3(0.024 * side, 0.031, 0.114) + out * 0.002
+	var out := Vector3(0.78, 0.5, 0.38).normalized()
+	var middle := Vector3(0.024, 0.031, 0.114) + out * 0.002
 	var across := out.cross(Vector3.UP).normalized()
 	var up := across.cross(out).normalized()
 	var r := 0.0065
@@ -311,37 +424,4 @@ static func _eye(st: SurfaceTool, side: float) -> void:
 		var q := middle - out * 0.002 + (across * cos(b) + up * sin(b)) * r
 		var corners := [middle, p, q] if side > 0.0 else [middle, q, p]
 		for at: Vector3 in corners:
-			var n := (at - (middle - out * 0.006)).normalized()
-			st.set_custom(0, Color(EYE, 0.0, 0.0, 0.0))
-			st.set_normal(n)
-			st.set_uv(Vector2(0.0, 0.0 if at == middle else 1.0))
-			st.set_uv2(Vector2.ZERO)
-			st.add_vertex(at)
-
-
-static func _leg(st: SurfaceTool, side: float) -> void:
-	var hip := Vector3(0.024 * side, -0.004, -0.075)
-	var ankle := Vector3(ANKLE.x * side, -0.004, ANKLE.y)
-	var foot := Vector3(0.045 * side, 0.004, -0.152)
-	var width := Vector3(0.0, 0.01, 0.0)
-	for tri in [[hip - width, ankle - width, ankle + width], [hip - width, ankle + width, hip + width]]:
-		for at: Vector3 in tri:
-			_vert(st, at, Vector3(side, 0.0, 0.0), FUR)
-	# Toes: three little hooked claws, that it hangs by.
-	for k in 3:
-		var spread := (k - 1) * 0.006
-		var toe := foot + Vector3(spread * side, 0.0, -0.014)
-		var hook := toe + Vector3(0.0, -0.008, 0.004)
-		for at: Vector3 in [ankle + Vector3(spread, 0.004, 0), toe, hook, ankle + Vector3(spread, -0.004, 0), toe, ankle + Vector3(spread, 0.004, 0)]:
-			_vert(st, at, Vector3(side, 0.3, 0.0), FUR)
-
-
-static func _tail(st: SurfaceTool) -> void:
-	var middle := Vector3(0.0, 0.0, -0.09)
-	var end := Vector3(0.0, -0.008, -0.158)
-	var points := [Vector3(-0.024, -0.004, -0.075), Vector3(-ANKLE.x, -0.004, ANKLE.y), end, Vector3(ANKLE.x, -0.004, ANKLE.y), Vector3(0.024, -0.004, -0.075)]
-	for i in points.size() - 1:
-		for at: Vector3 in [middle, points[i], points[i + 1]]:
-			# (a line along each leg, where the skin is stretched from it)
-			var line := 0.0 if (at.z <= -0.07 and at.z > -0.14 and at != middle) else 1.0
-			_vert(st, at, Vector3.UP, SKIN, 0.7 if at == end else 0.3, 0.0, line, 1.0 if i == 0 or i == 3 else 0.0)
+			_vert(st, at, (at - (middle - out * 0.006)).normalized(), EYE, 0.0, side * 0.0001, 0, 0, 0.0, Vector2(0.0, 0.0 if at == middle else 1.0))

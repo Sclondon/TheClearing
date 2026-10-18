@@ -122,7 +122,7 @@ var _strength := PackedFloat32Array()
 var _fold := PackedFloat32Array()
 var _slot := PackedVector3Array()
 var _size := PackedFloat32Array()
-var _tone := PackedFloat32Array()
+var _hover := PackedFloat32Array()
 var _orbit := PackedVector4Array()
 var _round := PackedFloat32Array()
 var _dive := PackedVector2Array()
@@ -202,8 +202,10 @@ func bat_position(i: int) -> Vector3:
 
 
 ## Poses bat `i` by hand (with `frozen` set): where and how it is turned, its
-## wingbeat (0..1), how hard it beats (0 held out, gliding), how far folded.
-func pose_bat(i: int, where: Transform3D, beat: float, strength: float, fold: float) -> void:
+## wingbeat (0..1, 0 at the top), how hard it beats (0 held out, gliding), how
+## far folded, and how much it is hovering (deep, cupped strokes).
+func pose_bat(i: int, where: Transform3D, beat: float, strength: float, fold: float, hover := 0.0) -> void:
+	_hover[i] = hover
 	_at[i] = where.origin
 	_turn[i] = where.basis.get_rotation_quaternion()
 	_beat[i] = beat
@@ -224,7 +226,7 @@ func _make_bats() -> void:
 	_fold.resize(count)
 	_slot.resize(count)
 	_size.resize(count)
-	_tone.resize(count)
+	_hover.resize(count)
 	_orbit.resize(count)
 	_round.resize(count)
 	_dive.resize(count)
@@ -234,7 +236,6 @@ func _make_bats() -> void:
 	_land_from.resize(count)
 	for i in count:
 		_size[i] = wingspan * _rng.randf_range(0.82, 1.12)
-		_tone[i] = _rng.randf_range(0.82, 1.15)
 		var wide := _rng.randf_range(swirl_radius.x, swirl_radius.y)
 		var fast := _rng.randf_range(1.5, 2.6) * (-1.0 if _rng.randf() < 0.25 else 1.0)
 		_orbit[i] = Vector4(wide, fast, _rng.randf_range(0.25, 0.8), _rng.randf_range(0.6, 1.4))
@@ -475,6 +476,14 @@ func _fly(i: int, delta: float) -> void:
 	var want := 0.12 if glide.x > 0.0 and not straining else clampf(0.7 + push.length() * 0.012, 0.7, 1.0)
 	_strength[i] = move_toward(_strength[i], want, delta * 4.0)
 	_fold[i] = move_toward(_fold[i], 0.0, delta * 3.0)
+	# Hovering (deep, cupped, forward strokes): braking in to the roost, and
+	# keeping up round the target rather than shooting past it.
+	var hover := 0.0
+	if homing and _clock[i] >= 0.0 and at.distance_to(goal) < 3.0:
+		hover = 1.0
+	elif target.is_finite() and not homing and _dive[i].x <= 0.0 and (moving - _target_moving).length() < 4.5:
+		hover = 0.6
+	_hover[i] = move_toward(_hover[i], hover, delta * 3.0)
 	_beat[i] = fposmod(_beat[i] + delta * flap_rate * (0.85 + 0.3 * _strength[i]) * (1.4 / maxf(size, 0.5)) ** 0.5, 1.0)
 	_turn[i] = _turn[i].slerp(_flight_turn(i, moving, push), 1.0 - exp(-9.0 * delta))
 
@@ -533,6 +542,7 @@ func _land(i: int, delta: float) -> void:
 	_at[i] = from.origin.lerp(hang.origin, eased) + _out * 0.25 * sin(PI * u)
 	_turn[i] = from.basis.get_rotation_quaternion().slerp(hang.basis.get_rotation_quaternion(), eased)
 	_strength[i] = 0.9 * (1.0 - u)
+	_hover[i] = 1.0 - u
 	_fold[i] = smoothstep(0.4, 1.0, u)
 	_beat[i] = fposmod(_beat[i] + delta * flap_rate * 1.6, 1.0)
 	_moving[i] = Vector3.ZERO
@@ -548,9 +558,9 @@ func _draw(i: int) -> void:
 	var at := _at[i]
 	# (its body bobs against each beat of its wings)
 	if _phase[i] != Phase.HANG:
-		at += Basis(_turn[i]).y * (-0.05 * size * _strength[i] * sin(TAU * _beat[i]))
+		at += Basis(_turn[i]).y * (-0.04 * size * _strength[i] * cos(TAU * _beat[i]))
 	_mesh.multimesh.set_instance_transform(i, Transform3D(Basis(_turn[i]).scaled(Vector3.ONE * size), at))
-	_mesh.multimesh.set_instance_custom_data(i, Color(_beat[i], _strength[i], _fold[i], _tone[i]))
+	_mesh.multimesh.set_instance_custom_data(i, Color(_beat[i], _strength[i], _fold[i], _hover[i]))
 
 
 func _draw_all() -> void:

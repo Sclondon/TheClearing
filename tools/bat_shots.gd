@@ -93,28 +93,35 @@ func _studio() -> void:
 	var facing := Basis(Vector3.UP, PI)
 	var level := Basis.IDENTITY
 
-	one.pose_bat(0, Transform3D(facing * Basis(Vector3.RIGHT, 0.12), middle), 0.25, 1.0, 0.0)
-	_frame(middle + Vector3.UP * 0.2, 0.8, 0.55, Vector3(0, 0.1, -1))
+	one.pose_bat(0, Transform3D(facing * Basis(Vector3.RIGHT, 0.12), middle), 0.0, 1.0, 0.0)
+	_frame(middle + Vector3.UP * 0.18, 0.62, 0.5, Vector3(0, 0.1, -1))
 	await shot("01_front_wings_up")
-	one.pose_bat(0, Transform3D(facing * Basis(Vector3.RIGHT, 0.12), middle), 0.75, 1.0, 0.0)
-	_frame(middle + Vector3.DOWN * 0.12, 1.0, 0.45, Vector3(0, 0.1, -1))
+	one.pose_bat(0, Transform3D(facing * Basis(Vector3.RIGHT, 0.12), middle), 0.5, 1.0, 0.0)
+	_frame(middle + Vector3.DOWN * 0.12, 0.7, 0.4, Vector3(0, 0.1, -1))
 	await shot("02_front_wings_down")
-	one.pose_bat(0, Transform3D(level, middle), 0.02, 1.0, 0.0)
+	one.pose_bat(0, Transform3D(level, middle), 0.25, 1.0, 0.0)
 	_frame(middle, 0.42, 0.25, Vector3(-1, 0.08, 0.0))
 	await shot("03_side")
-	one.pose_bat(0, Transform3D(level, middle), 0.25, 1.0, 0.0)
+	one.pose_bat(0, Transform3D(level, middle), 0.0, 1.0, 0.0)
 	_frame(middle + Vector3(0, 0.22, 0.0), 0.45, 0.6, Vector3(-1, 0.05, 0.15))
 	await shot("03b_side_wings_up")
 	one.pose_bat(0, Transform3D(level, middle), 0.0, 0.0, 0.0)
-	_frame(middle, 1.4, 0.5, Vector3(0.1, -1, 0.25))
+	_frame(middle, 1.05, 0.45, Vector3(0.1, -1, 0.25))
 	await shot("04_underside")
-	_frame(middle, 1.4, 0.5, Vector3(0.0, 1, -0.3))
+	# The hand from below against the light, slowed down through the downstroke:
+	# the skin lit through, thinnest at the trailing edge, the bones dark in it.
+	var hand := middle + (BatBody.KNUCKLES[1] + Vector3(-0.03, 0, -0.06)) * 1.4
+	for k in 3:
+		one.pose_bat(0, Transform3D(level, middle), 0.12 + k * 0.12, 1.0, 0.0)
+		_frame(hand, 0.42, 0.42, Vector3(0.25, -1, 0.35))
+		await shot("04b_backlit_hand_%d" % k)
+	_frame(middle, 1.05, 0.45, Vector3(0.0, 1, -0.3))
 	await shot("05_gliding_from_above")
-	one.pose_bat(0, Transform3D(level * Basis(Vector3.FORWARD, 0.3), middle), 0.6, 1.0, 0.0)
-	_frame(middle, 1.0, 0.6, Vector3(-0.8, 0.5, 0.9))
+	one.pose_bat(0, Transform3D(level * Basis(Vector3.FORWARD, 0.3), middle), 0.2, 1.0, 0.0)
+	_frame(middle, 0.75, 0.5, Vector3(-0.8, 0.5, 0.9))
 	await shot("06_three_quarter_banked")
 	# The head, close: the ears, the eyes, the snout, the ruff.
-	one.pose_bat(0, Transform3D(facing, middle), 0.72, 1.0, 0.0)
+	one.pose_bat(0, Transform3D(facing, middle), 0.5, 1.0, 0.0)
 	var head := middle + facing * Vector3(0, 0.035, 0.12)
 	_frame(head + Vector3.UP * 0.04, 0.17, 0.2, Vector3(0.5, 0.25, -1))
 	await shot("06b_head")
@@ -122,28 +129,47 @@ func _studio() -> void:
 	await shot("06c_head_side")
 	# The wrist and its thumb, on the leading edge.
 	one.pose_bat(0, Transform3D(facing, middle), 0.0, 0.0, 0.0)
-	var wrist := middle + facing * Vector3(0.22 * 1.4, 0.02, 0.075 * 1.4)
+	var wrist := middle + facing * (BatBody.WRIST * 1.4)
 	_frame(wrist + facing * Vector3(-0.05, 0, 0.02), 0.16, 0.16, Vector3(0.3, 0.6, -1))
 	await shot("06d_thumb")
+	# Folded right up, close: from the belly, the side and the back.
+	one.pose_bat(0, Transform3D(level, middle), 0.85, 0.0, 1.0)
+	_frame(middle, 0.3, 0.45, Vector3(0.0, -1, 0.05))
+	await shot("06e_folded_belly")
+	_frame(middle, 0.45, 0.3, Vector3(-1, 0.0, 0.0))
+	await shot("06f_folded_side")
+	_frame(middle, 0.3, 0.45, Vector3(0.0, 1, -0.05))
+	await shot("06g_folded_back")
 	one.queue_free()
 
-	# The wingbeat in six steps, from the front; and folding up, in six.
+	# The wingbeat in eight steps, from the side and from the front (two across,
+	# four down: read left to right, top to bottom; the first is the top of the
+	# stroke, the downstroke runs to the fifth); then folding up, in eight.
 	var row := BatColony.new()
-	row.count = 6
+	row.count = 8
 	row.frozen = true
 	stage.add_child(row)
-	# (two across, three down: read left to right, top to bottom)
-	var grid := func(i: int) -> Vector3: return Vector3((0.5 - i % 2) * 1.15, 2.6 - (i / 2) * 0.85, 0)
-	for i in 6:
+	for i in 8:
 		row._size[i] = 1.0
-		row.pose_bat(i, Transform3D(facing * Basis(Vector3.RIGHT, 0.25), grid.call(i)), i / 6.0, 1.0, 0.0)
-	_frame(Vector3(0, 1.75, 0), 2.2, 2.4, Vector3(0, 0.15, -1))
-	await shot("07_wingbeat_in_six")
-	for i in 6:
-		var fold := i / 5.0
-		row.pose_bat(i, Transform3D(facing * Basis(Vector3.RIGHT, 0.25 - fold * 1.4), grid.call(i)), 0.3, 0.3 * (1.0 - fold), fold)
+	var side_on := Basis(Vector3.UP, -PI * 0.5)
+	var side_grid := func(i: int) -> Vector3: return Vector3((0.5 - i % 2) * 0.75, 3.2 - (i / 2) * 0.95, 0)
+	for i in 8:
+		row.pose_bat(i, Transform3D(side_on, side_grid.call(i)), i / 8.0, 1.0, 0.0)
+	_frame(Vector3(0, 1.78, 0), 1.6, 3.8, Vector3(0, 0.05, -1))
+	await shot("07_wingbeat_side")
+	var front_grid := func(i: int) -> Vector3: return Vector3((0.5 - i % 2) * 1.15, 3.0 - (i / 2) * 0.8, 0)
+	for i in 8:
+		row.pose_bat(i, Transform3D(facing * Basis(Vector3.RIGHT, 0.15), front_grid.call(i)), i / 8.0, 1.0, 0.0)
+	_frame(Vector3(0, 1.8, 0), 2.2, 3.3, Vector3(0, 0.1, -1))
+	await shot("07b_wingbeat_front")
+	for i in 8:
+		row.pose_bat(i, Transform3D(facing * Basis(Vector3.RIGHT, 0.15), front_grid.call(i)), i / 8.0, 1.0, 0.0, 1.0)
+	await shot("07c_hovering_front")
+	for i in 8:
+		var fold := i / 7.0
+		row.pose_bat(i, Transform3D(facing * Basis(Vector3.RIGHT, 0.15 - fold * 1.2), front_grid.call(i)), 0.85, 0.4 * (1.0 - fold), fold)
 	await shot("08_folding_up")
-	_frame(Vector3(0, 1.75, 0), 2.2, 2.4, Vector3(0, 1, -0.4))
+	_frame(Vector3(0, 1.8, 0), 2.2, 3.3, Vector3(0, 1, -0.4))
 	await shot("08b_folding_up_from_above")
 	row.queue_free()
 
