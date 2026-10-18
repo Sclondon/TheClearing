@@ -1,0 +1,7 @@
+# The griffinfly: a giant dragonfly, how it looks, flies and sounds (stands alone)
+creatures/griffinfly/griffinfly.gd
+creatures/griffinfly/griffinfly_look.gd
+creatures/griffinfly/griffinfly.gdshader
+creatures/griffinfly/models/griffinfly.glb
+creatures/griffinfly/models/griffinfly_lo.glb
+creatures/griffinfly/tools/build_griffinfly.py
