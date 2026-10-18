@@ -41,7 +41,7 @@ func _ready() -> void:
 		var style := ring.style
 		# The great wall round its inside, with its gates: the outer wall of the
 		# circle inside it, or for the first the desert's far wall.
-		var inside_high := plan.rings[k - 1].style.section_border_wall_height if k > 0 else (plan.desert.desert_far_wall_height if plan.desert else style.desert_far_wall_height)
+		var inside_high := plan.rings[k - 1].style.section_border_wall_height if k > 0 else (plan.desert.far_wall_height if plan.desert else MazeBuilder.RING_HEIGHT)
 		_circle(k, ring.inner, MazeBuilder.RING_THICK, inside_high, ring.gates_in)
 		if k == plan.rings.size() - 1:
 			_circle(k, ring.outer, MazeBuilder.RING_THICK, style.section_border_wall_height, ring.gates_out)

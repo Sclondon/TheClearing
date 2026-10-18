@@ -42,8 +42,11 @@ delete any of them; a bridge's far end is its child **End**. Save the scene as `
 play it: layouts in `res://mazes/` are played in name order (round 1 the first), round and round; with none there,
 every maze is generated. **Playable** off leaves one out. **Game Light** off shows it in the editor's plain light.
 
-The rules for generated mazes are set here too: every generated round is made by `maze_editor.tscn`'s **Styles**
-(one per section) and **Clearing Style**, from the round's own seed (`Mazes.rules`). Change a section's style here,
+The rules for generated mazes are set here too: every generated round is made by `maze_editor.tscn`'s **Clearing
+Style** (with the clearing's own wall), **Square Sections** (a `MazeStyle` each, from the clearing out), **Desert**
+(`DesertStyle`: dunes, the diagonal walls, its far wall) and **Round Sections** (a `RoundStyle` each, showing only
+what a round section uses), from the round's own seed (`Mazes.rules`). A section's border wall is the one round its
+outside. Change a section's style here,
 save, and the next round played uses it; the pieces laid out in this scene only count once saved into `res://mazes/`.
 
 Walls count where they stand: which lines between cells have a wall is read from the wall and pier pieces when the

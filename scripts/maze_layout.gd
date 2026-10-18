@@ -14,21 +14,43 @@ extends Node3D
 ## in it and for the way out. Walls only count where they stand on the grid's
 ## lines (every Maze.CELL metres, half a cell off the middle), as generated ones do.
 ##
-## The rings, their gates and the clearing come from the seed, `rings` and `styles`.
+## The sections, their gates and the clearing come from the seed, `rings` and the styles.
 
 ## Which maze to start from.
 @export var maze_seed := 1
-## How many rings round the clearing: the square ones first, then (past a moor)
-## the round ones (MazeStyle.round_section), shown as the game will build them.
+## How many sections round the clearing: the square ones first, then (past the
+## desert) the round ones, shown as the game will build them.
 @export_range(1, 7) var rings := 1
-## How each ring is made, from the clearing out (MazeStyle): its width, how wide
-## its halls are, the rules of its passages and its entrances, and what is on
-## its walls. Empty: the game's own (MazeStyle.defaults()), which Generate fills
-## in here to be changed.
-@export var styles: Array[MazeStyle] = []
-## How the clearing is made (ClearingStyle): its level middle, its hills and its
-## woods. Empty: the game's own, which Generate fills in here to be changed.
+## How the clearing is made (ClearingStyle): its wall, its level middle, its hills
+## and its woods. Empty: the game's own, which Generate fills in here to be changed.
 @export var clearing_style: ClearingStyle
+## How each square section is made, from the clearing out (MazeStyle): its width,
+## how wide its halls are, the rules of its passages and its entrances, what is
+## on its walls and what hunts it. Empty: the game's own, which Generate fills in.
+@export var square_sections: Array[MazeStyle] = []
+## The desert between the square sections and the round ones (DesertStyle).
+@export var desert: DesertStyle
+## How each round section is made, from the desert out (RoundStyle).
+@export var round_sections: Array[RoundStyle] = []
+
+## Every section's style, square then round (Maze.styles). (A layout saved
+## before they were apart had them all in this one list: it is shared out.)
+var styles: Array[MazeStyle]:
+	get:
+		var all: Array[MazeStyle] = []
+		all.append_array(square_sections)
+		all.append_array(round_sections)
+		return all
+	set(value):
+		square_sections.clear()
+		round_sections.clear()
+		for style in value:
+			if style is RoundStyle:
+				round_sections.append(style)
+			elif style and style.round_section:
+				round_sections.append(RoundStyle.from(style))
+			elif style:
+				square_sections.append(style)
 ## Whether the game plays this one when it is in res://mazes/.
 @export var playable := true
 ## In the editor, whether it is lit and misted as in the game (off: the editor's
@@ -68,7 +90,7 @@ func _show_in_editor() -> void:
 	var size := Maze.ring_extent(rings + 1, styles, clearing_style) + 80.0
 	# (the round sections, past the moor, are not pieces: they are shown as the
 	# game will build them, from the seed and their styles)
-	var plan := Maze.generate(maze_seed, rings, styles, clearing_style)
+	var plan := Maze.generate(maze_seed, rings, styles, clearing_style, desert)
 	var outer := plan.round_rings
 	if outer:
 		size = (outer.outermost() + 300.0) * 2.0
@@ -97,16 +119,16 @@ func _show_in_editor() -> void:
 ## Lays out the maze for `maze_seed` and `rings`, in place of what is here.
 func generate() -> void:
 	clear()
-	# (the game's own ring styles, filled in to be changed here, ring by ring)
-	# (and any more rings than it has styles for, the game's own for those)
-	var own := MazeStyle.defaults()
-	if styles.is_empty():
-		styles = own.duplicate()
-	while styles.size() < mini(rings, own.size()):
-		styles.append(own[styles.size()])
+	# (the game's own, filled in to be changed here, where none are set)
+	if square_sections.is_empty():
+		square_sections = MazeStyle.square_defaults()
+	if round_sections.is_empty():
+		round_sections.assign(MazeStyle.round_defaults())
 	if clearing_style == null:
 		clearing_style = ClearingStyle.new()
-	lay_out(Maze.generate(maze_seed, rings, styles, clearing_style))
+	if desert == null:
+		desert = DesertStyle.new()
+	lay_out(Maze.generate(maze_seed, rings, styles, clearing_style, desert))
 	_show_in_editor()
 
 
@@ -135,7 +157,7 @@ func pieces(kind: MazePiece.Kind) -> Array[MazePiece]:
 ## The maze as it now stands: the rings, clearing and gates of the seed, with
 ## the walls where the wall and pier pieces are.
 func plan() -> Maze:
-	var maze := Maze.generate(maze_seed, rings, styles, clearing_style)
+	var maze := Maze.generate(maze_seed, rings, styles, clearing_style, desert)
 	var blocks: Array[MazePiece] = pieces(MazePiece.Kind.WALL) + pieces(MazePiece.Kind.PIER)
 	maze.set_walls(func(cell: Vector2i, step: Vector2i) -> bool:
 		var on_line := maze.world(cell) + Vector3(step.x, 0.0, step.y) * Maze.CELL * 0.5 + Vector3.UP * 2.0
@@ -155,6 +177,7 @@ func lay_out(maze: Maze) -> void:
 	# (the round sections past the square ones count too)
 	rings = maze.rings + (maze.round_rings.rings.size() if maze.round_rings else 0)
 	clearing_style = maze.clearing_style
+	desert = maze.desert_style
 	for run: Array in _runs(maze):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, Vector3(run[0].x, 0.0, run[0].z)), {"size": run[1], "great": run[2]})
 	# (the wall round the next ring, unbuilt, when the maze stops here; round

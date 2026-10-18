@@ -18,12 +18,12 @@ extends Resource
 
 @export_group("Size")
 ## Round: rings of passages between circular walls (see RoundMaze), not square.
-## The round sections come after the square ones, out past a moor.
+## Set by being a RoundStyle (MazeLayout's round sections), not in the inspector.
 @export var round_section := false
-## How deep the section's maze is, in cells, from the border wall round its inside
-## to the one round its outside (on each side). The border wall's extra thickness
-## (border wall thickness cells) is on top of this.
-@export_range(1, 16) var section_depth_cells := 4
+## How wide the section is, in cells: from the border wall round its inside to the
+## one round its outside (on each side). The extra thickness of the wall round its
+## inside (the clearing's, or the section inside it's) is on top of this.
+@export_range(1, 16) var section_width_cells := 4
 ## How wide its hallways are, in cells.
 @export_range(1, 4) var hallway_diameter_cells := 1
 
@@ -115,19 +115,6 @@ extends Resource
 @export_range(0.0, 0.5) var sewer_pipe_share := 0.0
 @export_range(0.2, 0.9) var sewer_pipe_height := 0.62
 
-@export_group("Desert before it")
-## For the first round section: the desert between it and the square sections.
-## How far the desert reaches past the square sections' corners, metres (the first
-## circle stands there), how high its dunes are and about how far apart.
-@export_range(30.0, 1000.0) var desert_width := 320.0
-@export_range(0.0, 40.0) var dune_height := 9.0
-@export_range(20.0, 400.0) var dune_spacing := 110.0
-## How high the great walls are that run from each corner of the square out to
-## the circle, across the desert (each with a gate through it).
-@export_range(20.0, 200.0) var diagonal_wall_height := 80.0
-## How high the wall is on the desert's far side: round the inside of the first circle.
-@export_range(20.0, 300.0) var desert_far_wall_height := 46.0
-
 @export_group("Plants")
 ## How thickly ferns, moss and tufts of grass grow along the foot of its walls (0
 ## none, 1 all along every wall).
@@ -165,6 +152,12 @@ extends Resource
 ## Amalgams: three or four bodies grown together, that shamble and cartwheel (and
 ## grow, absorbing whom they catch and merging when they meet).
 @export_range(0, 4) var amalgams := 2
+## Pairs: two bodies grown together back to back, that scuttle and rush (and
+## grow as amalgams do: a pair that catches someone is an amalgam).
+@export_range(0, 6) var pairs := 2
+## Striders: five or six bodies joined at the hips in a ring that walks on all
+## their legs and grabs with those facing you (and grows: past six, a mound).
+@export_range(0, 3) var striders := 1
 ## Flesh mounds: many bodies grown together into a mound that nearly fills a hall.
 @export_range(0, 3) var flesh_mounds := 1
 ## Harpies, each perched high on a wall (its ledge, or its top) over a hallway.
@@ -242,7 +235,7 @@ static var chosen: Array[MazeStyle] = []
 
 ## The names these settings had before (as saved in older mazes), and the new ones.
 const RENAMED := {
-	&"width": &"section_depth_cells", &"span": &"hallway_diameter_cells", &"wall_thick": &"maze_wall_diameter",
+	&"width": &"section_width_cells", &"section_depth_cells": &"section_width_cells", &"span": &"hallway_diameter_cells", &"wall_thick": &"maze_wall_diameter",
 	&"rampart": &"border_wall_thickness_cells", &"inner_height": &"section_border_wall_height",
 	&"straight": &"straight_on_chance", &"branching": &"side_branch_chance", &"loops": &"loop_share",
 	&"entrance": &"entrance_corridor_cells", &"doorway": &"entrance_doorway_width",
@@ -253,6 +246,12 @@ const RENAMED := {
 	&"strand_reach": &"tightrope_vine_height_range", &"undergrowth": &"plant_density",
 	&"ledge_depth": &"mezzanine_depth", &"ledge_thick": &"mezzanine_thickness",
 }
+
+
+func _validate_property(property: Dictionary) -> void:
+	# (whether it is round is what kind of style it is: saved, not shown)
+	if property.name == "round_section":
+		property.usage = PROPERTY_USAGE_NO_EDITOR
 
 
 # A maze saved with the old names still loads.
@@ -267,9 +266,9 @@ func _set(property: StringName, value: Variant) -> bool:
 	return false
 
 
-static func made(depth_cells: int, hallway_cells: int, straightness: float, branches: float, loops: float, corridor := 0, door := 0.0) -> MazeStyle:
-	var style := MazeStyle.new()
-	style.section_depth_cells = depth_cells
+static func made(depth_cells: int, hallway_cells: int, straightness: float, branches: float, loops: float, corridor := 0, door := 0.0, round := false) -> MazeStyle:
+	var style: MazeStyle = RoundStyle.new() if round else MazeStyle.new()
+	style.section_width_cells = depth_cells
 	style.hallway_diameter_cells = hallway_cells
 	style.straight_on_chance = straightness
 	style.side_branch_chance = branches
@@ -342,16 +341,14 @@ static func tangle() -> MazeStyle:
 ## Spokes: the first round section, past the moor. Hallways two cells wide, long
 ## and straight, round and out like the spokes and rims of a wheel.
 static func spokes() -> MazeStyle:
-	var style := made(4, 2, 0.6, 0.0, 0.05)
-	style.round_section = true
+	var style := made(4, 2, 0.6, 0.0, 0.05, 0, 0.0, true)
 	style.maze_wall_diameter = 4.0
 	return style
 
 
 ## Whorl: single hallways that wind round and fork.
 static func whorl() -> MazeStyle:
-	var style := made(5, 1, 0.3, 0.3, 0.06)
-	style.round_section = true
+	var style := made(5, 1, 0.3, 0.3, 0.06, 0, 0.0, true)
 	# (the wall out to the Labyrinth: as high as the Labyrinth's own round the whole)
 	style.section_border_wall_height = 60.0
 	return style
@@ -359,16 +356,14 @@ static func whorl() -> MazeStyle:
 
 ## Thicket: single hallways that branch often and loop back on themselves.
 static func thicket() -> MazeStyle:
-	var style := made(5, 1, 0.1, 0.5, 0.18)
-	style.round_section = true
+	var style := made(5, 1, 0.1, 0.5, 0.18, 0, 0.0, true)
 	return style
 
 
 ## The Labyrinth: the last section, single hallways that wind and dead-end, under
 ## the highest walls of all.
 static func labyrinth() -> MazeStyle:
-	var style := made(6, 1, 0.0, 0.1, 0.03)
-	style.round_section = true
+	var style := made(6, 1, 0.0, 0.1, 0.03, 0, 0.0, true)
 	style.maze_wall_height = 46.0
 	style.section_border_wall_height = 60.0
 	return style
@@ -378,4 +373,13 @@ static func labyrinth() -> MazeStyle:
 static func defaults() -> Array[MazeStyle]:
 	if not chosen.is_empty():
 		return chosen
-	return [avenues(), galleries(), warren(), tangle(), spokes(), whorl(), labyrinth()]
+	return square_defaults() + round_defaults()
+
+
+## The game's own square sections, and its own round ones.
+static func square_defaults() -> Array[MazeStyle]:
+	return [avenues(), galleries(), warren(), tangle()]
+
+
+static func round_defaults() -> Array[MazeStyle]:
+	return [spokes(), whorl(), labyrinth()]

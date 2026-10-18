@@ -2,9 +2,9 @@
 class_name RoundMaze
 extends RefCounted
 ## The round sections of the maze, outside the square ones (Maze): rings of
-## passages between great circular walls, each made as its MazeStyle says (one
-## whose `round_section` is on). Between the square maze's outer wall and the first
-## circle is a desert of dunes, cut into quarters by great walls from the
+## passages between great circular walls, each made as its RoundStyle says (the
+## round sections of MazeLayout). Between the square maze's outer wall and the first
+## circle is a desert of dunes (Maze.desert_style), cut into quarters by great walls from the
 ## square's corners (a gate through each), that the square maze's way out comes onto;
 ## each circle has a few gates through it, and the last one way out.
 ##
@@ -37,11 +37,11 @@ class Ring:
 
 ## The middle of the great wall the moor ends at (the first circle).
 var inner_radius := 0.0
-## The desert inside it: half the square maze's width, the style its dunes are
-## made by (the first round section's), the square maze's way out into it and
+## The desert inside it: half the square maze's width, how it is made
+## (Maze.desert_style), the square maze's way out into it and
 ## which way that goes.
 var square_half := 0.0
-var desert: MazeStyle
+var desert: DesertStyle
 var door := Vector2.ZERO
 var way_in := Vector2.RIGHT
 var noise_seed := 0
@@ -60,10 +60,9 @@ static func generate(maze: Maze, count: int) -> RoundMaze:
 	var made := RoundMaze.new()
 	made._rng.seed = hash("round/%d" % maze.maze_seed)
 	var half := maze.extent() * 0.5
-	var first: MazeStyle = maze.styles[maze.rings]
 	made.square_half = half
-	made.desert = first
-	made.inner_radius = half * sqrt(2.0) + first.desert_width
+	made.desert = maze.desert_style if maze.desert_style else DesertStyle.new()
+	made.inner_radius = half * sqrt(2.0) + made.desert.desert_width
 	made.noise_seed = maze.maze_seed
 	# (the square maze's way out, and the quarter of the desert it comes into)
 	made.way_in = Vector2(maze.exit_side.x, maze.exit_side.y)
@@ -76,7 +75,7 @@ static func generate(maze: Maze, count: int) -> RoundMaze:
 		ring.style = style
 		ring.inner = radius
 		var wide := Maze.CELL * style.hallway_diameter_cells
-		var row_count := maxi(style.section_depth_cells / style.hallway_diameter_cells, 1)
+		var row_count := maxi(style.section_width_cells / style.hallway_diameter_cells, 1)
 		var r := radius
 		for i in row_count:
 			var cells := maxi(roundi(TAU * (r + wide * 0.5) / wide), 8)

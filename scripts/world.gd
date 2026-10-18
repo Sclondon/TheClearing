@@ -91,7 +91,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	else:
 		# (by the rules set in the maze editor: Mazes.rules)
 		var rules := Mazes.rules()
-		maze = Maze.generate(seed_value, int(Flags.value("rings", str(RINGS))), rules[0], rules[1])
+		maze = Maze.generate(seed_value, int(Flags.value("rings", str(RINGS))), rules[0], rules[1], rules[2])
 		builder.build(maze)
 	start_at_gate = DevTools.enabled() and Flags.value("start") != "middle"
 	# Day and night, and the clearing's gates shut through the night.

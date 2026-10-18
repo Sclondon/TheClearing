@@ -15,32 +15,32 @@ const FOLDER := "res://mazes"
 const RULES := "res://maze_editor.tscn"
 
 
-## The section styles and clearing look set in the maze editor ([styles,
-## clearing style]), each a copy (generating changes the clearing's); the game's
-## own styles for sections it sets none for, and [[], null] with no editor.
+## The section styles, clearing look and desert set in the maze editor ([styles,
+## clearing style, desert style]), each a copy (generating changes the
+## clearing's): its square sections then its round ones, the game's own where it
+## sets none; [[], null, null] with no editor.
 static func rules() -> Array:
 	# (a test's own choice comes first: MazeStyle.chosen)
 	var scene := load(RULES) as PackedScene if ResourceLoader.exists(RULES) and MazeStyle.chosen.is_empty() else null
 	if scene == null:
-		return [[] as Array[MazeStyle], null]
+		return [[] as Array[MazeStyle], null, null]
 	var state := scene.get_state()
-	var styles: Array[MazeStyle] = []
-	var clearing: ClearingStyle = null
+	# (read off the saved scene, not made: it holds the whole laid-out maze too)
+	var layout := MazeLayout.new()
 	for i in state.get_node_property_count(0):
-		match state.get_node_property_name(0, i):
-			&"styles":
-				for style in state.get_node_property_value(0, i):
-					if style is MazeStyle:
-						styles.append((style as MazeStyle).duplicate(true))
-			&"clearing_style":
-				var look: Variant = state.get_node_property_value(0, i)
-				if look is ClearingStyle:
-					clearing = (look as ClearingStyle).duplicate(true)
-	if not styles.is_empty():
-		var own := MazeStyle.defaults()
-		while styles.size() < own.size():
-			styles.append(own[styles.size()])
-	return [styles, clearing]
+		var property := state.get_node_property_name(0, i)
+		if property in [&"styles", &"square_sections", &"round_sections", &"clearing_style", &"desert"]:
+			layout.set(property, state.get_node_property_value(0, i))
+	var square: Array[MazeStyle] = []
+	for style in (layout.square_sections if not layout.square_sections.is_empty() else MazeStyle.square_defaults()):
+		square.append(style.duplicate(true))
+	var round: Array[MazeStyle] = []
+	for style in (layout.round_sections if not layout.round_sections.is_empty() else MazeStyle.round_defaults()):
+		round.append(style.duplicate(true))
+	var clearing: ClearingStyle = layout.clearing_style.duplicate(true) if layout.clearing_style else null
+	var desert: DesertStyle = layout.desert.duplicate(true) if layout.desert else null
+	layout.free()
+	return [square + round, clearing, desert]
 
 
 ## The playable layouts, in order.

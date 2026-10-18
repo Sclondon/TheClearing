@@ -35,6 +35,8 @@ var styles: Array[MazeStyle] = []
 var ring_sizes: Array[int] = []
 ## How the clearing is made: its hills and its woods (see ground_height).
 var clearing_style: ClearingStyle
+## How the desert between the square sections and the round ones is made (DesertStyle).
+var desert_style: DesertStyle
 ## The round sections outside the square ones, if any were built (RoundMaze).
 var round_rings: RoundMaze
 ## How many rings are built.
@@ -66,10 +68,11 @@ static func seed_for(code: String, round_number: int) -> int:
 
 ## Makes the maze for `seed_value`, with `built` rings round the clearing, each
 ## made as its style says (MazeStyle.defaults() if none are given).
-static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] = [], clearing_look: ClearingStyle = null) -> Maze:
+static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] = [], clearing_look: ClearingStyle = null, desert_look: DesertStyle = null) -> Maze:
 	var maze := Maze.new()
 	maze.styles = ring_styles if not ring_styles.is_empty() else MazeStyle.defaults()
 	maze.clearing_style = clearing_look if clearing_look else ClearingStyle.new()
+	maze.desert_style = desert_look if desert_look else DesertStyle.new()
 	maze.ring_sizes = sizes_for(maze.styles, maze.clearing_style)
 	# (the square sections are the first, up to the first round one; the round ones
 	# are RoundMaze's, outside them)
@@ -100,7 +103,7 @@ static func sizes_for(ring_styles: Array[MazeStyle], clearing_look: ClearingStyl
 	var sizes: Array[int] = [CLEARING]
 	for k in ring_styles.size():
 		# (the rampart round its inside is on top of its width: a thicker wall moves the ring out)
-		sizes.append(sizes.back() + (ring_styles[k].section_depth_cells + rampart_cells(k + 1, ring_styles, clearing_look)) * 2)
+		sizes.append(sizes.back() + (ring_styles[k].section_width_cells + rampart_cells(k + 1, ring_styles, clearing_look)) * 2)
 	return sizes
 
 
