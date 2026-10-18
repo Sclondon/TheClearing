@@ -1,0 +1,8 @@
+# The lizard person: its motion and hiss, its shader, the models, and the tools that write its joints and build the models in Blender
+creatures/lizard_person/lizard_person.gd
+creatures/lizard_person/lizard_person_look.gd
+creatures/lizard_person/models/lizard_person.glb
+creatures/lizard_person/models/lizard_person_lo.glb
+creatures/lizard_person/tools/rest_joints.gd
+creatures/lizard_person/tools/rest.json
+creatures/lizard_person/tools/build_lizard_person.py
