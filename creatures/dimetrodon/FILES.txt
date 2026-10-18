@@ -1,0 +1,8 @@
+# A dimetrodon (Dimetrodon grandis, life size, 3.4 m): its look, every move (the sprawling walk with the swinging spine, basking, the gaping threat, the lunge and snap) and its sounds, for any game (no thinking)
+creatures/dimetrodon/dimetrodon.gd
+creatures/dimetrodon/dimetrodon_look.gd
+creatures/dimetrodon/dimetrodon_rig.gd
+creatures/dimetrodon/models/dimetrodon.glb
+creatures/dimetrodon/models/dimetrodon_lo.glb
+creatures/dimetrodon/tools/.gdignore
+creatures/dimetrodon/tools/build_dimetrodon.py
