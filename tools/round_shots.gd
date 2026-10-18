@@ -72,7 +72,7 @@ func _run() -> void:
 		var r: float = (row[0] + row[1]) * 0.5
 		camera.position = RoundBuilder.at(a, r) + Vector3.UP * 1.7
 		camera.look_at(RoundBuilder.at(a + 0.08, r) + Vector3.UP * 6.0)
-		await _shot("%s/ring%d.png" % [folder, k + 4])
+		await _shot("%s/ring%d.png" % [folder, maze.rings + k + 1])
 	quit()
 
 

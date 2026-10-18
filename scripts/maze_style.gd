@@ -326,4 +326,4 @@ static func labyrinth() -> MazeStyle:
 static func defaults() -> Array[MazeStyle]:
 	if not chosen.is_empty():
 		return chosen
-	return [avenues(), galleries(), warren(), spokes(), whorl(), thicket(), labyrinth()]
+	return [avenues(), galleries(), warren(), tangle(), spokes(), whorl(), labyrinth()]
