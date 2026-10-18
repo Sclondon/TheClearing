@@ -1,0 +1,4 @@
+# Bats: the colony (look and flight), the bat's mesh, its shader. No scenes, no textures.
+creatures/bats/bat_colony.gd
+creatures/bats/bat_body.gd
+creatures/bats/bat.gdshader
