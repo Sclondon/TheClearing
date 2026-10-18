@@ -62,10 +62,12 @@ bone names (so any rig for them can move it):
 
     blender --background --python creatures/ghoul/tools/build_ghoul.py [-- <folder for preview renders>]
 
-The trunk, neck and arms are one fused surface (sloping shoulders, collarbones, ribs, tendons); the dark in its
-hollows is a second material chosen per face from how far the surface sinks in there. Three flat colours (skin,
-shade, the dark in the holes), so three surfaces; about 35k triangles (`ghoul_lo`: 7k). In The Clearing one in
-sight costs about 7 draw calls, shadows included.
+The trunk, neck and arms are one fused surface (sloping shoulders, collarbones, ribs, tendons). How far each point
+lies in a hollow is baked into the model as its vertex colour (`cavity`), and `GhoulRig` shades its skin with
+Toon's shader plus one soft step to `GhoulRig.SHADE` over it, so the dark in its hollows has clean curved edges.
+Two materials (skin, and the dark in the holes), so two surfaces; about 35k triangles (`ghoul_lo`: 7k). In The
+Clearing one in sight costs about 5 draw calls, shadows included. (The build exports the colour attribute by
+asking the glTF exporter for it: see `_Export` in the script.)
 
 ## Try it
 

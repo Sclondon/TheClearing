@@ -45,6 +45,38 @@ import build_character as kit  # noqa: E402  (the character controller's shape-b
 
 # (it writes its model into the component, not the game's models/)
 kit.ROOT = COMPONENT
+
+
+class _Export:
+    """bpy as the kit sees it, but for one thing: its glTF export also writes the
+    model's colour attribute (CAVITY), which by default it leaves out unless a
+    material uses it."""
+
+    class _Scene:
+        def gltf(self, **options):
+            for mesh in bpy.data.meshes:
+                if CAVITY in mesh.color_attributes:
+                    mesh.color_attributes.active_color_name = CAVITY
+                    mesh.color_attributes.render_color_index = mesh.color_attributes.find(CAVITY)
+            options.setdefault("export_vertex_color", "ACTIVE")
+            options.setdefault("export_all_vertex_colors", False)
+            return bpy.ops.export_scene.gltf(**options)
+
+    class _Ops:
+        export_scene = None
+
+        def __getattr__(self, name):
+            return getattr(bpy.ops, name)
+
+    def __init__(self):
+        self.ops = _Export._Ops()
+        self.ops.export_scene = _Export._Scene()
+
+    def __getattr__(self, name):
+        return getattr(bpy, name)
+
+
+kit.bpy = _Export()
 os.makedirs(os.path.join(COMPONENT, "tools"), exist_ok=True)
 
 X, Y, Z = kit.X, kit.Y, kit.Z
@@ -73,13 +105,14 @@ HEAD_RADII = Vector((0.068, 0.074, 0.08))
 HEAD_CENTRE = HEAD + Vector((0.0, 0.085, 0.016))
 JAW = 1.62
 
-SKIN, SHADE, HOLLOW = range(3)
+SKIN, HOLLOW = range(2)
 MATERIALS = [
-    # Raw, dried flesh, and the same darker where it sinks in
+    # Raw, dried flesh (darker where it sinks in: see shaded, and GhoulRig.SHADE)
     ("skin", (0.33, 0.135, 0.105)),
-    ("skin_shade", (0.17, 0.05, 0.042)),
     ("hollow", (0.04, 0.008, 0.008)),
 ]
+# The colour attribute that says how far each point lies in a hollow (see shaded).
+CAVITY = "cavity"
 
 # Fingers, index to little: (offset across the palm, length, thickness, how far it fans out).
 FINGERS = [(0.0205, 0.118, 0.0058, 0.24), (0.0068, 0.134, 0.006, 0.08), (-0.0068, 0.124, 0.0058, -0.08), (-0.0205, 0.1, 0.0052, -0.24)]
@@ -165,32 +198,35 @@ def concavity(bm):
     return value
 
 
-def shaded(shapes, fuse, threshold=0.05, extra=None):
-    """A part made by `shapes`, fused as `fuse` says, its faces skin where they
-    stand out and shade where they sink in (and where `extra`, given the middle
-    of a face, says)."""
+def shaded(shapes, fuse=None, threshold=0.05, extra=None, flat=None):
+    """A part made by shapes, fused as use says, with how far each point of
+    it lies in a hollow as a colour on it (CAVITY): 0.5 exactly where it sinks
+    in by 	hreshold (see concavity), more where it sinks in further, less
+    where it stands out; or more again where extra, given a point, says (0..1).
+    lat: the part is all one value instead. The game's shader darkens the
+    skin where the value is over 0.5, with one soft step, so the edge of the
+    dark is a smooth curve wherever it falls on the faces."""
     def made(b):
         ready = shapes(b)
         mesh = ready if ready is not None else kit.fused(b, None if kit.LOW else fuse)
-        bm = bmesh.new()
-        bm.from_mesh(mesh)
-        deep = concavity(bm)
-        bm.faces.ensure_lookup_table()
-        chosen = []
-        for face in bm.faces:
-            sunk = sum(deep[vert.index] for vert in face.verts) / len(face.verts)
-            dark = sunk > threshold and not kit.LOW
-            if extra and extra(kit.from_blender(face.calc_center_median())):
-                dark = True
-            chosen.append(SHADE if dark else SKIN)
-        bm.free()
-        for _index in range(SHADE + 1):
-            mesh.materials.append(None)
-        for polygon, material in zip(mesh.polygons, chosen):
-            polygon.material_index = material
+        values = []
+        if flat is not None:
+            values = [flat] * len(mesh.vertices)
+        else:
+            bm = bmesh.new()
+            bm.from_mesh(mesh)
+            deep = concavity(bm)
+            bm.free()
+            for vertex, sunk in zip(mesh.vertices, deep):
+                value = 0.0 if kit.LOW else min(max(0.5 + (sunk - threshold) / 0.03, 0.0), 1.0)
+                if extra:
+                    value = max(value, extra(kit.from_blender(vertex.co)))
+                values.append(value)
+        cavity = mesh.color_attributes.new(CAVITY, "FLOAT_COLOR", "POINT")
+        for item, value in zip(cavity.data, values):
+            item.color = (value, value, value, 1.0)
         return mesh
     return made
-
 
 # --- Shapes ---
 
@@ -287,9 +323,9 @@ def trunk(_builder):
 def trunk_hollows(p):
     """Places on the trunk that are dark whatever their shape: the hollows above the collarbones, the armpits."""
     ax = abs(p.x)
-    above_collar = 1.16 < p.y < 1.19 and 0.03 < ax < 0.095 and p.z > 0.02
-    armpit = 1.03 < p.y < 1.12 and 0.085 < ax < 0.125 and abs(p.z) < 0.03
-    return above_collar or armpit
+    above_collar = blend(1.15, 1.165, p.y) * blend(1.195, 1.18, p.y) * blend(0.025, 0.04, ax) * blend(0.1, 0.085, ax) * blend(0.01, 0.03, p.z)
+    armpit = blend(1.02, 1.05, p.y) * blend(1.13, 1.1, p.y) * blend(0.08, 0.095, ax) * blend(0.13, 0.115, ax) * blend(0.04, 0.02, abs(p.z))
+    return max(above_collar, armpit)
 
 
 # A leg by how far along it is (0 the ankle, 1 the knee, 2 the hip): (where, half thickness, half width, forward).
@@ -481,9 +517,11 @@ def head_hollows(p):
     """Dark down the walls of the eyes and the mouth, whatever the shape says."""
     x, y, z = p.x - HEAD_CENTRE.x, p.y - HEAD_CENTRE.y, p.z - HEAD_CENTRE.z
     if z < 0.02:
-        return False
+        return 0.0
     reach, hole = hole_reach(x, y)
-    return (hole is EYE and reach < 1.2) or (hole is MOUTH and reach < 1.08)
+    if hole is EYE:
+        return blend(1.35, 1.1, reach)
+    return blend(1.2, 1.0, reach) if hole is MOUTH else 0.0
 
 
 def face_place(x, y):
@@ -621,15 +659,15 @@ def bones():
     return listed
 
 
-# (part, material, shapes, how to fuse it). Material None: the part paints its own faces (`shaded`).
+# (part, material, shapes, how to fuse it). Each fuses itself, if at all (`shaded`).
 PARTS = [
-    ("torso", None, shaded(trunk, TRUNK_FUSE, -0.014, trunk_hollows), None),
-    ("legs", None, shaded(legs, (0.0032, 3, 4200), -0.006), None),
-    ("feet", None, shaded(feet, (0.003, 3, 1600), 0.0), None),
-    ("hands", SKIN, hands, None),
-    ("fingers", SHADE, fingers, None),
-    ("head", None, shaded(head, None, -0.004, head_hollows), None),
-    ("hollows", HOLLOW, hollows, None),
+    ("torso", SKIN, shaded(trunk, TRUNK_FUSE, -0.014, trunk_hollows), None),
+    ("legs", SKIN, shaded(legs, (0.0032, 3, 4200), -0.006), None),
+    ("feet", SKIN, shaded(feet, (0.003, 3, 1600), 0.0), None),
+    ("hands", SKIN, shaded(hands, flat=0.0), None),
+    ("fingers", SKIN, shaded(fingers, flat=1.0), None),
+    ("head", SKIN, shaded(head, None, -0.004, head_hollows), None),
+    ("hollows", HOLLOW, shaded(hollows, flat=1.0), None),
 ]
 
 

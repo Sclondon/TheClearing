@@ -92,6 +92,45 @@ var _jolt_in := 0.0
 var _own_dust: Dust
 
 
+## The colour of its skin where it sinks in (the model's "skin" is the rest).
+const SHADE := Color(0.17, 0.05, 0.042)
+## How soft the edge of the dark in its hollows is, in the model's cavity value (0..1).
+const SHADE_SOFTNESS := 0.06
+
+static var _skin_shader: Shader
+
+
+## Shades it as CharacterRig does (Toon), but its skin with the dark of its
+## hollows in it: the model carries, as its vertex colour, how far each point
+## lies in a hollow (0.5 at the edge; see build_ghoul.py's `shaded`), and the
+## skin goes to SHADE over that edge in one soft step, so the dark has clean,
+## curved edges whatever the faces under it.
+func restyle() -> void:
+	super()
+	if not cel_shaded:
+		return
+	for part: MeshInstance3D in _figure.find_children("*", "MeshInstance3D", true, false):
+		for surface in part.mesh.get_surface_count():
+			var original := part.mesh.surface_get_material(surface) as StandardMaterial3D
+			if original and original.resource_name == "skin":
+				part.set_surface_override_material(surface, skin_material(original.albedo_color))
+
+
+static func skin_material(colour: Color) -> ShaderMaterial:
+	if _skin_shader == null:
+		_skin_shader = Shader.new()
+		_skin_shader.code = Toon.SHADER.replace("uniform vec3 albedo : source_color = vec3(1.0);",
+				"uniform vec3 albedo : source_color = vec3(1.0);\nuniform vec3 shade : source_color = vec3(0.2);\nuniform float softness = 0.06;").replace(
+				"ALBEDO = albedo * (1.0 - stripe * line);",
+				"float sunk = smoothstep(0.5 - softness - fwidth(COLOR.r), 0.5 + softness + fwidth(COLOR.r), COLOR.r);\n\tALBEDO = mix(albedo, shade, sunk) * (1.0 - stripe * line);")
+	var material := ShaderMaterial.new()
+	material.shader = _skin_shader
+	material.set_shader_parameter(&"albedo", colour)
+	material.set_shader_parameter(&"shade", SHADE)
+	material.set_shader_parameter(&"softness", SHADE_SOFTNESS)
+	return material
+
+
 func _build() -> void:
 	# (the boy's footfalls are not its own: it raises its own dust)
 	dusty = false
