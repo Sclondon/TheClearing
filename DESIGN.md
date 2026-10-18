@@ -123,6 +123,17 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     (between a run and a sprint), lunge-bite. Climbing breaks the trail.
   - **Aliens**: twos and threes that walk calmly and blink ahead of you when unwatched (a shimmering column
     warns first; looking at it stops it), then raise a hand and catch you in a pale light.
+  - **Giant toad** (added at the user's request, "a frog enemy"): a huge warty toad, taller than the boy's chest,
+    squatting wet and still in a dead end, throat pulsing. Seen, it croaks (its throat a great bubble), turns on you
+    slowly and comes in great arcing leaps (slower than a run, on the whole). Near and facing you, it winds up for
+    about a second where you can see it (the throat swells, the mouth gapes), aims at your chest and holds that aim
+    for the last third of a second, and shoots a sticky tongue several metres. Step aside, duck under it, or be out of
+    reach; it misses, gulps and sits a moment.
+  - **Frog swarm**: dozens of small frogs (fist- to cat-sized) in a muddy pool in a dead end, a few sitting about its
+    edge. Come near and they pour out at you in hopping waves, leaping over each other, croaking in chorus. Those that
+    reach you leap on and cling, and the more there are the slower you go; enough of them for long enough and you are
+    caught. Outrun them, shake them off by running and jumping, or get up onto something (a terrace, the ivy): they
+    cannot hop that high, give up and go home.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
