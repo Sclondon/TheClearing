@@ -504,8 +504,9 @@ func _grass() -> void:
 			footprints.append(footprint.grow(0.25))
 	var look := maze.clearing_style
 	# (none under the pond's water)
+	var pond := look.pond_middle()
 	var dry := func(p: Vector2) -> bool:
-		if maze.ground_height(Vector3(p.x, 0.0, p.y)) < ClearingStyle.POND_LEVEL + 0.08:
+		if pond.is_finite() and p.distance_to(pond) < look.pond_radius * 1.3 and maze.ground_height(Vector3(p.x, 0.0, p.y)) < ClearingStyle.POND_LEVEL + 0.08:
 			return false
 		for footprint: Rect2 in footprints:
 			if footprint.has_point(p):
@@ -529,7 +530,7 @@ func _grass() -> void:
 	var tall := look.entrance(ClearingStyle.Entrance.TALL_GRASS)
 	if tall.is_empty():
 		return
-	var around := Rect2(tall[0] - Vector2.ONE * look.tall_grass_radius, Vector2.ONE * look.tall_grass_radius * 2.0).intersection(field)
+	var around := Rect2(look.tall_grass_middle() - Vector2.ONE * look.tall_grass_radius * 1.05, Vector2.ONE * look.tall_grass_radius * 2.1).intersection(field)
 	Grass.field(self, around, 0.8, {
 		"mask": func(p: Vector2) -> float: return look.tall_grass_at(p) if dry.call(p) else 0.0,
 		"height": func(p: Vector2) -> float: return maze.ground_height(Vector3(p.x, 0.0, p.y)) + HILL_LIFT,

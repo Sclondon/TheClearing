@@ -40,9 +40,13 @@ enum Entrance {
 @export_group("Entrances")
 ## What is in front of each of the clearing's entrances, in turn round them.
 @export var entrances: Array[Entrance] = [Entrance.WOODS, Entrance.TALL_GRASS, Entrance.POND, Entrance.CLEAR]
-## How far round a tall grass entrance the tall grass grows, metres, and how high it is.
-@export_range(5.0, 150.0) var tall_grass_radius := 48.0
+## The tall grass in front of its entrance: a meadow of its own, this wide (its
+## radius, metres), its middle this far in from the door, as high as this, in a
+## hollow this deep (level again at the foot of the wall).
+@export_range(5.0, 200.0) var tall_grass_radius := 75.0
+@export_range(0.0, 200.0) var tall_grass_distance := 55.0
 @export_range(0.5, 3.0) var tall_grass_height := 1.5
+@export_range(0.0, 4.0) var tall_grass_hollow := 1.2
 ## How wide the pond in front of a flooded entrance is (its radius), how deep at
 ## the middle, and how far out from the wall its near shore is, metres.
 @export_range(4.0, 80.0) var pond_radius := 24.0
@@ -105,12 +109,21 @@ func height_at(x: float, z: float, seed_value: int) -> float:
 		var d := Vector2(x, z).distance_to(pond) / (pond_radius * 1.25)
 		if d < 1.0:
 			return lerpf(hill, 0.0, smoothstep(1.0, 0.8, d)) - pond_depth * (1.0 - d * d) * 1.2
+	# (the tall grass in a hollow of its own, level at the foot of the wall)
+	var meadow := tall_grass_middle()
+	if meadow.is_finite() and tall_grass_hollow > 0.0:
+		var d := Vector2(x, z).distance_to(meadow) / tall_grass_radius
+		if d < 1.15:
+			var half := Maze.CLEARING * Maze.CELL * 0.5
+			var from_wall := half - maxf(absf(x), absf(z))
+			var sunk := smoothstep(1.15, 0.85, d) * smoothstep(2.0, 16.0, from_wall)
+			return lerpf(hill, -tall_grass_hollow, sunk)
 	return hill
 
 
 ## Whether the ground is anything but level: hills or a pond.
 func shaped() -> bool:
-	return hill_height > 0.0 or pond_middle().is_finite()
+	return hill_height > 0.0 or pond_middle().is_finite() or (tall_grass_hollow > 0.0 and tall_grass_middle().is_finite())
 
 
 ## The first entrance with `kind` in front of it, as [where (x, z), the way in],
@@ -131,22 +144,35 @@ func pond_middle() -> Vector2:
 
 
 ## Whether `point` (x, z) is where no tree or bush may be: near a clear entrance,
+## in the tall grass,
 ## or in or at the edge of the pond.
 func kept_clear(point: Vector2) -> bool:
 	var clear := entrance(Entrance.CLEAR)
 	if not clear.is_empty() and point.distance_to(clear[0]) < clear_radius:
 		return true
+	var meadow := tall_grass_middle()
+	if meadow.is_finite() and point.distance_to(meadow) < tall_grass_radius * 1.05:
+		return true
 	var pond := pond_middle()
 	return pond.is_finite() and point.distance_to(pond) < pond_radius * 1.3
 
 
-## How much tall grass there is at `point` (x, z): 1 round a tall grass entrance,
-## thinning out to nothing at the tall grass radius.
+## How much tall grass there is at `point` (x, z): 1 in the meadow in front of a
+## tall grass entrance, none past its edge.
 func tall_grass_at(point: Vector2) -> float:
+	var meadow := tall_grass_middle()
+	if not meadow.is_finite():
+		return 0.0
+	# (a meadow of its own: its edge sharp, where the hollow begins)
+	return smoothstep(1.02, 0.95, point.distance_to(meadow) / tall_grass_radius)
+
+
+## The middle of the tall grass (x, z), or not finite if there is none.
+func tall_grass_middle() -> Vector2:
 	var way := entrance(Entrance.TALL_GRASS)
 	if way.is_empty():
-		return 0.0
-	return smoothstep(1.0, 0.7, point.distance_to(way[0]) / tall_grass_radius)
+		return Vector2.INF
+	return way[0] + way[1] * tall_grass_distance
 
 
 func _hill_at(x: float, z: float, seed_value: int) -> float:

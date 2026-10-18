@@ -485,20 +485,18 @@ func _trees(maze: Maze) -> void:
 		var p := Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.0, 1.0)) * (edge - 6.0)
 		if p.length() > look.treeless_radius:
 			points.append(p)
-	# Dense woods round the woods entrance, thinning out towards their edge, with
-	# a narrow way through them from the gate.
+	# Dense woods round the woods entrance, right up to its door, thinning out
+	# towards their edge.
 	var woods := look.entrance(ClearingStyle.Entrance.WOODS)
 	if look.woods_density > 0.0 and not woods.is_empty():
 		var gate_at: Vector2 = woods[0]
-		var inward: Vector2 = woods[1]
 		var steps := ceili(look.woods_size / look.woods_tree_spacing)
 		for a in range(-steps, steps + 1):
 			for b in range(-steps, steps + 1):
 				var flat := gate_at + (Vector2(a, b) + Vector2(rng.randf(), rng.randf()) * 0.8) * look.woods_tree_spacing
 				var p := Vector3(flat.x, 0.0, flat.y)
 				var deep := 1.0 - flat.distance_to(gate_at) / look.woods_size
-				var off_way := absf((flat - gate_at).cross(inward))
-				if maxf(absf(p.x), absf(p.z)) < edge - 3.0 and p.length() > look.treeless_radius and off_way > 3.5 \
+				if maxf(absf(p.x), absf(p.z)) < edge - 3.0 and p.length() > look.treeless_radius \
 						and rng.randf() < look.woods_density * smoothstep(0.0, 0.35, deep):
 					points.append(p)
 	# (nothing near the clear entrance, nor in the pond)
