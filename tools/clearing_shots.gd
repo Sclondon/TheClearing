@@ -1,6 +1,7 @@
 extends SceneTree
-## Pictures of the clearing: from high over it (mist thinned), and from the
-## ground across its hills towards the woods, from the middle and from the field.
+## Pictures of the clearing: from high over it (mist thinned), then of each
+## entrance and what is in front of it (ClearingStyle.entrances), from 60 m in
+## at his eye height and from a little above.
 ##
 ##     godot --path . --resolution 720x1280 -s res://tools/clearing_shots.gd -- <folder> [seed]
 
@@ -26,22 +27,12 @@ func _run() -> void:
 	for i in 30:
 		await physics_frame
 	var world = main.world
+	world.player.visible = false
+	var maze = world.maze
+	var look: ClearingStyle = maze.clearing_style
 	var camera := Camera3D.new()
 	world.add_child(camera)
 	camera.make_current()
-	# (the woods: the corner with the most trees)
-	var corner := Vector3.ZERO
-	var counts := {}
-	for piece in world.get_node("Maze").layout.pieces(MazePiece.Kind.TREE):
-		var key := Vector2i(signi(int(piece.position.x)), signi(int(piece.position.z)))
-		counts[key] = counts.get(key, 0) + 1
-	var most := 0
-	for key: Vector2i in counts:
-		if counts[key] > most:
-			most = counts[key]
-			corner = Vector3(key.x, 0.0, key.y)
-	print("woods in corner ", corner, " (", most, " trees)")
-
 	var env: Environment = null
 	for found: Node in world.find_children("*", "WorldEnvironment", true, false):
 		env = (found as WorldEnvironment).environment
@@ -54,36 +45,26 @@ func _run() -> void:
 	camera.position = Vector3(0.0, 480.0, 330.0)
 	camera.look_at(Vector3.ZERO)
 	await _shot(folder + "/above.png")
-	camera.position = corner.rotated(Vector3.UP, PI * 0.25) * -180.0 + Vector3.UP * 140.0
-	camera.look_at(corner * 150.0)
-	await _shot(folder + "/above_woods.png")
-	# (low over the field, without the mist, to see the lie of the ground)
-	var low := corner.rotated(Vector3.UP, PI * 0.5) * 230.0
-	camera.position = low + Vector3.UP * (world.maze.ground_height(low) + 9.0)
-	camera.look_at(corner.rotated(Vector3.UP, -PI * 0.5) * 100.0)
-	world.player.visible = false
-	await _shot(folder + "/hills.png")
 	env.fog_density = fog
 	env.fog_height_density = fog_height
-
-	var maze = world.maze
 	camera.fov = 62.0
-	camera.position = Vector3(0.0, 1.7, 0.0)
-	camera.look_at(corner * 200.0 + Vector3.UP * 6.0)
-	await _shot(folder + "/middle_to_woods.png")
-	var field := corner.rotated(Vector3.UP, PI * 0.5) * 120.0
-	camera.position = field + Vector3.UP * (maze.ground_height(field) + 1.7)
-	camera.look_at(Vector3(0.0, 8.0, 0.0))
-	await _shot(folder + "/field.png")
-	var edge := corner * 215.0
-	camera.position = edge + Vector3.UP * (maze.ground_height(edge) + 1.7)
-	camera.look_at(corner * 260.0 + Vector3.UP * 3.0)
-	await _shot(folder + "/in_woods.png")
+	for i in look.entrance_spots.size():
+		var name: String = ClearingStyle.Entrance.keys()[look.entrances[i]].to_lower() if i < look.entrances.size() else "plain"
+		var gate: Vector2 = look.entrance_spots[i][0]
+		var inward: Vector2 = look.entrance_spots[i][1]
+		var from := gate + inward * 60.0 + inward.orthogonal() * 12.0
+		camera.position = Vector3(from.x, maze.ground_height(Vector3(from.x, 0.0, from.y)) + 1.7, from.y)
+		camera.look_at(Vector3(gate.x, 4.0, gate.y))
+		await _shot("%s/%d_%s.png" % [folder, i, name])
+		from = gate + inward * 90.0
+		camera.position = Vector3(from.x, 22.0, from.y)
+		camera.look_at(Vector3(gate.x, 0.0, gate.y) + Vector3(inward.x, 0.0, inward.y) * 25.0)
+		await _shot("%s/%d_%s_above.png" % [folder, i, name])
 	quit()
 
 
 func _shot(path: String) -> void:
-	for i in 12:
+	for i in 20:
 		await process_frame
 	root.get_texture().get_image().save_png(path)
 	print("saved ", path)

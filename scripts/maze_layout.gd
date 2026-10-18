@@ -72,7 +72,7 @@ func _show_in_editor() -> void:
 	ground.material_override = MazeStone.ground(Maze.CLEARING * Maze.CELL * 0.5, Maze.ring_extent(rings, styles) * 0.5, MazeBuilder.WALL_THICK)
 	add_child(ground, false, Node.INTERNAL_MODE_BACK)
 	_editor_shown.append(ground)
-	if clearing_style and clearing_style.hill_height > 0.0:
+	if clearing_style and clearing_style.shaped():
 		var field := MazeBuilder.hills(clearing_style, maze_seed, ground.material_override)
 		add_child(field, false, Node.INTERNAL_MODE_BACK)
 		_editor_shown.append(field)
@@ -481,16 +481,24 @@ func _trees(maze: Maze) -> void:
 		var p := Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.0, 1.0)) * (edge - 6.0)
 		if p.length() > look.treeless_radius:
 			points.append(p)
-	# Dense woods in one corner, thinning out towards their edge.
-	if look.woods_density > 0.0:
-		var corner := Vector3(1.0 if rng.randf() < 0.5 else -1.0, 0.0, 1.0 if rng.randf() < 0.5 else -1.0)
+	# Dense woods round the woods entrance, thinning out towards their edge, with
+	# a narrow way through them from the gate.
+	var woods := look.entrance(ClearingStyle.Entrance.WOODS)
+	if look.woods_density > 0.0 and not woods.is_empty():
+		var gate_at: Vector2 = woods[0]
+		var inward: Vector2 = woods[1]
 		var steps := ceili(look.woods_size / look.woods_tree_spacing)
-		for a in steps:
-			for b in steps:
-				var p := corner * (Vector3.ONE * (edge - 3.0) - (Vector3(a, 0.0, b) + Vector3(rng.randf(), 0.0, rng.randf()) * 0.8) * look.woods_tree_spacing)
-				var deep := 1.0 - (corner * edge - p).length() / look.woods_size
-				if p.length() > look.treeless_radius and rng.randf() < look.woods_density * smoothstep(0.0, 0.35, deep):
+		for a in range(-steps, steps + 1):
+			for b in range(-steps, steps + 1):
+				var flat := gate_at + (Vector2(a, b) + Vector2(rng.randf(), rng.randf()) * 0.8) * look.woods_tree_spacing
+				var p := Vector3(flat.x, 0.0, flat.y)
+				var deep := 1.0 - flat.distance_to(gate_at) / look.woods_size
+				var off_way := absf((flat - gate_at).cross(inward))
+				if maxf(absf(p.x), absf(p.z)) < edge - 3.0 and p.length() > look.treeless_radius and off_way > 3.5 \
+						and rng.randf() < look.woods_density * smoothstep(0.0, 0.35, deep):
 					points.append(p)
+	# (nothing near the clear entrance, nor in the pond)
+	points = points.filter(func(p: Vector3) -> bool: return not look.kept_clear(Vector2(p.x, p.z)))
 	var built := maze.extent() * 0.5 + 6.0
 	var next := Maze.ring_extent(maze.rings + 1, maze.styles) * 0.5 - 6.0
 	for i in 60:

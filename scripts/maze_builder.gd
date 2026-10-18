@@ -77,6 +77,7 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 	features.realize(pieces)
 	_grass()
 	_ground()
+	_pond()
 	_trees(pieces)
 	_undergrowth(pieces)
 	for piece in pieces.pieces(MazePiece.Kind.BEACON):
@@ -276,23 +277,30 @@ func _ground() -> void:
 	var size := Maze.ring_extent(maze.rings + 1, maze.styles) + 80.0
 	var body := StaticBody3D.new()
 	body.name = "Ground"
-	var shape := BoxShape3D.new()
-	shape.size = Vector3(size, 2.0, size)
-	var collider := CollisionShape3D.new()
-	collider.shape = shape
-	collider.position.y = -1.0
-	body.add_child(collider)
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(size, size)
-	var visual := MeshInstance3D.new()
-	visual.mesh = plane
 	# (grass grows back along the foot of each wall, where nobody walks)
 	var boxes: Array[MazePiece] = layout.pieces(MazePiece.Kind.WALL) + layout.pieces(MazePiece.Kind.PIER) + layout.pieces(MazePiece.Kind.TERRACE)
-	visual.material_override = MazeStone.ground(maze.clearing * Maze.CELL * 0.5, maze.extent() * 0.5, WALL_THICK, boxes)
-	body.add_child(visual)
+	var material := MazeStone.ground(maze.clearing * Maze.CELL * 0.5, maze.extent() * 0.5, WALL_THICK, boxes)
+	# Flat ground everywhere, or with a hole for the clearing where its ground is
+	# shaped (it may go down below level, into the pond).
+	var shaped := maze.clearing_style.shaped()
+	var hole := maze.clearing * Maze.CELL * 0.5 - 1.0 if shaped else 0.0
+	for part: Rect2 in _framed(size * 0.5, hole):
+		var shape := BoxShape3D.new()
+		shape.size = Vector3(part.size.x, 2.0, part.size.y)
+		var collider := CollisionShape3D.new()
+		collider.shape = shape
+		collider.position = Vector3(part.get_center().x, -1.0, part.get_center().y)
+		body.add_child(collider)
+		var plane := PlaneMesh.new()
+		plane.size = part.size
+		var visual := MeshInstance3D.new()
+		visual.mesh = plane
+		visual.position = Vector3(part.get_center().x, 0.0, part.get_center().y)
+		visual.material_override = material
+		body.add_child(visual)
 	# The clearing's hills over it, and a heightmap to walk on them.
-	if maze.clearing_style.hill_height > 0.0:
-		var field := hills(maze.clearing_style, maze.maze_seed, visual.material_override)
+	if shaped:
+		var field := hills(maze.clearing_style, maze.maze_seed, material)
 		body.add_child(field)
 		var heights := HeightMapShape3D.new()
 		var across := field.get_meta(&"points") as int
@@ -311,6 +319,39 @@ func _ground() -> void:
 		on_hills.scale = Vector3.ONE * HILL_STEP
 		body.add_child(on_hills)
 	add_child(body)
+
+
+## The pond in front of the flooded entrance (ClearingStyle.Entrance.POND), if
+## there is one: still, dark water in the hollow the ground makes for it.
+func _pond() -> void:
+	var look := maze.clearing_style
+	var middle := look.pond_middle()
+	if not middle.is_finite():
+		return
+	var pool := Pool.new()
+	pool.name = "Pond"
+	var across := look.pond_radius * 2.6
+	pool.size = Vector3(across, look.pond_depth * 1.3 + 0.5, across)
+	pool.position = Vector3(middle.x, ClearingStyle.POND_LEVEL, middle.y)
+	add_child(pool)
+	# (grey and murky, as the rest of the place)
+	var water := pool.water
+	water.shallow = Color(0.2, 0.25, 0.22)
+	water.deep = Color(0.05, 0.07, 0.07)
+	water.foam = Color(0.55, 0.58, 0.56)
+	water.sky = Color(0.62, 0.65, 0.66)
+	water.depth_range = 1.4
+	water.alpha_shallow = 0.55
+	water.caustics = 0.0
+	water.swell_height = 0.01
+
+## A square `half` metres each way from the middle, as rects (x, z): the whole of
+## it, or (with `hole`) the four round a square hole `hole` metres each way.
+static func _framed(half: float, hole: float) -> Array[Rect2]:
+	if hole <= 0.0:
+		return [Rect2(-half, -half, half * 2.0, half * 2.0)]
+	return [Rect2(-half, -half, half * 2.0, half - hole), Rect2(-half, hole, half * 2.0, half - hole),
+		Rect2(-half, -hole, half - hole, hole * 2.0), Rect2(hole, -hole, half - hole, hole * 2.0)]
 
 
 ## Metres between the points of the clearing's ground over the hills.
@@ -450,12 +491,17 @@ func _grass() -> void:
 	for footprint: Rect2 in features.footprints:
 		if footprint.grow(0.25).intersects(field):
 			footprints.append(footprint.grow(0.25))
+	var look := maze.clearing_style
+	# (none under the pond's water)
+	var dry := func(p: Vector2) -> bool:
+		if maze.ground_height(Vector3(p.x, 0.0, p.y)) < ClearingStyle.POND_LEVEL + 0.08:
+			return false
+		for footprint: Rect2 in footprints:
+			if footprint.has_point(p):
+				return false
+		return true
 	Grass.field(self, field, 1.0, {
-		"mask": func(p: Vector2) -> float:
-			for footprint: Rect2 in footprints:
-				if footprint.has_point(p):
-					return 0.0
-			return 1.0,
+		"mask": func(p: Vector2) -> float: return 1.0 - look.tall_grass_at(p) if dry.call(p) else 0.0,
 		"height": func(p: Vector2) -> float: return maze.ground_height(Vector3(p.x, 0.0, p.y)) + HILL_LIFT,
 		"ground": Color(0.13, 0.2, 0.09),
 		# (knee high, dark and damp: the clearing is as grey as the rest)
@@ -466,6 +512,27 @@ func _grass() -> void:
 		"translucency": 0.08,
 		"flowers": 0.03,
 		"seed": maze.maze_seed % 1000,
+	})
+	# Grass up to his chest round the tall grass entrance, where the knee high
+	# grass gives way to it.
+	var tall := look.entrance(ClearingStyle.Entrance.TALL_GRASS)
+	if tall.is_empty():
+		return
+	var around := Rect2(tall[0] - Vector2.ONE * look.tall_grass_radius, Vector2.ONE * look.tall_grass_radius * 2.0).intersection(field)
+	Grass.field(self, around, 0.8, {
+		"mask": func(p: Vector2) -> float: return look.tall_grass_at(p) if dry.call(p) else 0.0,
+		"height": func(p: Vector2) -> float: return maze.ground_height(Vector3(p.x, 0.0, p.y)) + HILL_LIFT,
+		"ground": Color(0.13, 0.2, 0.09),
+		"blade_height": look.tall_grass_height,
+		"blade_width": 0.05,
+		"lean": 0.25,
+		"body": Color(0.16, 0.22, 0.1),
+		"tip": Color(0.38, 0.4, 0.22),
+		"dry": Color(0.42, 0.4, 0.24),
+		"dryness": 0.55,
+		"translucency": 0.08,
+		"flowers": 0.0,
+		"seed": maze.maze_seed % 1000 + 1,
 	})
 
 
@@ -526,7 +593,7 @@ func _undergrowth(pieces: MazeLayout) -> void:
 			at = near_trees[rng.randi() % near_trees.size()] + Vector3(cos(round_about), 0.0, sin(round_about)) * rng.randf_range(2.5, 7.0)
 		else:
 			at = Vector3(rng.randf_range(-half, half), 0.0, rng.randf_range(-half, half))
-		if Vector2(at.x, at.z).length() < look.treeless_radius or maxf(absf(at.x), absf(at.z)) > half:
+		if Vector2(at.x, at.z).length() < look.treeless_radius or maxf(absf(at.x), absf(at.z)) > half or look.kept_clear(Vector2(at.x, at.z)):
 			continue
 		undergrowth.add(Undergrowth.Kind.BUSH, _plant(at, rng, Undergrowth.Kind.BUSH))
 	undergrowth.build()

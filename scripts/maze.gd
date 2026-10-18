@@ -74,6 +74,14 @@ static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] 
 	maze.clearing = CLEARING
 	maze.maze_seed = seed_value
 	maze._carve()
+	# (where the entrances are, for what is in front of each)
+	maze.clearing_style.entrance_spots = []
+	for way: Array in maze.gates[0]:
+		var step: Vector2i = way[1]
+		var out := Vector2(step.x, step.y)
+		var at := maze.world(way[0])
+		var face := Vector2(at.x, at.z) + out * (CELL * 0.5 - maze.wall_thick(way[0], step) * 0.5)
+		maze.clearing_style.entrance_spots.append([face, -out])
 	return maze
 
 
