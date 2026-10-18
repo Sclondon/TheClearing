@@ -11,6 +11,7 @@ extends MazeStyle
 const SHOWN: Array[StringName] = [
 	&"section_width_cells", &"hallway_diameter_cells", &"maze_wall_diameter", &"maze_wall_height",
 	&"section_border_wall_height", &"straight_on_chance", &"side_branch_chance", &"loop_share",
+	&"wall_moss_height", &"wall_moss_patches",
 ]
 
 

@@ -59,9 +59,15 @@ func _ready() -> void:
 					for touch: Array in RoundMaze.touching(j, cells, ring.rows[i + 1][2]):
 						if not RoundMaze.joined(ring, Vector2i(i, j), Vector2i(i + 1, touch[0])):
 							_arc(k, row[1], touch[1], touch[2], thick, high, false)
-	var maze_material := Wall.material_for(MazeBuilder.MAZE_LOOK, true)
-	var great_material := Wall.material_for(MazeBuilder.GREAT_LOOK, true)
-	great_material.set_shader_parameter(&"tile_size", Wall.LOOKS[MazeBuilder.GREAT_LOOK][1] * MazeBuilder.GREAT_TILE_SCALE)
+	# (one of each for each section: its own moss, as its style says)
+	var materials := {}
+	for key: Array in _parts:
+		if not materials.has([key[0], key[1]]):
+			var made := Wall.material_for(MazeBuilder.GREAT_LOOK if key[0] == 1 else MazeBuilder.MAZE_LOOK, true)
+			if key[0] == 1:
+				made.set_shader_parameter(&"tile_size", Wall.LOOKS[MazeBuilder.GREAT_LOOK][1] * MazeBuilder.GREAT_TILE_SCALE)
+			MazeBuilder.moss(made, plan.rings[key[1]].style if key[1] < plan.rings.size() else null)
+			materials[[key[0], key[1]]] = made
 	for key: Array in _parts:
 		var part: Array = _parts[key]
 		var arrays := []
@@ -72,7 +78,7 @@ func _ready() -> void:
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var shown := MeshInstance3D.new()
 		shown.mesh = mesh
-		shown.material_override = great_material if key[0] == 1 else maze_material
+		shown.material_override = materials[[key[0], key[1]]]
 		# (in the editor, seen from far over the whole maze, always)
 		shown.visibility_range_end = 0.0 if Engine.is_editor_hint() else FAR
 		add_child(shown)

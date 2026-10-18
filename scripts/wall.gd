@@ -62,6 +62,13 @@ uniform vec4 tint : source_color = vec4(1.0);
 uniform float break_up = 1.0;
 uniform float variation = 0.15;
 uniform float weathering = 0.35;
+// Moss (in the world's space, `world_space` on): up the foot of the wall to about
+// `moss_foot` metres from the ground, its top edge ragged, and in patches higher
+// up over about `moss_patches` of the face. 0 and 0: none, and none of its cost.
+uniform float moss_foot = 0.0;
+uniform float moss_patches = 0.0;
+uniform vec3 moss_dark : source_color = vec3(0.08, 0.1, 0.05);
+uniform vec3 moss_light : source_color = vec3(0.28, 0.31, 0.14);
 
 varying vec3 at;
 varying vec3 facing;
@@ -133,14 +140,47 @@ void fragment() {
 	vec3 grime = colour * vec3(0.5, 0.48, 0.43) * (0.85 + 0.3 * grain);
 	colour = mix(colour, grime, clamp(stain * weathering * 2.2, 0.0, 1.0));
 	colour = mix(colour, colour * vec3(1.22, 1.22, 1.2) + vec3(0.04), lime * weathering * 0.6);
-	ALBEDO = colour * tint.rgb;
+	colour *= tint.rgb;
+
+	// Moss: where it grows, how thick, and its cushions. It is in clumps a few
+	// centimetres across, lighter on their tops and dark down between them, so
+	// its edge breaks up into clumps and bare stone rather than a line; and it
+	// darkens the damp stone just above it.
+	float moss = 0.0;
+	float clumps = 0.5;
+	if ((moss_foot > 0.0 || moss_patches > 0.0) && abs(n.y) < 0.5) {
+		float ragged = noise(vec2(metres.x / 1.4, 3.0)) * 0.75 + noise(vec2(metres.x / 0.5, 8.0)) * 0.25;
+		float reach = moss_foot * (0.55 + ragged * 0.9);
+		float foot = moss_foot > 0.0 ? 1.0 - smoothstep(reach * 0.55, reach, at.y) : 0.0;
+		// (patches drawn out down the wall, as the damp runs, and more ragged than round)
+		float spots = noise(vec2(metres.x / 2.2, metres.y / 5.5) + 17.0) * 0.65 + noise(vec2(metres.x / 0.7, metres.y / 1.4) + 3.0) * 0.35;
+		// (more of it low down, and gathered where the rain runs: the stains)
+		float wanted = 0.8 - moss_patches * 0.9 - stain * 0.12;
+		float patch = smoothstep(wanted, wanted + 0.16, spots) * (1.0 - smoothstep(6.0, 60.0, at.y) * 0.6);
+		moss = max(foot, patch);
+		clumps = noise(metres / 0.055) * 0.6 + noise(metres / 0.021 + 2.0) * 0.4;
+		// (too small to see far off: an even cushion there, not a flicker of dark and light)
+		clumps = mix(clumps, 0.6, smoothstep(0.01, 0.04, fwidth(metres.x)));
+		// (thin moss shows as scattered clumps; thick, as a whole cushion)
+		// (its edge frays into tufts some hand-widths across, and those into clumps)
+		float tufts = noise(metres / 0.22 + 9.0) * 0.6 + clumps * 0.4;
+		float cover = smoothstep(0.3, 0.7, moss * 1.35 - (1.0 - tufts) * 0.75);
+		float damp = smoothstep(0.0, 0.6, foot) * (1.0 - cover);
+		colour *= 1.0 - damp * 0.35;
+		vec3 cushion = mix(moss_dark, moss_light, smoothstep(0.2, 0.8, clumps * 0.6 + tufts * 0.4)) * (0.8 + 0.4 * noise(metres / 0.6 + 50.0));
+		colour = mix(colour, cushion, cover);
+		moss = cover;
+	}
+	ALBEDO = colour;
 
 	if (has_rough) {
 		ROUGHNESS = mix(textureGrad(rough_map, uv + off_a, dx, dy).r, textureGrad(rough_map, uv + off_b, dx, dy).r, w);
 	} else {
 		ROUGHNESS = roughness;
 	}
-	SPECULAR = 0.3;
+	// (moss is soft and dull: no shine on it)
+	ROUGHNESS = mix(ROUGHNESS, 1.0, moss);
+	SPECULAR = mix(0.3, 0.05, moss);
 
 	vec3 bent = n;
 	if (has_normal) {
@@ -152,6 +192,12 @@ void fragment() {
 		t.z = sqrt(max(0.0, 1.0 - dot(t.xy, t.xy)));
 		// (an OpenGL normal map: red across, green up the picture)
 		bent = normalize(u_axis * t.x + v_axis * t.y + n * t.z);
+	}
+	if (moss > 0.0) {
+		// (the stone's bumps lost under it, and its own cushions in their place)
+		float lean = noise(metres / 0.055 + vec2(0.31, 0.0)) - noise(metres / 0.055 - vec2(0.31, 0.0));
+		float tip = noise(metres / 0.055 + vec2(0.0, 0.31)) - noise(metres / 0.055 - vec2(0.0, 0.31));
+		bent = normalize(mix(bent, normalize(n + (u_axis * lean + v_axis * tip) * 1.2), moss));
 	}
 	NORMAL = normalize((VIEW_MATRIX * (world_space ? vec4(bent, 0.0) : MODEL_MATRIX * vec4(bent, 0.0))).xyz);
 }

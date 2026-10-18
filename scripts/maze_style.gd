@@ -45,6 +45,11 @@ extends Resource
 ## them): the next section out is moved that much further out. (Not for the last
 ## square section, nor round ones.)
 @export_range(0, 6) var border_wall_thickness_cells := 0
+## Moss up the foot of its walls, to about this many metres off the ground (its
+## top edge ragged; 0: none), and in patches higher up over about this share of
+## the walls' faces (0: none).
+@export_range(0.0, 8.0) var wall_moss_height := 1.2
+@export_range(0.0, 1.0) var wall_moss_patches := 0.12
 
 @export_group("Hallways")
 ## The chance a passage goes on straight when it can.

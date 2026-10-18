@@ -110,13 +110,13 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 ## of blocks and one of plain boxes in each for every height of stone (the ivy
 ## curtains of the stone hang from its top, so each height has its own material).
 func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
-	# [look, square] -> SurfaceTool.
+	# [look, square, section] -> SurfaceTool (each section's walls their own moss: MazeStyle.wall_moss_height).
 	var chunks := {}
 	var boxes: Array[MazePiece] = pieces.pieces(MazePiece.Kind.WALL) + pieces.pieces(MazePiece.Kind.PIER) + pieces.pieces(MazePiece.Kind.TERRACE)
 	for piece in boxes:
 		var size := piece.box_size()
 		var where := piece.box_transform()
-		var key := [_look_of(piece), Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK))]
+		var key := [_look_of(piece), Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK)), clampi(maze.ring_of(maze.cell_at(where.origin)), 1, maxi(maze.rings, 1))]
 		if not chunks.has(key):
 			var tool := SurfaceTool.new()
 			tool.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -132,18 +132,27 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 		(chunks[key] as SurfaceTool).append_from(built.commit(), 0, where)
 	var materials := {}
 	for key: Array in chunks:
-		if not materials.has(key[0]):
+		var kind := [key[0], key[2]]
+		if not materials.has(kind):
 			# (laid on in the world's space, so that the pieces meet without seams)
-			materials[key[0]] = Wall.material_for(key[0], true, LEDGE_TINT if key[0] == LEDGE_LOOK else Color.WHITE)
+			materials[kind] = Wall.material_for(key[0], true, LEDGE_TINT if key[0] == LEDGE_LOOK else Color.WHITE)
 			if key[0] == GREAT_LOOK:
 				# (the great walls are so big that their concrete is drawn bigger too)
-				materials[key[0]].set_shader_parameter(&"tile_size", Wall.LOOKS[GREAT_LOOK][1] * GREAT_TILE_SCALE)
+				materials[kind].set_shader_parameter(&"tile_size", Wall.LOOKS[GREAT_LOOK][1] * GREAT_TILE_SCALE)
+			moss(materials[kind], maze.styles[key[2] - 1] if key[2] - 1 < maze.styles.size() else null)
 		var walls := MeshInstance3D.new()
 		walls.mesh = (chunks[key] as SurfaceTool).commit()
-		walls.material_override = materials[key[0]]
+		walls.material_override = materials[kind]
 		# (lost in the mist past this; the editor, seen from high over it all, shows all)
 		walls.visibility_range_end = 0.0 if Engine.is_editor_hint() else WALL_FAR
 		body.add_child(walls)
+
+
+## Gives a wall material the moss `style` says (MazeStyle.wall_moss_height and
+## wall_moss_patches; none without a style).
+static func moss(material: ShaderMaterial, style: MazeStyle) -> void:
+	material.set_shader_parameter(&"moss_foot", style.wall_moss_height if style else 0.0)
+	material.set_shader_parameter(&"moss_patches", style.wall_moss_patches if style else 0.0)
 
 
 ## What the ledges along the walls (and the beams the vines hang from) are made
