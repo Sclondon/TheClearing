@@ -27,10 +27,8 @@ const CORNICE := Vector2(0.6, 1.8)
 const PIER := Vector2(2.2, 4.0)
 
 ## The walls are drawn in squares this many metres across, so that what is off
-## the screen is not drawn; built of blocks out to `DETAIL` metres from the camera,
-## and as plain boxes beyond, in the haze. Their shadows are always the plain boxes'.
+## the screen is not drawn, in Wall's concrete (see surface_of).
 const CHUNK := 70.0
-const DETAIL := 110.0
 
 ## How far the blocks' backs sit in from the face that is bumped into, how far
 ## they may stand proud of it or sink into it, the joint between them, and the
@@ -89,61 +87,43 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 ## of blocks and one of plain boxes in each for every height of stone (the ivy
 ## curtains of the stone hang from its top, so each height has its own material).
 func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
-	# [height, square] -> [masonry, plain] SurfaceTools.
+	# [look, square] -> SurfaceTool.
 	var chunks := {}
 	var boxes: Array[MazePiece] = pieces.pieces(MazePiece.Kind.WALL) + pieces.pieces(MazePiece.Kind.PIER) + pieces.pieces(MazePiece.Kind.TERRACE)
 	for piece in boxes:
 		var size := piece.box_size()
 		var where := piece.box_transform()
-		var key := [snappedf(size.y, 0.5), Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK))]
+		var key := [surface_of(piece), Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK))]
 		if not chunks.has(key):
-			var pair := [SurfaceTool.new(), SurfaceTool.new()]
-			for tool: SurfaceTool in pair:
-				tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-			chunks[key] = pair
-		var pair: Array = chunks[key]
+			var tool := SurfaceTool.new()
+			tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+			chunks[key] = tool
 		# Built where it stands, then put into its square.
 		var built := SurfaceTool.new()
 		built.begin(Mesh.PRIMITIVE_TRIANGLES)
-		var plain := SurfaceTool.new()
-		plain.begin(Mesh.PRIMITIVE_TRIANGLES)
 		var middle := Vector3(0.0, size.y * 0.5, 0.0)
-		masonry(built, middle, size, hash(where.origin.snappedf(0.01)))
-		box(plain, middle, size)
+		box(built, middle, size)
 		_collide(body, where, middle, size)
 		if piece.kind == MazePiece.Kind.WALL:
 			for moulding: Array in mouldings(size):
 				box(built, moulding[0], moulding[1])
-				box(plain, moulding[0], moulding[1])
 				_collide(body, where, moulding[0], moulding[1])
-		(pair[0] as SurfaceTool).append_from(built.commit(), 0, where)
-		(pair[1] as SurfaceTool).append_from(plain.commit(), 0, where)
+		(chunks[key] as SurfaceTool).append_from(built.commit(), 0, where)
 	var materials := {}
 	for key: Array in chunks:
 		if not materials.has(key[0]):
-			materials[key[0]] = MazeStone.wall(key[0])
-		var material: Material = materials[key[0]]
-		var pair: Array = chunks[key]
-		var near := MeshInstance3D.new()
-		near.mesh = (pair[0] as SurfaceTool).commit()
-		near.material_override = material
-		near.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		near.visibility_range_end = DETAIL
-		near.visibility_range_end_margin = 8.0
-		near.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED
-		body.add_child(near)
-		var plain_mesh := (pair[1] as SurfaceTool).commit()
-		var far := MeshInstance3D.new()
-		far.mesh = plain_mesh
-		far.material_override = material
-		far.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		far.visibility_range_begin = DETAIL
-		far.visibility_range_begin_margin = 8.0
-		body.add_child(far)
-		var shadow := MeshInstance3D.new()
-		shadow.mesh = plain_mesh
-		shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
-		body.add_child(shadow)
+			# (laid on in the world's space, so that the pieces meet without seams)
+			materials[key[0]] = Wall.material_for(key[0], true)
+		var walls := MeshInstance3D.new()
+		walls.mesh = (chunks[key] as SurfaceTool).commit()
+		walls.material_override = materials[key[0]]
+		body.add_child(walls)
+
+
+## The concrete a piece is made of (one of Wall's looks): the great walls between
+## rings precast slabs, everything else cast concrete.
+static func surface_of(piece: MazePiece) -> Wall.Look:
+	return Wall.Look.SLABS if piece.great else Wall.Look.CAST
 
 
 ## A box to bump into, `size` round `middle` in the space of `where`.
@@ -289,33 +269,49 @@ func _ground() -> void:
 	add_child(body)
 
 
-## The pines, each where a tree piece stands, as big as its scale, as one
-## MultiMesh for each of a few kinds of pine.
+## The pines, each where a tree piece stands, as big as its scale: a MultiMesh for
+## each of a few kinds of pine in each square of `TREE_SQUARE` metres (so squares
+## off the screen are not drawn, nor drawn into the shadows), the whole tree near
+## and a plainer one without a shadow past `TREE_NEAR` metres.
+const TREE_SQUARE := 48.0
+const TREE_NEAR := 70.0
+
+
 func _trees(pieces: MazeLayout) -> void:
 	var pine := PineTree.new()
 	pine.height = 13.0
 	pine.seed = maze.maze_seed % 1000
+	var plain := pine.simple()
 	var kinds := 3
-	var placed := []
-	for k in kinds:
-		placed.append([])
+	# [square, kind] -> transforms
+	var groups := {}
 	for piece in pieces.pieces(MazePiece.Kind.TREE):
 		var k := absi(hash(piece.position.snappedf(0.1))) % kinds
-		placed[k].append(piece.transform)
-	for k in kinds:
-		if placed[k].is_empty():
-			continue
-		var multi := MultiMesh.new()
-		multi.transform_format = MultiMesh.TRANSFORM_3D
-		multi.mesh = pine.mesh(k)
-		multi.instance_count = placed[k].size()
-		for i in placed[k].size():
-			multi.set_instance_transform(i, placed[k][i])
-		var trees := MultiMeshInstance3D.new()
-		trees.name = "Pines%d" % k
-		trees.multimesh = multi
-		trees.material_override = pine._material()
-		add_child(trees)
+		var key := [Vector2i(floori(piece.position.x / TREE_SQUARE), floori(piece.position.z / TREE_SQUARE)), k]
+		if not groups.has(key):
+			groups[key] = []
+		groups[key].append(piece.transform)
+	for key: Array in groups:
+		var placed: Array = groups[key]
+		for detailed: bool in [true, false]:
+			var multi := MultiMesh.new()
+			multi.transform_format = MultiMesh.TRANSFORM_3D
+			multi.mesh = pine.mesh(key[1]) if detailed else plain.mesh(key[1])
+			multi.instance_count = placed.size()
+			for i in placed.size():
+				multi.set_instance_transform(i, placed[i])
+			var trees := MultiMeshInstance3D.new()
+			trees.multimesh = multi
+			trees.material_override = pine._material()
+			trees.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+			if detailed:
+				trees.visibility_range_end = TREE_NEAR
+				trees.visibility_range_end_margin = 10.0
+			else:
+				trees.visibility_range_begin = TREE_NEAR
+				trees.visibility_range_begin_margin = 10.0
+				trees.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(trees)
 
 
 ## The pale light that stands up past the exit: a tall faint beam and a lamp at its foot.

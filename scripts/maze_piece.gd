@@ -101,13 +101,13 @@ func _refresh() -> void:
 			var tool := SurfaceTool.new()
 			tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 			var s := box_size()
-			MazeBuilder.masonry(tool, Vector3(0.0, s.y * 0.5, 0.0), s, hash(global_position.snappedf(0.01)))
+			MazeBuilder.box(tool, Vector3(0.0, s.y * 0.5, 0.0), s)
 			if kind == Kind.WALL:
 				for moulding: Array in MazeBuilder.mouldings(s):
 					MazeBuilder.box(tool, moulding[0], moulding[1])
 			var mesh := MeshInstance3D.new()
 			mesh.mesh = tool.commit()
-			mesh.material_override = MazeStone.wall(s.y)
+			mesh.material_override = Wall.material_for(MazeBuilder.surface_of(self), true)
 			# (drawn at the box's own size: undo the node's scale, which is in `size` already)
 			mesh.scale = Vector3.ONE / scale.abs().max(Vector3.ONE * 0.001)
 			_shown = mesh

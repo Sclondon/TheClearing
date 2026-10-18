@@ -65,7 +65,12 @@ from the seed. Generate again replaces everything in the layout.
   2.6 m up so it takes a jump); and rope bridges (`scripts/rope_bridge.gd`, `RopeBridge`: a chain of points that
   sags, dips under anyone in the group `bridge_weights` and sways, its planks moving bodies) between terraces
   across a hall and between wall tops.
-- `scripts/maze_stone.gd` (`MazeStone`): the wall and ground shaders. The stone is Outside's `Sandstone`
+- `scripts/wall.gd` (`Wall`, scene `scenes/wall.tscn`): a wall as one textured box, width, height and depth in the
+  Inspector, in one of several concretes (photographed, from Poly Haven, CC0: `textures/polyhaven/CREDITS.md`; or
+  made by `tools/make_wall_textures.gd`), the repeats hidden by a shader that shifts the texture about and lays
+  broad tone and rain streaks over it. The maze's walls are drawn with it (`Wall.material_for`): cast concrete inside
+  the rings, precast slabs between them.
+- `scripts/maze_stone.gd` (`MazeStone`): the ground shader (and the old stone wall shader, no longer used). The stone is Outside's `Sandstone`
   shader at a giant's scale (blocks 5 m long), made grey and damp: dark streaks run down from the joints, the
   foot of every wall is soaked and mossy, and ivy hangs in curtains from the top. Lit in hard bands like the figures.
 - `scripts/world.gd` (`World`): one round. Sky, fog and sun; the maze; this player (`player.tscn`, Outside's boy

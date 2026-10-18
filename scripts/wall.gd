@@ -2,19 +2,36 @@
 class_name Wall
 extends StaticBody3D
 ## A wall: one solid box, `width` along X, `height` up and `depth` along Z, that
-## stands on its origin (the middle of its base). It is drawn with `texture`,
-## tiled across every face at its true size (one tile every `tile_size` metres),
-## so a bigger wall shows more stone, not stretched stone; and it can be bumped
-## into. Change any of it in the Inspector and it is redrawn at once.
+## stands on its origin (the middle of its base), and can be bumped into. Change
+## any of it in the Inspector and it is redrawn at once.
 ##
-## The looks are plain concrete (the default), brutalist concretes, and the old stone blocks (textures/, made by
-## tools/make_wall_textures.gd and tools/make_stone_texture.gd).
+## It is drawn with a texture (with its relief and roughness) laid on each face
+## at its true size, one tile every `tile_size` metres, so a bigger wall shows more
+## concrete, not stretched concrete. So that a big wall does not look like the same
+## square over and over, the texture is broken up (`break_up`): a slow noise across
+## the wall chooses which shifted copy of it shows where, blended where they meet
+## (shifted only, never turned, so formboard lines and ribs keep their way), and a
+## broad, slow change of tone is laid over it all (`variation`).
+##
+## The looks are photographed concrete from Poly Haven (CC0; textures/polyhaven/,
+## see its CREDITS.md), concretes made by tools/make_wall_textures.gd, and the old
+## stone blocks; or Custom, to keep textures of your own. Wall.material_for gives
+## the same surface to anything else (the maze's walls are drawn with it).
 
 # (numbered, so that a wall saved with a look keeps it as more are added)
-enum Look { CONCRETE = 6, CONCRETE_PANELS = 0, BOARD_MARKED = 1, WEATHERED = 2, MONOLITH = 3, STONE_BLOCKS = 4, CUSTOM = 5 }
-## Each look's texture (textures/<name>.png and <name>_normal.png) and how many
-## metres a tile of it covers.
+enum Look {
+	CAST = 7, SLABS = 8, GROOVED = 9, ROUGH = 10, RIBBED = 11,
+	CONCRETE = 6, CONCRETE_PANELS = 0, BOARD_MARKED = 1, WEATHERED = 2, MONOLITH = 3, STONE_BLOCKS = 4,
+	CUSTOM = 5,
+}
+## Each look's maps (a path with %s for diff, nor_gl and rough; or the name of a
+## made texture and its _normal) and how many metres one tile of them covers.
 const LOOKS := {
+	Look.CAST: ["polyhaven/concrete_wall_007/concrete_wall_007_%s_2k.jpg", 2.16],
+	Look.SLABS: ["polyhaven/concrete_slab_wall_02/concrete_slab_wall_02_%s_2k.jpg", 2.1],
+	Look.GROOVED: ["polyhaven/concrete/concrete_%s_2k.jpg", 4.0],
+	Look.ROUGH: ["polyhaven/rough_concrete/rough_concrete_%s_2k.jpg", 1.23],
+	Look.RIBBED: ["polyhaven/ribbed_concrete_wall/ribbed_concrete_wall_%s_2k.jpg", 2.0],
 	Look.CONCRETE: ["concrete", 6.0],
 	Look.CONCRETE_PANELS: ["concrete_panels", 9.6],
 	Look.BOARD_MARKED: ["concrete_boards", 7.0],
@@ -22,6 +39,96 @@ const LOOKS := {
 	Look.MONOLITH: ["concrete_monolith", 12.0],
 	Look.STONE_BLOCKS: ["stone_blocks", 8.0],
 }
+
+## The surface: in the box's own space, so the texture stays put on the wall
+## wherever it stands. (With `world_space` on, in the world's instead, so that the
+## many boxes of the maze's walls meet without seams.)
+const SHADER := """
+shader_type spatial;
+
+uniform sampler2D albedo_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D normal_map : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D rough_map : hint_default_white, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform bool has_normal = true;
+uniform bool has_rough = false;
+uniform bool world_space = false;
+uniform float roughness = 0.9;
+uniform float tile_size = 2.0;
+uniform float relief = 1.0;
+uniform vec4 tint : source_color = vec4(1.0);
+uniform float break_up = 1.0;
+uniform float variation = 0.15;
+uniform float weathering = 0.35;
+
+varying vec3 at;
+varying vec3 facing;
+
+float hash(vec2 p) {
+	p = fract(p * vec2(123.34, 456.21));
+	p += dot(p, p + 45.32);
+	return fract(p.x * p.y);
+}
+
+float noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	vec2 s = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), s.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), s.x), s.y);
+}
+
+void vertex() {
+	at = world_space ? (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz : VERTEX;
+	facing = world_space ? mat3(MODEL_MATRIX) * NORMAL : NORMAL;
+}
+
+void fragment() {
+	vec3 n = normalize(facing);
+	// The face's own across and up: up the wall on its sides, and away on its top and bottom.
+	vec3 v_axis = abs(n.y) > 0.5 ? vec3(0.0, 0.0, -1.0) : vec3(0.0, 1.0, 0.0);
+	vec3 u_axis = normalize(cross(v_axis, n));
+	vec2 metres = vec2(dot(at, u_axis), -dot(at, v_axis));
+	vec2 uv = metres / tile_size;
+	vec2 dx = dFdx(uv);
+	vec2 dy = dFdy(uv);
+
+	// Which shifted copy shows here (Inigo Quilez's way of hiding repeats): a slow
+	// noise picks between neighbouring offsets, and the two are blended where it turns.
+	float k = noise(uv * 0.21) * 7.0 + noise(uv * 0.53) * 1.0;
+	float i = floor(k);
+	float f = fract(k);
+	vec2 off_a = sin(vec2(3.0, 7.0) * i) * break_up;
+	vec2 off_b = sin(vec2(3.0, 7.0) * (i + 1.0)) * break_up;
+	vec4 a = textureGrad(albedo_map, uv + off_a, dx, dy);
+	vec4 b = textureGrad(albedo_map, uv + off_b, dx, dy);
+	float w = smoothstep(0.2, 0.8, f - 0.1 * dot(a.rgb - b.rgb, vec3(1.0))) * step(0.001, break_up);
+	vec3 colour = mix(a.rgb, b.rgb, w);
+
+	// A broad, slow change of tone across the whole wall, in metres, not tiles.
+	float broad = noise(metres / 17.0) * 0.65 + noise(metres / 6.5 + 31.0) * 0.35;
+	colour *= 1.0 + (broad - 0.5) * 2.0 * variation;
+	// Weathering: soft dark streaks run down it where rain has, long and few, in metres.
+	float run = noise(vec2(metres.x / 1.3, metres.y / 26.0)) * 0.7 + noise(vec2(metres.x / 0.45, metres.y / 9.0) + 7.0) * 0.3;
+	float streak = smoothstep(0.55, 0.85, run) * (0.6 + 0.4 * noise(metres / 11.0 + 3.0));
+	colour *= 1.0 - streak * weathering;
+	ALBEDO = colour * tint.rgb;
+
+	if (has_rough) {
+		ROUGHNESS = mix(textureGrad(rough_map, uv + off_a, dx, dy).r, textureGrad(rough_map, uv + off_b, dx, dy).r, w);
+	} else {
+		ROUGHNESS = roughness;
+	}
+	SPECULAR = 0.3;
+
+	vec3 bent = n;
+	if (has_normal) {
+		vec3 t = mix(textureGrad(normal_map, uv + off_a, dx, dy).rgb, textureGrad(normal_map, uv + off_b, dx, dy).rgb, w) * 2.0 - 1.0;
+		t.xy *= relief;
+		// (an OpenGL normal map: red across, green up the picture)
+		bent = normalize(u_axis * t.x + v_axis * t.y + n * t.z);
+	}
+	NORMAL = normalize((VIEW_MATRIX * (world_space ? vec4(bent, 0.0) : MODEL_MATRIX * vec4(bent, 0.0))).xyz);
+}
+"""
 
 @export_range(0.1, 200.0, 0.1, "or_greater", "suffix:m") var width := 14.0:
 	set(value):
@@ -35,23 +142,24 @@ const LOOKS := {
 	set(value):
 		depth = value
 		_build()
-## Its surface, chosen from LOOKS (which sets the texture, its relief and a
-## fitting tile size), or Custom to keep a texture of your own.
-@export var look := Look.CONCRETE:
+## Its surface, chosen from LOOKS (which sets the textures and a fitting tile
+## size), or Custom to keep textures of your own.
+@export var look := Look.CAST:
 	set(value):
 		look = value
-		if look != Look.CUSTOM:
-			var chosen: Array = LOOKS[look]
-			texture = load("res://textures/%s.png" % chosen[0])
-			normal_map = load("res://textures/%s_normal.png" % chosen[0])
-			tile_size = chosen[1]
+		if look != Look.CUSTOM and LOOKS.has(look):
+			var maps := maps_for(look)
+			texture = maps[0]
+			normal_map = maps[1]
+			roughness_map = maps[2]
+			tile_size = LOOKS[look][1]
 		_build()
-@export var texture: Texture2D = preload("res://textures/concrete.png"):
+@export var texture: Texture2D:
 	set(value):
 		texture = value
 		_build()
-## Its relief: a normal map laid on as the texture is (and how strong).
-@export var normal_map: Texture2D = preload("res://textures/concrete_normal.png"):
+## Its relief: a normal map (OpenGL, green up), laid on as the texture is, and how strong.
+@export var normal_map: Texture2D:
 	set(value):
 		normal_map = value
 		_build()
@@ -59,10 +167,34 @@ const LOOKS := {
 	set(value):
 		relief = value
 		_build()
+## Where it is rough and where smoother; without one, `roughness` all over.
+@export var roughness_map: Texture2D:
+	set(value):
+		roughness_map = value
+		_build()
+@export_range(0.0, 1.0, 0.01) var roughness := 0.9:
+	set(value):
+		roughness = value
+		_build()
 ## How many metres one tile of the texture covers.
-@export_range(0.5, 50.0, 0.1, "or_greater", "suffix:m") var tile_size := 6.0:
+@export_range(0.25, 50.0, 0.01, "or_greater", "suffix:m") var tile_size := 2.16:
 	set(value):
 		tile_size = value
+		_build()
+## How much the texture is broken up so that its repeats do not show (0: not at all).
+@export_range(0.0, 1.0, 0.01) var break_up := 1.0:
+	set(value):
+		break_up = value
+		_build()
+## How much its tone wanders across the wall, broadly and slowly.
+@export_range(0.0, 0.5, 0.01) var variation := 0.22:
+	set(value):
+		variation = value
+		_build()
+## How much rain has streaked it, in soft dark runs down its faces.
+@export_range(0.0, 1.0, 0.01) var weathering := 0.35:
+	set(value):
+		weathering = value
 		_build()
 ## Multiplied over the texture.
 @export var tint := Color.WHITE:
@@ -70,12 +202,57 @@ const LOOKS := {
 		tint = value
 		_build()
 
+static var _shader: Shader
+
 var _mesh: MeshInstance3D
 var _shape: CollisionShape3D
 
 
 func _ready() -> void:
 	_build()
+
+
+## A look's [colour, normal, roughness] textures (null where it has none).
+static func maps_for(chosen: Look) -> Array:
+	var path: String = LOOKS[chosen][0]
+	if "%s" in path:
+		return [load("res://textures/" + path % "diff"), load("res://textures/" + path % "nor_gl"), load("res://textures/" + path % "rough")]
+	var rough := "res://textures/%s_rough.png" % path
+	return [load("res://textures/%s.png" % path), load("res://textures/%s_normal.png" % path), load(rough) if ResourceLoader.exists(rough) else null]
+
+
+## The surface of a look, as a material for anything (`world_space`: laid on in the
+## world's space, so that many boxes meet without seams).
+static func material_for(chosen: Look, world_space := false, tint := Color.WHITE) -> ShaderMaterial:
+	var maps := maps_for(chosen)
+	var material := ShaderMaterial.new()
+	material.shader = shader()
+	_apply(material, maps[0], maps[1], maps[2], 0.9, LOOKS[chosen][1], 1.0, tint, 1.0, 0.22, 0.35)
+	material.set_shader_parameter(&"world_space", world_space)
+	return material
+
+
+## The wall's shader, made once.
+static func shader() -> Shader:
+	if _shader == null:
+		_shader = Shader.new()
+		_shader.code = SHADER
+	return _shader
+
+
+static func _apply(material: ShaderMaterial, colour: Texture2D, bump: Texture2D, rough: Texture2D, rough_value: float, tile: float, strength: float, shade: Color, broken: float, wander: float, rain := 0.35) -> void:
+	material.set_shader_parameter(&"weathering", rain)
+	material.set_shader_parameter(&"albedo_map", colour)
+	material.set_shader_parameter(&"normal_map", bump)
+	material.set_shader_parameter(&"has_normal", bump != null)
+	material.set_shader_parameter(&"rough_map", rough)
+	material.set_shader_parameter(&"has_rough", rough != null)
+	material.set_shader_parameter(&"roughness", rough_value)
+	material.set_shader_parameter(&"tile_size", tile)
+	material.set_shader_parameter(&"relief", strength)
+	material.set_shader_parameter(&"tint", shade)
+	material.set_shader_parameter(&"break_up", broken)
+	material.set_shader_parameter(&"variation", wander)
 
 
 func _build() -> void:
@@ -92,24 +269,36 @@ func _build() -> void:
 	box.size = size
 	_mesh.mesh = box
 	_mesh.position = Vector3(0.0, height * 0.5, 0.0)
-	var material := StandardMaterial3D.new()
-	material.albedo_texture = texture
-	material.albedo_color = tint
-	if normal_map:
-		material.normal_enabled = true
-		material.normal_texture = normal_map
-		material.normal_scale = relief
-	material.roughness = 1.0
-	material.metallic_specular = 0.2
-	# (laid on from each side in the box's own metres, so it tiles at the same size on every face)
-	material.uv1_triplanar = true
-	material.uv1_scale = Vector3.ONE / tile_size
-	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
-	_mesh.material_override = material
+	var material := _mesh.material_override as ShaderMaterial
+	if material == null:
+		material = ShaderMaterial.new()
+		material.shader = shader()
+		_mesh.material_override = material
+	_apply(material, texture, normal_map, roughness_map, roughness, tile_size, relief, tint, break_up, variation, weathering)
 	var shape := BoxShape3D.new()
 	shape.size = size
 	_shape.shape = shape
 	_shape.position = _mesh.position
+
+
+## Gives any setting that is empty its default. (When the editor reloads this
+## script after it has changed, a wall already in an open scene can come back with
+## settings it did not have before left empty.)
+func _fill_missing() -> void:
+	var defaults := {
+		"width": 14.0, "height": 34.0, "depth": 3.2, "look": Look.CAST, "relief": 1.0, "roughness": 0.9,
+		"tile_size": 2.16, "break_up": 1.0, "variation": 0.22, "weathering": 0.35, "tint": Color.WHITE,
+	}
+	for key: String in defaults:
+		if get(key) == null:
+			set(key, defaults[key])
+	if look != Look.CUSTOM and LOOKS.has(look) and texture == null:
+		var maps := maps_for(look)
+		texture = maps[0]
+		if normal_map == null:
+			normal_map = maps[1]
+		if roughness_map == null:
+			roughness_map = maps[2]
 
 
 ## The internal child called `called` of class `kind`, made if there is none (and
@@ -127,20 +316,3 @@ func _own_child(called: String, kind: Variant) -> Node:
 		found.name = called
 		add_child(found, false, Node.INTERNAL_MODE_BACK)
 	return found
-
-
-## Gives any setting that is empty its default. (When the editor reloads this
-## script after it has changed, a wall already in an open scene can come back with
-## settings it did not have before left empty.)
-func _fill_missing() -> void:
-	var defaults := {
-		"width": 14.0, "height": 34.0, "depth": 3.2, "look": Look.CONCRETE, "relief": 1.0, "tile_size": 6.0, "tint": Color.WHITE,
-	}
-	for key: String in defaults:
-		if get(key) == null:
-			set(key, defaults[key])
-	if look != Look.CUSTOM:
-		if texture == null:
-			texture = load("res://textures/%s.png" % LOOKS[look][0])
-		if normal_map == null:
-			normal_map = load("res://textures/%s_normal.png" % LOOKS[look][0])

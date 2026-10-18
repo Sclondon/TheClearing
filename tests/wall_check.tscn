@@ -24,36 +24,36 @@ transform = Transform3D(0.766, -0.415, 0.491, 0, 0.764, 0.645, -0.643, -0.495, 0
 light_energy = 0.8
 shadow_enabled = true
 
-[node name="Panels" parent="." instance=ExtResource("1")]
+[node name="Cast" parent="." instance=ExtResource("1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 0, 0)
 width = 13.0
 height = 26.0
 
 [node name="Boards" parent="." instance=ExtResource("1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0, 0)
-look = 1
+look = 8
 width = 13.0
 height = 26.0
 
 [node name="Weathered" parent="." instance=ExtResource("1")]
-look = 2
+look = 9
 width = 13.0
 height = 26.0
 
 [node name="Monolith" parent="." instance=ExtResource("1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, 0)
-look = 3
+look = 10
 width = 13.0
 height = 26.0
 
 [node name="Stone" parent="." instance=ExtResource("1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 0)
-look = 4
+look = 11
 width = 13.0
 height = 26.0
 
 [node name="Snap" type="Node" parent="."]
 script = ExtResource("2")
 out = "user://wall_view.png"
-eye = Vector3(0, 13, 46)
-look_at_point = Vector3(0, 12, 0)
+eye = Vector3(-6, 9, 30)
+look_at_point = Vector3(-8, 11, 0)
