@@ -103,7 +103,9 @@ leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened i
   wall top, where he can walk to the next pier; vines to swing on (`scripts/vine.gd`, `Vine`, a `Rope`, its end
   2.6 m up so it takes a jump); and rope bridges (`scripts/rope_bridge.gd`, `RopeBridge`: a chain of points that
   sags, dips under anyone in the group `bridge_weights` and sways, its planks moving bodies) between terraces
-  across a hall and between wall tops.
+  across a hall and between wall tops. And grappling hook spots (`scripts/grapple_spots.gd`, `GrappleSpots`, pieces
+  of kind ANCHOR: rings on corbels up the walls and at ledges' lips, hooks and pipes; one MultiMesh per look per 48 m
+  square, found by the hook through `NearIndex`), by MazeStyle "Grappling hook spots".
 - `scenes/wall_gallery.tscn` (`scripts/wall_gallery.gd`, made by `tools/make_wall_gallery.gd`): a room of every
   wall style and look side by side, each signed; play it to walk among them.
 - `scripts/wall.gd` (`Wall`, scene `scenes/wall.tscn`): a wall in a style (Basic: a plain box; Cornice, Pilasters,
@@ -166,7 +168,8 @@ leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened i
   backpack; `Player.act_first` is how the act button takes things) and keeps the room in step (K_JSON `{"loot": ...}`:
   the host says who gets what, as it runs the hunters). `LootItem` (a loose body the Player carries and throws; a
   torch and a flare burn with GameCommon's `Fire`) and `LootHook` (the character controller's `GrappleHook`, made to
-  feel for the lip of any ledge in reach), `LootGlint` (the glint off one lying about), `LootHud` and `LootMap` (the
+  feel for the lip of any ledge in reach; it also catches the hook spots and wraps hanging and strung vines),
+  `LootGlint` (the glint off one lying about), `LootHud` and `LootMap` (the
   inventory, the prompt, a map scrap read, a gun's rounds), `Stagger` (a hunter knocked back by a spear, a blow or a
   shot, or felled by a shot), `FireWard` (what the swarms,
   `MazeEnemy.fears_fire`, keep off), `LootGunFx` (a shot's flash, streak and sound: the CC0 recordings in
@@ -202,8 +205,8 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/hunt_test.gd      # enemies in a round; caught, back to the clearing
 "$G" --headless --audio-driver Dummy --path . -s res://tests/runner_test.gd   # runners: a route, ivy, drawing a hunter, caught, leading to a gate, a puppet
 "$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/runner_shots.gd -- <folder>   # pictures of runners
-"$G" --headless --audio-driver Dummy --path . -s res://tests/loot_test.gd     # what lies about and the camps: placed, taken, slots, torch, spear, hook, ladder, map, weapons swung and guns fired, rarity by the rules, the room's news
-"$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/loot_shots.gd -- <folder> [1|1c|2|3|4|5|6|7|8|w|g|l|r]   # pictures of them (w: weapons swung, g: guns fired, l: weapons lying, r: a friend fighting)
+"$G" --headless --audio-driver Dummy --path . -s res://tests/loot_test.gd     # what lies about and the camps: placed, taken, slots, torch, spear, hook (a ledge, a route of hook spots, a hanging vine), ladder, map, weapons swung and guns fired, rarity by the rules, the room's news
+"$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/loot_shots.gd -- <folder> [1|1c|2|3|4|5|6|7|8|9|w|g|l|r]   # pictures of them (9: hook spots and a vine, w: weapons swung, g: guns fired, l: weapons lying, r: a friend fighting)
 "/c/Program Files/Blender Foundation/Blender 4.3/blender.exe" --background --python props/tools/build_props.py [-- <folder> [names]]   # their models (and pictures)
 "$G" --headless --path . -s res://tests/layout_test.gd    # a layout changed by hand, saved, loaded and played
 "$G" --editor --path . res://tests/editor_check.tscn       # (after layout_test) what the editor shows, saved to user://editor_view.png

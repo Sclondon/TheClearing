@@ -4,7 +4,9 @@ extends SceneTree
 ## its fire at dusk; its smoke seen from far across the clearing; each thing
 ## lying in the grass (all together, and each close); the boy with a torch in a
 ## hall at night; on the grappling hook's rope; throwing the spear; the
-## inventory on the screen; (w) a stick, a bat and a sword held and swung; (g)
+## inventory on the screen; ("9", alone, in the game's own sections) a route of
+## grappling hook spots, the ring above marked, and the hook thrown at a hanging
+## vine, him hauled in to it and on it; (w) a stick, a bat and a sword held and swung; (g)
 ## the guns held and fired, a ghoul shot, the rounds on the HUD; (l) the weapons
 ## lying in a hall; (r) a friend in the room with a bat and a shotgun. Needs a real window:
 ##
@@ -26,6 +28,9 @@ func _initialize() -> void:
 		folder = args[0]
 	if args.size() > 1:
 		only = args[1]
+	# (the hook spots and the vines, alone: in the game's own sections, as tests/loot_test.gd has them)
+	if only.begins_with("9"):
+		MazeStyle.chosen = MazeStyle.defaults()
 	DirAccess.make_dir_recursive_absolute(folder)
 	main = load("res://main.tscn").instantiate()
 	main.testing = true
@@ -475,8 +480,129 @@ func _run() -> void:
 		await wait(0.3)
 		await shot("r2_friend_firing")
 
+	# 9. Grappling hook spots: a route of corbels up a wall, the ring above marked
+	# in reach (and the next faintly); and the hook thrown at a hanging vine.
+	if wanted("9"):
+		empty_pockets()
+		world.day.set_hour(15.0)
+		world.put_player(start, 0.0)
+		await take(LootItem.Kind.HOOK, 850000)
+		var route := _route_start()
+		if not route.is_empty():
+			var ring_at: Vector3 = route[0]
+			var out: Vector3 = route[1]
+			var flank := Vector3(-out.z, 0.0, out.x)
+			world.put_player(route[2] + out * 0.2 + flank * 1.2 + Vector3.UP * 0.05, atan2(-out.x, -out.z))
+			world.camera.snap()
+			await wait(0.3)
+			loot.draw(loot.slots.find(850000))
+			await wait(0.8)
+			var him := player.global_position
+			frame(him + out * 7.0 + flank * 3.0 + Vector3.UP * 1.0, him.lerp(ring_at, 0.6) - out * 0.5)
+			await shot("9a_spot_marked")
+			frame(him + out * 16.0 + flank * 6.0 + Vector3.UP * 4.0, him + Vector3.UP * 8.0)
+			await shot("9b_route_up_the_wall")
+			player._act()
+			for i in 120:
+				await physics_frame
+				if player.state == Player.State.ROPE:
+					break
+			await wait(0.3)
+			Input.action_press(&"act")
+			for i in 900:
+				await physics_frame
+				if player.state == Player.State.HANG and i % 20 == 0:
+					player._queue_jump()
+				if player.state == Player.State.FREE and player.is_on_floor() and player.global_position.y > ring_at.y - 0.5:
+					break
+			Input.action_release(&"act")
+			await wait(1.0)
+			him = player.global_position
+			frame(him + out * 6.0 + flank * 2.5 + Vector3.UP * 0.5, him + Vector3.UP * 2.5)
+			await shot("9d_on_the_corbel_next_marked")
+		var hanging := _hanging_vine()
+		if not hanging.is_empty():
+			var vine: Vine = hanging[0]
+			var stand: Vector3 = hanging[1]
+			loot.stow()
+			var to_vine := vine.global_position - stand
+			to_vine.y = 0.0
+			world.put_player(stand, atan2(to_vine.x, to_vine.z))
+			world.camera.snap()
+			await wait(0.4)
+			loot.draw(loot.slots.find(850000))
+			await wait(0.8)
+			var across := to_vine.normalized().cross(Vector3.UP)
+			var mid := stand + to_vine * 0.5
+			frame(mid + across * 7.5 + Vector3.UP * 2.2, mid + Vector3.UP * 2.6)
+			await shot("9e_vine_marked")
+			player._act()
+			for i in 240:
+				await physics_frame
+				if player.state == Player.State.ROPE and is_instance_valid(player._grapple) and player._grapple.get(&"hauling"):
+					break
+			await wait(0.15)
+			await shot("9f_hauled_in_to_the_vine")
+			for i in 120:
+				await physics_frame
+				if player._rope == vine:
+					break
+			await wait(0.35)
+			await shot("9g_on_the_hooked_vine")
+			await wait(0.5)
+			var him := player.global_position
+			frame(him + across * 6.0 + Vector3.UP * 0.5, him + Vector3.UP * 0.8)
+			await shot("9h_on_the_hooked_vine_close")
+
 	print("done")
 	quit()
+
+
+## The first corbel of a hook route in the first ring (as tests/loot_test.gd
+## finds it): [its ring, the way out of its wall, where to stand under it].
+func _route_start() -> Array:
+	var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
+	for spots: GrappleSpots in world.maze_features().spots:
+		for i in spots.points.size():
+			if spots.looks[i] != GrappleSpots.Look.RING or maze.ring_of(maze.cell_at(spots.points[i])) != 1:
+				continue
+			var at := spots.points[i]
+			var out := spots.out_of(i)
+			var wall := space.intersect_ray(PhysicsRayQueryParameters3D.create(at + Vector3.DOWN * 0.3 - out * 1.3, at + Vector3.DOWN * 0.3 - out * 1.6, 1))
+			var behind := space.intersect_ray(PhysicsRayQueryParameters3D.create(at + out * 0.3 + Vector3.DOWN * 0.3, at - out * 0.5 + Vector3.DOWN * 0.3, 1))
+			if wall.is_empty() or behind.is_empty() or (behind.position as Vector3).distance_to(at) > 0.6:
+				continue
+			var under := at - out * 0.5 + Vector3.DOWN * 1.0
+			var down := space.intersect_ray(PhysicsRayQueryParameters3D.create(under, under + Vector3.DOWN * 12.0, 1))
+			if down.is_empty() or under.y - (down.position as Vector3).y > 8.0 or (down.normal as Vector3).y < 0.8:
+				continue
+			return [at, out, Vector3(at.x, (down.position as Vector3).y, at.z) - out * (MazeFeatures.CORBEL.y + GrappleSpots.RING_OUT - 0.65)]
+	return []
+
+
+## A hanging vine in the first ring out of reach standing, and where to stand 3 m from it: [the vine, there].
+func _hanging_vine() -> Array:
+	var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
+	for vine: Vine in world.maze_features().vines:
+		var top := vine.global_position
+		if maze.ring_of(maze.cell_at(top)) != 1:
+			continue
+		var ground_y := maze.ground_height(top)
+		var bottom := vine.bottom_y()
+		if top.y - ground_y < 6.0 or bottom - ground_y < 1.8 or bottom - ground_y > 4.0:
+			continue
+		for k in 8:
+			var way := Vector3(sin(k * TAU / 8.0), 0.0, cos(k * TAU / 8.0))
+			var stand := Vector3(top.x, ground_y + 0.05, top.z) + way * 3.0
+			var low := Vector3(top.x, ground_y + 1.0, top.z)
+			if not space.intersect_ray(PhysicsRayQueryParameters3D.create(low, stand + Vector3.UP * 1.0 + way * 0.6, 1)).is_empty():
+				continue
+			# (and room to look at it from the side)
+			var across := way.cross(Vector3.UP)
+			if not space.intersect_ray(PhysicsRayQueryParameters3D.create(low + way * 1.5, low + way * 1.5 + across * 7.0, 1)).is_empty():
+				continue
+			return [vine, stand]
+	return []
 
 
 ## Fills the grass round `at` now (it fills as the camera comes near, a few squares a frame).

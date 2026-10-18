@@ -2,7 +2,7 @@
 class_name MazePiece
 extends Node3D
 ## One piece of a maze laid out by MazeLayout: a run of wall, a pier, a terrace,
-## a patch of ivy, a vine, a rope bridge, a tree, a sewer pipe or the light past the exit. In
+## a patch of ivy, a vine, a rope bridge, a tree, a sewer pipe, a grappling hook spot or the light past the exit. In
 ## the editor each shows itself as it will be, and can be moved, turned, resized,
 ## copied or deleted by hand; in the game MazeBuilder.realize makes the real thing
 ## from it (the walls merged into a few meshes, the ivy an IvyClimb, and so on)
@@ -24,8 +24,11 @@ extends Node3D
 ## A pond (standing water in a hall: Ponds) lies with its origin in the middle of
 ## its still surface, `size` across (x and z) and as deep (y) at its deepest, its
 ## corners as round as `length`, with `width` fish in it; it is never turned.
+## A grappling hook spot (an anchor: an iron
+## ring, hook or pipe, GrappleSpots) is where the hook bites, its +Z out of the
+## wall it is on.
 
-enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, PROP, WIRE, POND }
+enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, PROP, WIRE, POND, ANCHOR }
 
 @export var kind := Kind.WALL:
 	set(value):
@@ -77,6 +80,11 @@ enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, 
 @export var lamp := false:
 	set(value):
 		lamp = value
+		_refresh()
+## What a grappling hook spot is (GrappleSpots.Look: a ring, a hook or a pipe).
+@export_enum("Ring", "Hook", "Pipe") var anchor := 0:
+	set(value):
+		anchor = value
 		_refresh()
 
 var _shown: Node3D
@@ -194,6 +202,13 @@ func _refresh() -> void:
 			_shown = MazeProps.shown(self)
 		Kind.POND:
 			_shown = Ponds.sheet(size)
+		Kind.ANCHOR:
+			var spot := MeshInstance3D.new()
+			spot.mesh = GrappleSpots.mesh_of(anchor)
+			spot.material_override = GrappleSpots.material()
+			# (as big as it is: undo the node's scale)
+			spot.scale = Vector3.ONE / scale.abs().max(Vector3.ONE * 0.001)
+			_shown = spot
 	if _shown:
 		# (shown, but not part of the scene: it is made again whenever it is opened)
 		add_child(_shown, false, Node.INTERNAL_MODE_BACK)
