@@ -1,0 +1,11 @@
+# A grey wolf: its look, every move and its howls, for any game (no thinking). Needs godot/dog.
+creatures/wolf/wolf.gd
+creatures/wolf/wolf_look.gd
+creatures/wolf/wolf_rig.gd
+creatures/wolf/wolf_voice.gd
+creatures/wolf/models/wolf_a.glb
+creatures/wolf/models/wolf_a_lo.glb
+creatures/wolf/models/wolf_b.glb
+creatures/wolf/models/wolf_b_lo.glb
+creatures/wolf/tools/.gdignore
+creatures/wolf/tools/build_wolf.py
