@@ -189,6 +189,9 @@ extends Resource
 ## Skinwalkers, each hidden among a pack of coyotes as one of them (one more
 ## pack is put in for any there is no pack for).
 @export_range(0, 2) var skinwalkers := 1
+## Martian tripods (MazeTripod), each striding round the ring over the walls,
+## its searchlight sweeping the halls. One at most: it is huge.
+@export_range(0, 1) var tripods := 1
 
 @export_group("Who else is in it")
 ## How many runners run the section's passages (MazeRunners, from the round's
