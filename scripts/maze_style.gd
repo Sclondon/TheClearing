@@ -67,6 +67,9 @@ extends Resource
 ## up (as shares of the lower wall's height).
 @export_range(0.0, 1.0) var strands := 0.0
 @export var strand_reach := Vector2(0.3, 0.75)
+## How thickly ferns, moss and tufts of grass grow along the foot of its walls (0
+## none, 1 all along every wall).
+@export_range(0.0, 1.0) var undergrowth := 0.0
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
@@ -102,6 +105,7 @@ static func avenues() -> MazeStyle:
 	style.wall_ivy = 0.1
 	style.wall_vines = 0.08
 	style.strands = 0.12
+	style.undergrowth = 0.8
 	return style
 
 

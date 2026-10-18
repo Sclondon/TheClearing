@@ -49,6 +49,24 @@ func _run() -> void:
 		camera.position = piece.position + out * 12.0 + Vector3.UP * 1.7
 		camera.look_at(piece.position + Vector3.UP * piece.length * 0.5)
 		await _shot("%s/ivy%d.png" % [folder, n])
+	# Along the foot of a wall in a hall, at his eye height.
+	var maze = world.maze
+	var shots := 0
+	for i in maze.size * maze.size:
+		var cell := Vector2i(i % maze.size, i / maze.size)
+		if maze.ring_of(cell) != 1 or maze.solid.has(cell) or maze.entrances.has(cell) or i % 97 != 0:
+			continue
+		for step: Vector2i in Maze.STEPS:
+			if maze.blocked(cell, step) and shots < 2:
+				var s := Vector3(step.x, 0.0, step.y)
+				var side := Vector3(-s.z, 0.0, s.x)
+				camera.position = maze.world(cell) - s * 3.0 - side * 6.0 + Vector3.UP * 1.6
+				camera.look_at(camera.position + side * 10.0 + s * 3.0 - Vector3.UP * 1.5)
+				await _shot("%s/foot%d.png" % [folder, shots])
+				shots += 1
+				break
+		if shots >= 2:
+			break
 	quit()
 
 
