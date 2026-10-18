@@ -32,7 +32,6 @@ var _code_typed := ""
 var _code_label: Label
 var _status: Label
 var _solo_code := ""
-var _preview_angle := 0.0
 var _preview_camera: Camera3D
 ## Talking to the others in a room (see Voice), kept from round to round.
 var voice: Voice
@@ -395,32 +394,72 @@ func _end_world() -> void:
 		_preview_camera = null
 
 
-## A maze seen from high up, turning slowly, behind the title and the lobby.
+## Behind the title and the lobby: down a long hall of the second section, at a
+## boy's height, the walls going up into the mist, drifting slowly along it.
 func _show_preview() -> void:
 	_end_world()
 	var view := World.new()
 	view.name = "Preview"
 	add_child(view)
 	view._sky()
-	# (seen from far off, through the game's mist it would be grey: thinned here, as in the editor)
-	for found: Node in view.find_children("*", "WorldEnvironment", true, false):
-		(found as WorldEnvironment).environment.fog_density = 0.0012
-		(found as WorldEnvironment).environment.fog_height_density = 0.0
 	var builder := MazeBuilder.new()
 	view.add_child(builder)
-	builder.build(Maze.generate(randi()))
+	var rules := Mazes.rules()
+	var maze := Maze.generate(randi(), 2, rules[0], rules[1], rules[2])
+	builder.build(maze)
+	_preview_hall = _longest_hall(maze, mini(2, maze.rings))
+	_preview_along = 0.0
 	_preview_camera = Camera3D.new()
-	_preview_camera.fov = 50.0
+	_preview_camera.fov = 60.0
 	view.add_child(_preview_camera)
 	_preview_camera.make_current()
 
 
+## Where the menu's camera goes: [start, end] of the longest straight run of open
+## hall in `ring` (by the middle of the hall where it is two cells wide).
+var _preview_hall: Array = []
+var _preview_along := 0.0
+
+
+static func _longest_hall(maze: Maze, ring: int) -> Array:
+	var best: Array = [Vector3.ZERO, Vector3.FORWARD * 40.0]
+	var longest := 0
+	for i in maze.size * maze.size:
+		var cell := Vector2i(i % maze.size, i / maze.size)
+		if maze.ring_of(cell) != ring or maze.solid.has(cell):
+			continue
+		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+			# (only from the start of a run: the cell behind is walled off)
+			if not maze.blocked(cell, -step):
+				continue
+			var run := 0
+			var at := cell
+			while not maze.blocked(at, step) and maze.ring_of(at + step) == ring:
+				at += step
+				run += 1
+			if run > longest:
+				longest = run
+				var across := Vector2i(-step.y, step.x)
+				var shift := Vector3.ZERO
+				for side: Vector2i in [across, -across]:
+					if not maze.blocked(cell, side):
+						shift = Vector3(side.x, 0.0, side.y) * Maze.CELL * 0.5
+						break
+				best = [maze.world(cell) + shift, maze.world(at) + shift]
+	return best
+
+
 func _process(delta: float) -> void:
-	if _preview_camera:
-		_preview_angle += delta * 0.05
-		var away := Vector3(sin(_preview_angle), 0.0, cos(_preview_angle))
-		_preview_camera.position = away * 260.0 + Vector3.UP * 240.0
-		_preview_camera.look_at(Vector3.UP * -20.0)
+	if _preview_camera and _preview_hall.size() == 2:
+		# (drifting along it at a walk's pace, a little sway, round again at its end)
+		var start: Vector3 = _preview_hall[0]
+		var end: Vector3 = _preview_hall[1]
+		var length := maxf(start.distance_to(end) - 20.0, 1.0)
+		_preview_along = fmod(_preview_along + delta * 0.9, length)
+		var way := (end - start).normalized()
+		var at := start + way * _preview_along + Vector3.UP * (1.65 + sin(_preview_along * 0.9) * 0.03)
+		_preview_camera.position = at
+		_preview_camera.look_at(at + way * 30.0 + Vector3.UP * 7.0 + way.cross(Vector3.UP) * sin(_preview_along * 0.07) * 2.0)
 	if world and _clock_label:
 		_clock_label.text = clock_text(world.out.get(world.slot, world.clock))
 	if _toast and _toast_time > 0.0:
