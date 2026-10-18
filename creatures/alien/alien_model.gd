@@ -62,7 +62,7 @@ const SKULL_SIZE := Vector4(0.168, 0.205, 0.185, 0.215)
 ## How far down the face goes below the middle of the skull, to the chin.
 const JAW := 0.215
 
-const SKIN := Color(0.6, 0.61, 0.62, 1.0)
+const SKIN := Color(0.44, 0.47, 0.46, 1.0)
 const EYE := Color(0.02, 0.022, 0.03, 0.0)
 const MOUTH := Color(0.36, 0.35, 0.36, 1.0)
 
@@ -73,7 +73,7 @@ render_mode cull_back;
 // The skin and eyes are the vertex colours; COLOR.a 0 marks what shines (the eyes).
 uniform float wrap = 0.25;
 uniform float flatness = 0.7;
-uniform float rim_gain = 0.35;
+uniform float rim_gain = 0.22;
 uniform float rim_width = 0.22;
 uniform float highlight = 1.4;
 uniform float gloss = 60.0;
@@ -268,6 +268,66 @@ static func _capped(rings: Array, length: float) -> Array:
 	return out
 
 
+## One tube through several segments, as one skin: each segment is [from, to,
+## rings [t, width, depth] (from 0 up to, not including, the next segment),
+## weights(t)]. The rings lie square to the way the tube goes there (the
+## middle way at a bend), and both ends are rounded off.
+func _chain(segments: Array, side: Vector3, around := 10) -> void:
+	var centres := PackedVector3Array()
+	var sizes := PackedVector2Array()
+	var weights := []
+	for segment: Array in segments:
+		var a: Vector3 = segment[0]
+		var b: Vector3 = segment[1]
+		for ring: Array in segment[2]:
+			centres.append(a.lerp(b, float(ring[0])))
+			sizes.append(Vector2(ring[1], ring[2]))
+			weights.append((segment[3] as Callable).call(float(ring[0])))
+	var last: Array = segments.back()
+	centres.append(last[1])
+	var end_ring: Array = (last[2] as Array).back()
+	sizes.append(Vector2(end_ring[1], end_ring[2]) * 0.92)
+	weights.append((last[3] as Callable).call(1.0))
+	var count := centres.size()
+	var alongs := PackedVector3Array()
+	for i in count:
+		var before := centres[maxi(i - 1, 0)]
+		var after := centres[mini(i + 1, count - 1)]
+		alongs.append((after - before).normalized())
+	# Rounded ends: a quarter circle of rings out past each end.
+	var rings := []
+	for k in range(4, 0, -1):
+		var angle := PI * 0.5 * k / 4.0
+		rings.append([centres[0] - alongs[0] * sizes[0].x * 0.9 * sin(angle), sizes[0] * cos(angle), alongs[0], weights[0]])
+	for i in count:
+		rings.append([centres[i], sizes[i], alongs[i], weights[i]])
+	for k in range(1, 5):
+		var angle := PI * 0.5 * k / 4.0
+		rings.append([centres[count - 1] + alongs[count - 1] * sizes[count - 1].x * 0.9 * sin(angle), sizes[count - 1] * cos(angle), alongs[count - 1], weights[count - 1]])
+	var first := _count
+	for ring: Array in rings:
+		var along: Vector3 = ring[2]
+		var x := (side - along * side.dot(along)).normalized()
+		var z := x.cross(along)
+		var size: Vector2 = ring[1]
+		var w: Array = ring[3]
+		for i in around:
+			var angle := TAU * i / around
+			_vertex(ring[0] + x * cos(angle) * size.x + z * sin(angle) * size.y, SKIN, w[0], w[1], w[2])
+	_join(first, rings.size(), around)
+
+
+## Weights along a limb bone between `before` (its parent) and `after` (its
+## child): shared with the parent at its start (`start` of it its own), its
+## own in the middle, going over to half the child's at its end.
+static func _link(before: String, bone: String, after: String, t: float, start := 0.5) -> Array:
+	if t < 0.2:
+		return [before, bone, lerpf(start, 1.0, smoothstep(0.0, 0.2, t))]
+	if t > 0.75:
+		return [bone, after, 0.5 * smoothstep(0.75, 1.0, t)]
+	return [bone, "", 0.0]
+
+
 ## Weights for a tube from bone `a` into bone `b`: all `a` until `from`, then
 ## blended across to half and half at the joint (t 1), and on into `b`.
 static func _across(a: String, b: String, from := 0.75, to := 1.25) -> Callable:
@@ -296,8 +356,8 @@ func _torso() -> void:
 	var rings := [
 		[0.965, 0.0, 0.0, 0.0], [0.975, 0.04, 0.035, 0.0], [1.0, 0.098, 0.07, 0.0], [1.06, 0.124, 0.084, -0.005],
 		[1.13, 0.104, 0.074, 0.0], [1.2, 0.082, 0.062, 0.004], [1.27, 0.08, 0.06, 0.002], [1.34, 0.094, 0.068, -0.006],
-		[1.43, 0.118, 0.082, -0.016], [1.52, 0.132, 0.086, -0.022], [1.6, 0.14, 0.08, -0.028], [1.655, 0.128, 0.066, -0.034],
-		[1.69, 0.075, 0.05, -0.036], [1.715, 0.034, 0.034, -0.036],
+		[1.43, 0.118, 0.082, -0.016], [1.52, 0.132, 0.086, -0.022], [1.6, 0.13, 0.08, -0.028], [1.655, 0.108, 0.066, -0.034],
+		[1.69, 0.064, 0.05, -0.036], [1.715, 0.034, 0.034, -0.036],
 	]
 	var around := 16
 	var first := _count
@@ -312,12 +372,7 @@ func _torso() -> void:
 			var at := Vector3(cos(angle) * ring[1], y, ring[3] + front * depth)
 			_vertex(at, SKIN, w[0], w[1], w[2])
 	_join(first, rings.size(), around)
-	# Shoulders: round knobs where the arms meet the chest.
-	for s: float in [1.0, -1.0]:
-		var side := "l" if s > 0.0 else "r"
-		_blob(Vector3(0.152 * s, 1.632, -0.035), Vector3(0.034, 0.03, 0.033), Basis.IDENTITY, SKIN, "upper_arm_" + side, 6, 10)
-	# A faint keel of a breastbone and ribs is too much detail for the light; a
-	# shallow pelvis bowl under the belly is enough.
+	# (the shoulders are the arms' own: see _arm)
 
 
 func _spine_weights(y: float) -> Array:
@@ -428,14 +483,28 @@ func _arm(side: String) -> void:
 	var shoulder := joint("upper_arm_" + side)
 	var elbow := joint("forearm_" + side)
 	var wrist := joint("hand_" + side)
-	_tube(shoulder, elbow, [[-0.08, 0.0, 0.0], [-0.04, 0.03, 0.03], [0.1, 0.036, 0.034], [0.45, 0.031, 0.029], [0.85, 0.025, 0.024], [1.0, 0.025, 0.024], [1.08, 0.0, 0.0]],
-		Vector3.RIGHT, _across("upper_arm_" + side, "forearm_" + side, 0.82, 1.18))
-	_tube(elbow, wrist, [[-0.06, 0.0, 0.0], [-0.02, 0.023, 0.023], [0.25, 0.024, 0.022], [0.7, 0.019, 0.017], [0.97, 0.016, 0.014], [1.06, 0.0, 0.0]],
-		Vector3.RIGHT, _across("forearm_" + side, "hand_" + side, 0.85, 1.12))
-	# The palm, long and narrow, flat across the way the fingers fan.
 	var knuckles := wrist + Vector3(0.012 * s, -0.1, 0.008)
-	_tube(wrist + Vector3(0.0, 0.01, 0.0), knuckles, [[0.0, 0.0, 0.0], [0.1, 0.016, 0.026], [0.55, 0.017, 0.036], [0.92, 0.014, 0.033], [1.0, 0.0, 0.0]],
-		Vector3.RIGHT, func(t: float) -> Array: return ["forearm_" + side, "hand_" + side, smoothstep(-0.2, 0.25, t)], 10)
+	var upper := "upper_arm_" + side
+	var fore := "forearm_" + side
+	var hand := "hand_" + side
+	# One skin from the side of the neck to the knuckles: the shoulder slopes
+	# down from the neck into the arm (on the chest, going over to the arm as it
+	# reaches the joint), and the elbow and wrist are bends in it, not seams.
+	var neck_side := Vector3(0.035 * s, 1.705, -0.035)
+	_chain([
+		[neck_side, shoulder, [[0.0, 0.03, 0.03], [0.45, 0.033, 0.034], [0.8, 0.037, 0.037]],
+			func(t: float) -> Array: return ["chest", upper, smoothstep(0.35, 1.0, t) * 0.5]],
+		[shoulder, elbow, [[0.0, 0.038, 0.037], [0.15, 0.036, 0.034], [0.45, 0.031, 0.029], [0.8, 0.026, 0.025]],
+			func(t: float) -> Array: return _link("chest", upper, fore, t)],
+		[elbow, wrist, [[0.0, 0.025, 0.024], [0.2, 0.024, 0.022], [0.6, 0.02, 0.018], [0.9, 0.016, 0.015]],
+			func(t: float) -> Array: return _link(upper, fore, hand, t)],
+		# The palm, long and narrow, flat across the way the fingers fan.
+		[wrist, knuckles, [[0.0, 0.018, 0.015], [0.35, 0.032, 0.017], [0.75, 0.034, 0.016], [1.0, 0.03, 0.013]],
+			func(t: float) -> Array: return [fore, hand, 0.5 + 0.5 * smoothstep(0.0, 0.3, t)]],
+	], Vector3.BACK, 12)
+	# A collarbone: a faint ridge from the breastbone out to the shoulder.
+	_tube(Vector3(0.022 * s, 1.664, 0.014), Vector3(0.125 * s, 1.668, -0.012), [[0.0, 0.0, 0.0], [0.1, 0.008, 0.008], [0.5, 0.009, 0.009], [0.9, 0.009, 0.01], [1.0, 0.0, 0.0]],
+		Vector3.UP, func(t: float) -> Array: return ["chest", upper, smoothstep(0.6, 1.0, t) * 0.35], 8)
 	# Three long fingers, each two joints, ending in a round pad.
 	for k in 3:
 		var base := "finger_%s_%d_1" % [side, k]
@@ -454,13 +523,19 @@ func _leg(side: String) -> void:
 	var hip := joint("thigh_" + side)
 	var knee := joint("shin_" + side)
 	var ankle := joint("foot_" + side)
-	_tube(hip + Vector3(-0.01 * (1.0 if side == "l" else -1.0), -0.02, 0.0), knee, [[-0.02, 0.0, 0.0], [0.0, 0.046, 0.05], [0.25, 0.045, 0.046], [0.7, 0.035, 0.034], [0.95, 0.031, 0.031], [1.0, 0.032, 0.031], [1.07, 0.0, 0.0]],
-		Vector3.RIGHT, func(t: float) -> Array:
-			if t < 0.15:
-				return ["hips", "thigh_" + side, 0.55 + t * 3.0]
-			return ["thigh_" + side, "shin_" + side, smoothstep(0.85, 1.15, t)])
-	_tube(knee, ankle, [[-0.05, 0.0, 0.0], [-0.02, 0.03, 0.03], [0.25, 0.031, 0.03], [0.6, 0.024, 0.022], [0.92, 0.018, 0.017], [1.0, 0.019, 0.018], [1.06, 0.0, 0.0]],
-		Vector3.RIGHT, _across("shin_" + side, "foot_" + side, 0.88, 1.12))
+	var s := 1.0 if side == "l" else -1.0
+	var thigh := "thigh_" + side
+	var shin := "shin_" + side
+	var foot := "foot_" + side
+	# One skin from inside the pelvis down through the knee to the ankle.
+	_chain([
+		[hip + Vector3(-0.025 * s, 0.05, 0.0), hip, [[0.0, 0.042, 0.046], [0.6, 0.046, 0.05]],
+			func(_t: float) -> Array: return ["hips", thigh, 0.3]],
+		[hip, knee, [[0.0, 0.047, 0.05], [0.25, 0.045, 0.046], [0.7, 0.035, 0.034], [0.92, 0.031, 0.031]],
+			func(t: float) -> Array: return _link("hips", thigh, shin, t, 0.3)],
+		[knee, ankle, [[0.0, 0.032, 0.031], [0.08, 0.03, 0.03], [0.25, 0.031, 0.03], [0.6, 0.024, 0.022], [0.92, 0.018, 0.017], [1.0, 0.019, 0.018]],
+			func(t: float) -> Array: return _link(thigh, shin, foot, t)],
+	], Vector3.RIGHT, 12)
 	# A long narrow foot, heel to toes, flat on the ground.
 	var heel := Vector3(ankle.x, 0.03, ankle.z - 0.055)
 	var toes := Vector3(ankle.x * 1.04, 0.022, ankle.z + 0.175)
