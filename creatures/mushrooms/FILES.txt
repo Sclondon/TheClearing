@@ -1,0 +1,11 @@
+# Mushrooms: patches of honey fungus, brackets, glowing bonnets and puffballs, spore clouds and the spore veil (needs godot/character-controller installed too)
+creatures/mushrooms/mushroom_look.gd
+creatures/mushrooms/mushroom_patch.gd
+creatures/mushrooms/spore_cloud.gd
+creatures/mushrooms/spore_veil.gd
+creatures/mushrooms/models/mushrooms.glb
+creatures/mushrooms/models/mushrooms_lo.glb
+creatures/mushrooms/models/growths.glb
+creatures/mushrooms/models/growths_lo.glb
+creatures/mushrooms/tools/.gdignore
+creatures/mushrooms/tools/build_mushrooms.py
