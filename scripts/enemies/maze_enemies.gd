@@ -6,7 +6,7 @@ extends Node3D
 ## `populate(maze, seed)` puts Apophis and packs of mummies in the passages, out
 ## of the clearing and well away from it, and `add_hunters(style, seed)` the
 ## rest of what a ring's MazeStyle asks for (ghouls, centipedes, spiders,
-## abominations, flesh mounds and amalgams, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms, harpies, boars, chickens, gargoyles: each kind's own
+## abominations, flesh mounds and amalgams, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms, harpies, boars, chickens, gargoyles, deer, elk: each kind's own
 ## script is in scripts/enemies/, its look and motion in creatures/). The same maze and seed always give the
 ## same ones in the same places in the same order, so every machine in a room
 ## can build the same set without it being sent; then one machine (the host)
@@ -102,6 +102,8 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ## - Chicken flocks forage in straight halls, where people must pass them.
 ## - Gargoyles are put in halls (a straight run of passage, walls both sides):
 ##   each crouches on a ledge over it, a terrace's edge or the wall's top.
+## - A herd of deer stands bunched in one straight hall; a bull elk holds
+##   another, facing along it.
 func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	var nav := MazeNav.new(maze)
 	var rng := RandomNumberGenerator.new()
@@ -170,6 +172,19 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		# (a pack's den is a dead end: they go out from it on the scent)
 		var den := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
 		_add_pack(MazeDog.pack_of(rng.randi_range(3, 4), rng.randi()), den, nav, rng, taken)
+	for i in style.deer_herds:
+		# (a herd stands in a straight hall, where it can be seen from far off, facing along it)
+		var patch := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		var herd: Array = MazeDeer.herd_of(rng.randi_range(4, 5), rng.randi())
+		_add_herd(herd, patch, rng, taken)
+	for i in style.elk:
+		# (a bull holds a straight stretch: room to charge down)
+		var ground := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		taken.append(ground)
+		var along := _straight(ground)
+		if along == Vector2i.ZERO:
+			along = Vector2i(0, 1)
+		add(MazeElk.new(), ground, atan2(float(along.x), float(along.y)) + (PI if rng.randf() < 0.5 else 0.0), rng.randi())
 	for i in style.alien_packs:
 		var aliens: Array = []
 		for a in rng.randi_range(2, 3):
@@ -233,6 +248,17 @@ func _add_pack(pack_of: Array, middle: Vector2i, nav: MazeNav, rng: RandomNumber
 		var round_about := rng.randf_range(0.0, TAU)
 		var spot := Vector3(cos(round_about), 0.0, sin(round_about)) * 2.5 if k >= near.size() else Vector3.ZERO
 		add(pack_of[k], cell, rng.randf_range(-PI, PI), rng.randi(), spot)
+
+
+## Puts a herd of deer in one cell, loosely bunched, all facing roughly the same way.
+func _add_herd(herd: Array, cell: Vector2i, rng: RandomNumberGenerator, taken: Array[Vector2i]) -> void:
+	taken.append(cell)
+	var along := _straight(cell)
+	var yaw := atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI)
+	for k in herd.size():
+		var round_about := TAU * k / herd.size() + rng.randf_range(-0.4, 0.4)
+		var spot := Vector3(cos(round_about), 0.0, sin(round_about)) * rng.randf_range(1.2, 3.2) if k > 0 else Vector3.ZERO
+		add(herd[k], cell, yaw + rng.randf_range(-0.8, 0.8), rng.randi(), spot)
 
 
 ## The way out of a dead end (as a yaw), or any way for another cell.

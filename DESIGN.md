@@ -208,6 +208,21 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     misses. A miss turns it to stone where it lands for a few seconds: the time to get away. Then it hunts in heavy
     bounds a little slower than a run, slow to turn (a turn down a side passage gains ground), and from a few metres
     in front of you winds up (wings raised, a snarl) and leaps. Lost, it beats its way back up to its ledge.
+  - **The herd** (added 2026-10-18, "lets add deer and elk as well"): white-tailed deer standing in a hall, real at
+    first glance. When they see you every head comes up and turns to you, and they freeze, staring, too long, eyes
+    giving back the light. Look away and they are a little closer when you look back (they never come within 12 m).
+    Come near (9 m) or run at them and one snorts and stamps, the tails go up white, they stot off on stiff legs and
+    break into a stampede down the passages away from you; if the only way out is past you, it comes straight back
+    down the hall at you, and a deer that runs into you knocks you down (caught). The alarm and the stotting are the
+    warning, nearly two seconds: stand aside. One in a herd of four or more is wrong: legs a little too long, a head
+    that turns round further than a neck should; now and then it stands up on its hind legs and takes a step towards
+    you; it never runs with the others, and stays watching you as they go.
+  - **The bull elk**: taller at the shoulder than the boy, holding a stretch of halls as his own. On his ground and
+    in his sight, he faces you and bugles (an eerie rising scream, steam pouring from his mouth: the first time
+    only), paws the ground and lowers his antlers, then charges faster than anyone can run. For an instant he can
+    still swing at you; then his line is set and he can hardly turn. Step aside into a side passage or behind a
+    buttress, climb, or leave his ground; standing in his line, you are caught. He runs on past, stands blowing,
+    turns slowly and comes again.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
@@ -238,6 +253,17 @@ they read as others but plainly the same kind of person. Each knows his own sect
   boy, and none is posed when far from the camera.
 - With friends, the room's maker runs them; everyone else sees copies driven by the same inputs, so they climb,
   sprint and gesture alike.
+## Wildlife
+
+Not everything that lives here hunts (added 2026-10-18: "there should be non hostile regular deer and elk"). Herds of
+ordinary white-tailed deer (a buck, does, spotted fawns) and of elk (a bull, cows, calves) graze out in the clearing's
+meadow, towards its corners and the edges of the woods (never the middle where everyone wakes, nor the ways to the
+gates), and a few stand in the halls. They graze and wander, lift their heads to watch you come, flick their ears
+and tails, and run off when you come near (deer stotting a few bounds with their white tails up, then away at a
+gallop; elk trotting, then galloping), and settle to graze where they stop; a bull bugles now and then far off. They
+catch nobody and are nothing to be afraid of, which makes the ones that are wrong worse. How many: ClearingStyle and
+MazeStyle, "Wildlife". Each machine runs its own copy from the round's seed, frightened by the same players, so they
+agree.
 
 ## Playing together
 

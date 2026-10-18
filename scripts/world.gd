@@ -41,6 +41,8 @@ var out := {}
 
 ## What hunts the maze (see _enemies).
 var enemies: MazeEnemies
+## The animals that hunt nobody: herds of deer and elk in the clearing and the halls (see Wildlife).
+var wildlife: Wildlife
 var griever: Griever
 ## The others in the maze (see _runners).
 var runners: MazeRunners
@@ -143,6 +145,10 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	touch.act_pressed.connect(func() -> void: try_cut())
 
 	_enemies(seed_value)
+	wildlife = Wildlife.new()
+	wildlife.name = "Wildlife"
+	add_child(wildlife)
+	wildlife.populate(maze, hash("wildlife/%d" % seed_value))
 	if DevTools.enabled():
 		dev = DevTools.new(self)
 		hud.add_child(dev)

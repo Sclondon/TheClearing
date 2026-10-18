@@ -110,6 +110,13 @@ func _run() -> void:
 	world.dev.spawn_runners()
 	await frames(2)
 	check("+ RUNNER and + RUNNERS", world.runners.runners.size() == had_runners + 4 and runner.is_inside_tree() and runner.global_position.distance_to(player.global_position) < 25.0)
+	# The peaceful animals, from theirs: not among what hunts
+	for one: Array in world.dev.WILDLIFE:
+		var hunters: int = world.enemies.enemies.size()
+		var herds: int = world.wildlife.herds.size()
+		world.dev.spawn_wildlife(one[1])
+		await frames(2)
+		check("+ %s" % one[0], world.wildlife.herds.size() == herds + 1 and world.enemies.enemies.size() == hunters, "(%d animals)" % world.wildlife.herds.back().animals.size())
 	await frames(30)
 
 	world.dev.toggle_god()
