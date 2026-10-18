@@ -264,6 +264,10 @@ func _show_preview() -> void:
 	view.name = "Preview"
 	add_child(view)
 	view._sky()
+	# (seen from far off, through the game's mist it would be grey: thinned here, as in the editor)
+	for found: Node in view.find_children("*", "WorldEnvironment", true, false):
+		(found as WorldEnvironment).environment.fog_density = 0.0012
+		(found as WorldEnvironment).environment.fog_height_density = 0.0
 	var builder := MazeBuilder.new()
 	view.add_child(builder)
 	builder.build(Maze.generate(randi()))

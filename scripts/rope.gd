@@ -16,10 +16,6 @@ extends Node3D
 const PIECES := 16
 ## How near (past its own length) someone must be for it to move when it is still.
 const WAKE := 12.0
-## Seconds it always moves for at first, to settle as it hangs.
-const SETTLE := 4.0
-
-var _age := 0.0
 
 @export var length := 5.0
 ## How quickly a swing dies away, per second.
@@ -131,10 +127,9 @@ func _physics_process(delta: float) -> void:
 	# (in the editor it only hangs, as it was made)
 	if Engine.is_editor_hint():
 		return
-	# Hanging still, with nobody on it or near it, it rests, once it has had time
-	# to settle. (A maze has a great many, and each is worked out point by point.)
-	_age += delta
-	if _age > SETTLE and load_at < 0.0 and (_points[PIECES] - _before[PIECES]).length_squared() < 0.000001 and not anyone_near(self, global_position, length + WAKE):
+	# Hanging still, with nobody on it or near it, it rests. (A maze has a great
+	# many, and each is worked out point by point. It starts out hanging at rest.)
+	if load_at < 0.0 and (_points[PIECES] - _before[PIECES]).length_squared() < 0.000001 and not anyone_near(self, global_position, length + WAKE):
 		return
 	var piece := length / PIECES
 	var fall := Vector3.DOWN * gravity * delta * delta
