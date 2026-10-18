@@ -37,9 +37,7 @@ func add(kind: Kind, where: Transform3D) -> void:
 
 ## Makes what has been added.
 func build() -> void:
-	if _material == null:
-		_material = _shaded(PLANT)
-		_fern_material = _shaded(FERN)
+	shared_material()
 	set_process(true)
 	for key: Array in _placed:
 		var placed: Array = _placed[key]
@@ -59,6 +57,16 @@ func build() -> void:
 		if key[0] != Kind.BUSH:
 			shown.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(shown)
+
+
+## The material plants of `kind` are drawn with (shared by every patch, here
+## and in the desert ring's quarters: Wilds): the fern shader for ferns, the
+## plant shader (sway, and pushed aside) for the rest.
+static func shared_material(kind := Kind.BUSH) -> ShaderMaterial:
+	if _material == null:
+		_material = _shaded(PLANT)
+		_fern_material = _shaded(FERN)
+	return _fern_material if kind == Kind.FERN else _material
 
 
 ## The mesh of a kind (made once).

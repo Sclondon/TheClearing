@@ -21,6 +21,126 @@ func _initialize() -> void:
 	_run()
 
 
+## The forest, swamp and plains quarters (WildLands): each has its things, all
+## inside its wedge, nothing in the way near a door or gate.
+func _wilds(seed_value: int) -> void:
+	var maze := Maze.generate(seed_value, 7)
+	var lands := maze.round_rings.wilds
+	check("seed %d: the wild quarters planned" % seed_value, lands != null)
+	if lands == null:
+		return
+	var squares := lands.squares()
+	for side in WildLands.SIDES:
+		var biome := lands.look.biome_of(side)
+		if biome == DesertStyle.Biome.DESERT:
+			continue
+		var name: String = DesertStyle.Biome.keys()[biome].to_lower()
+		var found := {"trees": 0, "snags": 0, "logs": 0, "rocks": 0, "big rocks": 0, "ferns": 0, "bushes": 0, "bulrushes": 0, "lily pads": 0, "mist": 0}
+		var outside := 0
+		var in_the_way := 0
+		var highest := 0.0
+		var lowest := INF
+		for square in squares:
+			if not lands.biomes_in(square).has(biome):
+				continue
+			var c := lands.contents(square)
+			for blocker: Array in c.blockers:
+				var p: Vector2 = blocker[0]
+				if DesertStyle.quarter_at(p.x, p.y) != side:
+					continue
+				if lands.margin_at(p) < blocker[1] + 1.0:
+					outside += 1
+				if lands.ways_distance(p) < lands.look.keep_clear_radius:
+					in_the_way += 1
+			found.trees += c.trees.size()
+			found.snags += c.snags.size()
+			found.logs += c.logs.size()
+			found.rocks += c.rocks.size()
+			for rock: Array in c.rocks:
+				found["big rocks"] += 1 if rock[2] >= 6.0 else 0
+			found.ferns += c.plants.get(Undergrowth.Kind.FERN, []).size()
+			found.bushes += c.plants.get(Undergrowth.Kind.BUSH, []).size()
+			for kind: int in c.rushes:
+				found.bulrushes += c.rushes[kind].size()
+			found["lily pads"] += c.pads.size()
+			found.mist += c.mist.size()
+			if (square.x + square.y) % 4 == 0:
+				var middle := (Vector2(square) + Vector2(0.5, 0.5)) * WildLands.SQUARE
+				if DesertStyle.quarter_at(middle.x, middle.y) == side and lands.margin_at(middle) > 30.0:
+					var h := lands.height_at(middle.x, middle.y)
+					highest = maxf(highest, h)
+					lowest = minf(lowest, h)
+		var wanted := {
+			DesertStyle.Biome.FOREST: ["trees", "logs", "ferns", "bushes"],
+			DesertStyle.Biome.SWAMP: ["snags", "bulrushes", "lily pads", "mist"],
+			DesertStyle.Biome.PLAINS: ["rocks", "big rocks"],
+		}
+		for what: String in wanted[biome]:
+			check("seed %d: the %s quarter has %s" % [seed_value, name, what], found[what] > (500 if what == "trees" else 0), "(%d)" % found[what])
+		check("seed %d: the %s quarter's things inside its walls" % [seed_value, name], outside == 0, "(%d not)" % outside)
+		check("seed %d: the %s quarter's doors and gates clear" % [seed_value, name], in_the_way == 0, "(%d in the way)" % in_the_way)
+		if biome == DesertStyle.Biome.SWAMP:
+			var pool: Rect2 = lands.pools[side]
+			var inside := true
+			for corner: Vector2 in [pool.position, pool.end, Vector2(pool.position.x, pool.end.y), Vector2(pool.end.x, pool.position.y)]:
+				inside = inside and lands.margin_at(corner) > 1.0 and DesertStyle.quarter_at(corner.x, corner.y) == side
+			check("seed %d: the swamp's water inside its walls" % seed_value, inside)
+			check("seed %d: the swamp's hummocks stand out of its water, and its pools are under it" % seed_value, highest > lands.water_level() and lowest < lands.water_level(), "(%.2f to %.2f, water %.2f)" % [lowest, highest, lands.water_level()])
+		if biome == DesertStyle.Biome.PLAINS:
+			check("seed %d: the plains have hills" % seed_value, highest > 2.0, "(%.1f m)" % highest)
+		# (the dry ground is level with the square maze's floor at the doors)
+		for door: Vector2 in maze.round_rings.doors:
+			if DesertStyle.quarter_at(door.x, door.y) == side:
+				check("seed %d: the %s quarter's ground meets the door" % [seed_value, name], absf(lands.height_at(door.x, door.y)) < 0.05)
+
+
+## The wild quarters built (Wilds) round a spot in each: the trunks and rocks
+## are there to bump into, and the swamp's and plains' ground to walk on.
+func _wilds_built(seed_value: int) -> void:
+	if seed_value != 77:
+		return
+	var maze := Maze.generate(seed_value, 7)
+	var lands := maze.round_rings.wilds
+	var wilds := Wilds.new()
+	root.add_child(wilds)
+	wilds.realize(lands, StandardMaterial3D.new())
+	for side in WildLands.SIDES:
+		var biome := lands.look.biome_of(side)
+		if biome == DesertStyle.Biome.DESERT:
+			continue
+		var name: String = DesertStyle.Biome.keys()[biome].to_lower()
+		var middle := Vector2(side) * (lands.plan.square_half + lands.plan.inner_radius) * 0.5
+		var square := Vector2i((middle / WildLands.SQUARE).floor())
+		wilds.fill_near(Vector3(middle.x, 0.0, middle.y), 40.0)
+		for i in 3:
+			await physics_frame
+		var space := wilds.get_world_3d().direct_space_state
+		var c := lands.contents(square)
+		var standing: Array = c.trees + c.snags + c.rocks
+		if standing.is_empty():
+			check("seed %d: something stands in the middle of the %s quarter" % [seed_value, name], false)
+			continue
+		var hits := 0
+		for thing: Array in standing:
+			var foot: Vector3 = (thing[0] as Transform3D).origin
+			var ground := lands.height_at(foot.x, foot.z)
+			var radius: float = thing[2]
+			var from := Vector3(foot.x + radius + 2.0, ground + 0.5, foot.z)
+			var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(from, Vector3(foot.x, ground + 0.5, foot.z)))
+			if not hit.is_empty():
+				hits += 1
+		check("seed %d: what stands in the %s quarter is bumped into" % [seed_value, name], hits >= standing.size() * 0.9, "(%d of %d)" % [hits, standing.size()])
+		if biome != DesertStyle.Biome.FOREST:
+			var spot := middle + Vector2(7.3, 5.1)
+			var down := space.intersect_ray(PhysicsRayQueryParameters3D.create(Vector3(spot.x, 40.0, spot.y), Vector3(spot.x, -5.0, spot.y)))
+			var want := lands.ground_at(spot)
+			var landed: float = (down.position as Vector3).y if not down.is_empty() else -99.0
+			# (or on something standing there)
+			check("seed %d: the %s quarter's ground walked on where it is drawn" % [seed_value, name], landed > want - 0.15, "(%.2f, drawn %.2f)" % [landed, want])
+	check("seed %d: the wild quarters built near only" % seed_value, wilds.built_count() > 0 and wilds.built_count() < lands.squares().size())
+	wilds.free()
+
+
 func _run() -> void:
 	# (the game's own rules, not the maze editor's)
 	MazeStyle.chosen = MazeStyle.defaults()
@@ -102,6 +222,8 @@ func _run() -> void:
 			sandy.append(most > 0.5)
 		check("seed %d: dunes only in the desert quarters (north and south here)" % seed_value, sandy == [true, false, true, false], str(sandy))
 		await _doors_and_tunnel(seed_value, maze)
+		_wilds(seed_value)
+		await _wilds_built(seed_value)
 	await _played()
 	print("ROUND TEST %s" % ("PASSED" if failures == 0 else "FAILED (%d)" % failures))
 

@@ -206,9 +206,9 @@ func _thick_in(ring: int) -> float:
 ## How high the ground is at a point (its x and z): the clearing's gentle hills
 ## (ClearingStyle.height_at); 0 everywhere else.
 func ground_height(point: Vector3) -> float:
-	# (the dunes of the desert outside the square sections, if there are round ones)
+	# (the dunes, hummocks and hills of the desert ring outside the square sections, if there are round ones)
 	if round_rings and maxf(absf(point.x), absf(point.z)) > extent() * 0.5:
-		return round_rings.desert_height(point.x, point.z)
+		return round_rings.ground_at(point.x, point.z)
 	var height := clearing_style.height_at(point.x, point.z, maze_seed)
 	# (lower under standing water: Ponds)
 	if not _pond_cells.is_empty():

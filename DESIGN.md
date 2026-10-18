@@ -85,6 +85,26 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
 - Four gates, one in the middle of each side, each a slot about 2 m wide (about three of him) running the whole way
   through that wall. Every gate leads on into the maze: none is a dead end.
 
+### The desert ring's quarters
+
+Past the square sections, the desert ring is cut into four quarters by great walls from the square's corners, each
+its own biome (`DesertStyle.Biome`, matched to the clearing's entrance on its side). Each is dressed (added
+2026-10-18, the user: "why are the plains, swamp and forest empty?"), all of it by `DesertStyle` rules editable in the
+maze editor (groups Forest, Swamp, Plains), nothing in the way within `keep_clear_radius` of a quarter's door or gate:
+
+- **Desert:** Outside's sand in dunes.
+- **Forest:** dense, dark woods of the game's pines (a tree every 6 m or so, open glades), ferns, bushes and moss under
+  them, fallen logs, a few mossy boulders, on a dark floor of needles. Misty and dim, after Inside.
+- **Swamp:** one sheet of still water, knee deep at most, over the middle of the quarter, hummocks of wet ground
+  standing up through it cut by winding channels; dry boggy ground round its edges; sedges all over, reeds and
+  bulrushes at the water's edge, lily pads, grey dead and drowned trees, and low banks of mist.
+- **Plains:** wide grass over low hills, boulders, and outcrops of great rocks (the biggest as high as a house).
+
+`WildLands` (scripts/wild_lands.gd) works out where everything is from the seed, in squares of 64 m; `Wilds`
+(scripts/wilds.gd) builds only the squares near the camera (MultiMeshes, shapes put in before their body enters the
+world, seen only out to the mist) and lets far ones go, since each quarter is some sixty hectares. Trunks, logs and
+rocks are bumped into; the swamp's and plains' ground is walked on (Maze.ground_height knows it).
+
 ### Ring styles
 
 | | Avenues (ring 1) | Narrows (ring 3) | Tangle (ring 3, planned) |

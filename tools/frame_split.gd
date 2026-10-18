@@ -5,6 +5,9 @@ extends SceneTree
 ## again with each kind of drawn thing hidden. Run with -- dev.
 ##
 ##     godot --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/frame_split.gd -- dev [only=<place>] [settle=<frames>]
+##
+## Places: clearing, ring 1..., desert, and each quarter of the desert ring as
+## "<biome> quarter" (forest quarter, swamp quarter, plains quarter, desert quarter).
 
 var main: Node
 
@@ -43,6 +46,12 @@ func _run() -> void:
 	places.append(["clearing", func() -> void: world.dev.to_middle()])
 	for ring in range(1, world.ring_count() + 1):
 		places.append(["desert" if world.maze.round_rings and ring == world.maze.rings + 1 else "ring %d" % ring, world.dev.to_ring.bind(ring)])
+	# (and each quarter of the desert ring by what it is: "forest quarter" and so on)
+	var outer: RoundMaze = world.maze.round_rings
+	if outer:
+		for q in outer.doors.size():
+			var biome: String = DesertStyle.Biome.keys()[outer.desert.biome_of(DesertStyle.quarter_at(outer.doors[q].x, outer.doors[q].y))]
+			places.append(["%s quarter" % biome.to_lower(), world.dev.to_quarter.bind(q)])
 	for place: Array in places:
 		if only != "" and place[0] != only:
 			continue
