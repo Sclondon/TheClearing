@@ -51,6 +51,7 @@ func _block(parent: Node3D, at: Vector3, size: Vector3) -> void:
 
 func _run() -> void:
 	await _alone()
+	await _no_way_past()
 	await _in_the_maze()
 	print("PASSED" if failures == 0 else "FAILED (%d)" % failures)
 	quit(0 if failures == 0 else 1)
@@ -226,3 +227,100 @@ func _straight_run(maze: Maze, nav: MazeNav, run: int) -> Array:
 			if ok:
 				return [c, step]
 	return [nav.lairs(2)[0], Vector2i(1, 0)]
+
+
+## In real halls of a first-ring maze, nobody gets past it: a capsule the size
+## of the boy, slid across the hall through its middle, wherever it is clear of
+## the walls, always touches it; and what is seen of it reaches into both walls
+## (so no floor shows beside it).
+func _no_way_past() -> void:
+	var stage := Node3D.new()
+	root.add_child(stage)
+	var maze := Maze.generate(Maze.seed_for("TEST", 1))
+	var builder := MazeBuilder.new()
+	stage.add_child(builder)
+	builder.build(maze)
+	var nav := MazeNav.new(maze)
+	await frames(3)
+	var space := stage.get_world_3d().direct_space_state
+	var boy := CapsuleShape3D.new()
+	boy.radius = 0.22
+	boy.height = 1.3
+	# Halls: places with three open cells straight on, walled to either side within
+	# two cells (not where another way crosses), apart from each other, in the first ring.
+	var halls: Array = []
+	var ring := maze.ring_of(nav.lairs(3)[0])
+	var cells := nav.lairs(2)
+	# (taken from all round the ring, not one side of it)
+	for i in cells.size():
+		var c: Vector2i = cells[(i * 37) % cells.size()]
+		if halls.size() >= 6 or maze.ring_of(c) != ring:
+			continue
+		for step: Vector2i in Maze.STEPS:
+			if maze.blocked(c, step) or maze.blocked(c + step, step) or maze.blocked(c - step, -step):
+				continue
+			var walled := true
+			for k in 3:
+				for side: Vector2i in [Vector2i(-step.y, step.x), Vector2i(step.y, -step.x)]:
+					var at: Vector2i = c + step * (k - 1)
+					if not (maze.blocked(at, side) or maze.blocked(at + side, side)):
+						walled = false
+			if not walled:
+				continue
+			var apart := true
+			for other: Array in halls:
+				if absi(c.x - other[0].x) + absi(c.y - other[0].y) < 6:
+					apart = false
+			if apart:
+				halls.append([c, step])
+			break
+	check("found halls to try", halls.size() >= 4, "(%d)" % halls.size())
+	var gaps := 0
+	var short := 0
+	var tried := 0
+	for hall: Array in halls:
+		var along := Vector3(hall[1].x, 0, hall[1].y)
+		var across := Vector3(-along.z, 0, along.x)
+		# In the middle of the cell, and put down 3 m towards the middle of the hall (as it wanders).
+		var inward := Vector2i(-hall[1].y, hall[1].x)
+		var toward := -1.0 if maze.blocked(hall[0], inward) else 1.0
+		for aside: float in [0.0, 3.0 * toward]:
+			tried += 1
+			var slime := SlimeWall.new()
+			slime.height = 9.0
+			slime.depth = 5.0
+			slime.max_width = 34.0
+			stage.add_child(slime)
+			slime.global_transform = Transform3D(Basis(Vector3.UP, atan2(along.x, along.z)), maze.world(hall[0]) + across * aside)
+			slime.settle()
+			await frames(40)
+			var middle := slime._body.global_position
+			var right := slime._body.global_transform.basis.x
+			var open := 0
+			var walls := Vector2(INF, INF)
+			for k in 2:
+				var side := -1.0 if k == 0 else 1.0
+				for n in 400:
+					var at := middle + right * side * n * 0.05 + Vector3.UP * 0.7
+					var query := PhysicsShapeQueryParameters3D.new()
+					query.shape = boy
+					query.transform = Transform3D(Basis.IDENTITY, at)
+					query.collision_mask = 1
+					if not space.intersect_shape(query, 1).is_empty():
+						walls[k] = n * 0.05 + boy.radius
+						break
+					if not slime.contains(at, boy.radius):
+						open += 1
+			var reach := slime.visual_extents()
+			var shows_floor := (walls.x < INF and reach.x < walls.x) or (walls.y < INF and reach.y < walls.y)
+			if open > 0:
+				gaps += 1
+			if shows_floor:
+				short += 1
+			print("  hall %s %s, %.0f m aside: walls %.2f and %.2f m from its middle, it reaches %.2f and %.2f, %.2f m wide; %d places the boy gets by" % [hall[0], hall[1], aside, walls.x, walls.y, reach.x, reach.y, slime.fitted_width, open])
+			slime.queue_free()
+			await frames(2)
+	check("the boy cannot get past it in any hall", gaps == 0, "(%d of %d places had a way by)" % [gaps, tried])
+	check("what is seen of it reaches into both walls", short == 0, "(%d of %d short of a wall)" % [short, tried])
+	stage.queue_free()
+	await frames(2)

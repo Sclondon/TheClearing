@@ -49,6 +49,11 @@ const SHAPE := """
 // Half its width, half its height and half its depth (metres); it stands on y = 0.
 uniform vec3 half_size = vec3(6.0, 3.5, 2.25);
 uniform float round_r = 1.2;
+// Where the middle of it is across (it may be pressed further into one wall than
+// the other), how round its left and right sides are, and its foot.
+uniform float x_mid = 0.0;
+uniform vec2 side_round = vec2(1.2);
+uniform float floor_round = 0.25;
 // How much its top sags in the middle, its foot spreads, and its skin quivers.
 uniform float sag = 0.45;
 uniform float foot = 0.35;
@@ -68,12 +73,16 @@ varying vec3 local_n;
 
 vec3 jelly_point(vec3 g, out vec3 n) {
 	vec3 q = g * half_size;
-	float r = min(round_r, min(half_size.x, min(half_size.y, half_size.z)) * 0.95);
-	vec3 inner = max(half_size - vec3(r), vec3(0.001));
+	// Each side rounded its own way: a side pressed into a wall and its foot on
+	// the ground nearly square (so no gap opens there), the rest well rounded.
+	float most = min(half_size.x, min(half_size.y, half_size.z)) * 0.95;
+	vec3 r = min(vec3(q.x < 0.0 ? side_round.x : side_round.y, q.y < 0.0 ? floor_round : round_r, round_r), vec3(most));
+	vec3 inner = max(half_size - r, vec3(0.001));
 	vec3 c = clamp(q, -inner, inner);
-	vec3 d = q - c;
-	n = d / max(length(d), 0.0001);
-	vec3 p = c + n * r + vec3(0.0, half_size.y, 0.0);
+	vec3 e = (q - c) / r;
+	vec3 bulge = e / max(length(e), 0.0001);
+	n = normalize(bulge / r);
+	vec3 p = c + bulge * r + vec3(x_mid, half_size.y, 0.0);
 	float tall = 2.0 * half_size.y;
 	float up = clamp(p.y / tall, 0.0, 1.0);
 	float across = clamp(p.x / half_size.x, -1.0, 1.0);
@@ -85,7 +94,7 @@ vec3 jelly_point(vec3 g, out vec3 n) {
 	float w = noise3(p * 0.33 + vec3(0.0, t * 0.55, t * 0.35)) - 0.5;
 	w += 0.5 * (noise3(p * 0.85 - vec3(t * 0.45, 0.0, t * 0.2)) - 0.5);
 	w += 0.25 * sin(t * 2.1 + p.y * 1.3 + p.x * 0.7);
-	p += n * w * wobble * (0.25 + up) * smoothstep(0.0, 0.08, up);
+	p += n * w * wobble * (0.25 + up) * smoothstep(0.0, 0.08, up) * (1.0 - 0.85 * abs(n.x));
 	// Going, the front heaves in waves that climb it.
 	float front = max(n.z, 0.0);
 	p.z += front * surge * (0.3 + 0.35 * sin(t * 2.6 - p.y * 0.8 + p.x * 0.2));
@@ -96,7 +105,8 @@ vec3 jelly_point(vec3 g, out vec3 n) {
 	// It swells towards what it is after.
 	vec3 to = p - reach;
 	p += normalize(vec3(reach.x - p.x, 0.0, reach.z - p.z) + vec3(0.0001)) * reach_amount * exp(-dot(to, to) * 0.08) * front;
-	p.y = max(p.y, 0.0);
+	// (its foot sunk a little into the ground, so it never stands on air)
+	p.y = max(p.y - 0.08, -0.08);
 	return p;
 }
 """
@@ -150,8 +160,8 @@ void fragment() {
 	// How far the eye goes through jelly: into the box and out of it, or to what is in it.
 	vec3 rd = normalize(local_pos - local_cam);
 	vec3 inv = 1.0 / (rd + vec3(1e-5));
-	vec3 bmin = vec3(-half_size.x, 0.0, -half_size.z - 0.5);
-	vec3 bmax = vec3(half_size.x, 2.0 * half_size.y, half_size.z + 0.5);
+	vec3 bmin = vec3(x_mid - half_size.x, 0.0, -half_size.z - 0.5);
+	vec3 bmax = vec3(x_mid + half_size.x, 2.0 * half_size.y, half_size.z + 0.5);
 	vec3 t0 = (bmin - local_cam) * inv;
 	vec3 t1 = (bmax - local_cam) * inv;
 	vec3 tfar = max(t0, t1);
