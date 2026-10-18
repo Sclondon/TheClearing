@@ -348,6 +348,9 @@ extends Resource
 ## Herds of woolly mammoths (a matriarch, cows and a calf) grazing in the widest halls:
 ## they ring the calf, and the matriarch trumpets, mock-charges and then charges.
 @export_range(0, 2) var mammoth_herds := 1
+## Lonely horses: feral, each alone, wandering the wide halls; wary, but come slowly
+## and touch one and it trusts and follows you.
+@export_range(0, 2) var horses := 1
 ## Giant Venus flytraps (MazeFlytrap), in pairs at the foot of a hall's walls: a touch
 ## makes one shiver, and it snaps shut on whoever is still in it.
 @export_range(0, 8) var flytraps := 4

@@ -161,6 +161,8 @@ var entrance_spots: Array = []
 @export_range(0, 6) var rabbit_warrens := 2
 ## Brown hares lying up in the open meadow (MazeHare; every other one a pair that box).
 @export_range(0, 6) var hares := 2
+## Lonely horses at the clearing's edge (run with the hunters, so guests see them).
+@export_range(0, 2) var horses := 1
 ## Schools of small fish in the marsh's water (FishSchool), and how many fish in
 ## each: they dart off from whoever wades near.
 @export_range(0, 20) var marsh_fish_schools := 9

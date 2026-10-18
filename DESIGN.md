@@ -513,6 +513,7 @@ ring has is its style's choice. The wall tops are a second level you can travel 
   hound's head, no wings, swimming through the sky over the outer rings and the desert. Stand still in the open and
   it comes down, lays its head before you and sings; climb onto its neck and it carries you over the walls further
   out. While it is down the hunters near back off. (The wyverns are still to come.)
+- **Lonely horses** (the user: "there should be lonely horses as well, rarely"): one or two in the whole maze, each  alone, feral and a little thin, mane and tail long and tangled, an old rope halter on some. They wander the wide  halls and the clearing's edge, graze, doze, roll and shake, and now and then whinny; nothing answers. Wary: run at  one and it canters off; come slowly and stand and in time it lets you near; touch it (act, empty-handed) three  times a little apart and it trusts and follows you. A hunter near and it bolts. (Riding is still to come.)
 - **Dogs and meat**: meat is cut from carcasses (act) and now and then found at camps; thrown, what eats meat goes
   to it. A dog fed meat (thrown near it, or held out) becomes the giver's friend: it hunts no player, follows at heel,
   barks at what hunts near and goes for what comes at its friend. Left far behind long, it goes feral again.

@@ -62,6 +62,7 @@ const HUNTERS := [
 	["GNOMES", "gnomes", AHEAD], ["WEAVER", "weaver", AHEAD], ["ANTS", "ants", SNAKE_AHEAD], ["MANTIS", "mantis", AHEAD],
 	["RATS", "rats", AHEAD], ["RAT SWARM", "rat_swarm", AHEAD], ["RAT KING", "rat_king", AHEAD],
 	["LUCK DRAGON", "luck_dragon", COLOSSUS_AHEAD],
+	["HORSE", "horse", AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -432,6 +433,11 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			dragon.still_time = 1.5
 			dragon._visit_rest = 0.0
 			made = [dragon]
+		"horse":
+			var horse := MazeHorse.new()
+			horse.coat = randi() % 3
+			horse.haltered = randf() < 0.5
+			made = [horse]
 		"ravens":
 			# (wildlife: on the walls round where they are put, not among the hunters)
 			world.birds.add_ravens_at(at)

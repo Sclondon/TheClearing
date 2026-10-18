@@ -505,6 +505,14 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var cell := _far_from(taken, outer if not outer.is_empty() else lairs, rng)
 		taken.append(cell)
 		add(MazeLuckDragon.new(), cell, 0.0, rng.randi())
+	for i in style.horses:
+		# (alone, in a wide straight hall; it wanders from there)
+		var ground := _far_from(taken, some_halls, rng)
+		taken.append(ground)
+		var horse := MazeHorse.new()
+		horse.coat = rng.randi_range(0, 2)
+		horse.haltered = rng.randf() < 0.4
+		add(horse, ground, rng.randf_range(-PI, PI), rng.randi())
 	for i in style.mammoth_herds:
 		# (a herd grazes in a straight hall, as far from the rest as can be, strung along it)
 		var pasture := _far_from(taken, some_halls, rng)
@@ -585,6 +593,19 @@ func add_wildlife(clearing: ClearingStyle, seed_value: int) -> void:
 	var meadow := MazeHare.clearing_spots(maze, clearing.hares, rng)
 	for i in meadow.size():
 		MazeHare.add_hares(self, meadow[i], i % 2 == 1, rng.randi(), true)
+	# Lonely horses at the clearing's edge.
+	for i in clearing.horses:
+		var round_about := rng.randf_range(0.0, TAU)
+		var edge := maze.clearing * Maze.CELL * 0.5 - 45.0
+		var home := Vector3(cos(round_about), 0.0, sin(round_about)) * edge
+		home.y = maze.ground_height(home)
+		var horse := MazeHorse.new()
+		horse.coat = rng.randi_range(0, 2)
+		horse.haltered = rng.randf() < 0.4
+		horse.home = home
+		horse.home_range = 40.0
+		var cell := maze.cell_at(home)
+		add(horse, cell, rng.randf_range(-PI, PI), rng.randi(), home - maze.world(cell) + Vector3.UP * 0.3)
 	# Griffinflies over the marsh (ClearingStyle: none by default, the clearing is safe).
 	var marsh := MazeGriffinfly.marsh_middle(maze)
 	for i in (clearing.marsh_griffinflies if marsh.is_finite() else 0):
