@@ -36,7 +36,8 @@ enum Entrance {
 	PLAIN,
 	## The woods, round it (woods density, woods size).
 	WOODS,
-	## Grass up to his chest round it (tall grass radius and height).
+	## Grass up to his chest in front of it, up to the wall either side (tall
+	## grass width, reach and height).
 	TALL_GRASS,
 	## Flooded: a marsh in front of it, pools and channels of standing water
 	## between hummocks of wet ground, sedges growing up out of it (the marsh
@@ -49,11 +50,16 @@ enum Entrance {
 @export_group("Entrances")
 ## What is in front of each of the clearing's entrances, in turn round them.
 @export var entrances: Array[Entrance] = [Entrance.WOODS, Entrance.TALL_GRASS, Entrance.MARSH, Entrance.CLEAR]
-## The tall grass in front of its entrance: a meadow of its own, this wide (its
-## radius, metres), its middle this far in from the door, as high as this, in a
-## hollow this deep (level again at the foot of the wall).
-@export_range(5.0, 200.0) var tall_grass_radius := 75.0
-@export_range(0.0, 200.0) var tall_grass_distance := 55.0
+## The tall grass in front of its entrance: a meadow of its own, running right
+## up to the foot of the wall and to the gate (the user, 2026-10-18: "the tall
+## grass area needs to be bigger in the clearing and run right up to the walls
+## and door"). Half an oval with its straight side along the wall: this wide
+## along the wall, reaching this far out into the clearing from it, metres; its
+## edge wandering in and out by up to this share of that; the grass as high as
+## this, in a hollow this deep (level again at the foot of the wall).
+@export_range(20.0, 600.0) var tall_grass_width := 340.0
+@export_range(10.0, 280.0) var tall_grass_reach := 150.0
+@export_range(0.0, 0.6) var tall_grass_ragged := 0.25
 @export_range(0.5, 3.0) var tall_grass_height := 1.5
 @export_range(0.0, 4.0) var tall_grass_hollow := 1.2
 ## How far round a clear entrance nothing grows but grass, metres.
@@ -160,6 +166,7 @@ var _noise: FastNoiseLite
 var _noise_seed := -1
 var _marsh: FastNoiseLite
 var _marsh_seed := -1
+var _meadow_edge: FastNoiseLite
 
 ## How far in from the edge of the marsh's square (marsh_rect) the hills' coarse
 ## ground is sunk out of sight under its own (coarse_height_at), metres: more
@@ -183,6 +190,9 @@ func _set(property: StringName, value: Variant) -> bool:
 	# (the round pond there was before the marsh: its settings are let go)
 	if String(property).begins_with("pond_"):
 		return true
+	# (and the round tall grass there was before it ran up to the wall)
+	if property == &"tall_grass_radius" or property == &"tall_grass_distance":
+		return true
 	return false
 
 
@@ -195,9 +205,8 @@ func height_at(x: float, z: float, seed_value: int) -> float:
 	if wet > 0.0:
 		return lerpf(hill, MARSH_LEVEL + _marsh_lie(Vector2(x, z), wet, seed_value), wet)
 	# (the tall grass in a hollow of its own, level at the foot of the wall)
-	var meadow := tall_grass_middle()
-	if meadow.is_finite() and tall_grass_hollow > 0.0:
-		var d := Vector2(x, z).distance_to(meadow) / tall_grass_radius
+	if tall_grass_hollow > 0.0:
+		var d := _meadow_oval(Vector2(x, z))
 		if d < 1.15:
 			var half := Maze.CLEARING * Maze.CELL * 0.5
 			var from_wall := half - maxf(absf(x), absf(z))
@@ -308,8 +317,7 @@ func kept_clear(point: Vector2) -> bool:
 	var clear := entrance(Entrance.CLEAR)
 	if not clear.is_empty() and point.distance_to(clear[0]) < clear_radius:
 		return true
-	var meadow := tall_grass_middle()
-	if meadow.is_finite() and point.distance_to(meadow) < tall_grass_radius * 1.05:
+	if _meadow_oval(point) < 1.05:
 		return true
 	var marsh := entrance(Entrance.MARSH)
 	return not marsh.is_empty() and _marsh_oval(point, marsh) < 1.0 + marsh_ragged * 0.7 + 0.1
@@ -318,19 +326,72 @@ func kept_clear(point: Vector2) -> bool:
 ## How much tall grass there is at `point` (x, z): 1 in the meadow in front of a
 ## tall grass entrance, none past its edge.
 func tall_grass_at(point: Vector2) -> float:
-	var meadow := tall_grass_middle()
-	if not meadow.is_finite():
-		return 0.0
 	# (a meadow of its own: its edge sharp, where the hollow begins)
-	return smoothstep(1.02, 0.95, point.distance_to(meadow) / tall_grass_radius)
+	return smoothstep(1.02, 0.95, _meadow_oval(point))
 
 
-## The middle of the tall grass (x, z), or not finite if there is none.
+## The middle of the tall grass (x, z), half its reach out from its gate, or
+## not finite if there is none.
 func tall_grass_middle() -> Vector2:
 	var way := entrance(Entrance.TALL_GRASS)
 	if way.is_empty():
 		return Vector2.INF
-	return way[0] + way[1] * tall_grass_distance
+	return way[0] + way[1] * tall_grass_reach * 0.5
+
+
+## The square (x, z) the tall grass lies in, its ragged edge and all (an empty
+## one if there is none), within the clearing.
+func tall_grass_rect() -> Rect2:
+	var way := entrance(Entrance.TALL_GRASS)
+	if way.is_empty():
+		return Rect2()
+	var gate: Vector2 = way[0]
+	var inward: Vector2 = way[1]
+	var side := inward.orthogonal()
+	var grown := 1.0 + tall_grass_ragged + 0.05
+	var rect := Rect2(gate - inward * 2.0, Vector2.ZERO)
+	for across: Vector2 in [side, -side]:
+		rect = rect.expand(gate - inward * 2.0 + across * tall_grass_width * 0.5 * grown)
+		rect = rect.expand(gate + inward * tall_grass_reach * grown + across * tall_grass_width * 0.5 * grown)
+	var half := Maze.CLEARING * Maze.CELL * 0.5
+	return rect.intersection(Rect2(-half, -half, half * 2.0, half * 2.0))
+
+
+## A place (x, z) at random in the tall grass, well in from its edge (not
+## finite if there is none).
+func tall_grass_spot(rng: RandomNumberGenerator) -> Vector2:
+	var way := entrance(Entrance.TALL_GRASS)
+	if way.is_empty():
+		return Vector2.INF
+	var round_about := rng.randf_range(0.0, PI)
+	var out := sqrt(rng.randf()) * 0.8
+	return (way[0] as Vector2) + (way[1] as Vector2) * sin(round_about) * out * tall_grass_reach \
+		+ (way[1] as Vector2).orthogonal() * cos(round_about) * out * tall_grass_width * 0.5
+
+
+# How far out in the tall grass's half oval `point` is: 1 at its ragged edge,
+# 0 at the foot of the wall in front of its gate, INF if there is no tall grass
+# or the point is behind the wall.
+func _meadow_oval(point: Vector2) -> float:
+	var way := entrance(Entrance.TALL_GRASS)
+	if way.is_empty():
+		return INF
+	var from_gate: Vector2 = point - way[0]
+	var out := from_gate.dot(way[1])
+	if out < -2.0:
+		return INF
+	var along := from_gate.dot((way[1] as Vector2).orthogonal())
+	var oval := Vector2(along / (tall_grass_width * 0.5), maxf(out, 0.0) / tall_grass_reach).length()
+	if oval > 1.0 + tall_grass_ragged + 0.2:
+		return oval
+	# (its edge wandering in and out, in bays and spits some tens of metres across)
+	if _meadow_edge == null:
+		_meadow_edge = FastNoiseLite.new()
+		_meadow_edge.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		_meadow_edge.seed = 31
+		_meadow_edge.frequency = 1.0 / 45.0
+		_meadow_edge.fractal_octaves = 2
+	return oval / (1.0 + tall_grass_ragged * _meadow_edge.get_noise_2d(point.x, point.y))
 
 
 func _hill_at(x: float, z: float, seed_value: int) -> float:

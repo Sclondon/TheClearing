@@ -20,6 +20,7 @@ const FAR := 110.0
 static var _meshes := {}
 static var _material: ShaderMaterial
 static var _fern_material: ShaderMaterial
+static var _bush_material: ShaderMaterial
 
 ## [kind, square] -> [Transform3D]
 var _placed := {}
@@ -40,6 +41,7 @@ func build() -> void:
 	if _material == null:
 		_material = _shaded(PLANT)
 		_fern_material = _shaded(FERN)
+		_bush_material = _shaded(BUSH)
 	set_process(true)
 	for key: Array in _placed:
 		var placed: Array = _placed[key]
@@ -51,7 +53,7 @@ func build() -> void:
 			multi.set_instance_transform(i, placed[i])
 		var shown := MultiMeshInstance3D.new()
 		shown.multimesh = multi
-		shown.material_override = _fern_material if key[0] == Kind.FERN else _material
+		shown.material_override = _fern_material if key[0] == Kind.FERN else (_bush_material if key[0] == Kind.BUSH else _material)
 		shown.visibility_range_end = FAR
 		shown.visibility_range_end_margin = 15.0
 		shown.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
@@ -120,25 +122,72 @@ static func _fern(rng: RandomNumberGenerator) -> ArrayMesh:
 	return tool.commit()
 
 
-## A bush about two metres across: leafy clumps over a few lumps, dark and dense.
+## A bush about two metres across and a metre and a half high, rooted on the
+## ground: a few twiggy stems up from its foot into a dome of leafy lumps, each
+## a shell of small cards on which the bush shader draws sprays of leaves (BUSH:
+## see there what the cards' UV, UV2 and colour carry), the gaps between them
+## cut out. Darker inside and low down, paler at its top; lit as one rounded
+## mass (each card's normal is the way out from the middle of its lump), so that
+## it reads as a shrub and not as the cards it is made of. (Before, it was
+## flat-shaded diamonds hung round its lumps: "the bush just looks like
+## floating squares", the user, 2026-10-18.)
 static func _bush(rng: RandomNumberGenerator) -> ArrayMesh:
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var lumps: Array[Vector3] = []
+	# (the lumps of its dome, low ones round its skirt down to the ground)
+	var lumps: Array[Vector4] = [Vector4(0.0, 0.62, 0.0, 0.62)]
 	for l in 5:
-		lumps.append(Vector3(rng.randf_range(-0.6, 0.6), rng.randf_range(0.5, 1.1), rng.randf_range(-0.6, 0.6)))
-	for i in 420:
-		var lump := lumps[rng.randi() % lumps.size()]
-		var dir := Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.6, 1), rng.randf_range(-1, 1)).normalized()
-		var at := lump + dir * rng.randf_range(0.35, 0.7) * Vector3(1.0, 0.8, 1.0)
-		at.y = maxf(at.y, 0.05)
-		var size := rng.randf_range(0.18, 0.3)
-		var a := dir.cross(Vector3.UP if absf(dir.y) < 0.9 else Vector3.RIGHT).normalized() * size
-		var b := dir.cross(a).normalized() * size * 0.6
-		var shade := Color(0.11, 0.17, 0.08).lerp(Color(0.22, 0.29, 0.13), clampf(at.y / 1.3, 0.0, 1.0) * rng.randf_range(0.6, 1.0))
-		_tri(tool, at - a, at + b, at + a, shade)
-		_tri(tool, at - a, at + a, at - b, shade)
+		var turn := l * TAU / 5.0 + rng.randf_range(-0.4, 0.4)
+		var out := rng.randf_range(0.35, 0.6)
+		lumps.append(Vector4(cos(turn) * out, rng.randf_range(0.38, 0.62), sin(turn) * out, rng.randf_range(0.4, 0.55)))
+	lumps.append(Vector4(rng.randf_range(-0.2, 0.2), 0.95, rng.randf_range(-0.2, 0.2), 0.42))
+	# Its stems: from the root up and out into each lump, thin and dark.
+	var bark := Color(0.09, 0.08, 0.06)
+	for lump in lumps:
+		var top := Vector3(lump.x, lump.y, lump.z) * 0.9
+		var root := Vector3(lump.x, 0.0, lump.z) * 0.15
+		var side := (top - root).cross(Vector3.UP).normalized()
+		if side.length() < 0.5:
+			side = Vector3.RIGHT
+		for flat: Vector3 in [side, (top - root).cross(side).normalized()]:
+			var bottom := flat * 0.025
+			var upper := flat * 0.012
+			_card(tool, [root - bottom, root + bottom, top + upper, top - upper], [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)], -1.0, 0.0, bark, Vector3.UP)
+	# Its leaves: cards over each lump's outside (more on the bigger), turned
+	# every way, and a few deeper in, darker, so that it is not hollow.
+	for lump in lumps:
+		var middle := Vector3(lump.x, lump.y, lump.z)
+		var cards := int(lump.w * lump.w * 260.0)
+		for c in cards:
+			var dir := Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.55, 1), rng.randf_range(-1, 1)).normalized()
+			var deep := rng.randf_range(0.6, 1.05) if rng.randf() < 0.8 else rng.randf_range(0.25, 0.6)
+			var at := middle + dir * lump.w * deep * Vector3(1.0, 0.85, 1.0)
+			if at.y < 0.04:
+				at.y = rng.randf_range(0.04, 0.12)
+			# (facing out, more or less, and rolled at random)
+			var facing := (dir + Vector3(rng.randf_range(-0.5, 0.5), rng.randf_range(-0.3, 0.5), rng.randf_range(-0.5, 0.5))).normalized()
+			var a := facing.cross(Vector3.UP if absf(facing.y) < 0.95 else Vector3.RIGHT).normalized()
+			var b := facing.cross(a).normalized()
+			var roll := rng.randf() * TAU
+			var size := rng.randf_range(0.2, 0.3)
+			var u := (a * cos(roll) + b * sin(roll)) * size
+			var v := (b * cos(roll) - a * sin(roll)) * size
+			# (darker in its depths and low down, paler towards the top and outside)
+			var light := clampf(deep * 0.55 + at.y / 1.4 * 0.45, 0.0, 1.0)
+			var shade := Color(0.08, 0.12, 0.06).lerp(Color(0.2, 0.27, 0.12), light * rng.randf_range(0.75, 1.0))
+			var normal := (dir + Vector3.UP * 0.35).normalized()
+			_card(tool, [at - u - v, at + u - v, at + u + v, at - u + v], [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)], rng.randf(), light, shade, normal)
 	return tool.commit()
+
+
+# A quad of `corners` (UV `uvs`), UV2 (`which`, `light`), all of it lit with `normal`.
+static func _card(tool: SurfaceTool, corners: Array, uvs: Array, which: float, light: float, colour: Color, normal: Vector3) -> void:
+	for k: int in [0, 1, 2, 0, 2, 3]:
+		tool.set_color(colour)
+		tool.set_normal(normal)
+		tool.set_uv(uvs[k])
+		tool.set_uv2(Vector2(which, light))
+		tool.add_vertex(corners[k])
 
 
 ## A low cushion of moss, a metre or so across, lumpy and yellow-green.
@@ -214,7 +263,7 @@ static func _tri(tool: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, colour: 
 		tool.add_vertex(p)
 
 
-## The low plants' shader (bushes, tufts, moss): their own colours, a little sway
+## The low plants' shader (tufts, moss and short grass; the bushes have their own, BUSH): their own colours, a little sway
 ## in the wind, more towards their tops, and pushed aside and down where anyone
 ## (Grass.PUSHERS, the nearest MAX_PUSHERS to the camera) goes through them, as
 ## the grass is. The bending is all in the vertex shader: nothing to work out per plant.
@@ -235,6 +284,76 @@ void vertex() {
 void fragment() {
 	ALBEDO = COLOR.rgb;
 	ROUGHNESS = 1.0;
+	if (!FRONT_FACING) {
+		NORMAL = -NORMAL;
+	}
+}
+"""
+
+## Bushes: on each card of a bush (UV 0..1 over it; UV2: a number at random for
+## the card, or less than 0 for a stem, drawn solid, and how far out and up in
+## the bush it is, 0..1) a spray of leaves, each a pointed oval with a darker
+## midrib and a shade of its own; all cut out of the card (alpha scissor). Far
+## off, where a leaf would be too small to see, the spray's outline filled in
+## instead, so that it neither shimmers nor thins away. Sways, and is pushed
+## aside, as the other plants are.
+const BUSH := """
+shader_type spatial;
+render_mode cull_disabled, specular_disabled;
+
+uniform vec4 pushers[8];
+uniform int pusher_count = 0;
+uniform float sway = 0.03;
+
+#include "res://scripts/plant_push.gdshaderinc"
+
+float hash(float n) {
+	return fract(sin(n * 12.9898) * 43758.5453);
+}
+
+void vertex() {
+	VERTEX += bent(MODEL_MATRIX, VERTEX, max(VERTEX.y, 0.0), sway, TIME);
+}
+
+void fragment() {
+	float which = UV2.x;
+	vec3 colour = COLOR.rgb;
+	float cover = 1.0;
+	if (which >= 0.0) {
+		vec2 q = UV * 2.0 - 1.0;
+		float px = fwidth(q.x) + fwidth(q.y);
+		float leaves = 0.0;
+		float rib = 0.0;
+		float shade = 1.0;
+		// (six leaves from about the middle, fanned out every way)
+		for (int k = 0; k < 6; k++) {
+			float r = hash(which * 97.0 + float(k) * 7.31);
+			float turn = float(k) * 1.047 + which * 6.283 + (r - 0.5) * 0.7;
+			vec2 along = vec2(cos(turn), sin(turn));
+			vec2 from = q - along * (0.08 + 0.12 * r);
+			float x = dot(from, along);
+			float y = dot(from, vec2(-along.y, along.x));
+			float length_ = 0.62 + 0.3 * r;
+			float t = clamp(x / length_, 0.0, 1.0);
+			float wide = 0.24 * pow(sin(3.14159 * t), 0.8) * (0.8 + 0.3 * r);
+			float inside = step(0.0, x) * step(x, length_) * (1.0 - smoothstep(wide - px, wide + px, abs(y)));
+			if (inside > leaves) {
+				shade = 0.85 + 0.3 * r;
+				rib = (1.0 - smoothstep(0.0, 0.015 + px, abs(y))) * step(t, 0.85);
+			}
+			leaves = max(leaves, inside);
+		}
+		// Far off: the spray's outline filled in.
+		float coarse = clamp(px * 6.0 - 0.6, 0.0, 1.0);
+		cover = mix(leaves, step(length(q), 0.85), coarse);
+		colour *= mix(shade, 1.0, coarse);
+		colour = mix(colour, colour * 0.7, rib * (1.0 - coarse));
+	}
+	ALPHA = cover;
+	ALPHA_SCISSOR_THRESHOLD = 0.5;
+	ALBEDO = colour;
+	ROUGHNESS = 1.0;
+	// (lit as the mass it is part of, the same from both sides of a card)
 	if (!FRONT_FACING) {
 		NORMAL = -NORMAL;
 	}
@@ -354,6 +473,6 @@ func _process(_delta: float) -> void:
 	for i in n:
 		var at: Vector3 = (found[i] as Node3D).global_position
 		packed[i] = Vector4(at.x, at.y, at.z, (found[i] as Node).get_meta(&"grass_radius", 0.7))
-	for made: ShaderMaterial in [_material, _fern_material]:
+	for made: ShaderMaterial in [_material, _fern_material, _bush_material]:
 		made.set_shader_parameter(&"pushers", packed)
 		made.set_shader_parameter(&"pusher_count", n)

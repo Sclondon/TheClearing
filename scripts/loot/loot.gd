@@ -345,7 +345,7 @@ func _clearing_spot(region: int, others: Array[Vector2], apart: float, from_midd
 			var way := (woods[1] as Vector2).rotated(_rng.randf_range(-1.1, 1.1))
 			spot = (woods[0] as Vector2) + way * look.woods_size * _rng.randf_range(0.85, 1.08)
 		elif where == Region.TALL_GRASS and meadow.is_finite():
-			spot = meadow + Vector2.from_angle(_rng.randf_range(0.0, TAU)) * look.tall_grass_radius * sqrt(_rng.randf()) * 0.85
+			spot = look.tall_grass_spot(_rng)
 		elif where == Region.POND and pond.is_finite():
 			spot = pond + Vector2.from_angle(_rng.randf_range(0.0, TAU)) * _pond_radius() * _rng.randf_range(1.3, 1.7)
 		if maxf(absf(spot.x), absf(spot.y)) > half - 14.0 or spot.length() < from_middle:
