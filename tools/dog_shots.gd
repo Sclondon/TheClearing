@@ -5,7 +5,7 @@ extends SceneTree
 ## tracking, and charging the boy). Says how many draws a frame takes. Needs a
 ## real window (the engine draws nothing headless):
 ##
-##     godot --path . --audio-driver Dummy --resolution 720x1280 -s res://tools/dog_shots.gd -- <folder> [studio|maze|all]
+##     godot --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/dog_shots.gd -- <folder> [studio|maze|all]
 
 var folder := "dog_shots"
 var mode := "all"

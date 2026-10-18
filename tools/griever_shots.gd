@@ -5,7 +5,7 @@ extends SceneTree
 ## a run of frames of it walking (a short film, as numbered pictures). Needs a
 ## real window (the engine draws nothing headless):
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/griever_shots.gd -- <folder>
+##     godot --path . --resolution 1280x720 -s res://tools/griever_shots.gd -- <folder>
 
 var folder := "shots/griever"
 var scene: Node3D

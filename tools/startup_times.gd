@@ -1,7 +1,7 @@
 extends SceneTree
 ## How long the first frames of a round take (the slow start), printed in groups.
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/startup_times.gd
+##     godot --path . --resolution 1280x720 -s res://tools/startup_times.gd
 
 var main: Node
 

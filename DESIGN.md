@@ -10,7 +10,7 @@ You wake in a wide grassy clearing walled in on every side by a maze that was no
 friends wake with you. Find the way out.
 
 After *The Maze Runner* (the Glade, the walls, the Grievers, the sprint) and *Labyrinth* (a maze with rules of its
-own), seen and lit like *Inside*. A secret cart in the Scareathon arcade (code **MAZE**), played on phones first.
+own), seen and lit like *Inside*. A secret cart in the Scareathon arcade (code **MAZE**), played in landscape.
 
 ## Pillars
 
@@ -22,7 +22,8 @@ own), seen and lit like *Inside*. A secret cart in the Scareathon arcade (code *
    round corners.
 4. **Every maze new, every maze fair.** Mazes are generated from rules, a fresh one each round, the same for everyone
    in a room. Rules, not hand edits, are how the maze changes (hand layouts are possible, but the rules come first).
-5. **Phones first.** It must run smoothly in a phone browser, in portrait, with touch.
+5. **Landscape first.** Laid out, played and checked in landscape (1280x720), with mouse and keyboard, a gamepad,
+   or touch on a phone held sideways. It must still run smoothly in a phone browser, and still fit a portrait window.
 
 ## Look and feel (the art direction)
 

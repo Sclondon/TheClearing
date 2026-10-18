@@ -3,7 +3,7 @@ extends SceneTree
 ## maze from above, with stand-ins for three friends. Needs a real window (the
 ## engine draws nothing headless):
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/shots.gd -- <folder>
+##     godot --path . --resolution 1280x720 -s res://tools/shots.gd -- <folder>
 
 var main: Node
 var folder := "shots"

@@ -5,7 +5,7 @@ extends SceneTree
 ## walk, the head's tilt, the reach and its light, the shimmer, blinking out
 ## and in). Needs a real window:
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/alien_look_shots.gd -- <folder>
+##     godot --path . --resolution 1280x720 -s res://tools/alien_look_shots.gd -- <folder>
 
 var folder := "alien_shots"
 var stage: Node3D

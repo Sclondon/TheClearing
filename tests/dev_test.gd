@@ -6,7 +6,7 @@ extends SceneTree
 ## Given a file, a picture from in front of the gate is saved to it.
 ##
 ##     godot --headless --path . -s res://tests/dev_test.gd -- --dev
-##     godot --path . --resolution 720x1280 -s res://tests/dev_test.gd -- --dev <file.png>
+##     godot --path . --resolution 1280x720 -s res://tests/dev_test.gd -- --dev <file.png>
 
 var main: Node
 var failures := 0

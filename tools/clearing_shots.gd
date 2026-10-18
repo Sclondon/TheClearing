@@ -3,7 +3,7 @@ extends SceneTree
 ## entrance and what is in front of it (ClearingStyle.entrances), from 60 m in
 ## at his eye height and from a little above.
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/clearing_shots.gd -- <folder> [seed]
+##     godot --path . --resolution 1280x720 -s res://tools/clearing_shots.gd -- <folder> [seed]
 
 var main: Node
 

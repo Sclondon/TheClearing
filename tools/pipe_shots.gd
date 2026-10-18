@@ -2,7 +2,7 @@ extends SceneTree
 ## Pictures of a sewer pipe through a wall in the first ring: from the hall
 ## floor, from level with its mouth, and from inside it.
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/pipe_shots.gd -- <folder>
+##     godot --path . --resolution 1280x720 -s res://tools/pipe_shots.gd -- <folder>
 
 var main: Node
 

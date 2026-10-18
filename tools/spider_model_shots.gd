@@ -5,7 +5,7 @@ extends SceneTree
 ## (walking, climbing, waiting head down, the drop, landing, rearing, the
 ## strike). Needs a real window:
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/spider_model_shots.gd -- <folder>
+##     godot --path . --resolution 1280x720 -s res://tools/spider_model_shots.gd -- <folder>
 
 var folder := "shots/spider_model"
 var example

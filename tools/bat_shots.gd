@@ -9,7 +9,7 @@ extends SceneTree
 ## colony bursting off it, and whirling round the boy. Says how many draws a
 ## frame takes. Needs a real window (the engine draws nothing headless):
 ##
-##     godot --audio-driver Dummy --path . --resolution 720x1280 -s res://tools/bat_shots.gd -- <folder> [studio|maze]
+##     godot --audio-driver Dummy --path . --resolution 1280x720 -s res://tools/bat_shots.gd -- <folder> [studio|maze]
 
 var folder := "bat_shots"
 var only := ""

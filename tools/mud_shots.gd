@@ -3,7 +3,7 @@ extends SceneTree
 ## eye level, a puddle close to, the dirt at his feet, and a hall from a wall top.
 ## Needs a real window:
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/mud_shots.gd -- <folder> [phone]
+##     godot --path . --resolution 1280x720 -s res://tools/mud_shots.gd -- <folder> [phone]
 ##
 ## With "phone", the ground is drawn as on a phone or the web (its `detail` 1).
 
