@@ -16,9 +16,13 @@ extends Node3D
 ## the middle of its floor. A bridge runs from
 ## its origin to its child `End` (move that to move the far end), and so does a
 ## vine strung across a hall (a strand). A tree stands
-## at its origin, as big as its scale.
+## at its origin, as big as its scale. A prop (MazeProps.Prop: a vent, a culvert,
+## an outlet, a drain, a manhole, a puddle, a stain, a crate, a barrel) stands at
+## its origin, turned and sized by its transform; one on a wall looks out along
+## its +Z. A wire (an old cable) runs from its origin to its child `End`, sagging
+## `sag` metres; with `tails` it is snapped, an end that long hanging from each.
 
-enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE }
+enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, PROP, WIRE }
 
 @export var kind := Kind.WALL:
 	set(value):
@@ -48,6 +52,27 @@ enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE }
 @export var width := 1.8:
 	set(value):
 		width = value
+		_refresh()
+## Which prop it is (MazeProps.Prop), and (an outlet) whether it drips.
+@export var prop := 0:
+	set(value):
+		prop = value
+		_refresh()
+@export var drips := false
+## How far a wire sags in the middle, metres; how long the ends hanging from it
+## are if it is snapped (from its origin, and from its End: 0 for none), and
+## whether an old lamp hangs from its lowest point.
+@export var sag := 1.5:
+	set(value):
+		sag = value
+		_refresh()
+@export var tails := Vector2.ZERO:
+	set(value):
+		tails = value
+		_refresh()
+@export var lamp := false:
+	set(value):
+		lamp = value
 		_refresh()
 
 var _shown: Node3D
@@ -95,7 +120,7 @@ func bridge_end() -> Vector3:
 
 func _process(_delta: float) -> void:
 	# (in the editor, a bridge redraws when its far end is moved)
-	if Engine.is_editor_hint() and kind in [Kind.BRIDGE, Kind.STRAND] and _shown and bridge_end() != _drawn_end:
+	if Engine.is_editor_hint() and kind in [Kind.BRIDGE, Kind.STRAND, Kind.WIRE] and _shown and bridge_end() != _drawn_end:
 		_refresh()
 
 
@@ -106,7 +131,7 @@ func _refresh() -> void:
 	if _shown:
 		_shown.queue_free()
 		_shown = null
-	set_process(kind in [Kind.BRIDGE, Kind.STRAND])
+	set_process(kind in [Kind.BRIDGE, Kind.STRAND, Kind.WIRE])
 	match kind:
 		Kind.WALL, Kind.PIER, Kind.TERRACE:
 			var tool := SurfaceTool.new()
@@ -157,6 +182,12 @@ func _refresh() -> void:
 			pipe.length = length
 			pipe.wall = width
 			_shown = pipe
+		Kind.PROP, Kind.WIRE:
+			# (drawn as the game draws it, in the piece's own space)
+			if kind == Kind.WIRE and not has_node(^"End"):
+				return
+			_drawn_end = bridge_end()
+			_shown = MazeProps.shown(self)
 	if _shown:
 		# (shown, but not part of the scene: it is made again whenever it is opened)
 		add_child(_shown, false, Node.INTERNAL_MODE_BACK)
@@ -164,5 +195,5 @@ func _refresh() -> void:
 
 func _notification(what: int) -> void:
 	# (a vine's rope and a bridge's planks are laid where they hang in the world: moved, they are laid again)
-	if what == NOTIFICATION_TRANSFORM_CHANGED and Engine.is_editor_hint() and kind in [Kind.VINE, Kind.BRIDGE, Kind.STRAND]:
+	if what == NOTIFICATION_TRANSFORM_CHANGED and Engine.is_editor_hint() and kind in [Kind.VINE, Kind.BRIDGE, Kind.STRAND, Kind.WIRE]:
 		_refresh()

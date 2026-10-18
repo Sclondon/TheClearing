@@ -118,6 +118,48 @@ extends Resource
 @export_range(0.0, 0.5) var sewer_pipe_share := 0.0
 @export_range(0.2, 0.9) var sewer_pipe_height := 0.62
 
+@export_group("Sewers")
+## What the maze's drains and ducts show of themselves (MazeProps; dressing,
+## nothing to climb). The share of wall faces with an old vent high on them:
+## louvred or round, rusted, some of them big.
+@export_range(0.0, 0.5) var wall_vent_share := 0.0
+## The share of wall faces with a barred culvert at their foot, black behind its
+## bars, a wet stain and a puddle in front of it.
+@export_range(0.0, 0.5) var culvert_share := 0.0
+## The share of wall faces with a small pipe coming out of them a little up, a
+## rust stain running down the wall under it and a puddle at the foot; of those,
+## the share that drip.
+@export_range(0.0, 0.5) var outlet_share := 0.0
+@export_range(0.0, 1.0) var outlet_drip_share := 0.6
+## The share of hall cells with a drain grate in the floor by a wall's foot (a
+## puddle round some), and with a manhole cover out in the hall (now and then
+## pushed half off its hole).
+@export_range(0.0, 0.5) var drain_share := 0.0
+@export_range(0.0, 0.5) var manhole_share := 0.0
+
+@export_group("Signs of life")
+## Others lived here once (MazeProps). The share of wall faces with boxes and
+## barrels left against them, how many things in each heap (most and least), and
+## the share of those that are barrels (some fallen over). They are solid.
+@export_range(0.0, 0.5) var clutter_share := 0.0
+@export var clutter_heap_size := Vector2i(3, 7)
+@export_range(0.0, 1.0) var clutter_barrel_share := 0.4
+## The share of halls with an old electric cable strung across them high up,
+## sagging, from wall to wall, and how high its ends are, metres (never over the
+## lower wall top).
+@export_range(0.0, 1.0) var cable_share := 0.0
+@export var cable_height_range := Vector2(9.0, 22.0)
+## The share of vines strung across a hall with a cable strung beside them, in
+## among the vine, and of vines hanging from the walls with a cable's end hanging
+## beside them.
+@export_range(0.0, 1.0) var cable_by_vine_share := 0.0
+## Of cables across halls, the share snapped, their two ends hanging; of the rest,
+## the share with an old lamp (dead) hanging from them.
+@export_range(0.0, 1.0) var snapped_cable_share := 0.25
+@export_range(0.0, 1.0) var cable_lamp_share := 0.3
+## The share of wall faces with a cable looped along them on brackets.
+@export_range(0.0, 0.5) var wall_cable_share := 0.0
+
 @export_group("Plants")
 ## How thickly ferns, moss and tufts of grass grow along the foot of its walls (0
 ## none, 1 all along every wall).
@@ -231,7 +273,7 @@ extends Resource
 @export_range(0, 20) var loot_items := 6
 ## Camps left behind in its halls (cold fires, tallies scratched on the wall
 ## beside them, often signs of a struggle).
-@export_range(0, 4) var abandoned_camps := 1
+@export_range(0, 8) var abandoned_camps := 1
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
@@ -302,7 +344,25 @@ static func avenues() -> MazeStyle:
 	style.plant_density = 0.8
 	style.harpies = 2
 	style.colossi = 1
+	sewers(style, 1.0)
+	# (signs of those who lived here before: camps, heaps of boxes and barrels, old
+	# cables strung high across the halls among the vines, some snapped, lamps)
+	style.abandoned_camps = 3
+	style.clutter_share = 0.07
+	style.cable_share = 0.14
+	style.cable_by_vine_share = 0.6
+	style.wall_cable_share = 0.05
 	return style
+
+
+## Vents, culverts, outlets, drains and manholes, `amount` times as many as the
+## Avenues have.
+static func sewers(style: MazeStyle, amount: float) -> void:
+	style.wall_vent_share = 0.05 * amount
+	style.culvert_share = 0.025 * amount
+	style.outlet_share = 0.06 * amount
+	style.drain_share = 0.05 * amount
+	style.manhole_share = 0.025 * amount
 
 
 ## Galleries: the second section. Hallways and walls like the Avenues', but up
@@ -328,6 +388,7 @@ static func galleries() -> MazeStyle:
 	style.hanging_vine_share = 0.04
 	style.plant_density = 0.6
 	style.colossi = 1
+	sewers(style, 0.8)
 	return style
 
 
@@ -337,13 +398,16 @@ static func narrows() -> MazeStyle:
 	var style := made(4, 1, 0.0, 0.0, 0.06)
 	# (three ways in from the Galleries)
 	style.entrance_count = 3
+	sewers(style, 0.7)
 	return style
 
 
 ## Tangle: single hallways that branch often and loop back on themselves, so that
 ## there are many ways and it is easy to go round in circles.
 static func tangle() -> MazeStyle:
-	return made(4, 1, 0.3, 0.5, 0.2)
+	var style := made(4, 1, 0.3, 0.5, 0.2)
+	sewers(style, 0.7)
+	return style
 
 
 ## Spokes: the first round section, past the moor. Hallways two cells wide, long

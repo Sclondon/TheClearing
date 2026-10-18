@@ -20,15 +20,35 @@ loop_share = 0.0
 terrace_share = 0.0
 wall_top_bridge_share = 0.0
 hanging_vine_share = 0.1
+wall_vent_share = 0.05
+culvert_share = 0.025
+outlet_share = 0.06
+drain_share = 0.05
+manhole_share = 0.025
+clutter_share = 0.07
+cable_share = 0.14
+cable_by_vine_share = 0.6
+wall_cable_share = 0.05
+abandoned_camps = 3
 
 [sub_resource type="Resource" id="Resource_5ge7g"]
 script = ExtResource("2_83lp3")
 section_width_cells = 6
 straight_on_chance = 0.563
 loop_share = 0.0
+wall_vent_share = 0.04
+culvert_share = 0.02
+outlet_share = 0.048
+drain_share = 0.04
+manhole_share = 0.02
 
 [sub_resource type="Resource" id="Resource_h67si"]
 script = ExtResource("2_83lp3")
+wall_vent_share = 0.035
+culvert_share = 0.0175
+outlet_share = 0.042
+drain_share = 0.035
+manhole_share = 0.0175
 
 [sub_resource type="Resource" id="Resource_owt5n"]
 script = ExtResource("4_round")

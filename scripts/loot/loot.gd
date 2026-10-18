@@ -231,7 +231,7 @@ func _populate_ring(ring: int, style: MazeStyle) -> void:
 			for step: Vector2i in Maze.STEPS:
 				if not maze.blocked(cell, step) and maze.ring_of(cell + step) == ring:
 					middle += Vector3(step.x, 0.0, step.y) * Maze.CELL * 0.5
-		if not nav.clear_of_walls(middle, 3.0):
+		if not nav.clear_of_walls(middle, 3.0) or not _off_heaps(middle, 4.5):
 			continue
 		var camp := add_camp(middle, Campsite.Kind.ABANDONED, _rng.randi(), true)
 		for step: Vector2i in Maze.STEPS:
@@ -249,12 +249,20 @@ func _populate_ring(ring: int, style: MazeStyle) -> void:
 		if cell in used:
 			continue
 		var at := nav.point(cell) + Vector3(_rng.randf_range(-2.5, 2.5), 0.0, _rng.randf_range(-2.5, 2.5))
-		if not nav.clear_of_walls(at, 1.4):
+		if not nav.clear_of_walls(at, 1.4) or not _off_heaps(at, 0.5):
 			at = nav.point(cell)
+			if not _off_heaps(at, 0.5):
+				continue
 		at.y = maze.ground_height(at) + 0.02
 		_place(_pick(MAZE_MIX), at, _rng.randf_range(0.0, TAU))
 		used.append(cell)
 		loose -= 1
+
+
+## Whether `at` is clear of the heaps of boxes and barrels (MazeProps) by `margin`.
+func _off_heaps(at: Vector3, margin: float) -> bool:
+	var built := world.get_node_or_null(^"Maze") as MazeBuilder if world else null
+	return built == null or built.props == null or not built.props.near_heap(at, margin)
 
 
 ## Puts in a camp of `kind` at `at` (on the ground), with what lies by it, and
