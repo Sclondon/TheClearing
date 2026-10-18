@@ -1,4 +1,3 @@
+# The slime_wall
 creatures/slime_wall/slime_wall.gd
 creatures/slime_wall/slime_wall_look.gd
-creatures/slime_wall/example.gd
-creatures/slime_wall/README.md

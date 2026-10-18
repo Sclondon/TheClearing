@@ -1,7 +1,3 @@
+# The abomination
 creatures/abomination/abomination.gd
-creatures/abomination/abomination.gd.uid
 creatures/abomination/abomination_look.gd
-creatures/abomination/abomination_look.gd.uid
-creatures/abomination/example.gd
-creatures/abomination/example.gd.uid
-creatures/abomination/README.md
