@@ -9,6 +9,38 @@ class_name Mazes
 ## press Generate, change what you like, and save it as res://mazes/<name>.tscn.
 
 const FOLDER := "res://mazes"
+## Where the rules for generated mazes are set: the maze editor's MazeLayout, its
+## `styles` (one MazeStyle a section) and `clearing_style`. A generated maze is
+## made by them from the room's own seed.
+const RULES := "res://maze_editor.tscn"
+
+
+## The section styles and clearing look set in the maze editor ([styles,
+## clearing style]), each a copy (generating changes the clearing's); the game's
+## own styles for sections it sets none for, and [[], null] with no editor.
+static func rules() -> Array:
+	# (a test's own choice comes first: MazeStyle.chosen)
+	var scene := load(RULES) as PackedScene if ResourceLoader.exists(RULES) and MazeStyle.chosen.is_empty() else null
+	if scene == null:
+		return [[] as Array[MazeStyle], null]
+	var state := scene.get_state()
+	var styles: Array[MazeStyle] = []
+	var clearing: ClearingStyle = null
+	for i in state.get_node_property_count(0):
+		match state.get_node_property_name(0, i):
+			&"styles":
+				for style in state.get_node_property_value(0, i):
+					if style is MazeStyle:
+						styles.append((style as MazeStyle).duplicate(true))
+			&"clearing_style":
+				var look: Variant = state.get_node_property_value(0, i)
+				if look is ClearingStyle:
+					clearing = (look as ClearingStyle).duplicate(true)
+	if not styles.is_empty():
+		var own := MazeStyle.defaults()
+		while styles.size() < own.size():
+			styles.append(own[styles.size()])
+	return [styles, clearing]
 
 
 ## The playable layouts, in order.
