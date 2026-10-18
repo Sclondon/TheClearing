@@ -17,6 +17,9 @@ extends Node3D
 ## - `tracking`: nose down on a trail, casting from side to side.
 ## - `stalking`: stiff, low and slow, head level with its back, hackles up.
 ## - `snarling`: lips drawn back off its teeth, ears back.
+## - `friendly`: tame, glad: its tail carried up and wagging hard, ears up,
+##   hackles flat, mouth open and soft (snarling or stalking still win over it).
+## - `eating`: head down to what it eats on the ground, jaws working.
 ## - `sitting`, `lying` (it dozes off when it has lain a while).
 ## - `bark()`, `howl(seconds)` (it sits to howl unless `sit_to_howl` is off).
 ## - `lunge(at)`: it gathers itself (GATHER), springs at `at` (SPRING), snaps
@@ -75,6 +78,8 @@ var look_at_point := Vector3.INF
 var tracking := false
 var stalking := false
 var snarling := false
+var friendly := false
+var eating := false
 var sitting := false
 var lying := false
 ## Sits down to howl.

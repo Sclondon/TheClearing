@@ -10,7 +10,8 @@ extends Control
 ## up uses it, down drops, Y takes the last tool back into his hand or puts it away.
 ##
 ## Under the slots, a line now and then ("NO ROOM: DROP SOMETHING"); at the
-## foot of the screen what the act button would take ("E  TAKE THE TORCH"); and
+## foot of the screen what the act button would do ("E  TAKE THE TORCH", "E  FEED
+## THE DOG"); and
 ## a map scrap, while it is read.
 
 const FONT := preload("res://fonts/SpecialElite-Regular.ttf")
@@ -172,10 +173,9 @@ func _show() -> void:
 	_drop.visible = loot.hand >= 0
 	if loot.hand >= 0:
 		_last_hand = loot.hand
-	var near := loot.in_reach
-	if near and is_instance_valid(near):
+	if loot.prompt != "":
 		var key := "" if Gamepad.using == Gamepad.Using.TOUCH else ("X  " if Gamepad.using == Gamepad.Using.PAD else "E  ")
-		_prompt.text = key + "TAKE THE " + String(near.call(&"title"))
+		_prompt.text = key + loot.prompt
 	else:
 		_prompt.text = ""
 

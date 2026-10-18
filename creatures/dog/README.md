@@ -16,6 +16,8 @@ add_child(dog)
 dog.tracking = true           # nose down on a trail, casting side to side
 dog.stalking = true           # stiff, low, slow; hackles up
 dog.snarling = true           # lips drawn off its teeth
+dog.friendly = true           # tame and glad: tail up and wagging, ears pricked
+dog.eating = true             # head down to what it eats, jaws working
 dog.look_at_point = target    # INF for nothing
 dog.bark(); dog.howl(2.0); dog.shake()
 dog.sitting = true; dog.lying = true
