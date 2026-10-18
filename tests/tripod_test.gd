@@ -264,8 +264,13 @@ func _run() -> void:
 	stage.add_child(enemies)
 	enemies.maze = maze
 	var style := MazeStyle.new()
-	for key in ["snakes", "mummy_packs", "ghouls", "centipedes", "spiders", "abominations", "slime_walls", "bat_colonies", "baboon_troops", "alien_packs", "angels", "dog_packs", "beetle_swarms", "fish_people", "frogs", "frog_swarms", "amalgams", "flesh_mounds", "harpies", "boars"]:
-		style.set(key, 0)
+	# (every count of what hunts at nought, whatever kinds there are by now, but the tripods)
+	var group := ""
+	for property: Dictionary in style.get_property_list():
+		if property["usage"] & PROPERTY_USAGE_GROUP:
+			group = property["name"]
+		elif group == "What hunts it" and property["type"] == TYPE_INT:
+			style.set(property["name"], 0)
 	style.tripods = 1
 	enemies.add_hunters(style, 5)
 	check("MazeEnemies puts one in as the style says", enemies.enemies.size() == 1 and enemies.enemies[0] is MazeTripod)
