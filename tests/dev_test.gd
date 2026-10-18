@@ -75,6 +75,9 @@ func _run() -> void:
 		root.get_texture().get_image().save_png(picture)
 		world.dev.toggle()
 
+	# (out in the middle of the clearing, so that nothing is in the way)
+	world.dev.to_middle()
+	await frames(20)
 	var before: int = world.enemies.enemies.size()
 	world.dev.spawn_mummy()
 	world.dev.spawn_pack()
@@ -82,9 +85,17 @@ func _run() -> void:
 	world.dev.spawn_griever()
 	check("things put in", world.enemies.enemies.size() == before + 5 and world.dev._grievers.size() == 1)
 	var newest = world.enemies.enemies.back()
-	var cell: Vector2i = maze.cell_at(newest.global_position)
-	check("out in the maze, not the clearing", not maze.in_clearing(cell) and not maze.solid.has(cell), str(cell))
-	check("not far from him", newest.global_position.distance_to(player.global_position) < Maze.CELL * 12.0, "(%.0f m)" % newest.global_position.distance_to(player.global_position))
+	var away: float = newest.global_position.distance_to(player.global_position)
+	var look: Vector3 = -world.camera.global_basis.z
+	var towards: Vector3 = (newest.global_position - player.global_position).normalized()
+	check("put in where he can see it", away > 2.0 and away < 25.0 and Vector2(look.x, look.z).normalized().dot(Vector2(towards.x, towards.z)) > 0.5, "(%.0f m)" % away)
+	var mummy = world.enemies.enemies[before]
+	for i in 30:
+		await physics_frame
+	check("and it stays (not sent off the clearing)", mummy.global_position.distance_to(player.global_position) < 30.0, "(%.0f m)" % mummy.global_position.distance_to(player.global_position))
+	if picture != "":
+		await frames(30)
+		root.get_texture().get_image().save_png(picture.replace(".png", "_spawned.png"))
 
 	world.dev.toggle_god()
 	var at: Vector3 = player.global_position
