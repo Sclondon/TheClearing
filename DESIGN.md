@@ -244,6 +244,16 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     tells every hunter nearby where you are (they fetch bigger things). Three on at once for a moment bring you down.
     A jump or two shakes them off; a roll, slide or dive throws them all off; thrown off, one tumbles and throws a
     tantrum before it comes again. They give up when they lose you and climb back to their perch.
+  - **Crows** (added 2026-10-18, the user: "add crows /ravens and blue jays"): murders of seven to thirteen American
+    crows sitting along the edges of the wall tops and ledges over a hall (the lowest ledges if there is room on
+    them), side on, looking about, preening, shuffling, now and then a caw (a bow forward, tail flicked, bill wide).
+    They are the maze's watchers. Walk in a hall below them, in their sight, and every head turns to you; as you go
+    they follow along the walls in short flights, one after another, leapfrogging to keep over you (never far from
+    home, never into the clearing). Walking calls nobody. Run near them, or sprint within a longer way, and the murder
+    erupts cawing and wheels over you, following you round, and its cawing calls every hunter within 45 m to you,
+    over and over, for about nine seconds; then they settle on the walls where they are, slow to go off again for a
+    while. When something catches someone near them they rise and wheel over the place, cawing, for half a minute:
+    a sign to everyone else. They catch nobody. Walk, do not run, under crows.
   - **Imp swarm**: a crack at the foot of a wall. Come near (or run near) and it chitters for a second, then dozens of
     imps pour out as a tide along the floor and up and along the walls. Those that reach you run up you and cling,
     slowing you; ten on you for a second and you are down. A roll throws them off; a sprint outruns them; getting up
@@ -354,6 +364,24 @@ agree.
 Not everything in the clearing and the maze is a threat. Added 2026-10-18 at the user's request ("there should be
 non hostile regular deer and elk and chicken as well. Some should be in the clearing"):
 
+- **Birds** (added 2026-10-18, the user: "add crows /ravens and blue jays"). Real anatomy and a real wingbeat (the
+  wing straight and fingered on the downstroke, folded at the wrist on the upstroke, a flick at the top), take-offs
+  with a jump, glides, banking, landings with a flare; their calls are made in code.
+  - **Blue jays**: families of three to six in the pines at the edge of the woods nearest the middle (ClearingStyle,
+    "Wildlife"): vivid blue, barred black, white below, a black necklace, crested. One of the very few colour accents
+    in the near-colourless clearing, so they are small and few. They flit from branch tip to branch tip and tree to
+    tree in bounding flights, drop to the ground in front of the trees to hop about and peck, and fly back up;
+    "jay! jay!" with a bob and the crest up, a squeaky "queedle", and now and then (as real jays do) a red-tailed
+    hawk's scream. Walk in under their trees and they gather on the branches over you and scold, crests up; run
+    through those on the ground and they go up into the branches. Something that hunts near the trees, they scold
+    too: a tell.
+  - **Crows in the clearing**: a small flock in the treetops of a stand by the woods, walking (with the crow's
+    swagger) and pecking in the meadow in front of it. Walk near and those on the ground fly up into the trees; run
+    at them and the whole flock goes up cawing, wheels over the trees and settles. They call nobody.
+  - **Ravens**: a pair (or one) on the wall tops of a ring (MazeStyle, "Wildlife"): a third bigger than a crow, a
+    wedge tail, a shaggy throat, a heavy bill; deep croaks and hollow knocking. An omen: when someone comes near and
+    something that hunts waits in the halls ahead of them, the ravens fly ahead, croaking, to sit on the walls over
+    it, and stay there while it stays. Those who notice where the ravens went know what lies there.
 - **Tame chickens**: ordinary farmyard hens and a rooster that forage, cluck and crow. Run through them and they
   scatter a few steps, squawking, and settle; walk near and they edge away. They never call the hunters and never mob.
   The clearing has a couple of flocks (ClearingStyle, "Wildlife"), the first pecking at the edge of the woods, all well

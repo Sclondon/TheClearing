@@ -52,6 +52,8 @@ var tame_chickens: Array[TameChickens] = []
 var loot: Loot
 ## Moths, flies and dragonflies (Insects), hunting nobody.
 var insects: Insects
+## The birds that hunt nobody: blue jays and crows in the clearing's pines, ravens on the walls (see Birds).
+var birds: Birds
 ## God mode and the rest (DevTools), when it is on for this run.
 var dev: DevTools
 ## The hour, the light with it, and the doors of the clearing (put once the walls stand).
@@ -162,6 +164,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	insects.name = "Insects"
 	add_child(insects)
 	insects.populate(maze, hash("insects/%d" % seed_value), self)
+	birds = Birds.put(self, maze, hash("birds/%d" % seed_value))
 	if DevTools.enabled():
 		dev = DevTools.new(self)
 		hud.add_child(dev)

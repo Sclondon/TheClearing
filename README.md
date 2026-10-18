@@ -123,9 +123,9 @@ from the seed. Generate again replaces everything in the layout.
   (World's `caught`, MazeEnemies' and the Griever's); they buzz, and land on someone standing still. Dragonflies hunt
   patches of the marsh and perch on its bulrushes' tips (`Marsh.bulrush_tops`, swaying with them:
   `Marsh.bulrush_sway`). Each swarm is drawn and moved only near the camera. The dev panel's + MOTHS (round a lantern),
-  + FLIES (on a carcass) and + DRAGONFLIES put them in ahead.
+  + FLIES (on a carcass) and + DRAGONFLIES put them in ahead. `Birds` (`World.birds`): blue jays (`BlueJays`) in the pines at the edge of the woods, which scold anyone under their trees, and a few crows in the treetops by the woods (ClearingStyle, "Wildlife"), and `Ravens` on the maze's walls (MazeStyle, "Wildlife"), omens that fly ahead of you to sit over a hunter waiting there; murders of `Crows` sit along the wall tops and erupt cawing at anyone who runs, calling the hunters. `Perches` finds where birds sit.
 - `creatures/`: GameCommon's creatures, look and motion only (see each one's README): `ghoul`, `centipede`,
-  `giant_spider`, `abomination`, `flesh_mound` (needs the boy from the character controller), `slime_wall`, `bats`, `baboon`, `dog`, `alien`, `beetle_swarm`, `fish_person`, `angel`, `frog` (the giant toad and the frog swarm), `harpy`, `boar`, `chicken`, `gargoyle`, `deer`, `elk`, `imp`, `imp_swarm`, `colossus`, `coyote` (needs `dog`), `skinwalker` (needs the character controller, `coyote` and `dog`), `tripod`, `insects` (moths, flies, dragonflies, and a carcass). Change them here, then `kit.sh pull`
+  `giant_spider`, `abomination`, `flesh_mound` (needs the boy from the character controller), `slime_wall`, `bats`, `baboon`, `dog`, `alien`, `beetle_swarm`, `fish_person`, `angel`, `frog` (the giant toad and the frog swarm), `harpy`, `boar`, `chicken`, `gargoyle`, `deer`, `elk`, `imp`, `imp_swarm`, `colossus`, `coyote` (needs `dog`), `skinwalker` (needs the character controller, `coyote` and `dog`), `tripod`, `insects` (moths, flies, dragonflies, and a carcass), `crow` (crows and ravens), `blue_jay` (needs `crow`). Change them here, then `kit.sh pull`
   them back to GameCommon (`godot/<name>`, with `_` as `-`). Their models are built in Blender by their `tools/` scripts.
 - `scripts/wildlife.gd` (`Wildlife`): the animals that hunt nobody: herds of ordinary deer and elk grazing in the
   clearing's meadow (ClearingStyle, "Wildlife") and in the halls (MazeStyle, "Wildlife"), running off when someone
@@ -189,7 +189,7 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/enemy_test.gd     # Apophis and the mummies on their own
 "$G" --headless --path . -s res://tests/griever_test.gd   # the Griever on its own
 # each newer kind on its own (always with --audio-driver Dummy: some make sounds)
-for t in ghoul centipede spider abomination flesh_mound slime_wall bats baboon dog alien beetles fish_person angel frog frog_swarm harpy boar chicken gargoyle deer wildlife imp imp_swarm colossus coyote skinwalker tripod; do
+for t in ghoul centipede spider abomination flesh_mound slime_wall bats baboon dog alien beetles fish_person angel frog frog_swarm harpy boar chicken gargoyle deer wildlife imp imp_swarm colossus coyote skinwalker tripod crow; do
   "$G" --headless --audio-driver Dummy --path . -s res://tests/${t}_test.gd; done
 # pictures of each: tools/<kind>_shots.gd (windowed, 1280x720)
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/frog_shots.gd -- <folder> [toad|swarm|maze|all]   # the frogs
@@ -206,6 +206,7 @@ sh tools/coop_test.sh                                     # two copies in one ro
 "$G" --path . --resolution 1280x720 -s res://tools/clearing_shots.gd -- <folder> [seed]   # the clearing: hills, woods
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/deer_shots.gd -- <folder> [studio|strips|maze|clearing|all]   # deer and elk, gallop strips, the herd, wildlife
 "$G" --headless --audio-driver Dummy --path . -s res://tests/marsh_test.gd   # the marsh: water, sedges in it, the lane in
+"$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/crow_shots.gd -- <folder> [studio|beat|maze|clearing]   # crows, ravens, blue jays, the wingbeat
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/marsh_shots.gd -- <folder> [seed]   # the marsh, him in it
 "$G" --headless --audio-driver Dummy --path . -s res://tests/insects_test.gd   # moths, flies, dragonflies: counts, culling, a light, carrion, caught, perching, cost
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/insects_shots.gd -- <folder> [studio|maze|all]   # the insects up close, and in a round

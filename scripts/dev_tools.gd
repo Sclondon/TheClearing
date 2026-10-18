@@ -38,6 +38,7 @@ const HUNTERS := [
 	["IMPS", "imps", AHEAD], ["IMP SWARM", "imp_swarm", AHEAD], ["COLOSSUS", "colossus", COLOSSUS_AHEAD],
 	["COYOTES", "coyotes", SNAKE_AHEAD], ["SKINWALKER", "skinwalker", SNAKE_AHEAD],
 	["TRIPOD", "tripod", SNAKE_AHEAD],
+	["CROWS", "crows", AHEAD], ["RAVENS", "ravens", AHEAD], ["BLUE JAYS", "blue_jays", AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -268,6 +269,16 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 		"tripod":
 			# (it stands over the hall ahead, its light on the ground in front of him)
 			made = [MazeTripod.new()]
+		"crows":
+			made = [Crows.new()]
+		"ravens":
+			# (wildlife: on the walls round where they are put, not among the hunters)
+			world.birds.add_ravens_at(at)
+			return
+		"blue_jays":
+			# (wildlife: in the trees near, or on the walls, or the ground)
+			world.birds.add_jays_at(at)
+			return
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 

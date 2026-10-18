@@ -192,6 +192,10 @@ extends Resource
 ## Martian tripods (MazeTripod), each striding round the ring over the walls,
 ## its searchlight sweeping the halls. One at most: it is huge.
 @export_range(0, 1) var tripods := 1
+## Murders of crows (Crows), each sitting along the wall tops over a hall: they
+## follow whoever passes along the walls, and erupt cawing at anyone who runs,
+## which calls the hunters.
+@export_range(0, 4) var crow_murders := 2
 
 @export_group("Who else is in it")
 ## How many runners run the section's passages (MazeRunners, from the round's
@@ -207,6 +211,9 @@ extends Resource
 @export_range(0, 4) var wild_elk_herds := 1
 ## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
 @export_range(0, 4) var tame_chicken_flocks := 0
+## Pairs of ravens (Ravens) on the wall tops, which hunt nobody: omens, that fly
+## ahead of whoever comes near to sit over a hunter waiting there.
+@export_range(0, 4) var raven_pairs := 2
 ## Insects (Insects): moths round each light in its halls (the angel, fires,
 ## the light past the exit), big moths resting on its walls that scatter as
 ## you pass, flies round each thing of meat in it (flesh mounds, the meat

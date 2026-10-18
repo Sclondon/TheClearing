@@ -117,6 +117,11 @@ var entrance_spots: Array = []
 ## Flocks of tame chickens (TameChickens) foraging in the clearing: hens and a
 ## rooster that hunt nobody, the first at the edge of the woods.
 @export_range(0, 6) var chicken_flocks := 2
+## Families of blue jays (BlueJays) in the pines at the edge of the woods,
+## flitting about the branches and down to the ground.
+@export_range(0, 6) var blue_jay_families := 3
+## Small flocks of crows in the tops of the pines, foraging out in the meadow by the woods.
+@export_range(0, 4) var crow_flocks := 1
 ## Dragonflies over the marsh (Insects), about this many in all, in patches
 ## along its pools, perching on the bulrushes.
 @export_range(0, 120) var marsh_dragonflies := 36
