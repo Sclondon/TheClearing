@@ -87,24 +87,22 @@ void fragment() {
 	vec3 p = obj;
 	float pixel = max(length(fwidth(p)), 0.0002);
 	vec3 c = skin_colour(p * 0.9, fract(noise3(p * 0.2) * 2.3), pixel);
-	// (darker and more livid than the bodies in it, so that they stand out of it)
-	c = mix(c, livid, 0.22) * 0.88;
-	// Seams where bodies were knitted together: ridged, puckered, scar-dark,
+	// Seams where bodies were knitted together: ridged, puckered creases,
 	// with folds gathered across them.
 	float ridge = 1.0 - abs(noise3(p * 0.55 + vec3(4.0, 1.0, 7.0)) * 2.0 - 1.0);
 	float seam = smoothstep(0.86, 0.95, ridge);
 	float gather = 0.5 + 0.5 * sin(dot(p, vec3(7.0, 5.0, -6.0)) + noise3(p * 3.0) * 4.0);
-	c = mix(c, mix(scar, livid, gather * 0.5) * 0.8, seam * (0.5 + 0.3 * gather));
+	c = mix(c, c * mix(0.68, 0.9, gather), seam * 0.85);
 	float fold = smoothstep(0.7, 0.86, ridge) * (1.0 - seam);
 	c *= 1.0 - fold * 0.18;
 	// Stretch marks: pale silvery streaks where it was pulled tight.
 	float stretch = 0.5 + 0.5 * sin(p.y * 22.0 + noise3(p * 1.5) * 9.0);
 	float marks = smoothstep(0.88, 0.97, stretch) * smoothstep(0.45, 0.7, noise3(p * 0.7 + 9.0));
-	c = mix(c, vec3(0.66, 0.62, 0.62), marks * 0.45);
+	c = mix(c, c * 1.18, marks * 0.6);
 	// Tight over the bodies just under it: paler, the veins showing more.
 	c = mix(c, c * 1.1 + vec3(0.02, 0.02, 0.03), tight * 0.6);
 	// Boils (raised in the mesh, and smaller ones), and weeping patches.
-	vec2 pox = pustules(p * 2.6, 0.18);
+	vec2 pox = pustules(p * 2.6, 0.08);
 	float boil = max(boil_in, pox.x);
 	c = mix(c, pus * (0.85 + 0.15 * noise3(p * 18.0)), boil);
 	c = mix(c, mix(c, weep, 0.55), pox.y);
@@ -125,7 +123,7 @@ void fragment() {
 	slope += rslope * sign(r0 - 0.5) * (seam + fold) * 3.0;
 	vec3 tilt = (VIEW_MATRIX * MODEL_MATRIX * vec4(slope, 0.0)).xyz;
 	NORMAL = normalize(NORMAL - tilt * bump * (0.5 + boil * 0.6));
-	wet = max(cut(noise3(p * 9.0 + 5.0), 0.74), max(boil * 0.9, pox.y));
+	wet = max(boil * 0.9, pox.y);
 }
 %s
 """
@@ -205,7 +203,7 @@ static func radii(bodies: int) -> Vector3:
 	if bodies <= SMALL:
 		return Vector3(0.3, 0.3, 0.3)
 	var t := clampf(float(bodies - SMALL - 1) / float(MOST - SMALL - 1), 0.0, 1.0)
-	return Vector3(1.4, 1.0, 1.6).lerp(Vector3(2.8, 1.8, 3.1), t)
+	return Vector3(1.3, 0.9, 1.5).lerp(Vector3(2.6, 1.6, 2.9), t)
 
 
 ## How big each boy in it is against the player's boy.
@@ -266,6 +264,59 @@ static func _get_noise() -> FastNoiseLite:
 	return _noise
 
 
+## Bodies lying just under its skin, pressing it out: (direction, kind, the
+## way along them as an angle). Kinds: 0 a back (the spine a groove down it,
+## the shoulder blades), 1 buttocks, 2 a shoulder and the arm from it, 3 a
+## limb (a knee or an elbow in it).
+static var _forms: Array[Vector4] = []
+
+
+static func _make_forms() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 61
+	for i in 34:
+		var d := Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.05, 1), rng.randf_range(-1, 1)).normalized()
+		_forms.append(Vector4(d.x, d.y, d.z, float(i % 4) + rng.randf_range(0.0, 0.99)))
+
+
+## How far bodies under the skin push it out in a direction (as a share of its
+## radius), and how tight it is over them (0..1).
+static func _bodies_under(d: Vector3) -> Vector2:
+	if _forms.is_empty():
+		_make_forms()
+	var push := 0.0
+	var tight := 0.0
+	for form: Vector4 in _forms:
+		var n := Vector3(form.x, form.y, form.z)
+		var w := d.dot(n)
+		if w < 0.85:
+			continue
+		var kind := int(form.w)
+		var turn := fposmod(form.w, 1.0) * TAU
+		var t := n.cross(Vector3.UP if absf(n.y) < 0.95 else Vector3.RIGHT).normalized().rotated(n, turn)
+		var b := n.cross(t)
+		var u := d.dot(t)
+		var v := d.dot(b)
+		var here := 0.0
+		match kind:
+			0:
+				here = 0.05 * exp(-(u * u / 0.04 + v * v / 0.0056))
+				here -= 0.016 * exp(-v * v / 0.0003) * exp(-u * u / 0.03)
+				here += 0.018 * (exp(-((u - 0.12) * (u - 0.12) + (v - 0.045) * (v - 0.045)) / 0.0012) + exp(-((u - 0.12) * (u - 0.12) + (v + 0.045) * (v + 0.045)) / 0.0012))
+			1:
+				here = 0.04 * (exp(-(u * u + (v - 0.045) * (v - 0.045)) / 0.0018) + exp(-(u * u + (v + 0.045) * (v + 0.045)) / 0.0018))
+				here += 0.02 * exp(-((u + 0.09) * (u + 0.09) / 0.006 + v * v / 0.004))
+			2:
+				here = 0.04 * exp(-(u * u + v * v) / 0.0022)
+				here += 0.024 * exp(-((u - 0.13) * (u - 0.13) / 0.012 + v * v / 0.0007))
+			_:
+				here = 0.026 * exp(-(u * u / 0.03 + v * v / 0.0008))
+				here += 0.016 * exp(-(u * u + v * v) / 0.0009)
+		push = maxf(push, here)
+		tight = maxf(tight, clampf(here / 0.035, 0.0, 1.0))
+	return Vector2(push, tight)
+
+
 static func _swell(d: Vector3) -> float:
 	var most := 0.0
 	for bulge: Vector4 in BULGES:
@@ -303,6 +354,8 @@ static func _lump(direction: Vector3) -> Vector3:
 	r += 0.012 * noise.get_noise_3d(q.x, q.y, q.z)
 	# Boils, raised.
 	r += 0.035 * sqrt(_boil(d))
+	# Bodies just under the skin.
+	r += _bodies_under(d).x
 	var size := RADII if d.y > 0.0 else Vector3(RADII.x, BELOW, RADII.z)
 	return d * size * r + Vector3.UP * MIDDLE
 
@@ -386,7 +439,7 @@ static func core(low := false) -> ArrayMesh:
 			n = -n
 		normals.append(n)
 		var d := dirs[i]
-		colours.append(Color(_swell(d), smoothstep(0.55, 0.0, absf(d.y + 0.05)) * 0.8, smoothstep(0.1, 0.5, _boil(d)), 0.0))
+		colours.append(Color(maxf(_swell(d) * 0.4, _bodies_under(d).y), smoothstep(0.55, 0.0, absf(d.y + 0.05)) * 0.8, smoothstep(0.1, 0.5, _boil(d)), 0.0))
 	var indices := PackedInt32Array()
 	for f: Vector3i in faces:
 		var n := (points[f.y] - points[f.x]).cross(points[f.z] - points[f.x])
@@ -472,64 +525,90 @@ static func _star(build: FleshParts.Build, bodies: int, low: bool, rng: RandomNu
 
 ## Directions on the dome for the boys, the first at its front (so that even a
 ## small mound has someone to grab with), then over its top and round.
-const SLOTS: Array[Vector3] = [Vector3(0.0, 0.55, -1.0), Vector3(0.1, 1.0, 0.1), Vector3(-0.85, 0.5, 0.1),
+const SLOTS: Array[Vector3] = [Vector3(0.0, 0.5, -1.0), Vector3(0.1, 1.0, 0.1), Vector3(-0.85, 0.5, 0.1),
 	Vector3(0.85, 0.5, -0.1), Vector3(-0.1, 0.6, 0.95), Vector3(0.55, 0.75, 0.6), Vector3(-0.55, 0.8, -0.5),
 	Vector3(0.6, 0.45, -0.75), Vector3(-0.6, 0.45, -0.75), Vector3(-0.5, 0.75, 0.6)]
+## Between them, for the bodies sunk with only their backs or faces and ribs out.
+const BETWEEN: Array[Vector3] = [Vector3(0.45, 0.85, -0.3), Vector3(-0.4, 0.9, 0.25), Vector3(0.75, 0.6, 0.3),
+	Vector3(-0.8, 0.55, -0.35), Vector3(0.1, 0.65, 0.8), Vector3(-0.25, 0.7, -0.75)]
 
 
-## A mound: the core, its boys lying half sunk in it face up or rising from it
-## to the waist, and men's limbs growing out of it between them.
+## A mound: the core, and packed into it its boys (lying face up, lying face
+## down with their backs out, or rising from it to the waist), men's bodies
+## sunk in it to their ribs between them, and men's limbs growing out of it.
 static func _mound(build: FleshParts.Build, bodies: int, low: bool, rng: RandomNumberGenerator) -> void:
 	var k_n := radii(bodies) / RADII
 	var s := boy_size(bodies)
-	# (boys in the bigger ones are always the low-detail boy: there are many)
+	# (the boys' bodies in the bigger ones are the low-detail boy: there are many)
 	var boy_low := low or bodies > 6
 	for k in bodies:
-		var d := SLOTS[k % SLOTS.size()].normalized()
+		var d := (SLOTS[k % SLOTS.size()] + Vector3(rng.randf_range(-0.08, 0.08), 0.0, rng.randf_range(-0.08, 0.08))).normalized()
 		var at := surface(d)
 		var normal := surface_normal(d)
-		var lying := k % 2 == 1
-		var front_slot := d.z < -0.6
+		var pose := 0 if d.z < -0.6 else 1 + (k % 3)
 		var roles := {}
 		var basis: Basis
 		var hips: Vector3
-		if lying and not front_slot:
-			# Face up, half sunk, lying along the surface (his head up the slope).
-			var up_slope := (Vector3.UP - normal * normal.y).normalized() if absf(normal.y) < 0.95 else Vector3.FORWARD
-			var along := up_slope.rotated(normal, rng.randf_range(-0.8, 0.8))
-			basis = FleshParts.frame(along, normal)
-			hips = normal * 0.02 * s - along * 0.1 * s
-			roles = {"arm_l": Role.REACH if k % 4 == 1 else Role.LIMP, "arm_r": Role.LIMP if k % 4 == 1 else Role.REACH,
-				"leg_l": Role.KICK, "leg_r": Role.DANGLE}
-		else:
-			# Rising out of it to the waist, leaning out, his arms free.
-			var lean := (normal * 0.8 + Vector3.UP * 0.4).normalized()
-			var facing := Vector3(d.x, 0.0, d.z).normalized() if Vector2(d.x, d.z).length() > 0.1 else Vector3.FORWARD
-			basis = FleshParts.frame(lean, facing)
-			hips = -normal * 0.12 * s
-			var arm_role := Role.GRAB if front_slot else (Role.CRAWL if d.y < 0.55 else Role.REACH)
-			roles = {"arm_l": arm_role, "arm_r": arm_role, "leg_l": Role.TUCKED, "leg_r": Role.TUCKED}
+		var up_slope := (Vector3.UP - normal * normal.y).normalized() if absf(normal.y) < 0.95 else Vector3.FORWARD
+		var along := up_slope.rotated(normal, rng.randf_range(-1.0, 1.0))
+		var meat := 0.2
+		match pose:
+			0, 3:
+				# Rising out of it to the waist, leaning out, his arms free.
+				var lean := (normal * 0.8 + Vector3.UP * 0.35).normalized()
+				var facing := Vector3(d.x, 0.0, d.z).normalized() if Vector2(d.x, d.z).length() > 0.1 else Vector3.FORWARD
+				basis = FleshParts.frame(lean, facing)
+				hips = -normal * 0.16 * s
+				var arm_role := Role.GRAB if pose == 0 else (Role.CRAWL if d.y < 0.55 else Role.REACH)
+				roles = {"arm_l": arm_role, "arm_r": arm_role, "leg_l": Role.TUCKED, "leg_r": Role.TUCKED}
+				meat = 0.22
+			1:
+				# Face up, sunk to his front: his mask, chest and knees out of it.
+				basis = FleshParts.frame(along, normal)
+				hips = -normal * 0.08 * s - along * 0.1 * s
+				roles = {"arm_l": Role.REACH if k % 2 == 0 else Role.LIMP, "arm_r": Role.LIMP if k % 2 == 0 else Role.REACH,
+					"leg_l": Role.KICK, "leg_r": Role.DANGLE}
+				meat = 0.0
+			_:
+				# Face down, sunk to his back: his back, shoulders and buttocks out, a leg kicking.
+				basis = FleshParts.frame(along, -normal)
+				hips = -normal * 0.07 * s - along * 0.1 * s
+				roles = {"arm_l": Role.CRAWL if d.y < 0.6 else Role.LIMP, "arm_r": Role.TUCKED,
+					"leg_l": Role.TUCKED, "leg_r": Role.KICK}
+				meat = 0.0
 		var root := at * k_n + hips
 		var place := Transform3D(basis * s, root - (basis * s) * HIPS)
-		var copy := build.add("boy", place, 0.25 if not lying else 0.02, 0.4, rng.randf(), boy_low)
+		var copy := build.add("boy", place, meat, 0.35, rng.randf(), boy_low)
 		copy.data = {"boy": true, "anchor": at, "offset": hips, "out": normal, "phase": rng.randf() * TAU, "roles": roles, "slot": d}
+	# Men sunk in it between the boys, to their ribs: backs and faces pressing out.
+	for i in mini(bodies / 2, BETWEEN.size()):
+		var d := BETWEEN[i].normalized()
+		var at := surface(d)
+		var normal := surface_normal(d)
+		var along := (Vector3.UP - normal * normal.y).normalized().rotated(normal, rng.randf_range(-1.5, 1.5)) if absf(normal.y) < 0.95 else Vector3.FORWARD.rotated(Vector3.UP, rng.randf_range(-PI, PI))
+		var face_up := i % 2 == 1
+		var scale := s * 1.15
+		var basis := FleshParts.frame(along, normal if face_up else -normal) * scale
+		var offset := -normal * 0.05 * scale
+		var copy := build.add("torso", Transform3D(basis, at * k_n + offset), -10.0, 0.3, rng.randf(), low or bodies > 6)
+		copy.data = {"boy": false, "anchor": at, "offset": offset, "out": normal, "phase": rng.randf() * TAU, "roles": {}}
 	# Men's limbs growing out between them: long gaunt grabbers at the front,
 	# arms hauling on the flanks, legs out of its back.
-	var long_arms := 2 if bodies < 8 else 4
+	var long_arms := 2 if bodies < 7 else (3 if bodies < 9 else 4)
 	var arms := 2 + bodies / 4
 	var legs := bodies / 3
 	var limbs: Array = []
-	var front_spots: Array[Vector3] = [Vector3(0.3, 0.45, -1.0), Vector3(-0.3, 0.42, -1.0), Vector3(0.6, 0.3, -0.85), Vector3(-0.6, 0.32, -0.85)]
+	var front_spots: Array[Vector3] = [Vector3(0.32, 0.45, -1.0), Vector3(-0.32, 0.42, -1.0), Vector3(0.62, 0.3, -0.85), Vector3(-0.62, 0.32, -0.85)]
 	for i in long_arms:
-		limbs.append(["long_r" if front_spots[i].x > 0.0 else "long_l", Role.GRAB, front_spots[i], Vector3(signf(front_spots[i].x) * 0.2, 0.0, -0.5), 0.3, 2.1])
+		limbs.append(["long_r" if front_spots[i].x > 0.0 else "long_l", Role.GRAB, front_spots[i], Vector3(signf(front_spots[i].x) * 0.2, 0.0, -0.5), 0.12, 2.2])
 	var flank_spots: Array[Vector3] = [Vector3(-0.9, 0.3, -0.45), Vector3(0.9, 0.3, -0.4), Vector3(-0.97, 0.3, 0.25), Vector3(0.96, 0.3, 0.3), Vector3(-0.8, 0.35, 0.7)]
 	for i in arms:
 		var spot := flank_spots[i % flank_spots.size()]
-		limbs.append(["arm_r" if spot.x > 0.0 else "arm_l", Role.CRAWL, spot, Vector3(signf(spot.x) * 0.4, -0.2, -0.2), 0.05, 2.0])
+		limbs.append(["arm_r" if spot.x > 0.0 else "arm_l", Role.CRAWL, spot, Vector3(signf(spot.x) * 0.4, -0.2, -0.2), 0.05, 2.1])
 	var back_spots: Array[Vector3] = [Vector3(0.4, 0.7, 0.8), Vector3(-0.45, 0.55, 0.85), Vector3(0.75, 0.35, 0.65)]
 	for i in legs:
 		var spot := back_spots[i % back_spots.size()]
-		limbs.append(["leg_r" if spot.x > 0.0 else "leg_l", Role.KICK if i % 2 == 0 else Role.DANGLE, spot, Vector3(signf(spot.x) * 0.3, 0.2, 0.3), 0.1, 2.0])
+		limbs.append(["leg_r" if spot.x > 0.0 else "leg_l", Role.KICK if i % 2 == 0 else Role.DANGLE, spot, Vector3(signf(spot.x) * 0.3, 0.2, 0.3), 0.1, 2.1])
 	for entry: Array in limbs:
 		var d := (entry[2] as Vector3).normalized()
 		var at := surface(d)
@@ -539,7 +618,7 @@ static func _mound(build: FleshParts.Build, bodies: int, low: bool, rng: RandomN
 		var palm := Vector3.DOWN if absf(out.y) < 0.9 else Vector3.FORWARD
 		var basis := FleshParts.frame(out, palm) * scale
 		var offset := -out * sink * scale
-		var copy := build.add(entry[0], Transform3D(basis, at * k_n + offset), sink + 0.08, 0.3, rng.randf(), low or bodies > 6)
+		var copy := build.add(entry[0], Transform3D(basis, at * k_n + offset), sink + 0.06, 0.3, rng.randf(), low or bodies > 6)
 		var chain := "arm" if copy.chains.has("arm") else "leg"
 		copy.data = {"boy": false, "anchor": at, "offset": offset, "out": out, "phase": rng.randf() * TAU, "roles": {chain: entry[1]}}
 
@@ -560,3 +639,56 @@ static func trail(count: int) -> MultiMeshInstance3D:
 	node.top_level = true
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return node
+
+
+static var _bridge: ArrayMesh
+
+
+## A bridge of stretched skin: a tube along +Y from 0 to 1, as thick as 1 at its
+## ends and pulled thinner in the middle, lumpy, drawn with the people's skin
+## (FleshParts.material): folded along its length, a few boils.
+static func bridge() -> ArrayMesh:
+	if _bridge != null:
+		return _bridge
+	var noise := _get_noise()
+	var sides := 16
+	var rings := 14
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var custom := PackedFloat32Array()
+	var uvs := PackedVector2Array()
+	var uv2s := PackedVector2Array()
+	var colours := PackedColorArray()
+	var indices := PackedInt32Array()
+	for i in rings + 1:
+		var y := float(i) / rings
+		var thick := lerpf(1.0, 0.55, sin(y * PI))
+		for k in sides + 1:
+			var a := TAU * k / sides
+			var lump := 1.0 + 0.14 * noise.get_noise_3d(cos(a) * 2.0, y * 7.0, sin(a) * 2.0)
+			var p := Vector3(cos(a) * thick * lump, y, sin(a) * thick * lump)
+			verts.append(p)
+			normals.append(Vector3(cos(a), 0.0, sin(a)))
+			# (its marks as on a body some 2 m long and 1 round)
+			custom.append_array([p.x * 0.6, y * 2.4, p.z * 0.6, 0.0])
+			# (folded all along, as a join is)
+			uvs.append(Vector2(0.0, 0.1))
+			uv2s.append(Vector2(0.3, 0.6))
+			colours.append(Color(0, 0, 0, 0))
+	for i in rings:
+		for k in sides:
+			var a := i * (sides + 1) + k
+			var b := a + sides + 1
+			indices.append_array([a, a + 1, b, a + 1, b + 1, b])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_COLOR] = colours
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_TEX_UV2] = uv2s
+	arrays[Mesh.ARRAY_CUSTOM0] = custom
+	arrays[Mesh.ARRAY_INDEX] = indices
+	_bridge = ArrayMesh.new()
+	_bridge.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT)
+	return _bridge
