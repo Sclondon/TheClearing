@@ -7,13 +7,15 @@ extends StaticBody3D
 ## so a bigger wall shows more stone, not stretched stone; and it can be bumped
 ## into. Change any of it in the Inspector and it is redrawn at once.
 ##
-## The looks are brutalist concrete, and the old stone blocks (textures/, made by
+## The looks are plain concrete (the default), brutalist concretes, and the old stone blocks (textures/, made by
 ## tools/make_wall_textures.gd and tools/make_stone_texture.gd).
 
-enum Look { CONCRETE_PANELS, BOARD_MARKED, WEATHERED, MONOLITH, STONE_BLOCKS, CUSTOM }
+# (numbered, so that a wall saved with a look keeps it as more are added)
+enum Look { CONCRETE = 6, CONCRETE_PANELS = 0, BOARD_MARKED = 1, WEATHERED = 2, MONOLITH = 3, STONE_BLOCKS = 4, CUSTOM = 5 }
 ## Each look's texture (textures/<name>.png and <name>_normal.png) and how many
 ## metres a tile of it covers.
 const LOOKS := {
+	Look.CONCRETE: ["concrete", 6.0],
 	Look.CONCRETE_PANELS: ["concrete_panels", 9.6],
 	Look.BOARD_MARKED: ["concrete_boards", 7.0],
 	Look.WEATHERED: ["concrete_weathered", 10.0],
@@ -35,7 +37,7 @@ const LOOKS := {
 		_build()
 ## Its surface, chosen from LOOKS (which sets the texture, its relief and a
 ## fitting tile size), or Custom to keep a texture of your own.
-@export var look := Look.CONCRETE_PANELS:
+@export var look := Look.CONCRETE:
 	set(value):
 		look = value
 		if look != Look.CUSTOM:
@@ -44,12 +46,12 @@ const LOOKS := {
 			normal_map = load("res://textures/%s_normal.png" % chosen[0])
 			tile_size = chosen[1]
 		_build()
-@export var texture: Texture2D = preload("res://textures/concrete_panels.png"):
+@export var texture: Texture2D = preload("res://textures/concrete.png"):
 	set(value):
 		texture = value
 		_build()
 ## Its relief: a normal map laid on as the texture is (and how strong).
-@export var normal_map: Texture2D = preload("res://textures/concrete_panels_normal.png"):
+@export var normal_map: Texture2D = preload("res://textures/concrete_normal.png"):
 	set(value):
 		normal_map = value
 		_build()
@@ -58,7 +60,7 @@ const LOOKS := {
 		relief = value
 		_build()
 ## How many metres one tile of the texture covers.
-@export_range(0.5, 50.0, 0.1, "or_greater", "suffix:m") var tile_size := 9.6:
+@export_range(0.5, 50.0, 0.1, "or_greater", "suffix:m") var tile_size := 6.0:
 	set(value):
 		tile_size = value
 		_build()
@@ -132,7 +134,7 @@ func _own_child(called: String, kind: Variant) -> Node:
 ## settings it did not have before left empty.)
 func _fill_missing() -> void:
 	var defaults := {
-		"width": 14.0, "height": 34.0, "depth": 3.2, "look": Look.CONCRETE_PANELS, "relief": 1.0, "tile_size": 9.6, "tint": Color.WHITE,
+		"width": 14.0, "height": 34.0, "depth": 3.2, "look": Look.CONCRETE, "relief": 1.0, "tile_size": 6.0, "tint": Color.WHITE,
 	}
 	for key: String in defaults:
 		if get(key) == null:

@@ -19,7 +19,7 @@ func _process(delta: float) -> void:
 	_done = true
 	var wall := get_parent().get_node(^"Wall")
 	for round in 2:
-		for look in [1, 2, 3, 4, 5, 0]:
+		for look in [0, 1, 2, 3, 4, 5, 6]:
 			wall.set(&"look", look)
 			print("LOOK set ", wall.get(&"look"), " tile ", wall.get(&"tile_size"), " texture ", wall.get(&"texture"))
 		if round == 0:

@@ -2,6 +2,7 @@ extends SceneTree
 ## Makes the brutalist concrete looks of the Wall scene (see Wall.LOOKS), each as
 ## a colour and a normal map that tile seamlessly both ways, 2048 pixels square,
 ## in textures/:
+##   concrete           plain cast concrete, nothing more: soft tone, pores, a little grain
 ##   concrete_panels    smooth cast concrete in big formwork panels: fine raised
 ##                      seams where the formwork leaked, rows of tie holes, rain streaks
 ##   concrete_boards    board-marked: cast against planks, each board's grain and
@@ -37,7 +38,7 @@ func _initialize() -> void:
 	_patches = _noise(26, 0.006, 3)
 	_gravel = _noise(27, 0.09, 2, SIZE, SIZE, FastNoiseLite.TYPE_CELLULAR)
 	var only := OS.get_cmdline_user_args()
-	for look: String in ["concrete_panels", "concrete_boards", "concrete_weathered", "concrete_monolith"]:
+	for look: String in ["concrete", "concrete_panels", "concrete_boards", "concrete_weathered", "concrete_monolith"]:
 		if only.is_empty() or only.has(look):
 			_make(look)
 	print("made the wall textures in %.1f s" % ((Time.get_ticks_msec() - started) / 1000.0))
@@ -53,6 +54,8 @@ func _make(look: String) -> void:
 		for x in SIZE:
 			var result: Array
 			match look:
+				"concrete":
+					result = _cast(x, y)
 				"concrete_panels":
 					result = _panels(x, y)
 				"concrete_boards":
