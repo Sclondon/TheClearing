@@ -121,6 +121,24 @@ var entrance_spots: Array = []
 ## run off, and are never bold).
 @export_range(0, 4) var coyote_packs := 1
 
+@export_group("What lies about")
+## Things left lying about the clearing to find (Loot), how many of each: among
+## the edge of the woods, in the tall grass, by the pond and out in the field,
+## never in the middle where everyone wakes nor on the ways to the gates. (More
+## lie by the camps.)
+@export_range(0, 6) var loot_hooks := 1
+@export_range(0, 6) var loot_backpacks := 1
+@export_range(0, 6) var loot_spears := 2
+@export_range(0, 6) var loot_torches := 2
+@export_range(0, 6) var loot_flares := 1
+@export_range(0, 6) var loot_maps := 1
+@export_range(0, 6) var loot_ladders := 1
+## Camps (Campsite): left behind (a cold fire, a thing or two by it), and with
+## runners resting at them round a fire whose smoke is seen from afar (the first
+## at the edge of the woods).
+@export_range(0, 6) var abandoned_camps := 3
+@export_range(0, 4) var occupied_camps := 2
+
 var _noise: FastNoiseLite
 var _noise_seed := -1
 var _marsh: FastNoiseLite

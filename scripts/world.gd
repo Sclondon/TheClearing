@@ -48,6 +48,8 @@ var griever: Griever
 var runners: MazeRunners
 ## Tame chickens in the clearing (and the maze), hunting nobody (the other peaceful animals are in `wildlife`).
 var tame_chickens: Array[TameChickens] = []
+## What lies about to be found, the camps, and this player's inventory (Loot).
+var loot: Loot
 ## God mode and the rest (DevTools), when it is on for this run.
 var dev: DevTools
 ## The hour, the light with it, and the doors of the clearing (put once the walls stand).
@@ -152,6 +154,8 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	add_child(wildlife)
 	wildlife.populate(maze, hash("wildlife/%d" % seed_value))
 	tame_chickens = TameChickens.populate(self, maze, hash("chickens/%d" % seed_value))
+	# What lies about to be found, and the camps (Loot), with the inventory on the HUD.
+	loot = Loot.put(self, seed_value, hud)
 	if DevTools.enabled():
 		dev = DevTools.new(self)
 		hud.add_child(dev)
@@ -451,6 +455,9 @@ func _on_packet(from: int, kind: int, data: PackedByteArray) -> void:
 	elif kind == Net.K_JSON:
 		var message: Variant = JSON.parse_string(data.get_string_from_utf8())
 		if not (message is Dictionary):
+			return
+		if message.has("loot") and loot:
+			loot.hear(message, from)
 			return
 		if message.has("cut"):
 			# (a guest's cut is passed on to the others by the host)

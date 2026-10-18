@@ -49,6 +49,7 @@ func _init() -> void:
 	hear_range = 0.0
 	memory = 1.0
 	pack = &"imp_swarms"
+	fears_fire = true
 	spare_time = 4.0
 
 

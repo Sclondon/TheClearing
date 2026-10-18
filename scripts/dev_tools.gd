@@ -110,6 +110,8 @@ func _init(in_world: World) -> void:
 		grid.add_child(_button("+ " + String(one[0]), spawn_hunter.bind(one[1], one[2])))
 	grid.add_child(_button("+ RUNNER", spawn_runner))
 	grid.add_child(_button("+ RUNNERS", spawn_runners))
+	for one: Array in Loot.DEV:
+		grid.add_child(_button(String(one[0]), spawn_loot.bind(one[1])))
 	for one: Array in WILDLIFE:
 		grid.add_child(_button("+ " + String(one[0]), spawn_wildlife.bind(one[1])))
 	grid.add_child(_button("CLEAR ALL", clear))
@@ -286,6 +288,12 @@ func spawn_runners() -> void:
 func _add_runner(at: Vector3, turn: float) -> MazeRunner:
 	var ring := clampi(world.maze.ring_of(world.maze.cell_at(at)), 1, world.maze.rings)
 	return world.runners.add(ring, at - Vector3.UP * 0.05, _facing_him(at) + PI + turn, randi())
+## Puts something to find (or a camp) down ahead of him (Loot.DEV).
+func spawn_loot(what: String) -> void:
+	if world.loot:
+		world.loot.dev_drop(what)
+
+
 ## Puts a peaceful herd (Wildlife) in ahead of him, grazing.
 func spawn_wildlife(kind: Wildlife.Kind) -> void:
 	var at := _ahead(SNAKE_AHEAD)

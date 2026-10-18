@@ -208,6 +208,14 @@ extends Resource
 ## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
 @export_range(0, 4) var tame_chicken_flocks := 0
 
+@export_group("What lies about")
+## Things left lying in its halls to find (Loot): in the ends of halls first
+## (the most walls round them), then anywhere, never by its gates.
+@export_range(0, 20) var loot_items := 6
+## Camps left behind in its halls (cold fires, tallies scratched on the wall
+## beside them, often signs of a struggle).
+@export_range(0, 4) var abandoned_camps := 1
+
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
 

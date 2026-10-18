@@ -67,6 +67,7 @@ func _init() -> void:
 	hear_range = 9.0
 	memory = 4.0
 	pack = &"beetles"
+	fears_fire = true
 	look_every = 0.25
 
 
