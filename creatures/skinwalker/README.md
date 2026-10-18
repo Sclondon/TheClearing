@@ -2,9 +2,11 @@
 
 A creature of horror stories: something wearing a coyote's skin. On all fours it passes for a coyote if you do not
 look closely (too big, its joints bending the wrong ways, its eyes shining too much). Then it rises onto long, gaunt,
-too-human legs: a starved figure far too tall and thin, dirty pale grey, the coyote's hide hanging from its head down
-its back like a hooded cloak, the coyote's head worn as a mask over the top of its own (the muzzle jutting out over
-its brow, the dry teeth showing under it, the eye holes empty), and under it a gaunt human face with small deep-set
+too-human legs: a starved figure far too tall and thin, its skin a mottled ash grey-brown, filthy on its hands,
+feet, shins and forearms, every rib and joint sharp. The whole coyote hide is worn as a hooded cloak, matted, dark and
+dirty, its edges ragged: over the head, round the face, over the shoulders and down the back; the coyote's head is a
+dried, shrunken mask on top of its own, the snout pulled down over the brow (the dry teeth showing under it, the eye
+holes empty), and under it a gaunt human face with small deep-set
 eyes that shine and a lipless slit of a mouth; long thin arms with fingers far too long; the coyote's empty legs and
 tail hanging off it, swinging. It moves wrongly: a crawl on hands and the balls of its feet with its knees splayed, a
 rise that goes hips first until it stands bent double, a jerky held-and-snatched walk upright, and bursts on all
