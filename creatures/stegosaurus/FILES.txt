@@ -1,0 +1,8 @@
+# A stegosaurus (Stegosaurus stenops, life size): its look, every move (the heavy walk, grazing, the warning, the tail swing) and its sounds, for any game (no thinking)
+creatures/stegosaurus/stegosaurus.gd
+creatures/stegosaurus/stegosaurus_look.gd
+creatures/stegosaurus/stegosaurus_rig.gd
+creatures/stegosaurus/models/stegosaurus.glb
+creatures/stegosaurus/models/stegosaurus_lo.glb
+creatures/stegosaurus/tools/.gdignore
+creatures/stegosaurus/tools/build_stegosaurus.py
