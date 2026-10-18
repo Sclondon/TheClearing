@@ -94,13 +94,13 @@ from the seed. Generate again replaces everything in the layout.
   plan and placed from the seed by `MazeEnemies`; and the `Griever` (`griever*.gd`): a lump of wet meat on eight
   procedural robotic spider legs that plant on walls and ground, with a stinger. Then the newer kinds, each a thin
   `MazeEnemy` driving a creature from `creatures/` (installed from GameCommon): `MazeGhoul`, `Centipede`,
-  `MazeSpider`, `Abomination`, `MazeFleshMound` (amalgams and flesh mounds: one kind in sizes, that grow by absorbing whom they catch and by merging), `MazeSlimeWall`, `Bats`, `MazeBaboon`, `MazeDog`, `Alien`, `Beetles`, `MazeFishPerson` (it brings its own pool to lurk in), `MazeAngel` (it drifts over the halls and its gaze, which builds while you stay in its sight, takes you; `Ophan` is its look), `MazeFrog` (a giant toad) and `MazeFrogSwarm`. How many of each a ring
+  `MazeSpider`, `Abomination`, `MazeFleshMound` (amalgams and flesh mounds: one kind in sizes, that grow by absorbing whom they catch and by merging), `MazeSlimeWall`, `Bats`, `MazeBaboon`, `MazeDog`, `Alien`, `Beetles`, `MazeFishPerson` (it brings its own pool to lurk in), `MazeAngel` (it drifts over the halls and its gaze, which builds while you stay in its sight, takes you; `Ophan` is its look), `MazeFrog` (a giant toad) and `MazeFrogSwarm`, `MazeHarpy`, `MazeBoar`. How many of each a ring
   has is its `MazeStyle` ("What hunts it"); `World` asks `MazeEnemies` for the first ring's (`populate`, then
   `add_hunters`) and puts in a Griever; alone or as the host they are run there and their state goes to guests ten
   times a second (K_ENEMIES), where copies follow it. Caught, a player is put back in the clearing; out, nobody is
   hunted.
 - `creatures/`: GameCommon's creatures, look and motion only (see each one's README): `ghoul`, `centipede`,
-  `giant_spider`, `abomination`, `flesh_mound` (needs the boy from the character controller), `slime_wall`, `bats`, `baboon`, `dog`, `alien`, `beetle_swarm`, `fish_person`, `angel`, `frog` (the giant toad and the frog swarm). Change them here, then `kit.sh pull`
+  `giant_spider`, `abomination`, `flesh_mound` (needs the boy from the character controller), `slime_wall`, `bats`, `baboon`, `dog`, `alien`, `beetle_swarm`, `fish_person`, `angel`, `frog` (the giant toad and the frog swarm), `harpy`, `boar`. Change them here, then `kit.sh pull`
   them back to GameCommon (`godot/<name>`, with `_` as `-`). Their models are built in Blender by their `tools/` scripts.
 - `scripts/remote_player.gd` (`RemotePlayer`): a friend, a `Figure` on the boy's rig chasing their news.
 - `scripts/looks.gd` (`Looks`): every player is the same boy, as Inside has him (no face, a basin cut, no cap,
@@ -133,7 +133,7 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/enemy_test.gd     # Apophis and the mummies on their own
 "$G" --headless --path . -s res://tests/griever_test.gd   # the Griever on its own
 # each newer kind on its own (always with --audio-driver Dummy: some make sounds)
-for t in ghoul centipede spider abomination flesh_mound slime_wall bats baboon dog alien beetles fish_person angel frog frog_swarm; do
+for t in ghoul centipede spider abomination flesh_mound slime_wall bats baboon dog alien beetles fish_person angel frog frog_swarm harpy boar; do
   "$G" --headless --audio-driver Dummy --path . -s res://tests/${t}_test.gd; done
 # pictures of each: tools/<kind>_shots.gd (windowed, 1280x720)
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/frog_shots.gd -- <folder> [toad|swarm|maze|all]   # the frogs

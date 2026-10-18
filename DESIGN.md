@@ -174,6 +174,24 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     reach you leap on and cling, and the more there are the slower you go; enough of them for long enough and you are
     caught. Outrun them, shake them off by running and jumping, or get up onto something (a terrace, the ivy): they
     cannot hop that high, give up and go home.
+  - **Harpies** (the user: "lets add a harpie type enemy"): a starved woman's head and trunk (ribs, hollow eyes, a
+    too-wide lipless mouth, lank wet hair over the face) on great ragged grey-black wings, with a bird's lower body
+    and scaly raptor legs. Each perches high on a wall (the ledge, or the top), hunched, wings mantled, watching the
+    hall below. Seeing someone out in the open it screeches (the first warning), takes off over the walls and
+    circles high over them; then a falling cry (the second warning), a stoop over the end of a long straight hall,
+    and a dive down it, talons first, at chest height. It flies over the walls, so it can come from anywhere, but
+    it needs a straight run of hall under open sky: under a ledge or a bridge, or in a slot, you cannot be dived at,
+    and staying hidden long enough sends it home. Its line is set the last half second: duck, slide or roll and
+    the talons pass over; step aside and they pass by; stand or run straight and you are snatched. Two dives, then
+    it climbs back to its perch and lands.
+  - **Giant boar** (after the boar gods of *Princess Mononoke*): a wild boar far over the boy's head at the
+    shoulder, black bristle with a crest down its hump, great chipped tusks (one broken), mud-caked, scarred, old
+    arrows in its hide, steaming breath. It roots in the mud of a dead end or a wide hall. Poor eyes, a great nose:
+    it smells anyone near, much further upwind of it than downwind, so creep past downwind. Noticing you it snorts,
+    stamps and paws, its hackles rise and it lowers its head (about two seconds, seen and heard), then charges in a
+    straight line, far faster than a sprint and barely able to turn. Step aside (a side passage, a slot, a way up)
+    and it thunders past and skids, or slams into the wall and stands stunned a few seconds, then forgets you a
+    while. In its way, you are tossed and caught. It cannot reach anyone up a wall.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
