@@ -483,3 +483,8 @@ func _put_gates() -> void:
 func _shut_gates(shutting: bool) -> void:
 	if gates:
 		gates.close(shutting)
+
+
+## How many rings the maze has: the square ones and the round ones past them.
+func ring_count() -> int:
+	return maze.rings + (maze.round_rings.rings.size() if maze.round_rings else 0)

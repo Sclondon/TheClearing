@@ -2,9 +2,10 @@ class_name DevTools
 extends Control
 ## God mode for trying the maze out: a DEV button under the clock opens a panel
 ## that puts things that hunt (and runners, MazeRunner) into the maze ahead of
-## the boy, clears or stops them, makes him uncatchable, and moves him to a gate,
-## the middle or the exit.
-## Keys: ` opens it, G god, M a mummy, N the snake, B a Griever.
+## the boy, clears or stops them, makes him uncatchable or lets him fly anywhere,
+## and moves him to a gate,
+## the middle, any ring, the desert or the exit.
+## Keys: ` opens it, G god, F fly, M a mummy, N the snake, B a Griever.
 ##
 ## On when the game is run from the Godot editor, or with the flag `dev`
 ## (`-- --dev`, or `?dev` on the page). Then everyone starts in front of a gate
@@ -53,6 +54,15 @@ var _god_button: Button
 var _freeze_button: Button
 var _kind_button: Button
 var _weather_button: Button
+var _fly_button: Button
+var _scroll: ScrollContainer
+## He flies where he looks, through anything (FLY, or F): move to go, jump to
+## rise, duck to sink, sprint to go fast.
+var flying := false
+var _layers := 0
+var _mask := 0
+const FLY_SPEED := 22.0
+const FLY_FAST := 6.0
 var _kind := 0
 var _gate := 0
 ## Grievers put in here (the one World puts in is world.griever).
@@ -93,9 +103,16 @@ func _init(in_world: World) -> void:
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
-	_panel.add_child(grid)
+	# (scrolled, when there are more buttons than fit the window's height)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.custom_minimum_size = Vector2(0, 560)
+	_panel.add_child(_scroll)
+	_scroll.add_child(grid)
 	_god_button = _button("", toggle_god)
 	grid.add_child(_god_button)
+	_fly_button = _button("", toggle_fly)
+	grid.add_child(_fly_button)
 	_freeze_button = _button("", toggle_freeze)
 	grid.add_child(_freeze_button)
 	_kind_button = _button("", next_kind)
@@ -114,6 +131,10 @@ func _init(in_world: World) -> void:
 	grid.add_child(_button("TO GATE", to_gate))
 	grid.add_child(_button("TO MIDDLE", to_middle))
 	grid.add_child(_button("TO EXIT", to_exit))
+	for ring in range(1, world.ring_count() + 1):
+		grid.add_child(_button("TO RING %d" % ring, to_ring.bind(ring)))
+	if world.maze.round_rings:
+		grid.add_child(_button("TO DESERT", to_desert))
 	grid.add_child(_button("TO DUSK", to_hour.bind(DayCycle.SUNSET - 0.4)))
 	grid.add_child(_button("TO DAWN", to_hour.bind(DayCycle.DAWN - 0.4)))
 	_weather_button = _button("", next_weather)
@@ -124,6 +145,7 @@ func _init(in_world: World) -> void:
 
 func toggle() -> void:
 	_panel.visible = not _panel.visible
+	_scroll.custom_minimum_size.y = maxf(get_viewport_rect().size.y - 150.0, 200.0)
 	# (fingers on the panel are not to move him or turn the camera)
 	if world.touch:
 		world.touch.set_process_input(not _panel.visible)
@@ -392,6 +414,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			toggle()
 		KEY_G:
 			toggle_god()
+		KEY_F:
+			toggle_fly()
 		KEY_M:
 			spawn_mummy()
 		KEY_N:
@@ -405,6 +429,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _show() -> void:
 	_god_button.text = "GOD: ON" if god else "GOD: OFF"
+	_fly_button.text = "FLY: ON" if flying else "FLY: OFF"
+	_fly_button.modulate = Color(0.75, 1.0, 0.7) if flying else Color.WHITE
 	_god_button.modulate = Color(0.75, 1.0, 0.7) if god else Color.WHITE
 	_freeze_button.text = "UNFREEZE" if frozen else "FREEZE"
 	_kind_button.text = String(Mummy.Kind.keys()[_kind])
@@ -437,3 +463,86 @@ func _flesh(count: int) -> MazeFleshMound:
 	var mound := MazeFleshMound.new()
 	mound.bodies = count
 	return mound
+
+
+## Flying, or back to walking where he is.
+func toggle_fly() -> void:
+	var player = world.player
+	flying = not flying
+	if flying:
+		if player.state == player.State.LADDER:
+			player._leave_ladder()
+		elif player.state == player.State.ROPE:
+			player._leave_rope()
+		# (through walls and all: nothing to bump into)
+		_layers = player.collision_layer
+		_mask = player.collision_mask
+		player.collision_layer = 0
+		player.collision_mask = 0
+	else:
+		player.collision_layer = _layers
+		player.collision_mask = _mask
+	player.velocity = Vector3.ZERO
+	player.set_physics_process(not flying)
+	_show()
+
+
+func _physics_process(delta: float) -> void:
+	if not flying or world.player == null:
+		return
+	var basis: Basis = world.camera.global_transform.basis
+	var forward := -basis.z
+	var right := basis.x
+	right.y = 0.0
+	var stick := Input.get_vector(&"move_left", &"move_right", &"move_down", &"move_up")
+	var way := forward * stick.y + right.normalized() * stick.x
+	if Input.is_action_pressed(&"jump"):
+		way += Vector3.UP
+	if Input.is_action_pressed(&"duck"):
+		way += Vector3.DOWN
+	var speed := FLY_SPEED * (FLY_FAST if Input.is_action_pressed(&"sprint") else 1.0)
+	world.player.global_position += way.limit_length(1.0) * speed * delta
+	if way.length_squared() > 0.01:
+		world.player.facing_yaw = atan2(forward.x, forward.z)
+
+
+## Somewhere open in ring `ring` (counting out from the clearing, the square
+## ones first, then the round ones), facing out.
+func to_ring(ring: int) -> void:
+	var maze: Maze = world.maze
+	if ring <= maze.rings:
+		# (the open cell of that ring nearest the line out from the middle to the east)
+		var best := Vector2i(-1, -1)
+		var best_off := INF
+		for i in maze.size * maze.size:
+			var cell := Vector2i(i % maze.size, i / maze.size)
+			if maze.ring_of(cell) != ring or maze.solid.has(cell) or maze.entrances.has(cell):
+				continue
+			var at := maze.world(cell)
+			var off := absf(at.z) + (0.0 if at.x > 0.0 else 100000.0)
+			if off < best_off:
+				best_off = off
+				best = cell
+		if best.x >= 0:
+			world.put_player(maze.world(best) + Vector3.UP * 0.05, PI * 0.5)
+		return
+	var outer: RoundMaze = maze.round_rings
+	if outer == null or ring - maze.rings > outer.rings.size():
+		return
+	var round_ring: RoundMaze.Ring = outer.rings[ring - maze.rings - 1]
+	# (in the middle of a cell of its middle row: a cell's middle is always open)
+	var row: Array = round_ring.rows[round_ring.rows.size() / 2]
+	var a := (RoundMaze.angle_of(0, row[2]) + RoundMaze.angle_of(1, row[2])) * 0.5
+	var spot := RoundBuilder.at(a, (row[0] + row[1]) * 0.5)
+	world.put_player(spot + Vector3.UP * 0.05, atan2(spot.x, spot.z))
+
+
+## In the desert, a little way out from the square maze's way out, facing on out.
+func to_desert() -> void:
+	var outer: RoundMaze = world.maze.round_rings
+	if outer == null:
+		return
+	var spot := outer.door + outer.way_in * 40.0
+	var at := Vector3(spot.x, 0.0, spot.y)
+	at.y = world.maze.ground_height(at) + 0.1
+	world.put_player(at, atan2(outer.way_in.x, outer.way_in.y))
