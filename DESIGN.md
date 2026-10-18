@@ -124,6 +124,14 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     (between a run and a sprint), lunge-bite. Climbing breaks the trail.
   - **Aliens**: twos and threes that walk calmly and blink ahead of you when unwatched (a shimmering column
     warns first; looking at it stops it), then raise a hand and catch you in a pale light.
+  - **Giant boar** (after the boar gods of *Princess Mononoke*): a wild boar far over the boy's head at the
+    shoulder, black bristle with a crest down its hump, great chipped tusks (one broken), mud-caked, scarred, old
+    arrows in its hide, steaming breath. It roots in the mud of a dead end or a wide hall. Poor eyes, a great nose:
+    it smells anyone near, much further upwind of it than downwind, so creep past downwind. Noticing you it snorts,
+    stamps and paws, its hackles rise and it lowers its head (about two seconds, seen and heard), then charges in a
+    straight line, far faster than a sprint and barely able to turn. Step aside (a side passage, a slot, a way up)
+    and it thunders past and skids, or slams into the wall and stands stunned a few seconds, then forgets you a
+    while. In its way, you are tossed and caught. It cannot reach anyone up a wall.
 - How many of each a ring has is its style's rule (MazeStyle, "What hunts it"); the first ring has some of every
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.

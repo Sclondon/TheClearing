@@ -6,7 +6,7 @@ extends Node3D
 ## `populate(maze, seed)` puts Apophis and packs of mummies in the passages, out
 ## of the clearing and well away from it, and `add_hunters(style, seed)` the
 ## rest of what a ring's MazeStyle asks for (ghouls, centipedes, spiders,
-## abominations, slime walls, bats, baboons, dogs, aliens: each kind's own
+## abominations, slime walls, bats, baboons, dogs, aliens, boars: each kind's own
 ## script is in scripts/enemies/, its look and motion in creatures/). The same maze and seed always give the
 ## same ones in the same places in the same order, so every machine in a room
 ## can build the same set without it being sent; then one machine (the host)
@@ -89,6 +89,7 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ## - Spiders, abominations and bat colonies wait in any passage well out of the
 ##   clearing (a spider climbs the nearest high wall; bats roost on one).
 ## - Baboon troops, dogs and aliens go about in packs, put round one cell.
+## - A boar roots in a dead end or a straight hall, facing out.
 func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	var nav := MazeNav.new(maze)
 	var rng := RandomNumberGenerator.new()
@@ -145,6 +146,11 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		for a in rng.randi_range(2, 3):
 			aliens.append(Alien.new())
 		_add_pack(aliens, _far_from(taken, lairs, rng), nav, rng, taken)
+	for i in style.boars:
+		# (it roots in the mud of a dead end, or of a straight hall it can charge down)
+		var cell := _far_from(taken, ends + halls if not (ends + halls).is_empty() else lairs, rng)
+		taken.append(cell)
+		add(MazeBoar.new(), cell, _facing_out(cell), rng.randi())
 
 
 ## Puts a pack round `middle`: one to a cell within two steps of it, and two
