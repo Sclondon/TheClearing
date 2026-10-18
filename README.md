@@ -27,6 +27,9 @@ https://sclondon.github.io/Warren/build/.
   button near it. **Tap a slot** at the top (or 1 to 4; a pad's d-pad and Y) to take a tool into his hand or put it
   back, or to read a map or hang a ladder; the act button then uses what is in his hand (throws the hook at a ledge's
   lip, throws the spear or the flare, lights a campfire with the torch). **DROP** (X, or the pad's d-pad down) puts it down.
+- **Fight back** (DESIGN.md, "Fighting back"): a stick, a bat or a sword in his hand is swung with the act button and
+  staggers what hunts in front of him; a revolver or a shotgun (rare, a round or two in it) is brought up and fired,
+  and fells or staggers what it hits, loudly. Boxes of rounds go in his pocket and load an empty gun.
 - Everything else the boy from *Outside* can do works too (sprint, duck, slide, climb a ledge, kick off a wall).
   The walls themselves are far too tall to climb, but there are ways up: ivy up the terraces, vines, rope bridges.
 - **PLAY ALONE**, or **MAKE A ROOM** and give friends its four-letter code to **JOIN A ROOM**. The room's
@@ -164,8 +167,10 @@ leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened i
   the host says who gets what, as it runs the hunters). `LootItem` (a loose body the Player carries and throws; a
   torch and a flare burn with GameCommon's `Fire`) and `LootHook` (the character controller's `GrappleHook`, made to
   feel for the lip of any ledge in reach), `LootGlint` (the glint off one lying about), `LootHud` and `LootMap` (the
-  inventory, the prompt, a map scrap read), `Stagger` (a hunter knocked back by a spear), `FireWard` (what the swarms,
-  `MazeEnemy.fears_fire`, keep off), `RopeLadder` (a `Ladder` hung from an edge), `Campsite` (a camp, left or with
+  inventory, the prompt, a map scrap read, a gun's rounds), `Stagger` (a hunter knocked back by a spear, a blow or a
+  shot, or felled by a shot), `FireWard` (what the swarms,
+  `MazeEnemy.fears_fire`, keep off), `LootGunFx` (a shot's flash, streak and sound: the CC0 recordings in
+  `audio/guns/`, from Outside), `RopeLadder` (a `Ladder` hung from an edge), `Campsite` (a camp, left or with
   people, from the models in `props/models/`), `SmokeColumn` (its smoke, one MultiMesh moved in its shader) and
   `Camper` (a `DrivenBoy` sat or asleep at one, who points you to what is near). The models are built in Blender by
   `props/tools/build_props.py`. `Campsite` and `SmokeColumn` are in GameCommon as `godot/campsite`.
@@ -197,8 +202,8 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/hunt_test.gd      # enemies in a round; caught, back to the clearing
 "$G" --headless --audio-driver Dummy --path . -s res://tests/runner_test.gd   # runners: a route, ivy, drawing a hunter, caught, leading to a gate, a puppet
 "$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/runner_shots.gd -- <folder>   # pictures of runners
-"$G" --headless --audio-driver Dummy --path . -s res://tests/loot_test.gd     # what lies about and the camps: placed, taken, slots, torch, spear, hook, ladder, map, the room's news
-"$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/loot_shots.gd -- <folder> [1|1c|2|3|4|5|6|7|8]   # pictures of them
+"$G" --headless --audio-driver Dummy --path . -s res://tests/loot_test.gd     # what lies about and the camps: placed, taken, slots, torch, spear, hook, ladder, map, weapons swung and guns fired, rarity by the rules, the room's news
+"$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/loot_shots.gd -- <folder> [1|1c|2|3|4|5|6|7|8|w|g|l|r]   # pictures of them (w: weapons swung, g: guns fired, l: weapons lying, r: a friend fighting)
 "/c/Program Files/Blender Foundation/Blender 4.3/blender.exe" --background --python props/tools/build_props.py [-- <folder> [names]]   # their models (and pictures)
 "$G" --headless --path . -s res://tests/layout_test.gd    # a layout changed by hand, saved, loaded and played
 "$G" --editor --path . res://tests/editor_check.tscn       # (after layout_test) what the editor shows, saved to user://editor_view.png
@@ -234,7 +239,8 @@ Flags (command line `-- --name=value` or the page's `?name=value`): `server=<url
 gate of the clearing (`start=middle` for the middle), and a DEV button under the clock opens god mode: put mummies
 (of a chosen kind, alone or in a pack), the snake or a Griever into the maze ahead, a runner or three (+ RUNNER,
 + RUNNERS: come up to one and he leads you to his section's gate), each thing to find a couple of metres ahead (+ HOOK,
-+ BACKPACK, + SPEAR, + TORCH, + FLARE, + MAP, + LADDER) and a camp (+ CAMP, + CAMP (LIT) with runners at it), freeze) or clear everything that
++ BACKPACK, + SPEAR, + TORCH, + FLARE, + MAP, + LADDER, + STICK, + BAT, + SWORD, + REVOLVER, + SHOTGUN, + ROUNDS,
++ SHELLS) and a camp (+ CAMP, + CAMP (LIT) with runners at it), freeze) or clear everything that
 hunts, be uncatchable, go to a gate, the middle or the exit. Keys: ` the panel, G god, M a mummy, N the snake, B a
 Griever. What it puts in is only in your copy, so use it playing alone; no score is sent with it on
 (`scripts/dev_tools.gd`, `DevTools`).

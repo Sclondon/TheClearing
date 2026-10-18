@@ -150,6 +150,22 @@ var entrance_spots: Array = []
 @export_range(0, 6) var loot_flares := 1
 @export_range(0, 6) var loot_maps := 1
 @export_range(0, 6) var loot_ladders := 1
+## Things to fight with: sticks (common, weak, they snap), bats (they knock a
+## hunter back), swords (the best; none in the clearing by default).
+@export_range(0, 8) var loot_sticks := 3
+@export_range(0, 6) var loot_bats := 1
+@export_range(0, 6) var loot_swords := 0
+## The chance a gun lies somewhere in the clearing this round (a shotgun
+## `shotgun_share` of the time, with `rounds_in_gun` in it), and that a box of
+## rounds does (`rounds_per_box` in it). Rare, and rarer.
+@export_range(0.0, 1.0, 0.01) var gun_chance := 0.15
+@export_range(0.0, 1.0, 0.05) var shotgun_share := 0.3
+@export var rounds_in_gun := Vector2i(1, 3)
+@export_range(0.0, 1.0, 0.01) var ammo_chance := 0.08
+@export var rounds_per_box := Vector2i(2, 4)
+## The chance anything left lying by a camp in the clearing is a gun, or a box of rounds.
+@export_range(0.0, 1.0, 0.005) var camp_gun_chance := 0.03
+@export_range(0.0, 1.0, 0.005) var camp_ammo_chance := 0.02
 ## Camps (Campsite): left behind (a cold fire, a thing or two by it), and with
 ## runners resting at them round a fire whose smoke is seen from afar (the first
 ## at the edge of the woods).

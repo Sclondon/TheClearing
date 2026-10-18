@@ -24,6 +24,11 @@ What there is to find (scripts/loot/):
 - map: a torn page of an exercise book, folded once, curling, pencil lines on it.
 - ladder: a rope ladder rolled up and tied, its rungs sticking out of the roll.
 - pack: a canvas rucksack lying where it was dropped (worn, it is models/worn/backpack.glb).
+- branch, bat, sword: a club broken off a tree, an old baseball bat, an old straight
+  sword. Along +Y, the origin where the hands hold it.
+- revolver, shotgun: an old six-shot revolver and a side-by-side double-barrel. The
+  origin at the grip, the barrel along -Z, the top +Y (as Outside's guns).
+- rounds, shells: a torn card box of a few revolver cartridges; one of shotgun shells.
 
 The camps (scripts/loot/campsite.gd):
 - fire_ring: a ring of stones round a bed of ash, charred stubs of wood in it (cold).
@@ -61,6 +66,11 @@ COLOURS = {
     "tarp": (0.25, 0.29, 0.22), "tarp_dark": (0.17, 0.2, 0.15), "blanket": (0.33, 0.27, 0.22),
     "blanket_dark": (0.22, 0.18, 0.15), "strap": (0.2, 0.14, 0.09), "tin": (0.38, 0.38, 0.37),
     "sack": (0.52, 0.45, 0.32), "ember": (0.85, 0.32, 0.08),
+    "wood_grey": (0.43, 0.4, 0.35), "wood_dark": (0.26, 0.19, 0.13), "blade": (0.46, 0.46, 0.45),
+    "gunmetal": (0.16, 0.16, 0.17), "gunmetal_worn": (0.28, 0.28, 0.28), "rubber": (0.1, 0.1, 0.1),
+    "card": (0.6, 0.55, 0.44), "card_dark": (0.42, 0.38, 0.31), "card_band": (0.24, 0.23, 0.22),
+    "brass": (0.52, 0.45, 0.3), "lead": (0.36, 0.35, 0.34), "shell": (0.36, 0.25, 0.21),
+    "rust_dull": (0.31, 0.22, 0.17), "wood_stain": (0.33, 0.3, 0.26),
 }
 MATERIALS = {}
 rng = random.Random(11)
@@ -816,12 +826,172 @@ def build_pebble():
     return m
 
 
+# --- What there is to fight with ------------------------------------------------
+# Melee weapons are held as a bat is (CharacterRig.bat_basis): along +Y, the
+# origin where the hands are. Guns as Outside's are (CharacterRig.gun_transform):
+# the origin at the grip, the barrel along -Z, the top +Y.
+
+def build_branch():
+    """A stout branch broken off a tree, a little crooked, a twig's stub on it and
+    its broken end pale: a club. Common, and it breaks."""
+    m = Model("branch")
+    r = random.Random(21)
+    line = []
+    for i in range(8):
+        t = i / 7
+        line.append(Vector((0.03 * math.sin(t * 2.6) + r.uniform(-0.005, 0.005), -0.1 + t * 0.82, 0.018 * math.sin(t * 4.0 + 0.5))))
+    radii = [0.019 + 0.012 * (i / 7) ** 1.4 for i in range(8)]
+    start = len(m.faces)
+    tube(m, line, radii, "bark", sides=6, wobble=0.07, seed=21)
+    # (the broken end at the top, pale wood)
+    m.mats[len(m.faces) - 1] = "wood_pale"
+    # a knot, and a stub where a twig was snapped off
+    rock(m, (line[3].x + 0.022, line[3].y, line[3].z), (0.012, 0.02, 0.012), "bark", seed=22, flat=1.0, detail=1)
+    stub_from = line[5]
+    tube(m, [stub_from, stub_from + Vector((-0.06, 0.05, 0.02))], [0.013, 0.008], "bark", sides=5)
+    m.mats[len(m.faces) - 1] = "wood_pale"
+    return m
+
+
+def build_bat():
+    """An old wooden baseball bat, grey with weather, the handle wound in rag."""
+    m = Model("bat")
+    profile = [(-0.07, 0.016), (-0.06, 0.02), (-0.05, 0.013), (0.2, 0.014), (0.36, 0.02), (0.5, 0.029), (0.66, 0.033), (0.76, 0.032), (0.78, 0.026)]
+    line = [Vector((0.0, y, 0.0)) for y, _ in profile]
+    tube(m, line, [rr for _, rr in profile], "wood_grey", sides=8)
+    # (a darker stain round the barrel where it has lain in the wet)
+    tube(m, [Vector((0.0, 0.54, 0.0)), Vector((0.0, 0.6, 0.0))], [0.0302, 0.0315], "wood_stain", sides=8, cap_start=False, cap_end=False)
+    for k in range(6):
+        y = -0.03 + k * 0.034
+        ring = [Vector((0.015 * math.cos(t), y + 0.01 * math.sin(t), 0.015 * math.sin(t))) for t in [i / 8 * math.tau for i in range(9)]]
+        tube(m, ring, 0.0055, "rag", sides=4, cap_start=False, cap_end=False)
+    return m
+
+
+def build_sword():
+    """An old straight sword, its blade dull and spotted with rust, a plain cross
+    guard, the grip bound with cord: the best thing to swing there is."""
+    m = Model("sword")
+    # the blade: a long flat hexagon in section, tapering to a point
+    base, tip = 0.13, 0.84
+    rows = 6
+    verts = []
+    for j in range(rows + 1):
+        t = j / rows
+        y = base + (tip - base) * t
+        w = 0.032 * (1.0 - t * 0.3) if j < rows else 0.0
+        th = 0.0075 * (1.0 - t * 0.4)
+        if j == rows:
+            verts += [Vector((0.0, y, 0.0))] * 4
+        else:
+            verts += [Vector((w, y, 0.0)), Vector((0.0, y, th)), Vector((-w, y, 0.0)), Vector((0.0, y, -th))]
+    faces = []
+    for j in range(rows):
+        for k in range(4):
+            a, b = j * 4 + k, j * 4 + (k + 1) % 4
+            faces.append([a, b, b + 4, a + 4])
+    faces.append([3, 2, 1, 0])
+    m.add(verts, faces, "blade")
+    # rust: a few patches proud of the blade
+    for y, x, s in ((0.33, 0.01, 0.016), (0.58, -0.012, 0.012)):
+        box(m, (x, y, 0.0), (s * 0.9, s * 1.6, 0.0152), "rust_dull", turn=(0.0, 0.0, 0.3))
+    # the cross guard and the pommel
+    box(m, (0.0, 0.12, 0.0), (0.17, 0.022, 0.026), "iron")
+    rock(m, (0.0, -0.11, 0.0), (0.02, 0.022, 0.02), "iron", seed=31, flat=0.5, detail=1)
+    tube(m, [Vector((0.0, -0.1, 0.0)), Vector((0.0, 0.11, 0.0))], [0.013, 0.014], "wood", sides=6)
+    for k in range(9):
+        y = -0.085 + k * 0.022
+        ring = [Vector((0.0155 * math.cos(t), y + 0.007 * math.sin(t), 0.0155 * math.sin(t))) for t in [i / 8 * math.tau for i in range(9)]]
+        tube(m, ring, 0.0045, "cord", sides=4, cap_start=False, cap_end=False)
+    return m
+
+
+def build_revolver():
+    """A heavy old six-shot revolver, its bluing worn grey, wooden grips."""
+    m = Model("revolver")
+    # the grip: a slab angled down and back from the frame
+    box(m, (0.0, -0.045, 0.03), (0.026, 0.085, 0.034), "wood_dark", turn=(-0.32, 0.0, 0.0))
+    rock(m, (0.0, -0.092, 0.046), (0.014, 0.008, 0.019), "gunmetal", seed=41, flat=0.6, detail=1)
+    # the frame, over the grip and round the cylinder
+    box(m, (0.0, 0.03, 0.0), (0.02, 0.04, 0.07), "gunmetal")
+    box(m, (0.0, 0.064, -0.035), (0.016, 0.012, 0.075), "gunmetal")
+    # the cylinder, six-sided
+    tube(m, [Vector((0.0, 0.04, -0.012)), Vector((0.0, 0.04, -0.062))], 0.021, "gunmetal_worn", sides=6)
+    # the barrel, with a sight at its end, and the rod under it
+    tube(m, [Vector((0.0, 0.058, -0.06)), Vector((0.0, 0.058, -0.205))], 0.0085, "gunmetal", sides=6)
+    tube(m, [Vector((0.0, 0.043, -0.065)), Vector((0.0, 0.043, -0.15))], 0.004, "gunmetal", sides=4)
+    box(m, (0.0, 0.07, -0.198), (0.003, 0.008, 0.01), "gunmetal")
+    # the hammer and the trigger in its guard
+    box(m, (0.0, 0.058, 0.03), (0.007, 0.022, 0.012), "gunmetal", turn=(-0.5, 0.0, 0.0))
+    box(m, (0.0, 0.0, -0.012), (0.004, 0.022, 0.005), "gunmetal", turn=(0.35, 0.0, 0.0))
+    guard = [Vector((0.0, 0.012 - 0.02 * math.sin(t), -0.012 - 0.022 * math.cos(t))) for t in [i / 8 * math.pi for i in range(9)]]
+    tube(m, guard, 0.0028, "gunmetal", sides=4)
+    return m
+
+
+def build_shotgun():
+    """A double-barrelled shotgun, side by side, its stock scuffed: two shots."""
+    m = Model("shotgun")
+    # the barrels, and the rib between them
+    for x in (-0.0125, 0.0125):
+        tube(m, [Vector((x, 0.04, -0.03)), Vector((x, 0.04, -0.72))], 0.0115, "gunmetal", sides=7)
+    box(m, (0.0, 0.052, -0.38), (0.008, 0.005, 0.68), "gunmetal_worn")
+    # the action, with hammers
+    box(m, (0.0, 0.03, 0.0), (0.042, 0.045, 0.085), "gunmetal_worn")
+    for x in (-0.012, 0.012):
+        box(m, (x, 0.058, 0.03), (0.006, 0.02, 0.012), "gunmetal", turn=(-0.6, 0.0, 0.0))
+    # the fore-end under the barrels, where the off hand goes
+    box(m, (0.0, 0.018, -0.27), (0.036, 0.024, 0.2), "wood_dark")
+    # the stock, from the wrist back to the butt
+    wrist = [(0.0, 0.004, 0.04, 0.016, 0.022), (0.0, -0.012, 0.13, 0.019, 0.03), (0.0, -0.045, 0.3, 0.021, 0.052), (0.0, -0.058, 0.37, 0.021, 0.058)]
+    prev = None
+    for i in range(len(wrist) - 1):
+        a, b = wrist[i], wrist[i + 1]
+        mid = ((a[1] + b[1]) * 0.5, (a[2] + b[2]) * 0.5)
+        length = math.hypot(b[1] - a[1], b[2] - a[2])
+        tilt = math.atan2(-(b[1] - a[1]), b[2] - a[2])
+        box(m, (0.0, mid[0], mid[1]), ((a[3] + b[3]), (a[4] + b[4]), length + 0.01), "wood", turn=(tilt, 0.0, 0.0))
+    box(m, (0.0, -0.058, 0.378), (0.044, 0.12, 0.012), "rubber", turn=(-0.1, 0.0, 0.0))
+    # the trigger guard
+    guard = [Vector((0.0, 0.006 - 0.022 * math.sin(t), 0.012 - 0.026 * math.cos(t))) for t in [i / 8 * math.pi for i in range(9)]]
+    tube(m, guard, 0.003, "gunmetal", sides=4)
+    return m
+
+
+def build_rounds():
+    """A little card box of revolver cartridges, its lid torn open, a few left in it."""
+    m = Model("rounds")
+    box(m, (0.0, 0.022, 0.0), (0.075, 0.044, 0.05), "card")
+    box(m, (0.0, 0.022, 0.0), (0.0755, 0.014, 0.0505), "card_band")
+    # the lid, torn and folded back
+    box(m, (0.0, 0.058, -0.03), (0.073, 0.003, 0.03), "card", turn=(-1.25, 0.0, 0.0))
+    for i, (x, z) in enumerate(((-0.022, -0.01), (0.0, -0.012), (0.02, 0.008), (-0.01, 0.01))):
+        tube(m, [Vector((x, 0.03, z)), Vector((x, 0.052, z))], 0.0055, "brass", sides=6)
+        tube(m, [Vector((x, 0.052, z)), Vector((x, 0.058, z))], [0.0052, 0.003], "lead", sides=6, cap_start=False)
+    return m
+
+
+def build_shells():
+    """A card box of shotgun shells gone soft with damp, two lying loose by it."""
+    m = Model("shells")
+    box(m, (0.0, 0.03, 0.0), (0.1, 0.06, 0.07), "card_dark", turn=(0.0, 0.2, 0.0))
+    box(m, (0.0, 0.03, 0.0), (0.1005, 0.018, 0.0705), "card_band", turn=(0.0, 0.2, 0.0))
+    for (x, z, yaw) in ((0.085, 0.02, 0.7), (0.07, -0.05, -0.4)):
+        a = Vector((x - 0.03 * math.cos(yaw), 0.012, z - 0.03 * math.sin(yaw)))
+        b = Vector((x + 0.03 * math.cos(yaw), 0.012, z + 0.03 * math.sin(yaw)))
+        tube(m, [a, a.lerp(b, 0.75)], 0.0115, "shell", sides=7)
+        tube(m, [a.lerp(b, 0.75), b], 0.012, "brass", sides=7, cap_start=False)
+    return m
+
+
 BUILDERS = {
     "hook": build_hook, "spear": build_spear, "torch": build_torch, "flare": build_flare, "map": build_map,
     "ladder": build_ladder, "pack": build_pack, "fire_ring": build_fire_ring, "fire_logs": build_fire_logs, "lean_to": build_lean_to,
     "lean_to_fallen": lambda: build_lean_to(True), "bedroll": build_bedroll, "bedroll_open": build_bedroll_open,
     "log_seat": build_log_seat, "pot": build_pot, "crate": build_crate, "sack": build_sack, "marker": build_marker,
     "stick": build_stick, "pebble": build_pebble,
+    "branch": build_branch, "bat": build_bat, "sword": build_sword, "revolver": build_revolver, "shotgun": build_shotgun,
+    "rounds": build_rounds, "shells": build_shells,
 }
 
 
