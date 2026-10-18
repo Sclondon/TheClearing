@@ -10,7 +10,7 @@ extends SceneTree
 ## puppet colony follows the host's news; MazeEnemies' packing carries it; and
 ## the colony is one draw.
 ##
-##     godot --headless --path . -s res://tests/bats_test.gd
+##     godot --headless --audio-driver Dummy --path . -s res://tests/bats_test.gd
 ##
 ## Ends with PASSED or FAILED (and exits 0 or 1).
 
@@ -152,6 +152,24 @@ func _run() -> void:
 		if bats.colony.bat_position(b).distance_to(runner.global_position + Vector3.UP * 1.6) < 4.0:
 			near += 1
 	check("most of the bats are round their head", near >= bats.colony.count * 2 / 3, "(%d of %d within 4 m)" % [near, bats.colony.count])
+	# They keep clear of the head and shoulders (wing tips and all), but for one diving
+	# (or for a moment, one just out of a dive and on its way out again).
+	var colony: BatColony = bats.colony
+	var too_close := 0
+	var looked := 0
+	for i in 180:
+		await physics_frame
+		var head := runner.global_position + Vector3.UP * 1.65
+		for b in colony.count:
+			if colony._dive[b].x > 0.0 or colony._phase[b] != BatColony.Phase.FLY:
+				continue
+			var at := colony.bat_position(b)
+			if at.y < head.y - colony.target_depth or at.y > head.y + 0.35:
+				continue
+			looked += 1
+			if Vector2(at.x - head.x, at.z - head.z).length() < colony._clear_of(colony._size[b]) - 0.1:
+				too_close += 1
+	check("the swirl keeps clear of their head and shoulders", too_close * 100 <= looked, "(%d too close in %d looks at bats level with them)" % [too_close, looked])
 	check("the mummy was called to the hunt", mummy.quarry == runner, "(mummy %s, after %s)" % [Mummy.Mode.keys()[mummy.mode], mummy.quarry])
 	check("the bats catch nobody", caught == 0)
 

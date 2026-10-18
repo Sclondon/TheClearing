@@ -1,13 +1,15 @@
 extends SceneTree
 ## Pictures of the bats (creatures/bats/, scripts/enemies/bats.gd). First in a
-## plain grey studio, close: one bat from the front with its wings up and down,
-## from the side, from below, gliding from above, the wingbeat in six steps,
-## folding up, and a roost of them hanging on a wall. Then in a real round's
+## plain grey studio, each framed to fill most of the picture: one bat from
+## the front with its wings up and down, from the side, from below, gliding from
+## above, banked; its head close, and the thumb at its wrist; the wingbeat in six
+## steps, folding up; a roost of them hanging on a wall, and one of them close.
+## Then in a real round's
 ## passage (World, the game's light and mist): the roost up on the wall, the
 ## colony bursting off it, and whirling round the boy. Says how many draws a
 ## frame takes. Needs a real window (the engine draws nothing headless):
 ##
-##     godot --path . --resolution 720x1280 -s res://tools/bat_shots.gd -- <folder> [studio|maze]
+##     godot --audio-driver Dummy --path . --resolution 720x1280 -s res://tools/bat_shots.gd -- <folder> [studio|maze]
 
 var folder := "bat_shots"
 var only := ""
@@ -61,15 +63,21 @@ func _studio() -> void:
 	env.background_color = Color(0.62, 0.63, 0.64)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.55, 0.56, 0.6)
-	env.ambient_light_energy = 0.55
+	env.ambient_light_energy = 0.5
 	var surround := WorldEnvironment.new()
 	surround.environment = env
 	stage.add_child(surround)
-	var sun := DirectionalLight3D.new()
-	sun.light_energy = 1.1
-	sun.shadow_enabled = true
-	stage.add_child(sun)
-	sun.look_at_from_position(Vector3(2, 4, 3), Vector3.ZERO)
+	# A key light from above in front, and a weaker one from behind, to show
+	# the light through the wings and round the fur.
+	var key := DirectionalLight3D.new()
+	key.light_energy = 1.1
+	key.shadow_enabled = true
+	stage.add_child(key)
+	key.look_at_from_position(Vector3(1.5, 4, -3), Vector3.ZERO)
+	var back := DirectionalLight3D.new()
+	back.light_energy = 0.7
+	stage.add_child(back)
+	back.look_at_from_position(Vector3(-1, 2.5, 4), Vector3.ZERO)
 	camera = Camera3D.new()
 	camera.fov = 30.0
 	stage.add_child(camera)
@@ -77,50 +85,65 @@ func _studio() -> void:
 
 	var one := BatColony.new()
 	one.count = 1
-	one.wingspan = 1.4
 	one.frozen = true
 	stage.add_child(one)
-	var level := Transform3D(Basis.IDENTITY, Vector3(0, 1.5, 0))
-	var face_us := Transform3D(Basis(Vector3.UP, PI), Vector3(0, 1.5, 0))
-	# (bat 0 of a colony is as big as `wingspan` times its own share: put it at 1.4 for these)
 	one._size[0] = 1.4
+	var middle := Vector3(0, 1.5, 0)
+	# (facing us, as we look from -Z; and side on)
+	var facing := Basis(Vector3.UP, PI)
+	var level := Basis.IDENTITY
 
-	_look(Vector3(0, 1.7, -4.2), Vector3(0, 1.5, 0))
-	one.pose_bat(0, face_us.rotated_local(Vector3.RIGHT, 0.15), 0.25, 1.0, 0.0)
+	one.pose_bat(0, Transform3D(facing * Basis(Vector3.RIGHT, 0.12), middle), 0.25, 1.0, 0.0)
+	_frame(middle + Vector3.UP * 0.2, 0.8, 0.55, Vector3(0, 0.1, -1))
 	await shot("01_front_wings_up")
-	one.pose_bat(0, face_us.rotated_local(Vector3.RIGHT, 0.15), 0.75, 1.0, 0.0)
+	one.pose_bat(0, Transform3D(facing * Basis(Vector3.RIGHT, 0.12), middle), 0.75, 1.0, 0.0)
+	_frame(middle + Vector3.DOWN * 0.12, 1.0, 0.45, Vector3(0, 0.1, -1))
 	await shot("02_front_wings_down")
-	_look(Vector3(-4.0, 1.9, 0.6), Vector3(0, 1.5, 0))
-	one.pose_bat(0, level, 0.05, 1.0, 0.0)
+	one.pose_bat(0, Transform3D(level, middle), 0.02, 1.0, 0.0)
+	_frame(middle, 0.42, 0.25, Vector3(-1, 0.08, 0.0))
 	await shot("03_side")
-	_look(Vector3(0.6, -1.8, 1.2), Vector3(0, 1.5, 0))
-	one.pose_bat(0, level, 0.45, 0.0, 0.0)
+	one.pose_bat(0, Transform3D(level, middle), 0.25, 1.0, 0.0)
+	_frame(middle + Vector3(0, 0.22, 0.0), 0.45, 0.6, Vector3(-1, 0.05, 0.15))
+	await shot("03b_side_wings_up")
+	one.pose_bat(0, Transform3D(level, middle), 0.0, 0.0, 0.0)
+	_frame(middle, 1.4, 0.5, Vector3(0.1, -1, 0.25))
 	await shot("04_underside")
-	_look(Vector3(0.0, 5.2, -1.6), Vector3(0, 1.5, 0))
-	one.pose_bat(0, level, 0.0, 0.0, 0.0)
+	_frame(middle, 1.4, 0.5, Vector3(0.0, 1, -0.3))
 	await shot("05_gliding_from_above")
-	_look(Vector3(-2.6, 2.4, 3.0), Vector3(0, 1.5, 0))
-	one.pose_bat(0, level.rotated_local(Vector3.FORWARD, 0.3), 0.6, 1.0, 0.0)
+	one.pose_bat(0, Transform3D(level * Basis(Vector3.FORWARD, 0.3), middle), 0.6, 1.0, 0.0)
+	_frame(middle, 1.0, 0.6, Vector3(-0.8, 0.5, 0.9))
 	await shot("06_three_quarter_banked")
+	# The head, close: the ears, the eyes, the snout, the ruff.
+	one.pose_bat(0, Transform3D(facing, middle), 0.72, 1.0, 0.0)
+	var head := middle + facing * Vector3(0, 0.035, 0.12)
+	_frame(head + Vector3.UP * 0.04, 0.17, 0.2, Vector3(0.5, 0.25, -1))
+	await shot("06b_head")
+	_frame(head + Vector3.UP * 0.04, 0.17, 0.2, Vector3(-1, 0.15, -0.15))
+	await shot("06c_head_side")
+	# The wrist and its thumb, on the leading edge.
+	one.pose_bat(0, Transform3D(facing, middle), 0.0, 0.0, 0.0)
+	var wrist := middle + facing * Vector3(0.22 * 1.4, 0.02, 0.075 * 1.4)
+	_frame(wrist + facing * Vector3(-0.05, 0, 0.02), 0.16, 0.16, Vector3(0.3, 0.6, -1))
+	await shot("06d_thumb")
 	one.queue_free()
 
-	# The wingbeat in six steps, from the front; and folding up, in four.
+	# The wingbeat in six steps, from the front; and folding up, in six.
 	var row := BatColony.new()
 	row.count = 6
 	row.frozen = true
 	stage.add_child(row)
 	# (two across, three down: read left to right, top to bottom)
-	var grid := func(i: int) -> Vector3: return Vector3((0.5 - i % 2) * 1.3, 2.9 - (i / 2) * 1.25, 0)
+	var grid := func(i: int) -> Vector3: return Vector3((0.5 - i % 2) * 1.15, 2.6 - (i / 2) * 0.85, 0)
 	for i in 6:
 		row._size[i] = 1.0
-		row.pose_bat(i, Transform3D(Basis(Vector3.UP, PI) * Basis(Vector3.RIGHT, 0.25), grid.call(i)), i / 6.0, 1.0, 0.0)
-	_look(Vector3(0, 2.2, -7.5), Vector3(0, 1.65, 0))
+		row.pose_bat(i, Transform3D(facing * Basis(Vector3.RIGHT, 0.25), grid.call(i)), i / 6.0, 1.0, 0.0)
+	_frame(Vector3(0, 1.75, 0), 2.2, 2.4, Vector3(0, 0.15, -1))
 	await shot("07_wingbeat_in_six")
 	for i in 6:
 		var fold := i / 5.0
-		row.pose_bat(i, Transform3D(Basis(Vector3.UP, PI) * Basis(Vector3.RIGHT, 0.25 - fold * 1.4), grid.call(i)), 0.3, 0.3 * (1.0 - fold), fold)
+		row.pose_bat(i, Transform3D(facing * Basis(Vector3.RIGHT, 0.25 - fold * 1.4), grid.call(i)), 0.3, 0.3 * (1.0 - fold), fold)
 	await shot("08_folding_up")
-	_look(Vector3(0, 6.5, -3.0), Vector3(0, 1.65, 0))
+	_frame(Vector3(0, 1.75, 0), 2.2, 2.4, Vector3(0, 1, -0.4))
 	await shot("08b_folding_up_from_above")
 	row.queue_free()
 
@@ -134,24 +157,34 @@ func _studio() -> void:
 	wall.material_override = stone
 	wall.position = Vector3(0, 3, -0.2)
 	stage.add_child(wall)
+	key.look_at_from_position(Vector3(1.5, 4, 3), Vector3.ZERO)
+	back.look_at_from_position(Vector3(-2, 1, 3), Vector3.ZERO)
 	var roost := BatColony.new()
 	roost.count = 12
 	roost.colony_seed = 3
 	stage.add_child(roost)
 	roost.set_roost(Vector3(0, 4.2, 0), Vector3.BACK)
 	roost.settle()
-	_look(Vector3(1.2, 2.2, 10.0), Vector3(0, 3.5, 0))
-	await wait(1.0)
+	await wait(0.5)
+	_frame(Vector3(0, 3.6, 0), 2.9, 1.9, Vector3(0.15, -0.35, 1))
 	await shot("09_roost")
-	_look(Vector3(2.5, 3.2, 3.0), Vector3(0, 3.7, 0))
-	await wait(0.2)
+	# One of them, close: from below and in front, as from the floor; and side on.
+	var near := 0
+	for i in roost.count:
+		if roost.bat_position(i).x > roost.bat_position(near).x:
+			near = i
+	var one_at := roost.bat_position(near)
+	_frame(one_at, 0.3, 0.5, Vector3(0.35, -0.45, 1))
 	await shot("10_roost_close")
+	_frame(one_at, 0.3, 0.5, Vector3(1, -0.15, 0.25))
+	await shot("10b_roost_close_side")
 	roost.awake = true
 	roost.target = Vector3(0, 1.7, 3.5)
-	_look(Vector3(1.5, 2.6, 8.5), Vector3(0, 3.0, 1.5))
+	_frame(Vector3(0, 3.2, 1.2), 4.0, 3.5, Vector3(0.2, -0.1, 1))
 	await wait(1.0)
 	await shot("11_letting_go")
 	await wait(1.6)
+	_frame(Vector3(0, 1.9, 3.5), 5.0, 3.0, Vector3(0.2, 0.2, 1))
 	await shot("12_swirling")
 	var spin := 0.0
 	for k in 120:
@@ -162,14 +195,21 @@ func _studio() -> void:
 	roost.awake = false
 	await wait(9.0, roost.all_home)
 	print("back on the roost: %s (%d flying)" % [roost.all_home(), roost.flying()])
-	_look(Vector3(1.2, 2.2, 10.0), Vector3(0, 3.5, 0))
+	_frame(Vector3(0, 3.6, 0), 2.9, 1.9, Vector3(0.15, -0.35, 1))
 	await shot("14_back_on_the_roost")
 	stage.queue_free()
 	await process_frame
 
 
-func _look(from: Vector3, at: Vector3) -> void:
-	camera.look_at_from_position(from, at)
+## Puts the camera looking at `at` from the way `from` points (out from it),
+## near enough that something `wide` by `high` fills about 70% of the frame.
+func _frame(at: Vector3, wide: float, high: float, from: Vector3) -> void:
+	var size := Vector2(root.get_visible_rect().size)
+	var down := tan(deg_to_rad(camera.fov) * 0.5)
+	var across := down * size.x / size.y
+	var distance := maxf(wide / 0.7 * 0.5 / across, high / 0.7 * 0.5 / down)
+	var up := Vector3.UP if absf(from.normalized().y) < 0.95 else Vector3.BACK
+	camera.look_at_from_position(at + from.normalized() * distance, at, up)
 
 
 # --- In the maze ---

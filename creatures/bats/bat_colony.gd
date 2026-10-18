@@ -58,8 +58,14 @@ enum Phase { HANG, DROP, FLY, HOME, LAND }
 ## Wingbeats a second, flapping hard.
 @export var flap_rate := 4.0
 ## How far out from the target they whirl (least, most), and how high over it.
-@export var swirl_radius := Vector2(0.9, 2.4)
+@export var swirl_radius := Vector2(1.3, 2.6)
 @export var swirl_height := 0.25
+## What is at the target (a head and the shoulders under it): how far round it
+## is, how far down it goes, and how clear of it they keep (wing tips and all),
+## except while one dives at it.
+@export var target_radius := 0.3
+@export var target_depth := 0.8
+@export var clearance := 0.3
 ## Seconds between one bat's dives at the target (least, most).
 @export var dive_every := Vector2(2.5, 6.0)
 ## How wide and how deep the clump at the roost is.
@@ -67,8 +73,12 @@ enum Phase { HANG, DROP, FLY, HOME, LAND }
 ## Further than this from the camera, a colony that is all hanging is not touched.
 @export var view_range := 90.0
 @export_group("Look")
-@export var fur := Color(0.15, 0.135, 0.13)
-@export var skin := Color(0.26, 0.22, 0.21)
+@export var fur := Color(0.13, 0.115, 0.11)
+## The lighter fur over the shoulders and chest.
+@export var mantle := Color(0.22, 0.185, 0.16)
+## The wings (and the backs of the ears), and the insides of the ears.
+@export var skin := Color(0.1, 0.086, 0.085)
+@export var ear := Color(0.36, 0.26, 0.25)
 @export var eye := Color(0.95, 0.88, 0.72)
 
 ## Awake: off the roost and flying. Asleep: back to the roost and hanging.
@@ -126,7 +136,7 @@ func _ready() -> void:
 	_mesh.name = "Bats"
 	_mesh.top_level = true
 	_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_mesh.material_override = BatBody.material(fur, skin, eye)
+	_mesh.material_override = BatBody.material(fur, mantle, skin, ear, eye)
 	var many := MultiMesh.new()
 	many.transform_format = MultiMesh.TRANSFORM_3D
 	many.use_custom_data = true
@@ -417,10 +427,11 @@ func _fly(i: int, delta: float) -> void:
 			dive = Vector2(0.55, _rng.randf_range(dive_every.x, dive_every.y))
 		_dive[i] = dive
 		if dive.x > 0.0:
-			goal = target + round_about * 0.25
+			# (at the face, and up and away over it)
+			goal = target + round_about * (target_radius + size * 0.25) + Vector3.UP * 0.15
 			top = speed * 1.15
 		else:
-			goal = target + round_about * orbit.x + Vector3.UP * (swirl_height + bob)
+			goal = target + round_about * maxf(orbit.x, _clear_of(size) + 0.15) + Vector3.UP * (swirl_height + bob)
 			goal_moving = Vector3(-round_about.z, 0.0, round_about.x) * orbit.y * 1.3 * signf(orbit.y)
 		goal_moving += _target_moving
 	else:
@@ -445,6 +456,10 @@ func _fly(i: int, delta: float) -> void:
 	push = push.limit_length(32.0)
 	moving = (moving + push * delta).limit_length(top)
 	at += moving * delta
+	if target.is_finite() and not homing and _dive[i].x <= 0.0:
+		var kept := _keep_clear(at, moving, size, delta)
+		at = kept[0]
+		moving = kept[1]
 	_at[i] = at
 	_moving[i] = moving
 	# Its wings: beating hard to climb, to turn hard, to catch up; held out and
@@ -462,6 +477,30 @@ func _fly(i: int, delta: float) -> void:
 	_fold[i] = move_toward(_fold[i], 0.0, delta * 3.0)
 	_beat[i] = fposmod(_beat[i] + delta * flap_rate * (0.85 + 0.3 * _strength[i]) * (1.4 / maxf(size, 0.5)) ** 0.5, 1.0)
 	_turn[i] = _turn[i].slerp(_flight_turn(i, moving, push), 1.0 - exp(-9.0 * delta))
+
+
+# How far from the target's middle a bat `size` across must keep, level with it.
+func _clear_of(size: float) -> float:
+	return target_radius + clearance + size * 0.5
+
+
+# Keeps a bat out of the space round the target (from `target_depth` below it
+# to a little over it): pushed back out to the edge of it (quickly, but not in
+# one jump, for one just out of a dive), its speed inwards lost.
+func _keep_clear(at: Vector3, moving: Vector3, size: float, delta: float) -> Array:
+	var reach := size * 0.15
+	if at.y < target.y - target_depth - reach or at.y > target.y + 0.35 + reach:
+		return [at, moving]
+	var off := Vector3(at.x - target.x, 0.0, at.z - target.z)
+	var need := _clear_of(size)
+	if off.length() >= need:
+		return [at, moving]
+	var out := off.normalized() if off.length() > 0.01 else Vector3.RIGHT
+	at += out * minf(need - off.length(), 10.0 * delta)
+	var inwards := moving.dot(out)
+	if inwards < 0.0:
+		moving -= out * inwards
+	return [at, moving]
 
 
 # Which way it is turned flying: along the way it is going (not too steeply),

@@ -278,7 +278,7 @@ func _keep_in(point: Vector3) -> Vector3:
 	point.y = clampf(point.y, 0.7, roost_height + 2.0)
 	var middle := global_position
 	for k in 4:
-		if nav.clear_of_walls(point, 0.5):
+		if nav.clear_of_walls(point, 1.0):
 			return point
 		point = point.lerp(Vector3(middle.x, point.y, middle.z), 0.5)
 	return Vector3(middle.x, point.y, middle.z)

@@ -19,8 +19,12 @@ What you get:
   way round), one diving at the target every few seconds; they follow it as it moves.
 - **Going home**: each flies back to its own place, flutters in, swings over, takes hold and folds up.
 
-Big by default (1.4 m wingspan) and dark (fur, wing skin, pale glinting eyes), lit in flat cel bands with a rim and
-a little light through the wings, so it suits a toon-shaded game; the colours are exports.
+The bat itself: a round furry body, dark, with a lighter mantle over the shoulders and chest and a ragged ruff round
+the neck; a round head with a short snout, big cupped ears (paler inside) and small dark eyes with a glint; small
+hooked thumbs at the wrists; dark wings of thin skin with the finger bones showing as lines and a scalloped trailing
+edge. Hanging, it bows its head so that it looks out from the wall, ears down. Big by default (1.4 m wingspan), lit in
+flat cel bands; the fur catches a rim of light, and light from behind shines warm through the wings (most at their thin
+trailing edges), so they read as skin against a bright sky. The colours are exports.
 
 ## Putting it in a game
 
@@ -60,7 +64,9 @@ bats.awake = false                             # they go home and hang up again
 ## Tuning
 
 Exported: `count`, `wingspan`, `colony_seed`, `speed`, `flap_rate`, `swirl_radius`, `swirl_height`, `dive_every`,
-`cluster` (the clump's width and depth), `view_range`, and the colours `fur`, `skin`, `eye`. The wing's shape is
+`target_radius`, `target_depth` and `clearance` (the space round the target, a head and shoulders, that the swirl keeps
+out of, wing tips and all, but for a bat diving),
+`cluster` (the clump's width and depth), `view_range`, and the colours `fur`, `mantle`, `skin`, `ear`, `eye`. The wing's shape is
 `BatBody.TIP`, `FINGERS`, `ANKLE`, `SCALLOP`; the body is `BatBody.BODY`. The shader's `SHOULDER`/`WRIST` must stay
 in step with BatBody's.
 

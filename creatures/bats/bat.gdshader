@@ -1,30 +1,36 @@
 // A bat (creatures/bats/bat_body.gd makes the mesh), drawn many at once by one
-// MultiMesh (BatColony). Each instance's custom data is how its wings are held:
+// MultiMesh (BatColony). Each instance's custom data is how it is held:
 //   x: how far through a wingbeat it is (0..1, round and round)
 //   y: how hard it is flapping (0: wings held out still, gliding; 1: full beats)
-//   z: how far its wings are folded (0: open; 1: wrapped round it, hanging)
+//   z: how far its wings are folded (0: open; 1: wrapped round it, hanging,
+//      and then its head is bowed forward, to look out from where it hangs)
 //   w: its tone (1 as made; a little more or less, so no two are quite alike)
-// The mesh says what each vertex is: UV2.y is 1 on a wing (UV2.x 0 on the
-// left, 1 on the right), UV.y is near 0 along a bone (where UV.x is 1), COLOR.r
-// is the part (0 fur, 0.5 skin, 1 an eye).
+// What each vertex is, the mesh says (see BatBody): CUSTOM0.r the part (0 fur,
+// 0.33 wing skin, 0.66 ear, 1 eye), CUSTOM0.g how light (the mantle of the fur;
+// how thin the skin is), UV.y near 0 along a bone (where UV.x is 1) or, on an
+// eye, out from its middle; UV2.y 1 on a wing (UV2.x 0 left, 1 right).
 //
 // Lit as Toon (scripts/toon.gd in The Clearing) lights figures: two flat tones
-// with a one-pixel edge between them, and a rim. The wing skin also lets a
-// little light through from behind.
+// with a one-pixel edge between them, and a rim. The fur's rim is wide and pale,
+// as fur catches the light; the wings are thin dark skin that the light shines
+// through from behind, most at their thin trailing edges, and that glows at its
+// edges seen side on; the eyes are dark and wet, with a glint.
 
 shader_type spatial;
 render_mode cull_disabled;
 
-uniform vec3 fur : source_color = vec3(0.15, 0.135, 0.13);
-uniform vec3 skin : source_color = vec3(0.26, 0.22, 0.21);
-uniform vec3 bone : source_color = vec3(0.08, 0.07, 0.07);
-uniform vec3 through : source_color = vec3(0.3, 0.17, 0.14);
+uniform vec3 fur : source_color = vec3(0.13, 0.115, 0.11);
+uniform vec3 mantle : source_color = vec3(0.22, 0.185, 0.16);
+uniform vec3 skin : source_color = vec3(0.1, 0.086, 0.085);
+uniform vec3 ear : source_color = vec3(0.36, 0.26, 0.25);
+uniform vec3 bone : source_color = vec3(0.06, 0.05, 0.05);
+uniform vec3 through : source_color = vec3(0.17, 0.075, 0.05);
 uniform vec3 eye : source_color = vec3(0.95, 0.88, 0.72);
-uniform float eye_glow = 0.8;
+uniform float eye_glow = 0.9;
 uniform float wrap = 0.2;
 uniform float flatness = 0.65;
-uniform float rim_gain = 0.7;
-uniform float rim_width = 0.16;
+uniform float rim_gain = 0.4;
+uniform float rim_width = 0.22;
 
 // Where the wing hinges, as modelled (half-span 0.5): the shoulder and the
 // wrist, out from the middle and along the body. Keep to BatBody's.
@@ -33,11 +39,15 @@ const float SHOULDER_Z = 0.045;
 const float WRIST = 0.22;
 const float WRIST_Z = 0.075;
 // How round the body is where a folded wing is wrapped about it.
-const float WRAP = 0.05;
+const float WRAP = 0.062;
 // Which way the leading finger runs from the wrist to the tip.
 const vec2 LEAD = vec2(0.936, -0.351);
+// Where the head turns on the neck (along, up), and how far it is bowed when folded.
+const vec2 NECK = vec2(0.058, 0.011);
+const float BOW = 0.95;
 
 varying float part;
+varying float shade;
 varying float line;
 varying float boned;
 varying float tone;
@@ -49,15 +59,16 @@ vec2 turn(vec2 v, float a) {
 }
 
 void vertex() {
-	part = COLOR.r;
+	part = CUSTOM0.r;
+	shade = CUSTOM0.g;
 	line = UV.y;
 	boned = UV.x;
 	tone = INSTANCE_CUSTOM.w > 0.0 ? INSTANCE_CUSTOM.w : 1.0;
+	float fold = INSTANCE_CUSTOM.z;
 	if (UV2.y > 0.5) {
 		float side = UV2.x > 0.5 ? 1.0 : -1.0;
 		float beat = 6.2831853 * INSTANCE_CUSTOM.x;
 		float strength = INSTANCE_CUSTOM.y;
-		float fold = INSTANCE_CUSTOM.z;
 		float open = 1.0 - fold;
 		// The arm beats; the hand follows it a moment late, so the wing rolls
 		// and its tip flicks; the stroke goes forward on the way down. Held
@@ -94,7 +105,7 @@ void vertex() {
 		// Folded up, the strip of wing beside the body is wrapped round its
 		// belly like a cloak, the two meeting down the middle.
 		float out_from = max(p.x - 0.03, 0.0);
-		float round_by = min(out_from / WRAP, 1.75);
+		float round_by = min(out_from / WRAP, 1.8);
 		vec3 wrapped = vec3(cos(round_by) * WRAP * 1.15, p.y * 0.3 - sin(round_by) * WRAP * 1.15, p.z);
 		p = mix(p, wrapped, fold * at_arm);
 		n = mix(n, vec3(cos(round_by), -sin(round_by), 0.0), fold * at_arm);
@@ -102,24 +113,54 @@ void vertex() {
 		n.x *= side;
 		VERTEX = p;
 		NORMAL = n;
+	} else if (fold > 0.0) {
+		// Hanging, its head is bowed forward on its neck, so that (head down)
+		// it looks out from the wall, ears pointing down.
+		float at_head = smoothstep(NECK.x - 0.006, NECK.x + 0.014, VERTEX.z);
+		float bow = -BOW * fold * at_head;
+		VERTEX.zy = turn(VERTEX.zy - NECK, bow) + NECK;
+		NORMAL.zy = turn(NORMAL.zy, bow);
 	}
 }
 
 void fragment() {
-	vec3 colour = part < 0.25 ? fur : skin;
-	// The bones of the fingers, a dark line a pixel or so wide at any distance.
-	float pixel = max(fwidth(line), 0.0001);
-	float on_bone = (1.0 - smoothstep(0.0, pixel * 1.3, line)) * boned;
-	colour = mix(colour, bone, on_bone);
-	ALBEDO = colour * tone;
-	if (part > 0.75) {
-		ALBEDO = eye * 0.4;
-		EMISSION = eye * eye_glow;
+	vec3 colour;
+	bool is_skin = part > 0.17 && part < 0.5;
+	bool is_ear = part >= 0.5 && part < 0.83;
+	float on_bone = 0.0;
+	if (part < 0.17) {
+		colour = mix(fur, mantle, shade);
+	} else if (is_skin) {
+		colour = skin;
+		// The bones of the fingers, a dark line a pixel or so wide at any distance.
+		float pixel = max(fwidth(line), 0.0001);
+		on_bone = (1.0 - smoothstep(0.0, pixel * 1.3, line)) * boned;
+		colour = mix(colour, bone, on_bone);
+	} else if (is_ear) {
+		// (pale in the hollow, which its normals face out of)
+		colour = dot(NORMAL, VIEW) > 0.0 ? ear : skin;
+	} else {
+		colour = vec3(0.025, 0.02, 0.02);
+		EMISSION = eye * eye_glow * (1.0 - smoothstep(0.1, 0.2, line));
 	}
-	ROUGHNESS = 1.0;
+	ALBEDO = colour * tone;
 	SPECULAR = 0.0;
-	// (both sides of a wing are its outside: it is lit from whichever is seen)
-	if (part > 0.25 && part < 0.75 ? dot(NORMAL, VIEW) < 0.0 : !FRONT_FACING) {
+	// What light() needs to know, passed in what it can read (varyings do not
+	// reach it everywhere): ROUGHNESS says what this is (1 fur, 0.75 skin, 0.5
+	// an eye), BACKLIGHT the colour of its rim (fur) or of the light through it (skin).
+	if (part < 0.17) {
+		ROUGHNESS = 1.0;
+		BACKLIGHT = mix(fur * 1.6, mantle * 1.1, shade);
+	} else if (part < 0.83) {
+		ROUGHNESS = 0.75;
+		BACKLIGHT = through * (0.25 + 0.75 * shade) * (1.0 - 0.85 * on_bone);
+	} else {
+		ROUGHNESS = 0.5;
+		BACKLIGHT = vec3(0.0);
+	}
+	// (both sides of a wing or an ear are its outside: lit from whichever is seen;
+	// the body is closed, and its normals are made to face out)
+	if ((is_skin || is_ear) && dot(NORMAL, VIEW) < 0.0) {
 		NORMAL = -NORMAL;
 	}
 }
@@ -136,10 +177,22 @@ void light() {
 	float lit = cut(amount, 0.04);
 	float strength = mix(reach, 1.0, flatness);
 	DIFFUSE_LIGHT += lit * strength * LIGHT_COLOR / PI;
-	// Light from behind a wing glows through its skin (not its fur).
-	float behind = cut(-dot(NORMAL, LIGHT), 0.1) * step(0.25, part) * step(part, 0.75);
-	DIFFUSE_LIGHT += behind * through * strength * LIGHT_COLOR / PI / max(ALBEDO, vec3(0.05));
 	float graze = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
-	float rim = cut(graze, 1.0 - rim_width) * lit;
-	SPECULAR_LIGHT += rim * rim_gain * ALBEDO * strength * LIGHT_COLOR / PI;
+	if (ROUGHNESS > 0.6 && ROUGHNESS < 0.9) {
+		// Light from behind shines through the skin, most where it is thin;
+		// and side on, its edges glow.
+		float behind = cut(-dot(NORMAL, LIGHT), 0.05);
+		// (added as it comes through, not as the surface's colour lit)
+		SPECULAR_LIGHT += behind * BACKLIGHT * strength * LIGHT_COLOR / PI;
+		float edge = cut(graze, 0.8) * smoothstep(0.5, 0.95, length(BACKLIGHT) / max(length(through), 0.001));
+		SPECULAR_LIGHT += edge * BACKLIGHT * 0.4 * strength * LIGHT_COLOR / PI;
+	} else if (ROUGHNESS > 0.9) {
+		// Fur catches the light all round its edge, palest on the mantle.
+		float rim = cut(graze, 1.0 - rim_width) * mix(lit, 1.0, 0.4);
+		SPECULAR_LIGHT += rim * rim_gain * BACKLIGHT * strength * LIGHT_COLOR / PI;
+	} else {
+		// A wet eye: one small bright light on it.
+		float shine = cut(pow(max(dot(NORMAL, normalize(LIGHT + VIEW)), 0.0), 220.0), 0.5);
+		SPECULAR_LIGHT += shine * 1.5 * LIGHT_COLOR;
+	}
 }
