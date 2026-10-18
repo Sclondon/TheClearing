@@ -1,0 +1,9 @@
+# A giant land snail: its look, every move, its slime trail and its sounds, for any game (no thinking)
+creatures/snail/snail.gd
+creatures/snail/snail_rig.gd
+creatures/snail/snail_look.gd
+creatures/snail/snail_slime.gd
+creatures/snail/models/snail.glb
+creatures/snail/models/snail_lo.glb
+creatures/snail/tools/.gdignore
+creatures/snail/tools/build_snail.py
