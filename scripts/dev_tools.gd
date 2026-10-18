@@ -142,6 +142,14 @@ func _init(in_world: World) -> void:
 	for ring in range(1, world.ring_count() + 1):
 		var desert: bool = world.maze.round_rings and ring == world.maze.rings + 1
 		grid.add_child(_button("TO RING %d%s" % [ring, " (DESERT)" if desert else ""], to_ring.bind(ring)))
+		# (and each quarter of the desert ring, walled apart: named for its side and what it is)
+		if desert:
+			var outer: RoundMaze = world.maze.round_rings
+			for q in outer.doors.size():
+				var quarter := DesertStyle.quarter_at(outer.doors[q].x, outer.doors[q].y)
+				var side: String = {Vector2i(0, -1): "N", Vector2i(1, 0): "E", Vector2i(0, 1): "S", Vector2i(-1, 0): "W"}[quarter]
+				var biome: String = DesertStyle.Biome.keys()[outer.desert.biome_of(quarter)]
+				grid.add_child(_button("TO %s (%s)" % [biome, side], to_quarter.bind(q)))
 	grid.add_child(_button("TO DUSK", to_hour.bind(DayCycle.SUNSET - 0.4)))
 	grid.add_child(_button("TO DAWN", to_hour.bind(DayCycle.DAWN - 0.4)))
 	_weather_button = _button("", next_weather)
@@ -584,12 +592,18 @@ func to_ring(ring: int) -> void:
 	world.put_player(spot + Vector3.UP * 0.05, atan2(spot.x, spot.z))
 
 
-## In the desert, a little way out from the square maze's way out, facing on out.
-func to_desert() -> void:
+## In quarter `q` of the desert ring (RoundMaze.doors: one door into each), a
+## little way out from the square maze's way into it, facing on out.
+func to_quarter(q: int) -> void:
 	var outer: RoundMaze = world.maze.round_rings
-	if outer == null:
+	if outer == null or q >= outer.doors.size():
 		return
-	var spot := outer.door + outer.way_in * 40.0
+	var spot := outer.doors[q] + outer.ways_in[q] * 40.0
 	var at := Vector3(spot.x, 0.0, spot.y)
 	at.y = world.maze.ground_height(at) + 0.1
-	world.put_player(at, atan2(outer.way_in.x, outer.way_in.y))
+	world.put_player(at, atan2(outer.ways_in[q].x, outer.ways_in[q].y))
+
+
+## In the desert, a little way out from the square maze's way out, facing on out.
+func to_desert() -> void:
+	to_quarter(0)

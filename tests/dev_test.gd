@@ -148,6 +148,18 @@ func _run() -> void:
 	world.dev.to_exit()
 	await frames(30)
 	check("to the exit", player.global_position.distance_to(maze.world(maze.exit)) < Maze.CELL * 0.5, str(player.global_position))
+	# Each quarter of the desert ring: put in it, on its ground.
+	var outer: RoundMaze = maze.round_rings
+	if outer:
+		var names: Array = world.dev.find_children("*", "Button", true, false).map(func(b: Button) -> String: return b.text).filter(func(t: String) -> bool: return t.ends_with("(N)") or t.ends_with("(E)") or t.ends_with("(S)") or t.ends_with("(W)"))
+		check("a button to each quarter in the panel", names.size() == 4, str(names))
+		for q in outer.doors.size():
+			world.dev.to_quarter(q)
+			await frames(20)
+			var stood: Vector3 = player.global_position
+			var quarter := DesertStyle.quarter_at(stood.x, stood.z)
+			var out_of_square := maxf(absf(stood.x), absf(stood.z)) > outer.square_half and Vector2(stood.x, stood.z).length() < outer.inner_radius
+			check("to the %s quarter" % DesertStyle.Biome.keys()[outer.desert.biome_of(quarter)].to_lower(), quarter == DesertStyle.quarter_at(outer.doors[q].x, outer.doors[q].y) and out_of_square and player.is_on_floor(), str(stood))
 
 	print("DEV TEST %s" % ("PASSED" if failures == 0 else "FAILED (%d)" % failures))
 	quit(failures)
