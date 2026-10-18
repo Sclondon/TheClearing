@@ -35,6 +35,8 @@ static var _hemp: StandardMaterial3D
 
 
 func _ready() -> void:
+	if not Engine.is_editor_hint():
+		add_to_group(&"rope_bridges")
 	if _wood == null:
 		_wood = StandardMaterial3D.new()
 		_wood.albedo_color = Color(0.36, 0.3, 0.22)
@@ -93,6 +95,12 @@ func _ready() -> void:
 	_lay()
 
 
+## Where it is across the ground for NearIndex: its middle, and how far it reaches from there.
+func near_spot() -> Vector4:
+	var middle := (from + to) * 0.5
+	return Vector4(middle.x, middle.y, middle.z, from.distance_to(to) * 0.5 + 0.5)
+
+
 func _physics_process(delta: float) -> void:
 	# (in the editor it only hangs, as it was made)
 	if Engine.is_editor_hint():
@@ -101,6 +109,7 @@ func _physics_process(delta: float) -> void:
 	# it settles, so a bridge nobody goes near is never worked out at all.
 	var middle := POINTS / 2
 	if (_points[middle] - _before[middle]).length_squared() < 0.000001 and not Rope.anyone_near(self, (from + to) * 0.5, from.distance_to(to) * 0.5 + Rope.WAKE):
+		Rope.rest(self)
 		return
 	var gravity := Vector3.DOWN * 9.8
 	var pull := []

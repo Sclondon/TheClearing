@@ -320,7 +320,7 @@ func _snap(at: Vector3) -> void:
 func _onto_nearest_ladder() -> void:
 	var best: Ladder = null
 	var near := 1.5
-	for ladder: Ladder in get_tree().get_nodes_in_group(&"ladders"):
+	for ladder: Ladder in NearIndex.near(get_tree(), &"ladders", global_position, 2.0):
 		var y := clampf(global_position.y, ladder.bottom_y(), ladder.top_y() - 0.6)
 		var d := global_position.distance_to(ladder.stand(y))
 		if d < near:

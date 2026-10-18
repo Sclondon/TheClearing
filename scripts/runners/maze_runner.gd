@@ -92,6 +92,9 @@ var _ivy_way := 1
 var _ivy_escape := false
 var _ivy_push := 0.0
 var _ivy_room := {}
+## His ivy by the cell at its foot, and the open cells of his section (each found once).
+var _ivy_cells := {}
+var _ring_cells: Array[Vector2i] = []
 ## Where he stands at the gate (worked out when he gets there).
 var _aside_spot := Vector3.INF
 var _aside := 0.0
@@ -493,12 +496,13 @@ func _wander_cell(here: Vector2i) -> Vector2i:
 
 ## Any open cell of his section, well in from its inside wall.
 func _cell_in_ring() -> Vector2i:
-	var cells: Array[Vector2i] = []
-	for i in maze.size * maze.size:
-		var cell := Vector2i(i % maze.size, i / maze.size)
-		if maze.ring_of(cell) == ring and not maze.solid.has(cell) and maze.depth_in_ring(cell) > 0:
-			cells.append(cell)
-	return cells[_rng.randi_range(0, cells.size() - 1)] if not cells.is_empty() else maze.cell_at(global_position)
+	# (found once: the maze has a great many cells)
+	if _ring_cells.is_empty():
+		for i in maze.size * maze.size:
+			var cell := Vector2i(i % maze.size, i / maze.size)
+			if maze.ring_of(cell) == ring and not maze.solid.has(cell) and maze.depth_in_ring(cell) > 0:
+				_ring_cells.append(cell)
+	return _ring_cells[_rng.randi_range(0, _ring_cells.size() - 1)] if not _ring_cells.is_empty() else maze.cell_at(global_position)
 
 
 ## The gate out of his section: [the cell in it, the step out].
@@ -613,20 +617,41 @@ func _give_up_leading() -> void:
 
 # --- Climbing ----------------------------------------------------------------
 
-## Ivy from the ground within `steps` cells of him, by the passages.
+## Ivy from the ground within `steps` cells of him, by the passages. (Only the
+## cells that near are walked: a way out across the whole maze from each ivy was
+## what made the runners cost so much.)
 func _ivy_near(steps: int) -> IvyClimb:
+	if _ivy_cells.is_empty():
+		for ivy in ivies:
+			var foot := maze.cell_at(_ivy_foot(ivy))
+			if not _ivy_cells.has(foot):
+				_ivy_cells[foot] = []
+			(_ivy_cells[foot] as Array).append(ivy)
 	var here := maze.cell_at(global_position)
 	var best: IvyClimb = null
 	var nearest := INF
-	for ivy in ivies:
-		var cell := maze.cell_at(_ivy_foot(ivy))
-		var d := nav.distance(here, cell)
-		if d < 0 or d > steps or not _ivy_clear(ivy):
+	var depth := {here: 0}
+	var queue: Array[Vector2i] = [here]
+	var head := 0
+	while head < queue.size():
+		var cell: Vector2i = queue[head]
+		head += 1
+		for ivy: IvyClimb in _ivy_cells.get(cell, []):
+			if not is_instance_valid(ivy) or not _ivy_clear(ivy):
+				continue
+			var metres := _ivy_foot(ivy).distance_to(global_position)
+			if metres < nearest:
+				nearest = metres
+				best = ivy
+		var d: int = depth[cell]
+		if d >= steps:
 			continue
-		var metres := _ivy_foot(ivy).distance_to(global_position)
-		if metres < nearest:
-			nearest = metres
-			best = ivy
+		for step: Vector2i in Maze.STEPS:
+			var next := cell + step
+			if not maze.inside(next) or depth.has(next) or maze.blocked(cell, step):
+				continue
+			depth[next] = d + 1
+			queue.append(next)
 	return best
 
 

@@ -134,6 +134,7 @@ func _physics_process(delta: float) -> void:
 	# Hanging still, with nobody on it or near it, it rests. (A maze has a great
 	# many, and each is worked out point by point. It starts out hanging at rest.)
 	if load_at < 0.0 and (_points[PIECES] - _before[PIECES]).length_squared() < 0.000001 and not anyone_near(self, global_position, length + WAKE):
+		rest(self)
 		return
 	var piece := length / PIECES
 	var fall := Vector3.DOWN * gravity * delta * delta
@@ -205,6 +206,39 @@ static func anyone_near(node: Node, at: Vector3, reach: float) -> bool:
 		if (body as Node3D).global_position.distance_squared_to(at) < reach * reach:
 			return true
 	return false
+
+
+## Resting, a rope (or a bridge) is not stepped at all: a maze has a thousand,
+## and even asking each every step whether anyone had come near cost several
+## milliseconds a frame. One Waker for the level starts again those anyone comes
+## within WAKE of (NearIndex finds them).
+static func rest(node: Node) -> void:
+	node.set_physics_process(false)
+	if not is_instance_valid(_waker):
+		_waker = Waker.new()
+		_waker.name = "RopeWaker"
+		node.get_tree().root.add_child.call_deferred(_waker)
+
+
+static var _waker: Node
+
+
+class Waker extends Node:
+	const EVERY := 0.1
+	var _in := 0.0
+
+	func _physics_process(delta: float) -> void:
+		_in -= delta
+		if _in > 0.0:
+			return
+		_in = EVERY
+		var tree := get_tree()
+		for body: Node in tree.get_nodes_in_group(&"bridge_weights"):
+			var at := (body as Node3D).global_position
+			for group: StringName in [&"ropes", &"rope_bridges"]:
+				for thing: Node in NearIndex.near(tree, group, at, WAKE):
+					if not thing.is_physics_processing():
+						thing.set_physics_process(true)
 
 
 ## A point of the rope `away` along it from where he holds it, kept that far from him.
@@ -286,6 +320,7 @@ func angle_at(distance: float) -> float:
 ## Shoves the rope at `distance` down it, and less so the rope either side: a
 ## change of speed, m/s. Whoever is on it there is shoved with it.
 func push(distance: float, shove: Vector3) -> void:
+	set_physics_process(true)
 	var middle := distance / length * PIECES
 	for i in range(1, PIECES + 1):
 		var share := clampf(1.0 - absf(i - middle) / 3.0, 0.0, 1.0)

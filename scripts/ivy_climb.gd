@@ -17,7 +17,11 @@ static var _leaf_mesh: ArrayMesh
 ## mist further off: its leaves are not drawn past 160 m), and how often it looks.
 const SHOWN_FROM := 175.0
 const LOOK_EVERY := 0.5
-var _look_in := 0.0
+## Whether its stems and leaves are drawn yet; and the one Grower for the level,
+## which looks for patches near the camera (each looking for itself every frame
+## cost milliseconds: a maze has thousands).
+var grown := false
+static var _grower: Node
 
 
 func _ready() -> void:
@@ -38,23 +42,51 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		_grow()
 	else:
-		_look_in = randf() * LOOK_EVERY
-		set_process(true)
+		if not is_instance_valid(_grower):
+			_grower = Grower.new()
+			_grower.name = "IvyGrower"
+			get_tree().root.add_child.call_deferred(_grower)
+		(_grower as Grower).waiting.append(self)
 
 
-func _process(delta: float) -> void:
-	_look_in -= delta
-	if _look_in > 0.0:
-		return
-	_look_in = LOOK_EVERY
-	var camera := get_viewport().get_camera_3d()
-	if camera and camera.global_position.distance_to(global_position) < SHOWN_FROM:
-		set_process(false)
-		_grow()
+## Goes round the patches not drawn yet, a share of them each frame (all of them
+## each LOOK_EVERY), and draws those the camera has come near, a few a frame.
+class Grower extends Node:
+	## How long it may spend a frame drawing patches that have come near, microseconds.
+	const BUDGET := 2000
+	var waiting: Array = []
+	var _at := 0
+	var _due: Array = []
+
+	func _process(delta: float) -> void:
+		var camera := get_viewport().get_camera_3d()
+		if camera and not waiting.is_empty():
+			var eye := camera.global_position
+			var share := ceili(waiting.size() * delta / IvyClimb.LOOK_EVERY)
+			for k in share:
+				if waiting.is_empty():
+					break
+				_at = _at % waiting.size()
+				var ivy = waiting[_at]
+				if not is_instance_valid(ivy) or ivy.grown:
+					waiting[_at] = waiting[-1]
+					waiting.pop_back()
+				elif ivy.global_position.distance_to(eye) < IvyClimb.SHOWN_FROM:
+					_due.append(ivy)
+					waiting[_at] = waiting[-1]
+					waiting.pop_back()
+				else:
+					_at += 1
+		var started := Time.get_ticks_usec()
+		while not _due.is_empty() and Time.get_ticks_usec() - started < BUDGET:
+			var ivy = _due.pop_back()
+			if is_instance_valid(ivy) and not ivy.grown:
+				ivy._grow()
 
 
 ## Draws its stems and leaves.
 func _grow() -> void:
+	grown = true
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(global_position.snappedf(0.01))
 	# Stems: a few thick ones that wander up the face, close against it.

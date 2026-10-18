@@ -485,6 +485,14 @@ ladders hung are seen by all. A guest's spear asks the maker to stagger what it 
 - Anything simulated per object (vines, rope bridges) must rest when still and nobody is near; never simulate
   thousands of things every frame.
 - Anything numerous and spread out (grass squares, trees) is updated only near the camera and only when it changes.
+- Resting means not processing at all, not a check that returns early: thousands of early returns cost milliseconds.
+  Ropes and bridges rest with `Rope.rest` and one `Rope.Waker` starts those near anyone; ivy waits for one
+  `IvyClimb.Grower`.
+- Never loop over a big group (ropes, ladders) every step to find what is near: ask `NearIndex.near`. The boy's
+  controller did that, so every runner cost ~4 ms and three made the frame rate fall to single figures.
+- Never work out a whole-maze `MazeNav.field` in a loop: each is a walk of every cell, and only the last 96 are kept
+  (the hunters share them). Walk only the few cells needed instead.
+- `tools/frame_split.gd` (frame time and every processing script, per place) and `tools/runner_costs.gd` measure these.
 - Check the first seconds too: no settling or warm-up work that runs for everything at once.
 
 ## Not decided or not done

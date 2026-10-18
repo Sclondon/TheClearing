@@ -862,7 +862,7 @@ func _physics_process(delta: float) -> void:
 func _into_ladder(player: Player) -> bool:
 	if player.state != Player.State.FREE or player._wish.length_squared() < 0.04:
 		return false
-	for node: Node in get_tree().get_nodes_in_group(&"ladders"):
+	for node: Node in NearIndex.near(get_tree(), &"ladders", player.global_position, 4.5):
 		var ladder := node as Ladder
 		if ladder == null:
 			continue

@@ -1722,7 +1722,7 @@ func _try_catch_rope() -> bool:
 	var hands := global_position + Vector3.UP * hang_height
 	var going := Vector3(velocity.x, 0.0, velocity.z)
 	going = going.normalized() if going.length() > 0.5 else Vector3.ZERO
-	for rope: Rope in get_tree().get_nodes_in_group(&"ropes"):
+	for rope: Rope in NearIndex.near(get_tree(), &"ropes", hands, rope_reach.y + 1.0):
 		if rope == _rope_left and _rope_rest > 0.0:
 			continue
 		var at := rope.nearest(hands)
@@ -1989,7 +1989,7 @@ func _drop_rope() -> void:
 func _try_catch_ladder() -> bool:
 	if _wish.length_squared() < 0.04:
 		return false
-	for ladder: Ladder in get_tree().get_nodes_in_group(&"ladders"):
+	for ladder: Ladder in NearIndex.near(get_tree(), &"ladders", global_position, 2.0):
 		var facing := ladder.facing()
 		var onto := ladder.stand(ladder.top_y() + 0.03) + facing * 0.75
 		if is_on_floor() and absf(global_position.y - onto.y) < 0.2 and _wish.normalized().dot(facing) < -0.6:

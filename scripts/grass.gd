@@ -546,14 +546,12 @@ func _process(delta: float) -> void:
 			_fill(_unfilled.pop_front())
 		# (thinned again, to show what was filled)
 		_thinned_for = Vector3.INF
+	# (a field none of which is showing has nothing to bend or sway: the maze has
+	# several, and most are out of sight at any time)
+	if _showing.is_empty():
+		return
 	# The nearest pushers to the camera (or to the field) go to the shader.
-	var found: Array = []
-	for node in get_tree().get_nodes_in_group(PUSHERS):
-		if node is Node3D and node.is_inside_tree():
-			found.append(node)
-	if camera != null and found.size() > MAX_PUSHERS:
-		var eye := camera.global_position
-		found.sort_custom(func(a: Node3D, b: Node3D) -> bool: return a.global_position.distance_squared_to(eye) < b.global_position.distance_squared_to(eye))
+	var found := _nearest_pushers(camera)
 	var packed := PackedVector4Array()
 	packed.resize(MAX_PUSHERS)
 	var n := mini(found.size(), MAX_PUSHERS)
@@ -573,6 +571,26 @@ func _process(delta: float) -> void:
 		_trail_tex.update(_trail)
 		_trail_dirty = false
 		_trail_wait = 1.0 / 15.0
+
+
+## The pushers, nearest the camera first: found once a frame for every field.
+static var _pushers_frame := -1
+static var _pushers: Array = []
+
+
+func _nearest_pushers(camera: Camera3D) -> Array:
+	var frame := Engine.get_process_frames()
+	if frame == _pushers_frame:
+		return _pushers
+	_pushers_frame = frame
+	_pushers = []
+	for node in get_tree().get_nodes_in_group(PUSHERS):
+		if node is Node3D and node.is_inside_tree():
+			_pushers.append(node)
+	if camera != null and _pushers.size() > MAX_PUSHERS:
+		var eye := camera.global_position
+		_pushers.sort_custom(func(a: Node3D, b: Node3D) -> bool: return a.global_position.distance_squared_to(eye) < b.global_position.distance_squared_to(eye))
+	return _pushers
 
 
 func _keep(d: float) -> float:
