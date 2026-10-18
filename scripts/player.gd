@@ -463,6 +463,9 @@ var _rope_new := false
 var _tilt := Vector3.UP
 ## Getting off the top of a ladder (1) or onto it from there (-1), and from where to where.
 var _ladder_leaving := 0.0
+## How far to his right of the ladder's middle he is on it (Ladder.spread: across a
+## wide mat of ivy, not only up its middle).
+var _ladder_across := 0.0
 var _ladder_from := Vector3.ZERO
 var _ladder_onto := Vector3.ZERO
 ## How long since he kicked off a wall he must wait to kick again, and which way he went.
@@ -1995,24 +1998,28 @@ func _try_catch_ladder() -> bool:
 		if is_on_floor() and absf(global_position.y - onto.y) < 0.2 and _wish.normalized().dot(facing) < -0.6:
 			var from_top := global_position - onto
 			var across := Vector3(-facing.z, 0.0, facing.x)
-			if absf(from_top.dot(across)) < 0.3 and absf(from_top.dot(facing) + 0.1) < 0.35:
+			if absf(from_top.dot(across)) < 0.3 + ladder.spread() and absf(from_top.dot(facing) + 0.1) < 0.35:
 				_ladder = ladder
 				_engage()
 				ladder_travel = 0.0
 				velocity = Vector3.ZERO
+				_ladder_across = clampf(from_top.dot(across), -ladder.spread(), ladder.spread())
 				_ladder_onto = global_position
-				_ladder_from = ladder.stand(ladder.top_y() - 0.25)
+				_ladder_from = ladder.stand(ladder.top_y() - 0.25, _ladder_across)
 				ladder_off = 1.0
 				_ladder_leaving = -1.0
 				state = State.LADDER
 				_state_time = 0.0
 				return true
-		var at := ladder.stand(global_position.y)
+		# (anywhere across it that he can climb, not only its middle)
+		var over := clampf((global_position - ladder.stand(global_position.y)).dot(ladder.right()), -ladder.spread(), ladder.spread())
+		var at := ladder.stand(global_position.y, over)
 		if global_position.distance_to(at) > 0.45 or _wish.normalized().dot(facing) < 0.5:
 			continue
 		if global_position.y < ladder.bottom_y() - 0.2 or global_position.y > ladder.top_y() - 0.6:
 			continue
 		_ladder = ladder
+		_ladder_across = over
 		_engage()
 		ladder_travel = 0.0
 		velocity = Vector3.ZERO
@@ -2061,15 +2068,22 @@ func _climb_ladder(input: Vector2, delta: float) -> void:
 	if _is_duck_held() and _state_time > 0.15:
 		_leave_ladder()
 		return
-	# (up the screen is up the ladder, whichever way the camera looks at it)
+	# (up the screen is up the ladder, whichever way the camera looks at it; and
+	# where it is wide enough, as ivy is, left and right are across it)
 	var step := -input.y * ladder_speed * delta
+	var spread := _ladder.spread()
+	if spread > 0.0:
+		# (only left and right on the stick: up and down are up and down it, however
+		# the camera looks at it)
+		_ladder_across = clampf(_ladder_across + _to_world(Vector2(input.x, 0.0)).dot(_ladder.right()) * ladder_speed * delta, -spread, spread)
+	var before := global_position
 	var y := global_position.y + step
 	if y <= _ladder.bottom_y() and step < 0.0:
 		_leave_ladder()
 		return
 	if y >= _ladder.top_y() - 0.25 and step > 0.0:
 		# Off the top, onto whatever it leans against.
-		var onto := _ladder.stand(_ladder.top_y() + 0.03) + facing * 0.75
+		var onto := _ladder.stand(_ladder.top_y() + 0.03, _ladder_across) + facing * 0.75
 		if not test_move(Transform3D(Basis.IDENTITY, onto), Vector3.UP * 0.01, null, 0.001, true):
 			_ladder_from = global_position
 			_ladder_onto = onto
@@ -2077,13 +2091,16 @@ func _climb_ladder(input: Vector2, delta: float) -> void:
 			_ladder_leaving = 1.0
 			return
 		y = global_position.y
-	ladder_travel += y - global_position.y
-	velocity = Vector3(0.0, (y - global_position.y) / delta, 0.0)
-	_put(_ladder.stand(y))
+	# (hand over hand going across, too: the reach across counts as climbing)
+	var sideways := absf((_ladder.stand(y, _ladder_across) - before).dot(_ladder.right()))
+	ladder_travel += (y - before.y) + (sideways if y >= before.y else -sideways)
+	_put(_ladder.stand(y, _ladder_across))
+	velocity = (global_position - before) / delta
 
 
 func _leave_ladder() -> void:
 	_ladder = null
+	_ladder_across = 0.0
 	ladder_off = 0.0
 	_ladder_leaving = 0.0
 	state = State.FREE
@@ -2743,11 +2760,11 @@ func _place_hands(delta: float) -> void:
 		var over_top := maxf(_ladder.rung(global_position.y + 1.12, false), _ladder.rung(global_position.y + 1.12, true)) > last + 0.01
 		for i in 2:
 			var across := right * (-0.15 if i == 0 else 0.15)
-			var at := _ladder.global_position + across
+			var at := _ladder.global_position + right * _ladder_across + across
 			var grip := _ladder.rung(global_position.y + 1.12, i == 1)
 			hand_points[i] = Vector3(at.x, grip, at.z) - into * 0.02
 			if over_top:
-				hand_points[i] = _ladder.global_position + right * (-0.17 if i == 0 else 0.17) + Vector3.UP * (_ladder.height + 0.015) + into * (0.24 if i == 0 else 0.2)
+				hand_points[i] = _ladder.global_position + right * (_ladder_across + (-0.17 if i == 0 else 0.17)) + Vector3.UP * (_ladder.height + 0.015) + into * (0.24 if i == 0 else 0.2)
 			var tread := clampf(_ladder.rung(global_position.y + 0.12, i == 0), _ladder.bottom_y() + Ladder.RUNG, last)
 			foot_points[i] = Vector3(at.x, tread, at.z) - into * 0.07
 			if ladder_off > 0.0:

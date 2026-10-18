@@ -47,10 +47,23 @@ func facing() -> Vector3:
 	return -global_basis.z.normalized()
 
 
-## Where the climber's body is, level with `y`: just clear of the rungs.
-func stand(y: float) -> Vector3:
-	var at := global_position - facing() * 0.3
+## Where the climber's body is, level with `y`: just clear of the rungs (and
+## `across` metres to his right along it, as far as `spread` lets him go).
+func stand(y: float, across := 0.0) -> Vector3:
+	var at := global_position - facing() * 0.3 + right() * across
 	return Vector3(at.x, y, at.z)
+
+
+## The way to the climber's right, facing it.
+func right() -> Vector3:
+	var into := facing()
+	return Vector3(-into.z, 0.0, into.x)
+
+
+## How far either side of its middle he can climb across it, metres: none on a
+## ladder (IvyClimb, a wide mat of ivy, lets him go most of its width).
+func spread() -> float:
+	return 0.0
 
 
 ## The rung nearest `y`, counting only every other one, starting from the

@@ -85,9 +85,20 @@ func _run() -> void:
 	player.velocity = Vector3.ZERO
 	await frames(10)
 	var up_to := 0.0
+	# (a little way up, he climbs across it too, to his right, for a moment)
+	var across_frames := 0
+	var across_from := Vector3.INF
+	var across_went := 0.0
 	for i in 600:
 		# (on it, up the screen is up it)
-		if player.state == player.State.LADDER:
+		if player.state == player.State.LADDER and player.global_position.y > 1.2 and across_frames < 40:
+			if across_frames == 0:
+				across_from = player.global_position
+			across_frames += 1
+			let_go()
+			steer(ivy.right())
+			across_went = (player.global_position - across_from).dot(ivy.right())
+		elif player.state == player.State.LADDER:
 			let_go()
 			Input.action_press(&"move_up")
 		else:
@@ -102,6 +113,7 @@ func _run() -> void:
 	var hit := KinematicCollision3D.new()
 	if player.test_move(Transform3D(Basis.IDENTITY, onto), Vector3.UP * 0.01, hit, 0.001, true):
 		print("  onto blocked by ", hit.get_collider(), " ", hit.get_collider().get_parent() if hit.get_collider() else null, " at ", hit.get_position(), " normal ", hit.get_normal(), " onto ", onto)
+	check("climbs across the ivy, not only up its middle", across_went > minf(0.3, ivy.spread()) and across_went <= ivy.spread() * 2.0 + 0.01, "(%.2f m across, it lets him %.2f either side)" % [across_went, ivy.spread()])
 	check("climbs the ivy onto the terrace", player.state == player.State.FREE and player.is_on_floor() and player.global_position.y > ivy.top_y() - 0.3,
 		"(at %.1f m, top %.1f, highest %.1f, state %d)" % [player.global_position.y, ivy.top_y(), up_to, player.state])
 
