@@ -281,7 +281,10 @@ func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: Rando
 					_open(cell, -step)
 		else:
 			_open(from, step)
-		if not reached.has(block):
+		# (grown from the first way in only: the walk reaches the blocks behind the
+		# others in its time. Grown from each, a later one could find its block
+		# already walled round by the rest, a room with only the gate into it.)
+		if active.is_empty():
 			reached[block] = true
 			heading[block] = step
 			active.append(block)

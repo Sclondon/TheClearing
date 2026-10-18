@@ -66,6 +66,13 @@ func _initialize() -> void:
 				var along := not maze.blocked(cell, Vector2i(0, 1)) or not maze.blocked(cell, Vector2i(0, -1))
 				if not (across and along):
 					narrow += 1
+			# Every gate from the clearing leads on into the ring: from just inside each,
+			# the way out can be reached without going back through the clearing.
+			var shut_in := 0
+			for way: Array in maze.gates[0]:
+				if not _reaches_exit(maze, way[0] + way[1]):
+					shut_in += 1
+			check("%s: no gate a dead end" % name, shut_in == 0, "(%d of %d)" % [shut_in, maze.gates[0].size()])
 			check("%s: wide halls in the first ring" % name, span < 2 or narrow == 0, "(%d cells in a narrow hall)" % narrow)
 			var middle := maze.size / 2
 			check("%s: clearing open" % name, not maze.blocked(Vector2i(middle, middle), Vector2i(1, 0)) and not maze.blocked(Vector2i(middle - 3, middle - 3), Vector2i(0, 1)))
@@ -89,3 +96,19 @@ func _initialize() -> void:
 
 	print("MAZE TEST %s" % ("PASSED" if failures == 0 else "FAILED (%d)" % failures))
 	quit(failures)
+
+
+## Whether the exit can be reached from `from` without going into the clearing.
+func _reaches_exit(maze: Maze, from: Vector2i) -> bool:
+	var seen := {from: true}
+	var queue: Array[Vector2i] = [from]
+	while not queue.is_empty():
+		var cell: Vector2i = queue.pop_front()
+		if cell == maze.exit:
+			return true
+		for step: Vector2i in Maze.STEPS:
+			var next := cell + step
+			if maze.inside(next) and not seen.has(next) and not maze.in_clearing(next) and not maze.blocked(cell, step):
+				seen[next] = true
+				queue.push_back(next)
+	return false
