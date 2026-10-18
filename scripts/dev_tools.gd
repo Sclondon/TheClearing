@@ -33,6 +33,7 @@ const HUNTERS := [
 	["HARPY", "harpy", AHEAD], ["BOAR", "boar", SNAKE_AHEAD], ["CHICKENS", "chickens", AHEAD],
 	["CHICKENS (TAME)", "tame_chickens", AHEAD], ["GARGOYLE", "gargoyle", AHEAD],
 	["DEER", "deer", SNAKE_AHEAD], ["ELK", "elk", SNAKE_AHEAD],
+	["IMPS", "imps", AHEAD], ["IMP SWARM", "imp_swarm", AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -242,6 +243,10 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			world.add_child(flock)
 			world.tame_chickens.append(flock)
 			return
+		"imps":
+			made = MazeImp.gang(4)
+		"imp_swarm":
+			made = [MazeImpSwarm.new()]
 	for k in made.size():
 		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 

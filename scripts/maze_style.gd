@@ -181,6 +181,10 @@ extends Resource
 @export_group("Wildlife")
 ## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
 @export_range(0, 4) var tame_chicken_flocks := 0
+## Gangs of tiny imps (three or four), each perched on a wall.
+@export_range(0, 4) var imp_gangs := 2
+## Swarms of imps, each a crack at the foot of a wall that dozens pour out of.
+@export_range(0, 3) var imp_swarms := 1
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
