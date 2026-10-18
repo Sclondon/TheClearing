@@ -37,7 +37,7 @@ const HUNTERS := [
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD],
 	["BEETLES", "beetles", AHEAD], ["FISH PERSON", "fish_person", AHEAD], ["ANGEL", "angel", SNAKE_AHEAD],
 	["FROG", "frog", AHEAD], ["FROG SWARM", "frog_swarm", AHEAD],
-	["PAIR", "flesh_pair", AHEAD], ["AMALGAM", "amalgam", AHEAD], ["STRIDER", "strider", AHEAD],
+	["PAIR", "flesh_pair", AHEAD], ["AMALGAM", "amalgam", AHEAD], ["STRIDER", "strider", AHEAD], ["BALL", "ball", SNAKE_AHEAD],
 	["ABOMINATION", "flesh_mound", SNAKE_AHEAD],
 	["HARPY", "harpy", AHEAD], ["BOAR", "boar", SNAKE_AHEAD], ["CHICKENS", "chickens", AHEAD],
 	["CHICKENS (TAME)", "tame_chickens", AHEAD], ["GARGOYLE", "gargoyle", AHEAD],
@@ -46,6 +46,23 @@ const HUNTERS := [
 	["COYOTES", "coyotes", SNAKE_AHEAD], ["SKINWALKER", "skinwalker", SNAKE_AHEAD],
 	["TRIPOD", "tripod", SNAKE_AHEAD],
 	["CROWS", "crows", AHEAD], ["RAVENS", "ravens", AHEAD], ["BLUE JAYS", "blue_jays", AHEAD],
+	["CLOWN", "clown", SNAKE_AHEAD], ["STEGOSAURUS", "stegosaurus", SNAKE_AHEAD],
+	["SPIDER MONKEYS", "spider_monkeys", AHEAD], ["LIZARD PEOPLE", "lizard_people", AHEAD],
+	["MASKED TRIBE", "tribe", AHEAD], ["DEINONYCHUS", "deinonychus", SNAKE_AHEAD],
+	["PTERODACTYL", "pterodactyl", AHEAD], ["SNAIL", "snail", SNAKE_AHEAD], ["HYDRA", "hydra", AHEAD],
+	["GIBBONS", "gibbons", AHEAD], ["BEAR", "bear", SNAKE_AHEAD], ["BRACHIOSAURUS", "brachiosaurus", COLOSSUS_AHEAD],
+	["DIMETRODON", "dimetrodon", AHEAD], ["GRIFFINFLIES", "griffinflies", AHEAD],
+	["PSYCHIC CHILD", "psychic_child", AHEAD], ["LYNX", "lynx", AHEAD], ["PANTHER", "panther", SNAKE_AHEAD],
+	["WOLVES", "wolves", SNAKE_AHEAD], ["FOXES", "foxes", AHEAD], ["FROGS (POND)", "pond_frogs", AHEAD],
+	["RABBITS", "rabbits", AHEAD], ["HARES", "hares", AHEAD], ["JACKALOPE", "jackalope", AHEAD],
+	["OCTOPUS", "octopus", AHEAD], ["OCTOPUS (DRAIN)", "octopus_drain", AHEAD],
+	["MOOSE", "moose", SNAKE_AHEAD], ["MOOSE (COW, CALF)", "moose_family", SNAKE_AHEAD], ["MAMMOTHS", "mammoths", SNAKE_AHEAD],
+	["FLYTRAP", "flytrap", AHEAD], ["SUNDEW", "sundew", AHEAD], ["PITCHER", "pitcher", AHEAD],
+	["MUSHROOMS", "mushrooms", AHEAD], ["MUSHROOM ZOMBIES", "mushroom_zombies", AHEAD],
+	["GNOMES", "gnomes", AHEAD], ["WEAVER", "weaver", AHEAD], ["ANTS", "ants", SNAKE_AHEAD], ["MANTIS", "mantis", AHEAD],
+	["RATS", "rats", AHEAD], ["RAT SWARM", "rat_swarm", AHEAD], ["RAT KING", "rat_king", AHEAD],
+	["LUCK DRAGON", "luck_dragon", COLOSSUS_AHEAD],
+	["HORSE", "horse", AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -247,10 +264,12 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = [_flesh(2)]
 		"amalgam":
 			made = [_flesh(3)]
+		"ball":
+			made = [_flesh(7)]
 		"strider":
 			made = [_flesh(5)]
 		"flesh_mound":
-			made = [_flesh(8)]
+			made = [_flesh(9)]
 		"aliens":
 			made = [Alien.new(), Alien.new()]
 		"beetles":
@@ -306,6 +325,119 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = [MazeTripod.new()]
 		"crows":
 			made = [Crows.new()]
+		"clown":
+			made = [MazeClown.new()]
+		"stegosaurus":
+			# (a mother and her calf)
+			made = MazeStegosaurus.family(1)
+		"spider_monkeys":
+			# (they string their vines along the walls nearest the first of them)
+			made = MazeSpiderMonkey.troop(5)
+		"lizard_people":
+			# (each runs up the nearest wall ahead and waits there, head down)
+			made = MazeLizardPerson.band(3)
+		"tribe":
+			made = MazeTribesman.party_of(4, randi())
+		"deinonychus":
+			made = MazeDeinonychus.pack_of(3, randi())
+		"pterodactyl":
+			# (it finds the nearest high wall top ahead to roost on, and soars from there)
+			made = [MazePterodactyl.new()]
+		"snail":
+			made = [MazeSnail.new()]
+		"hydra":
+			# (it puts itself in the middle of the hall, its pool across it)
+			made = [MazeHydra.new()]
+		"gibbons":
+			# (each finds its way up onto the ledges and wall tops near)
+			made = MazeGibbon.troop(4)
+		"bear":
+			made = [MazeBear.new()]
+		"brachiosaurus":
+			made = [MazeBrachiosaurus.new()]
+		"dimetrodon":
+			made = [MazeDimetrodon.new()]
+		"griffinflies":
+			# (a pair, hunting the halls round where they are put)
+			made = [MazeGriffinfly.new(), MazeGriffinfly.new()]
+		"psychic_child":
+			made = [MazePsychicChild.new()]
+		"lynx":
+			var lynx := MazeLynx.new()
+			lynx.lie_up = false
+			made = [lynx]
+		"panther":
+			var panther := MazePanther.new()
+			panther.lie_up = false
+			made = [panther]
+		"wolves":
+			# (a pack of five; its den is where its leader is put)
+			made = MazeWolf.pack_of(5, randi())
+		"foxes":
+			made = MazeFox.pair_of(2, randi())
+		"pond_frogs":
+			made = [MazePondFrogs.new()]
+		"rabbits":
+			# (a warren and its colony where he is looking, its holes towards him)
+			MazeRabbit.add_colony(world.enemies, at - Vector3.UP * 0.05, _facing_him(at), RabbitWarren.Kind.MOUND, 5, randi(), true)
+			return
+		"hares":
+			# (a pair, that box now and then)
+			MazeHare.add_hares(world.enemies, at - Vector3.UP * 0.05, true, randi(), true)
+			return
+		"jackalope":
+			made = [MazeJackalope.new()]
+		"octopus":
+			made = [MazeOctopus.new()]
+		"octopus_drain":
+			var octopus := MazeOctopus.new()
+			octopus.drain = true
+			made = [octopus]
+		"moose":
+			var bull := MazeMoose.new()
+			bull.rut = 1.0
+			made = [bull]
+		"moose_family":
+			made = MazeMoose.family(randi())
+		"mammoths":
+			made = MazeMammoth.herd_of(4, randi())
+		"flytrap":
+			made = [MazeFlytrap.new()]
+		"sundew":
+			made = [MazeSundew.new()]
+		"pitcher":
+			made = [MazePitcher.new()]
+		"mushrooms":
+			made = [MazeMushrooms.new()]
+		"mushroom_zombies":
+			made = MazeMushroomZombie.horde_of(3, 0)
+		"gnomes":
+			made = MazeGnome.band_of(4)
+		"weaver":
+			made = [MazeWeaver.new()]
+		"ants":
+			# (its nest where it is put, its trail out from there along the passages)
+			made = [MazeAnts.new()]
+		"mantis":
+			# (it takes its post against the nearest wall, among plants it brings)
+			made = [MazeMantis.new()]
+		"rats":
+			made = MazeRat.mischief(5, randi())
+		"rat_swarm":
+			made = [MazeRatSwarm.new()]
+		"rat_king":
+			made = [MazeRatKing.new()]
+		"luck_dragon":
+			# (it rises over the walls ahead, and comes to him as soon as he stands still in the open)
+			var dragon := MazeLuckDragon.new()
+			dragon.still_time = 1.5
+			dragon._visit_rest = 0.0
+			made = [dragon]
+		"horse":
+			var horse := MazeHorse.new()
+			horse.coat = randi() % 3
+			horse.haltered = randf() < 0.5
+			made = [horse]
 		"ravens":
 			# (wildlife: on the walls round where they are put, not among the hunters)
 			world.birds.add_ravens_at(at)
@@ -352,6 +484,11 @@ func spawn_wildlife(kind: Wildlife.Kind) -> void:
 ## carcass, a patch of dragonflies.
 func spawn_insects(kind: InsectLook.Kind) -> void:
 	world.insects.put(kind, _ahead(7.0))
+
+
+## Puts a cloud of fireflies a few metres ahead of him, out whatever the hour.
+func spawn_fireflies() -> void:
+	world.insects.put_fireflies(_ahead(7.0))
 
 
 ## Takes away everything that hunts (the Griever World put in is only put to
@@ -608,11 +745,16 @@ func to_desert() -> void:
 
 ## Kinds of the things put in (HUNTERS' kinds), by the heading they are listed under.
 const HEADINGS := {
-	"flesh_pair": "Flesh", "amalgam": "Flesh", "strider": "Flesh", "flesh_mound": "Flesh",
+	"flesh_pair": "Flesh", "amalgam": "Flesh", "strider": "Flesh", "ball": "Flesh", "flesh_mound": "Flesh",
 	"abomination": "Flesh", "slime": "Flesh",
 	"crows": "Birds and bugs", "ravens": "Birds and bugs", "blue_jays": "Birds and bugs",
 	"bats": "Birds and bugs", "beetles": "Birds and bugs",
 	"tame_chickens": "Tame animals",
+	"stegosaurus": "Prehistoric", "deinonychus": "Prehistoric", "pterodactyl": "Prehistoric",
+	"brachiosaurus": "Prehistoric", "dimetrodon": "Prehistoric", "griffinflies": "Birds and bugs",
+	"foxes": "Tame animals", "pond_frogs": "Tame animals", "rabbits": "Tame animals", "hares": "Tame animals",
+	"jackalope": "Tame animals", "lynx": "Big cats", "panther": "Big cats",
+	"spider_monkeys": "Apes and monkeys", "gibbons": "Apes and monkeys", "baboons": "Apes and monkeys",
 }
 
 
@@ -656,6 +798,7 @@ func _spawn_page() -> Control:
 		row.call("Tame animals", String(one[0]).capitalize(), spawn_wildlife.bind(one[1]))
 	for one: Array in [["Moths", InsectLook.Kind.MOTH], ["Flies", InsectLook.Kind.FLY], ["Dragonflies", InsectLook.Kind.DRAGONFLY]]:
 		row.call("Birds and bugs", one[0], spawn_insects.bind(one[1]))
+	row.call("Birds and bugs", "Fireflies", spawn_fireflies)
 	row.call("Runners", "Runner", spawn_runner)
 	row.call("Runners", "Three runners", spawn_runners)
 	for one: Array in Loot.DEV:

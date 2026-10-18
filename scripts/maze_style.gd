@@ -54,6 +54,16 @@ extends Resource
 ## maze walls and their ledges (walls this high want it big; the great walls
 ## between sections have their own, bigger still).
 @export_range(0.5, 12.0) var wall_texture_scale := 4.0
+## How far round the maze walls' top edges and corners are worn, metres (more in
+## places, nearly sharp in others; 0: square). Their ledges half this.
+@export_range(0.0, 0.6, 0.01) var wall_edge_rounding := 0.14
+## The same for the border wall round its outside (and the clearing's, for the
+## first section): walls that big are worn rounder.
+@export_range(0.0, 1.5, 0.01) var border_wall_edge_rounding := 0.4
+## How weathered its walls are at their edges and tops: grime where the rain runs
+## off their top edges, paler worn corners with chips out of them, and faces
+## very slightly uneven (0: none).
+@export_range(0.0, 1.0, 0.01) var wall_weathering := 0.5
 ## The share of wall faces with short grass along their foot, in runs of a few metres.
 @export_range(0.0, 1.0) var wall_grass_share := 0.25
 
@@ -254,6 +264,9 @@ extends Resource
 ## Striders: five or six bodies joined at the hips in a ring that walks on all
 ## their legs and grabs with those facing you (and grows: past six, a mound).
 @export_range(0, 3) var striders := 1
+## Balls: seven or eight bodies grown into a sphere that rolls after you, faster
+## and faster down a straight hall, slow to turn a corner (and grows: past eight, a mound).
+@export_range(0, 3) var balls := 1
 ## Flesh mounds: many bodies grown together into a mound that nearly fills a hall.
 @export_range(0, 3) var flesh_mounds := 1
 ## Harpies, each perched high on a wall (its ledge, or its top) over a hallway.
@@ -286,6 +299,111 @@ extends Resource
 ## Martian tripods (MazeTripod), each striding round the ring over the walls,
 ## its searchlight sweeping the halls. One at most: it is huge.
 @export_range(0, 1) var tripods := 1
+## Horror clowns (MazeClown), each prowling the halls with a red balloon floating
+## over the walls: still while anyone looks at him, a sprint when nobody does.
+@export_range(0, 3) var clowns := 1
+## Stegosaurs, each grazing in a hall (sometimes with a calf): they hunt nobody,
+## but anyone too near is warned off, and then the spiked tail is swung at them.
+@export_range(0, 4) var stegosaurs := 1
+## Troops of spider monkeys (four to seven), hanging from vines strung along the
+## walls over a hall, dropping on whoever passes under.
+@export_range(0, 4) var spider_monkey_troops := 1
+## Bands of lizard people (two or three each), clinging to the walls over a hall.
+@export_range(0, 4) var lizard_people := 2
+## Hunting parties of the masked tribe (MazeTribesman: three to five of the maze's
+## lost boys gone wild, masked, with spears), each camped round its totem in a dead end.
+@export_range(0, 4) var tribe_parties := 1
+## Packs of deinonychus (each three or four): feathered pack hunters, one drawing
+## you while the others go round to cut you off; climbing high escapes them.
+@export_range(0, 3) var deinonychus_packs := 1
+## Pterodactyls, soaring high over the maze and roosting on its high wall tops;
+## they dive at anyone out in the open.
+@export_range(0, 6) var pterodactyls := 2
+## Giant snails, each crawling a straight hall (it climbs the walls after anyone up high).
+@export_range(0, 3) var snails := 1
+## Hydras (MazeHydra): each lies in a marsh pool of its own in a hall and strikes
+## with many heads at anyone who passes in reach.
+@export_range(0, 3) var hydras := 1
+## Troops of gibbons (three to five), living on the ledges, terraces and wall tops
+## (only of sections that have them): they call when they see you below (fetching
+## other hunters) and knock down climbers.
+@export_range(0, 3) var gibbon_troops := 1
+## Screaming bears: each prowls the halls calling out in the voice of the last
+## thing it killed; it rears and screams, charges and swipes.
+@export_range(0, 2) var bears := 1
+## Brachiosaurs roaming out past the square sections: the desert's quarters and the
+## round sections with wide halls (read from the first section's style). Gentle; only
+## their feet are dangerous.
+@export_range(0, 8) var brachiosaurs := 4
+## Dimetrodons basking in the wide halls (cold-blooded ambushers, slow to chase).
+@export_range(0, 4) var dimetrodons := 1
+## Dimetrodons basking out in the desert's open ground (read from the first section's style).
+@export_range(0, 6) var desert_dimetrodons := 2
+## Pairs of griffinflies (MazeGriffinfly: giant dragonflies), each holding a stretch of
+## halls: they buzz and knock you down; two harrying someone alone catch them.
+@export_range(0, 4) var griffinfly_pairs := 1
+## Psychic children (MazePsychicChild), each drifting about the halls: they hunt
+## nobody, watch over whoever is calm near them (taking hold of what comes after
+## them with their minds), and burst when they are frightened.
+@export_range(0, 3) var psychic_children := 1
+## Lynx (MazeLynx): shy small-game hunters that watch from the ledges over the halls
+## and slip away; dangerous only cornered or at a kill.
+@export_range(0, 4) var lynxes := 2
+## Black panthers (MazePanther): solitary stalkers that lie up on ledges and come on
+## from above or behind, strongest at night; face them, don't run.
+@export_range(0, 3) var panthers := 1
+## Packs of grey wolves (four to six each, a breeding pair at their head), each with
+## its den in a dead end: they patrol in file, howl at dusk and through the night, and
+## hunt by endurance (a trot slower than a run that never tires).
+@export_range(0, 3) var wolf_packs := 1
+## Jackalopes (MazeJackalope): a hare with antlers that stares instead of hiding, and
+## butts whoever comes too near.
+@export_range(0, 2) var jackalopes := 1
+## Giant octopuses, each lurking in a black pool against a hall's wall or in a
+## drain through a wall (every other one), reaching for whoever lingers near.
+@export_range(0, 3) var octopuses := 1
+## Moose, each at a wallow of its own in a hall (every other one a cow with her calf;
+## the bulls in the rut some of the time): unpredictable, charging whoever comes near
+## the calf, or a bull in the rut whoever he sees.
+@export_range(0, 3) var moose := 1
+## Herds of woolly mammoths (a matriarch, cows and a calf) grazing in the widest halls:
+## they ring the calf, and the matriarch trumpets, mock-charges and then charges.
+@export_range(0, 2) var mammoth_herds := 1
+## Lonely horses: feral, each alone, wandering the wide halls; wary, but come slowly
+## and touch one and it trusts and follows you.
+@export_range(0, 2) var horses := 1
+## Giant Venus flytraps (MazeFlytrap), in pairs at the foot of a hall's walls: a touch
+## makes one shiver, and it snaps shut on whoever is still in it.
+@export_range(0, 8) var flytraps := 4
+## Giant sundews (MazeSundew): sticky rosettes out from a wall's foot that slow and hold you.
+@export_range(0, 6) var sundews := 2
+## Giant pitcher plants (MazePitcher): a slippery mouth at a wall's foot; step on it and you go in.
+@export_range(0, 6) var pitchers := 2
+## Patches of mushrooms (MazeMushrooms) whose puffballs' spores blur and slow you and call the zombies.
+@export_range(0, 12) var mushroom_patches := 4
+## Hordes of mushroom zombies (three or four and a sleeper each): blind, hunting by sound.
+@export_range(0, 4) var zombie_hordes := 2
+## Bands of gnomes (three to five), each in a hollow at a wall's foot: statues when looked
+## at, they creep up and steal from pockets, and trip runners with a rope.
+@export_range(0, 4) var gnome_bands := 2
+## Weavers: six-armed, four-winged figures drifting over the halls, leaving strands across
+## them that hold whoever walks into them upright, until it comes and takes them.
+@export_range(0, 2) var weavers := 1
+## Colonies of giant ants (MazeAnts), each a nest in a dead end with a trail out along the
+## halls: they let alone whoever keeps off the trail, and come at whoever treads on it.
+@export_range(0, 3) var ant_colonies := 1
+## Giant praying mantises (MazeMantis), each still among ferns against a hall wall, striking
+## at whoever comes within its reach.
+@export_range(0, 3) var mantises := 1
+## Mischiefs of rats (three to six each) running the wall feet, scavenging; harmless.
+@export_range(0, 6) var rat_mischiefs := 2
+## Swarms of rats in drains at a wall's foot, that pour out like a river at whoever comes by.
+@export_range(0, 3) var rat_swarms := 1
+## Rat kings: knots of rats fused by their tails, slow, whose shriek calls the swarms in, bold.
+@export_range(0, 2) var rat_kings := 1
+## The luck dragon: soars over the outer rings and the desert, comes down to whoever stands
+## still in the open, calms the hunters near and may carry them further out (one in all).
+@export_range(0, 1) var luck_dragons := 1
 ## Murders of crows (Crows), each sitting along the wall tops over a hall: they
 ## follow whoever passes along the walls, and erupt cawing at anyone who runs,
 ## which calls the hunters.
@@ -303,6 +421,20 @@ extends Resource
 ## not among what hunts it).
 @export_range(0, 4) var wild_deer_herds := 1
 @export_range(0, 4) var wild_elk_herds := 1
+## Colonies of ordinary frogs (MazePondFrogs, a dozen or so) round a little pond of
+## their own in a hall: they sing at dusk and in the rain, go quiet and plop into the
+## water as you come near. Prey for the hunters.
+@export_range(0, 6) var frog_ponds := 2
+## Red foxes (MazeFox), alone or a pair: curious, they follow at a distance, sit and
+## watch, slip away, carry off things lying about, and hunt the small things.
+@export_range(0, 4) var fox_pairs := 2
+## Rabbit warrens (MazeRabbit): a bank of burrows at the foot of a wall in a hall, its
+## colony grazing in front of it; they thump and bolt down their holes at anyone near.
+@export_range(0, 4) var rabbit_warrens := 1
+## Brown hares (MazeHare) lying up in the halls, every other one a pair that box.
+@export_range(0, 4) var hares := 1
+## Patches of fireflies at dusk and by night, at the foot of the ivy and the walls (Insects).
+@export_range(0, 60) var firefly_patches := 24
 ## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
 @export_range(0, 4) var tame_chicken_flocks := 0
 ## Pairs of ravens (Ravens) on the wall tops, which hunt nobody: omens, that fly

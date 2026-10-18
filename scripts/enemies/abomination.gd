@@ -247,5 +247,5 @@ func _put(at: Vector3, facing: float) -> void:
 
 func _puppet_changed() -> void:
 	# Players pass through it (it catches them instead); the world stops it.
-	collision_layer = 0 if puppet else 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 1

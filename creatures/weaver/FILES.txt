@@ -1,0 +1,6 @@
+# The weaver: three scripts and two models (the Blender script that makes them is in Warren, creatures/weaver/tools/)
+creatures/weaver/weaver.gd
+creatures/weaver/weaver_look.gd
+creatures/weaver/weaver_threads.gd
+creatures/weaver/models/weaver.glb
+creatures/weaver/models/weaver_lo.glb

@@ -26,7 +26,13 @@ extends MazeEnemy
 ## any side (it faces every way) after a wind-up, the ring tipping and
 ## lunging at them. A closing hand catches, and so does walking into it.
 ##
-## A MOUND (7 or more): it hauls itself along at a crawl, no faster than a walk
+## A BALL (7 or 8 bodies, a sphere of them): it rolls after whoever it is after,
+## faster and faster down a straight hall (at the end of a long one faster than a
+## sprint), but it cannot turn quickly: before a corner it must slow nearly to a
+## stop to come round. A turning off its way, or a climb, gets away. Rolled over,
+## you are caught.
+##
+## A MOUND (9 or more): it hauls itself along at a crawl, no faster than a walk
 ## when it hunts (slower the bigger it is), nearly filling a hall; the hands
 ## at its front grab at anyone in reach in front of it, after a wind-up
 ## (FleshMound.wind_up: the time to get away). A closing hand catches, and so
@@ -69,12 +75,15 @@ enum Mode { ABOUT, HUNTING, WINDING, ROLLING, SPENT, MERGING, GONE }
 @export var rush_range := 9.0
 ## A strider's speeds: about, hunting.
 @export var stride_speeds := Vector2(1.6, 3.5)
+## A ball's speeds, about and hunting (it gathers speed going straight), and how fast it turns, radians a second.
+@export var ball_speeds := Vector2(2.0, 6.4)
+@export var ball_turn := 1.6
 ## A mound's speeds, at its fewest bodies and at the most (between them by how many).
 @export var crawl_speeds := Vector2(1.3, 0.9)
 @export var hunt_speeds := Vector2(2.3, 1.8)
 @export var acceleration := 3.0
 @export var turn_rate := 1.6
-## A big one grabs at someone this far ahead of its middle (no more than its
+## A big one grabs at someone this far ahead of its middle (well inside what its
 ## hands reach) and this near straight ahead (the cosine); then rests.
 @export var grab_range := 10.0
 @export var grab_cone := 0.35
@@ -149,7 +158,7 @@ func _fit() -> void:
 
 
 func core_radius() -> float:
-	return [0.45, 0.6, 0.7, 0.8][FleshMoundLook.form(bodies)] * size
+	return [0.45, 0.6, 0.7, 1.0, 0.8][FleshMoundLook.form(bodies)] * size
 
 
 ## A pair or an amalgam: it rushes (rolls) at you, and does not grab.
@@ -174,6 +183,8 @@ func girth() -> float:
 			return 1.1 * size
 		FleshMoundLook.Form.STRIDER:
 			return 1.2 * size
+		FleshMoundLook.Form.BALL:
+			return FleshMoundLook.BALL_HIGH * FleshMoundLook.boy_size(bodies) * 0.85 * size
 	return FleshMoundLook.radii(bodies).x * size
 
 
@@ -207,6 +218,10 @@ func _physics_process(delta: float) -> void:
 	var speed := 0.0
 	if small():
 		var picked := _small_moves(delta, after)
+		wish = picked[0]
+		speed = picked[1]
+	elif FleshMoundLook.form(bodies) == FleshMoundLook.Form.BALL:
+		var picked := _ball_moves(delta, after)
 		wish = picked[0]
 		speed = picked[1]
 	else:
@@ -281,7 +296,7 @@ func _can_roll_at(player: Node3D) -> bool:
 ## A big one: walk (a strider) or crawl, and grab at whoever is in reach.
 func _big_moves(after: Node3D) -> Array:
 	mode = Mode.HUNTING if after else Mode.ABOUT
-	var t := clampf(float(bodies - FleshMoundLook.STRIDER - 1) / float(FleshMoundLook.MOST - FleshMoundLook.STRIDER - 1), 0.0, 1.0)
+	var t := clampf(float(bodies - FleshMoundLook.BALL - 1) / float(FleshMoundLook.MOST - FleshMoundLook.BALL - 1), 0.0, 1.0)
 	var stage := look.grab_stage()
 	if stage == FleshMound.Stage.NONE:
 		if after and _rest <= 0.0 and _in_reach(after):
@@ -307,6 +322,25 @@ func _big_moves(after: Node3D) -> Array:
 	return [Vector3.ZERO, 0.0]
 
 
+## A ball: rolls its way, turning only slowly (the slower the faster it
+## goes), and slowing for any turn ahead of it.
+func _ball_moves(delta: float, after: Node3D) -> Array:
+	mode = Mode.HUNTING if after else Mode.ABOUT
+	var to := way(core_radius())
+	if to.length() < 0.05:
+		return [Vector3.ZERO, 0.0]
+	var wish := to.normalized()
+	var going := Vector3(velocity.x, 0.0, velocity.z)
+	var heading := going.normalized() if going.length() > 0.3 else wish
+	var turn_by := minf(heading.angle_to(wish), delta * ball_turn / maxf(1.0, going.length() * 0.5))
+	var axis := heading.cross(wish)
+	if axis.length() > 0.001:
+		heading = heading.rotated(axis.normalized(), turn_by)
+	var off := heading.angle_to(wish)
+	var top := (ball_speeds.y if after else ball_speeds.x) * clampf(1.0 - off / (PI * 0.5), 0.15, 1.0)
+	return [heading, top]
+
+
 func _in_reach(player: Node3D) -> bool:
 	var to := player.global_position - global_position
 	if absf(to.y) > 3.0 * size:
@@ -314,7 +348,7 @@ func _in_reach(player: Node3D) -> bool:
 	to.y = 0.0
 	var forward := Vector3(-sin(facing_yaw), 0.0, -cos(facing_yaw))
 	# (a strider faces every way)
-	return to.length() < minf(grab_range * size, look.reach()) and (strider() or forward.dot(to.normalized()) > grab_cone)
+	return to.length() < minf(grab_range * size, look.reach() * 0.8) and (strider() or forward.dot(to.normalized()) > grab_cone)
 
 
 ## Anyone a closing hand finds, or who has walked (or been rolled) into it, is
@@ -521,6 +555,6 @@ func _put(at: Vector3, facing: float) -> void:
 
 
 func _puppet_changed() -> void:
-	# Players pass through it (it catches them instead); the world stops it.
-	collision_layer = 0 if puppet or mode == Mode.GONE else 4
+	# Solid (puppets too, so that guests are stopped by it as the host is); the world stops it.
+	collision_layer = 0 if mode == Mode.GONE else (PUPPET_LAYER if puppet else 4)
 	collision_mask = 0 if mode == Mode.GONE else 1

@@ -1,0 +1,8 @@
+# Giant ants: the colony (look and motion), the ants' mesh and shader, and their models
+creatures/giant_ant/ant_colony.gd
+creatures/giant_ant/ant_look.gd
+creatures/giant_ant/ant.gdshader
+creatures/giant_ant/models/ants.glb
+creatures/giant_ant/models/ants_lo.glb
+creatures/giant_ant/tools/.gdignore
+creatures/giant_ant/tools/build_ants.py

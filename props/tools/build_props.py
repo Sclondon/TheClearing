@@ -24,6 +24,9 @@ What there is to find (scripts/loot/):
 - map: a torn page of an exercise book, folded once, curling, pencil lines on it.
 - ladder: a rope ladder rolled up and tied, its rungs sticking out of the roll.
 - pack: a canvas rucksack lying where it was dropped (worn, it is models/worn/backpack.glb).
+- meat: a raw haunch cut from a carcass, on its bone: the knuckle of the bone at the
+  top, where it is held (its origin), the meat hanging below it along -Y, a rind of
+  fat down one side, the cut end showing the bone in it.
 - branch, bat, sword: a club broken off a tree, an old baseball bat, an old straight
   sword. Along +Y, the origin where the hands hold it.
 - revolver, shotgun: an old six-shot revolver and a side-by-side double-barrel. The
@@ -66,6 +69,7 @@ COLOURS = {
     "tarp": (0.25, 0.29, 0.22), "tarp_dark": (0.17, 0.2, 0.15), "blanket": (0.33, 0.27, 0.22),
     "blanket_dark": (0.22, 0.18, 0.15), "strap": (0.2, 0.14, 0.09), "tin": (0.38, 0.38, 0.37),
     "sack": (0.52, 0.45, 0.32), "ember": (0.85, 0.32, 0.08),
+    "meat": (0.42, 0.1, 0.09), "meat_dark": (0.27, 0.06, 0.05), "fat": (0.66, 0.58, 0.47), "bone": (0.72, 0.68, 0.58),
     "wood_grey": (0.43, 0.4, 0.35), "wood_dark": (0.26, 0.19, 0.13), "blade": (0.46, 0.46, 0.45),
     "gunmetal": (0.16, 0.16, 0.17), "gunmetal_worn": (0.28, 0.28, 0.28), "rubber": (0.1, 0.1, 0.1),
     "card": (0.6, 0.55, 0.44), "card_dark": (0.42, 0.38, 0.31), "card_band": (0.24, 0.23, 0.22),
@@ -404,6 +408,35 @@ def build_flare():
     tube(m, [Vector((0, 0.11, 0)), Vector((0, 0.135, 0))], 0.019, "flare", sides=8, cap_start=False)
     tube(m, [Vector((0, 0.133, 0)), Vector((0, 0.16, 0)), Vector((0, 0.165, 0))], [0.021, 0.021, 0.017], "cap", sides=8)
     tube(m, [Vector((0, -0.15, 0)), Vector((0, -0.128, 0))], [0.016, 0.019], "cap", sides=8)
+    return m
+
+
+def build_meat():
+    m = Model("meat")
+    # the knuckle: two knobs at the end of the bone, where it is held
+    for k, x in enumerate((-0.016, 0.016)):
+        rock(m, (x, -0.022, 0.0), (0.02, 0.022, 0.021), "bone", seed=40 + k, flat=1.0, detail=1)
+    tube(m, [Vector((0.0, -0.01, 0.0)), Vector((0.002, -0.06, 0.003)), Vector((0.0, -0.11, 0.006))], [0.014, 0.012, 0.015], "bone", sides=6)
+    # the meat, bulging below it, a little bent
+    line = []
+    radii = []
+    for i in range(8):
+        t = i / 7
+        line.append(Vector((0.006 * math.sin(t * 4.0), -0.085 - 0.25 * t, 0.012 * math.sin(t * math.pi) + 0.004 * t)))
+        radii.append(0.022 + 0.062 * math.sin(min(t * 1.25, 1.0) * math.pi * 0.5) * (1.0 - 0.35 * t * t))
+    first = len(m.verts)
+    tube(m, line, radii, "meat", sides=9, lobes=3, twist=0.6, wobble=0.07, seed=17, cap_end=False)
+    # (a haunch is flatter one way than the other)
+    for i in range(first, len(m.verts)):
+        m.verts[i] = Vector((m.verts[i].x * 1.08, m.verts[i].y, m.verts[i].z * 0.78))
+    # the cut end: darker, the bone in the middle of it
+    end = line[-1]
+    ring = [end + Vector((radii[-1] * 0.97 * math.cos(a), -0.002, radii[-1] * 0.97 * math.sin(a))) for a in [k / 9 * math.tau for k in range(9)]]
+    m.add([end + Vector((0.0, -0.006, 0.0))] + ring, [[0, (k + 1) % 9 + 1, k + 1] for k in range(9)], "meat_dark")
+    rock(m, (end.x, end.y - 0.012, end.z), (0.016, 0.006, 0.016), "bone", seed=52, flat=0.5, detail=1)
+    # a rind of fat down one side, and a strip of it round the top of the meat
+    tube(m, [Vector((0.05, -0.12, 0.022)), Vector((0.062, -0.2, 0.018)), Vector((0.046, -0.28, 0.012))], [0.018, 0.024, 0.014], "fat", sides=5, wobble=0.12, seed=61)
+    tube(m, [Vector((-0.04, -0.095, -0.02)), Vector((-0.058, -0.16, -0.03))], [0.012, 0.016], "fat", sides=5, wobble=0.12, seed=62)
     return m
 
 
@@ -985,7 +1018,7 @@ def build_shells():
 
 
 BUILDERS = {
-    "hook": build_hook, "spear": build_spear, "torch": build_torch, "flare": build_flare, "map": build_map,
+    "hook": build_hook, "spear": build_spear, "torch": build_torch, "flare": build_flare, "map": build_map, "meat": build_meat,
     "ladder": build_ladder, "pack": build_pack, "fire_ring": build_fire_ring, "fire_logs": build_fire_logs, "lean_to": build_lean_to,
     "lean_to_fallen": lambda: build_lean_to(True), "bedroll": build_bedroll, "bedroll_open": build_bedroll_open,
     "log_seat": build_log_seat, "pot": build_pot, "crate": build_crate, "sack": build_sack, "marker": build_marker,

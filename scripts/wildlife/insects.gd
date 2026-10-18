@@ -26,12 +26,21 @@ extends Node3D
 ##   enough and a few land on you.
 ## - DRAGONFLIES over the marsh (ClearingStyle: marsh_dragonflies), in patches
 ##   along its pools, darting and hovering, perching on the bulrushes' tips.
+## - FIREFLIES at dusk and through the night (FireflyField, creatures/fireflies/:
+##   one field for them all): clouds of them rise from the clearing's tall grass,
+##   the woods (up into the boughs), the marsh's pools and the meadow
+##   (ClearingStyle: firefly_clouds), and in the first ring from the foot of the
+##   ivy and the ferns and moss at the walls' feet (MazeStyle: firefly_patches);
+##   each kind blinks in its own rhythm, one kind all together in waves; they
+##   scatter from anyone running through them and drift back. They come out as
+##   the light goes (DayCycle.daylight: `firefly_night`).
 ##
 ## How many: MazeStyle "Wildlife" (moths_per_light, wall_moths,
-## flies_per_carrion, carcasses) and ClearingStyle "Wildlife"
-## (marsh_dragonflies, dusk_moth_clouds). Each swarm is drawn and moved only
-## near the camera (InsectSwarm.active_range), so a round's many swarms cost
-## only the few in view.
+## flies_per_carrion, carcasses, firefly_patches) and ClearingStyle "Wildlife"
+## (marsh_dragonflies, dusk_moth_clouds, firefly_clouds). Each swarm is drawn and
+## moved only near the camera (InsectSwarm.active_range), so a round's many swarms
+## cost only the few in view; the fireflies are moved in their shader, and only
+## those near the camera are drawn.
 
 const LIGHTS := &"moth_lights"
 const CARRION := &"fly_carrion"
@@ -58,6 +67,9 @@ var dusk_moths: Array[InsectSwarm] = []
 var carcasses: Array[Node3D] = []
 ## Flies where someone was caught: [swarm, seconds left].
 var caught_flies: Array = []
+## The fireflies, all of them; and whether they are out whatever the hour (the dev panel's).
+var fireflies: FireflyField
+var fireflies_out := false
 
 var _rng := RandomNumberGenerator.new()
 var _scan := 0.0
@@ -99,6 +111,7 @@ func populate(plan: Maze, seed_number: int, round_world: Node = null) -> void:
 		_add_wall_moths(nav.point(cell), _rng.randi())
 	_marsh_dragonflies()
 	_dusk_clouds()
+	_fireflies()
 	_join_lights()
 	# (flies where anyone is caught: the host hears of every catch, a guest of its own)
 	if world:
@@ -151,6 +164,8 @@ func _process(delta: float) -> void:
 		return
 	if world and world.get(&"player") and is_instance_valid(world.get(&"player")):
 		_player_at = (world.get(&"player") as Node3D).global_position
+	if fireflies:
+		fireflies.night = firefly_night()
 	_scan -= delta
 	if _scan <= 0.0:
 		_scan = SCAN_EVERY
@@ -192,6 +207,8 @@ func _look_about() -> void:
 		swarm.scarers = players
 	for swarm in dusk_moths:
 		swarm.active = dusk
+	if fireflies:
+		fireflies.scarers = players
 	# Big moths on the walls find their place on the wall when someone first comes near.
 	var camera := get_viewport().get_camera_3d()
 	for k in range(_unplaced.size() - 1, -1, -1):
@@ -650,3 +667,126 @@ func _upper_faces(model: Node3D, most: int) -> Array[Transform3D]:
 	while found.size() > most:
 		found.remove_at(pick.randi_range(0, found.size() - 1))
 	return found
+
+
+# --- Fireflies ---
+
+## How dark it is for the fireflies: 0 by day, rising through dusk to 1 at night.
+func firefly_night() -> float:
+	if fireflies_out:
+		return 1.0
+	var day: Node = world.get(&"day") if world else null
+	if day == null:
+		return 0.0
+	return clampf(inverse_lerp(0.72, 0.18, float(day.get(&"daylight"))), 0.0, 1.0)
+
+
+# Where the fireflies live (one FireflyField for them all): over the clearing's
+# tall grass, in the woods (up into the boughs), over the marsh's pools, out in the
+# meadow; and in the first ring, at the foot of the ivy and along the ferns and
+# moss at the walls' feet. How many patches: ClearingStyle "Wildlife"
+# (firefly_clouds), MazeStyle "Wildlife" (firefly_patches).
+func _fireflies() -> void:
+	fireflies = FireflyField.new()
+	fireflies.name = "Fireflies"
+	fireflies.max_drawn = 400 if Settings.low_poly else 900
+	fireflies.max_bodies = 16 if Settings.low_poly else 48
+	fireflies.lights = 0 if Settings.low_poly else 1
+	add_child(fireflies)
+	var look := maze.clearing_style
+	var style: MazeStyle = maze.styles[0] if not maze.styles.is_empty() else MazeStyle.new()
+	var clouds := int(_rule(look, &"firefly_clouds", 36))
+	var patches := int(_rule(style, &"firefly_patches", 24))
+	var per_cloud := _scaled(44)
+	var per_patch := _scaled(16)
+	var pick := RandomNumberGenerator.new()
+	pick.seed = hash("fireflies/%d" % seed_value)
+	var marsh_area := look.marsh_rect()
+	var ground := func(at: Vector3) -> float:
+		var under := maze.ground_height(at)
+		return maxf(under, ClearingStyle.MARSH_LEVEL) if marsh_area.has_point(Vector2(at.x, at.z)) else under
+	var builder: MazeBuilder = world.get_node_or_null(^"Maze") as MazeBuilder if world else null
+	# The clearing: the tall grass first, then the woods, the marsh and the meadow.
+	var trees: Array[Vector3] = []
+	var half := maze.clearing * Maze.CELL * 0.5 - 6.0
+	if builder and builder.layout:
+		for piece in builder.layout.pieces(MazePiece.Kind.TREE):
+			if maxf(absf(piece.position.x), absf(piece.position.z)) < half:
+				trees.append(piece.position)
+	var bulrushes := PackedVector3Array()
+	if world:
+		for found: Node in world.find_children("Marsh", "Node3D", true, false):
+			bulrushes = (found as Marsh).bulrush_roots
+	var meadow := look.tall_grass_middle()
+	for i in clouds:
+		var share := float(i) / maxf(clouds, 1)
+		var at := Vector3.INF
+		var heights := Vector2(0.25, 1.5)
+		var reach := 7.0
+		if share < 0.35 and meadow.is_finite():
+			var spot: Vector2 = look.tall_grass_spot(pick)
+			at = Vector3(spot.x, 0.0, spot.y)
+			heights = Vector2(0.9, 2.6)
+		elif share < 0.6 and not trees.is_empty():
+			at = trees[pick.randi_range(0, trees.size() - 1)] + Vector3(pick.randf_range(-3.0, 3.0), 0.0, pick.randf_range(-3.0, 3.0))
+			heights = Vector2(0.3, 4.5)
+			reach = 6.0
+		elif share < 0.8 and not bulrushes.is_empty():
+			at = bulrushes[pick.randi_range(0, bulrushes.size() - 1)]
+			heights = Vector2(0.3, 1.7)
+		else:
+			var spot := TameChickens.clearing_spot(maze, pick, pick.randf() < 0.3)
+			if spot.is_finite():
+				at = Vector3(spot.x, 0.0, spot.y)
+		if at.is_finite():
+			at.y = ground.call(at)
+			fireflies.add_patch(at, reach, per_cloud, heights, pick.randi(), ground)
+	# The first ring: at the foot of the ivy, and along the plants at the walls' feet.
+	var ivy: Array[Vector3] = []
+	if builder and builder.features:
+		for climb: IvyClimb in builder.features.climbs:
+			if is_instance_valid(climb) and maze.ring_of(maze.cell_at(climb.global_position)) == 1:
+				ivy.append(climb.global_position + climb.global_basis.z * 1.2)
+	var plants: Array[Vector3] = []
+	if builder and builder.undergrowth:
+		for key: Array in builder.undergrowth.get(&"_placed"):
+			if key[0] != Undergrowth.Kind.FERN and key[0] != Undergrowth.Kind.MOSS:
+				continue
+			for where: Transform3D in builder.undergrowth.get(&"_placed")[key]:
+				if maze.ring_of(maze.cell_at(where.origin)) == 1 and pick.randf() < 0.1:
+					plants.append(where.origin)
+	if plants.is_empty():
+		# (a ring with no plants: the moss along the foot of its walls, in its halls)
+		var nav := MazeNav.new(maze)
+		for cell in nav.lairs(1):
+			if maze.ring_of(cell) != 1 or pick.randf() > 0.25:
+				continue
+			for step: Vector2i in Maze.STEPS:
+				if maze.blocked(cell, step):
+					var face := nav.point(cell) + Vector3(step.x, 0.0, step.y) * 3.0
+					plants.append(face + Vector3(step.y, 0.0, step.x) * pick.randf_range(-4.0, 4.0))
+					break
+	for i in patches:
+		var at := Vector3.INF
+		var heights := Vector2(0.2, 1.6)
+		if i % 5 < 2 and not ivy.is_empty():
+			at = ivy.pop_at(pick.randi_range(0, ivy.size() - 1))
+			heights = Vector2(0.3, 3.2)
+		elif not plants.is_empty():
+			at = plants.pop_at(pick.randi_range(0, plants.size() - 1))
+		if at.is_finite():
+			at.y = maze.ground_height(at)
+			fireflies.add_patch(at, 3.5, per_patch, heights, pick.randi(), maze.ground_height)
+
+
+## A style's setting `named`, or `otherwise` if the style has no such setting.
+static func _rule(style: Resource, named: StringName, otherwise: Variant) -> Variant:
+	var value: Variant = style.get(named) if style else null
+	return value if value != null else otherwise
+
+
+## Puts a cloud of fireflies in at `at` (DevTools), and has them all out whatever the hour.
+func put_fireflies(at: Vector3) -> int:
+	at.y = maze.ground_height(at) if maze else at.y
+	fireflies_out = true
+	return fireflies.add_patch(at, 5.0, 40, Vector2(0.3, 2.0), randi(), maze.ground_height if maze else Callable())

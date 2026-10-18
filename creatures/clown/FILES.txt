@@ -1,0 +1,7 @@
+# The clown: how he looks, moves and sounds, and his balloon (needs godot/character-controller installed too)
+creatures/clown/clown.gd
+creatures/clown/clown_rig.gd
+creatures/clown/models/clown.glb
+creatures/clown/models/clown_lo.glb
+creatures/clown/tools/.gdignore
+creatures/clown/tools/build_clown.py

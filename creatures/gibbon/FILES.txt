@@ -1,0 +1,8 @@
+# The gibbon: its motion and sounds, its shader, the models, and the scripts that make the models
+creatures/gibbon/gibbon.gd
+creatures/gibbon/gibbon_look.gd
+creatures/gibbon/models/gibbon.glb
+creatures/gibbon/models/gibbon_lo.glb
+creatures/gibbon/tools/build_gibbon.py
+creatures/gibbon/tools/rest_gibbon.json
+creatures/gibbon/tools/rest_joints.gd

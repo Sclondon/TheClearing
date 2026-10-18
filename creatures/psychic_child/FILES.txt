@@ -1,0 +1,8 @@
+# The psychic child: how she looks, moves and sounds (needs godot/character-controller installed too)
+creatures/psychic_child/psychic_child.gd
+creatures/psychic_child/psychic_child_rig.gd
+creatures/psychic_child/example.gd
+creatures/psychic_child/models/psychic_child.glb
+creatures/psychic_child/models/psychic_child_lo.glb
+creatures/psychic_child/tools/.gdignore
+creatures/psychic_child/tools/build_psychic_child.py

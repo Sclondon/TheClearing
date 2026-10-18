@@ -1,0 +1,7 @@
+# The mushroom zombie: how he looks, moves and sounds (needs godot/character-controller and godot/mushrooms installed too)
+creatures/mushroom_zombie/mushroom_zombie.gd
+creatures/mushroom_zombie/mushroom_zombie_rig.gd
+creatures/mushroom_zombie/models/mushroom_zombie.glb
+creatures/mushroom_zombie/models/mushroom_zombie_lo.glb
+creatures/mushroom_zombie/tools/.gdignore
+creatures/mushroom_zombie/tools/build_mushroom_zombie.py

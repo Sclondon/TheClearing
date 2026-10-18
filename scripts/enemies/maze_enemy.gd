@@ -23,6 +23,13 @@ extends CharacterBody3D
 ## PUPPET. With `puppet` set it does no thinking, and only follows what it
 ## hears (`hear`, or `from_bytes` with what `state_bytes` made on the machine
 ## that runs it), smoothly, as RemotePlayer does for players.
+##
+## THE OTHERS (Ecology, when the world has one): a meat-eater that is
+## `hunger`ed and has nobody to go after goes after a smaller creature it sees
+## (its `quarry`, as a player would be), and catching it kills it (`die`): it
+## eats there a while. One a bigger meat-eater is after, or that is hungry near
+## it, runs from it (`threat`). Out of everyone's sight it goes on its way
+## (`roam_unseen`); killed, it is brought back in time where it began (`revive`).
 
 signal caught(player: Node3D)
 ## It has noticed someone it was not after.
@@ -30,6 +37,12 @@ signal spotted(player: Node3D)
 
 ## Bytes in `state_bytes`.
 const STATE_SIZE := 28
+## How high a dead one is said to be, in `state_bytes`.
+const DEAD_DEPTH := -9999.0
+## The bodies of hunters: layer 4 run here, this layer as puppets (run by
+## another machine), so that players are stopped by both but a hunter is never
+## stopped by a puppet (as a host and its puppet, side by side in a test, are not).
+const PUPPET_LAYER := 16
 
 ## The maze it is in. Set before it goes into the scene, or call `set_maze`.
 var maze: Maze:
@@ -68,8 +81,17 @@ var chasing := false
 ## MazeImpSwarm, MazeFrogSwarm.)
 @export var fears_fire := false
 
+## The world's own life (Ecology): how hungry it is (0 fed, 1 starving), whether
+## it is dead (gone until the world brings it back), and what it is running from.
+var hunger := 0.0
+var dead := false
+var threat: MazeEnemy
+
 var _forget := 0.0
 var _last_seen := Vector3.INF
+var _eating := 0.0
+var _ecology_in := 0.0
+var _alive_layers := Vector2i.ZERO
 var _look_in := 0.0
 var _spared := {}
 var _wander_goal := Vector2i(-1, -1)
@@ -110,6 +132,8 @@ func players() -> Array:
 func huntable(player: Node3D) -> bool:
 	if not is_instance_valid(player) or not player.is_inside_tree():
 		return false
+	if player is MazeEnemy and (player as MazeEnemy).dead:
+		return false
 	if player.get(&"escaped") == true or player.get(&"is_limp") == true:
 		return false
 	if _spared.has(player) and _spared[player] > 0.0:
@@ -142,6 +166,7 @@ func _sense(delta: float) -> void:
 	_forget -= delta
 	if quarry and not huntable(quarry):
 		quarry = null
+	_ecology(delta)
 	if quarry and _forget > 0.0:
 		_last_seen = quarry.global_position
 	_look_in -= delta
@@ -211,8 +236,13 @@ func hunting() -> bool:
 	return quarry != null and _forget > 0.0
 
 
-## Where it is making for: the quarry, or where they were last, or somewhere to wander to.
+## Where it is making for: away from what it runs from, or nowhere while it
+## eats; the quarry, or where they were last, or somewhere to wander to.
 func goal() -> Vector3:
+	if threat and is_instance_valid(threat) and not threat.dead:
+		return _away_from(threat.global_position)
+	if _eating > 0.0:
+		return global_position
 	if hunting():
 		return quarry.global_position
 	var here := maze.cell_at(global_position)
@@ -231,6 +261,113 @@ func way(radius: float) -> Vector3:
 	var to := nav.waypoint(global_position, goal(), MazeNav.clearance_for(radius)) - global_position
 	to.y = 0.0
 	return to
+
+
+## The middle of a passage next to it (or the one past that) furthest from `danger`.
+func _away_from(danger: Vector3) -> Vector3:
+	var here := maze.cell_at(global_position)
+	var best := global_position + (global_position - danger).normalized() * 4.0
+	var far := -1.0
+	for step: Vector2i in Maze.STEPS:
+		if maze.blocked(here, step) or not nav.allowed(here + step):
+			continue
+		var to := here + step
+		if not maze.blocked(to, step) and nav.allowed(to + step):
+			to += step
+		var at := nav.point(to)
+		if at.distance_to(danger) > far:
+			far = at.distance_to(danger)
+			best = at
+	return best
+
+
+# --- The others (Ecology) ---
+
+## Looks out for what would eat it, and, hungry, for what it could eat; and
+## kills what it is after when it catches it.
+func _ecology(delta: float) -> void:
+	var world := Ecology.current
+	if world == null or puppet or dead:
+		return
+	_eating -= delta
+	_ecology_in -= delta
+	if _ecology_in <= 0.0:
+		_ecology_in = Ecology.LOOK_EVERY
+		threat = world.threat_to(self)
+		var after_player := hunting() and not (quarry is MazeEnemy)
+		if threat:
+			# (running for its life, it is after nobody)
+			if quarry is MazeEnemy:
+				quarry = null
+		elif not after_player and _eating <= 0.0 and world.hungry(self):
+			var prey := world.prey_for(self)
+			if prey:
+				if prey != quarry:
+					_alert_pack(prey)
+				quarry = prey
+				_forget = memory
+				_last_seen = prey.global_position
+	if quarry is MazeEnemy and hunting():
+		var prey := quarry as MazeEnemy
+		var apart := Vector2(prey.global_position.x - global_position.x, prey.global_position.z - global_position.z).length()
+		if apart < world.reach(self) + world.reach(prey) * 0.5 and absf(prey.global_position.y - global_position.y) < 2.5:
+			world.kill(prey, self)
+
+
+## Fed on what it has killed: eats there for `seconds`.
+func ate(seconds: float) -> void:
+	hunger = 0.0
+	_eating = seconds
+	quarry = null
+	_forget = 0.0
+	_last_seen = Vector3.INF
+	chasing = false
+
+
+## Killed (by another, Ecology): gone until the world brings it back. It stays
+## in the list of enemies, hidden and still, so that what is sent between
+## machines keeps its order.
+func die() -> void:
+	if dead:
+		return
+	dead = true
+	_alive_layers = Vector2i(collision_layer, collision_mask)
+	collision_layer = 0
+	collision_mask = 0
+	visible = false
+	quarry = null
+	threat = null
+	chasing = false
+	velocity = Vector3.ZERO
+	process_mode = Node.PROCESS_MODE_DISABLED
+
+
+## Brought back at `at` (its den, out of everyone's sight), as hungry as `hungry`.
+func revive(at: Vector3, facing: float, hungry := 0.3) -> void:
+	if not dead:
+		return
+	dead = false
+	collision_layer = _alive_layers.x
+	collision_mask = _alive_layers.y
+	visible = true
+	hunger = hungry
+	_eating = 0.0
+	_forget = 0.0
+	_last_seen = Vector3.INF
+	_wander_goal = Vector2i(-1, -1)
+	process_mode = Node.PROCESS_MODE_INHERIT
+	_put(at, facing)
+
+
+## Out of everyone's sight (asleep): goes on its way about the maze by the
+## passages, at most `step` metres at once, as it would if it were seen.
+func roam_unseen(step: float) -> void:
+	if maze == null or puppet or dead:
+		return
+	var to := nav.waypoint(global_position, goal(), MazeNav.clearance_for(0.5)) - global_position
+	to.y = 0.0
+	if to.length() > 0.05:
+		global_position += to.limit_length(step)
 
 
 ## A little push away from others of its pack that it is right up against.
@@ -320,7 +457,8 @@ func state_bytes() -> PackedByteArray:
 	data.resize(STATE_SIZE)
 	var at := global_position
 	data.encode_float(0, at.x)
-	data.encode_float(4, at.y)
+	# (dead, it is sent far under the ground: DEAD_DEPTH)
+	data.encode_float(4, DEAD_DEPTH if dead else at.y)
 	data.encode_float(8, at.z)
 	data.encode_half(12, velocity.x)
 	data.encode_half(14, velocity.y)
@@ -343,6 +481,12 @@ func from_bytes(data: PackedByteArray, offset := 0) -> void:
 	if data.size() < offset + STATE_SIZE:
 		return
 	var at := Vector3(data.decode_float(offset), data.decode_float(offset + 4), data.decode_float(offset + 8))
+	if at.y <= DEAD_DEPTH + 1.0:
+		die()
+		return
+	var facing_now := data.decode_u16(offset + 18) / 65535.0 * TAU
+	if dead:
+		revive(at, facing_now)
 	var moving := Vector3(data.decode_half(offset + 12), data.decode_half(offset + 14), data.decode_half(offset + 16))
 	var facing := data.decode_u16(offset + 18) / 65535.0 * TAU
 	var point := Vector3(data.decode_half(offset + 22), data.decode_half(offset + 24), data.decode_half(offset + 26))

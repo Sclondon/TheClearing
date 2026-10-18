@@ -21,6 +21,15 @@ extends Node3D
 ## in his hand he cannot take hold of ivy or a vine: it is put away for him when
 ## he walks into ivy. DROP (or X) puts down what is in his hand.
 ##
+## MEAT. The act button by a carcass (Insects.carcasses: those lying in dead
+## ends, and those the Ecology's kills leave) cuts a piece of meat from it into
+## a slot; a carcass has CARCASS_MEAT pieces on it. Thrown or put down, meat lies
+## where it falls, and what eats meat and smells it goes to it and eats it
+## (`_meat_lures`: a lure for animals, as a flare is for what hunts; a feral dog
+## sees to its own, MazeDog). Held out with the act button to a dog near enough
+## in front of him, it is fed to the dog (`feed`). A dog fed meat (hungry, or
+## twice) is the friend of whoever gave it (MazeDog.feed).
+##
 ## FIGHTING BACK (DESIGN.md: "Fighting back"). A stick, a bat or a sword is held
 ## as a bat is (Player swings it with the act button; `swing_hits` sees what it
 ## meets as it comes round: a stagger and a shove, its own; a stick or a bat
@@ -59,6 +68,17 @@ const SPEAR_HITS := 1.5
 ## A flare draws hunters this near to it, metres, and anew every so often while it burns.
 const LURE_RANGE := 45.0
 const LURE_EVERY := 3.0
+## How many pieces of meat there are on a carcass, and how near (past its own
+## size) he must be to cut one.
+const CARCASS_MEAT := 3
+const CARCASS_REACH := 1.1
+## Meat held out feeds a dog this near in front of him, metres.
+const FEED_REACH := 2.8
+## What eats meat smells meat lying this far off, metres, and is told of it this often, seconds.
+const MEAT_SMELL := 30.0
+const MEAT_EVERY := 0.5
+## How long something that has come to meat eats it, seconds.
+const MEAT_EATEN := 6.0
 ## How long a map scrap is read for, seconds.
 const MAP_SECONDS := 9.0
 ## A rope ladder hangs from an edge with a drop of between these, metres.
@@ -68,6 +88,7 @@ const DEV := [
 	["+ HOOK", "hook"], ["+ BACKPACK", "backpack"], ["+ SPEAR", "spear"], ["+ TORCH", "torch"], ["+ FLARE", "flare"],
 	["+ MAP", "map"], ["+ LADDER", "ladder"], ["+ STICK", "stick"], ["+ BAT", "bat"], ["+ SWORD", "sword"],
 	["+ REVOLVER", "revolver"], ["+ SHOTGUN", "shotgun"], ["+ ROUNDS", "rounds"], ["+ SHELLS", "shells"],
+	["+ MEAT", "meat"], ["+ CARCASS", "carcass"],
 	["+ CAMP", "camp"], ["+ CAMP (LIT)", "camp_lit"],
 ]
 const DEV_KINDS := {
@@ -75,14 +96,15 @@ const DEV_KINDS := {
 	"torch": LootItem.Kind.TORCH, "flare": LootItem.Kind.FLARE, "map": LootItem.Kind.MAP, "ladder": LootItem.Kind.LADDER,
 	"stick": LootItem.Kind.STICK, "bat": LootItem.Kind.BAT, "sword": LootItem.Kind.SWORD,
 	"revolver": LootItem.Kind.REVOLVER, "shotgun": LootItem.Kind.SHOTGUN, "rounds": LootItem.Kind.ROUNDS,
-	"shells": LootItem.Kind.SHELLS,
+	"shells": LootItem.Kind.SHELLS, "meat": LootItem.Kind.MEAT,
 }
 ## What a camp left behind has lying by it, and what is lying in the maze's
-## halls, by how likely each is (kind, weight). The maze's weapons are weighed
-## in by each section's style (MazeStyle: stick, bat and sword weights), and
-## guns and boxes of rounds by its chances (`_roll`).
+## halls, by how likely each is (kind, weight). (Now and then a camp's meat,
+## hung up and forgotten.) The maze's weapons are weighed in by each section's
+## style (MazeStyle: stick, bat and sword weights), and guns and boxes of rounds
+## by its chances (`_roll`).
 const CAMP_MIX := [[LootItem.Kind.TORCH, 3], [LootItem.Kind.FLARE, 2], [LootItem.Kind.MAP, 2], [LootItem.Kind.SPEAR, 2],
-	[LootItem.Kind.LADDER, 1], [LootItem.Kind.HOOK, 1], [LootItem.Kind.STICK, 2], [LootItem.Kind.BAT, 1]]
+	[LootItem.Kind.LADDER, 1], [LootItem.Kind.HOOK, 1], [LootItem.Kind.STICK, 2], [LootItem.Kind.BAT, 1], [LootItem.Kind.MEAT, 1]]
 const MAZE_MIX := [[LootItem.Kind.FLARE, 3], [LootItem.Kind.MAP, 3], [LootItem.Kind.TORCH, 2], [LootItem.Kind.SPEAR, 2],
 	[LootItem.Kind.HOOK, 1], [LootItem.Kind.LADDER, 1], [LootItem.Kind.BACKPACK, 1]]
 ## A shot is heard by what hunts this near, metres (it goes to see), and who fired
@@ -124,6 +146,9 @@ var ammo := {LootItem.Kind.ROUNDS: 0, LootItem.Kind.SHELLS: 0}
 var reloading := 0.0
 ## What is in reach to take now (for the HUD's prompt), or null.
 var in_reach: Node3D
+## What the act button would do now, for the HUD ("TAKE THE TORCH", "CUT MEAT
+## FROM IT", "FEED THE DOG"), or "".
+var prompt := ""
 
 ## Who has each thing, by its number: the seat, or -1. (Kept by everyone; the
 ## host's is the one that counts.)
@@ -137,6 +162,7 @@ var _ivy_in := 0.0
 var _pending := {}
 var _thrown := {}
 var _lures := {}
+var _meat_in := 0.0
 var _base_speeds := Vector2.ZERO
 var _base_swing := 0.6
 var _swing_was := 1.0
@@ -166,6 +192,8 @@ static func put(in_world: World, seed_value: int, hud_layer: CanvasLayer) -> Loo
 ## This player: the act button asks here first (Player.act_first).
 func attach(player: Player) -> void:
 	player.act_first = act
+	# (his seat, for what is given by him: a dog fed meat is the friend of a seat, MazeDog)
+	player.set_meta(&"seat", world.slot)
 	_base_speeds = Vector2(player.run_speed, player.sprint_speed)
 	_base_swing = player.swing_time
 	slots.resize(SLOTS)
@@ -366,6 +394,8 @@ func _place(kind: LootItem.Kind, at: Vector3, yaw: float, id := -1) -> Node3D:
 	item.set(&"loot", self)
 	item.connect(&"released", _on_released)
 	item.connect(&"rested", _on_rested)
+	if item.has_signal(&"eaten"):
+		item.connect(&"eaten", _on_eaten)
 	if item.has_signal(&"frayed"):
 		item.connect(&"frayed", _on_frayed)
 	items[id] = item
@@ -454,7 +484,7 @@ func _clearing_spot(region: int, others: Array[Vector2], apart: float, from_midd
 			var way := (woods[1] as Vector2).rotated(_rng.randf_range(-1.1, 1.1))
 			spot = (woods[0] as Vector2) + way * look.woods_size * _rng.randf_range(0.85, 1.08)
 		elif where == Region.TALL_GRASS and meadow.is_finite():
-			spot = meadow + Vector2.from_angle(_rng.randf_range(0.0, TAU)) * look.tall_grass_radius * sqrt(_rng.randf()) * 0.85
+			spot = look.tall_grass_spot(_rng)
 		elif where == Region.POND and pond.is_finite():
 			spot = pond + Vector2.from_angle(_rng.randf_range(0.0, TAU)) * _pond_radius() * _rng.randf_range(1.3, 1.7)
 		if maxf(absf(spot.x), absf(spot.y)) > half - 14.0 or spot.length() < from_middle:
@@ -544,10 +574,28 @@ func act(player: Player) -> bool:
 				_relight(held)
 				said.emit("THE TORCH IS LIT")
 				return true
+	if held and held.get(&"kind") == LootItem.Kind.MEAT:
+		# Meat held out to a dog in front of him: it is fed (else it is thrown, by the Player).
+		var dog := dog_to_feed(player)
+		if dog:
+			feed(dog, held)
+			return true
 	# (something to fight with in his hand, and something that hunts near: he fights)
-	if held and held.call(&"weapon") and hunter_near(player.global_position, FIGHT_NEAR):
+	if held and held.has_method(&"weapon") and held.call(&"weapon") and hunter_near(player.global_position, FIGHT_NEAR):
 		return false
 	var found := nearest(player)
+	if found == null and player.is_on_floor():
+		var carcass := carcass_near(player)
+		if carcass:
+			if slots.find(-1) < 0:
+				if hand >= 0:
+					return false
+				said.emit("NO ROOM: DROP SOMETHING")
+				return true
+			player.pickup_point = carcass.global_position
+			player.pickup_progress = 0.0
+			cut_meat(carcass)
+			return true
 	if found == null or not player.is_on_floor():
 		return false
 	if found.get(&"kind") == LootItem.Kind.BACKPACK:
@@ -762,6 +810,8 @@ func _on_released(item: Node3D) -> void:
 	if i >= 0:
 		slots[i] = -1
 	owners[id] = -1
+	# (who let it go: a dog that eats meat is the friend of whoever gave it)
+	item.set_meta(&"by", world.slot)
 	# (it flies as the Player threw it; its velocity is known next step)
 	item.call(&"let_fly")
 	_thrown[id] = 0.0
@@ -946,6 +996,137 @@ func _camp_near(at: Vector3, reach: float) -> Campsite:
 	return null
 
 
+# --- Meat ----------------------------------------------------------------------
+
+## A carcass near enough to `player` to cut meat from, with meat still on it, or null.
+func carcass_near(player: Node3D) -> Node3D:
+	if world.insects == null:
+		return null
+	for carcass: Node3D in world.insects.carcasses:
+		if not is_instance_valid(carcass) or int(carcass.get_meta(&"meat", CARCASS_MEAT)) <= 0:
+			continue
+		var to := carcass.global_position - player.global_position
+		if Vector2(to.x, to.z).length() < float(carcass.get_meta(&"carrion_radius", 0.9)) + CARCASS_REACH and absf(to.y) < 1.5:
+			return carcass
+	return null
+
+
+## Cuts a piece of meat from `carcass` into his inventory (one fewer on it, here
+## and everywhere).
+func cut_meat(carcass: Node3D) -> void:
+	carcass.set_meta(&"meat", int(carcass.get_meta(&"meat", CARCASS_MEAT)) - 1)
+	var id := (world.slot + 1) * 100000 + _next
+	_next += 1
+	var at := carcass.global_position + Vector3.UP * 0.3
+	_place(LootItem.Kind.MEAT, at, 0.0, id)
+	_got(id, world.slot)
+	said.emit("MEAT, CUT FROM THE CARCASS")
+	if world.online:
+		Net.send_json(Net.BROADCAST, {"loot": "cut", "id": id, "seat": world.slot, "at": [at.x, at.y, at.z]})
+
+
+## Someone has cut meat from a carcass: it is theirs, and there is less on the carcass here too.
+func _heard_cut(message: Dictionary) -> void:
+	var id := int(message.get("id", -1))
+	var at: Array = message.get("at", [0, 0, 0])
+	var where := Vector3(at[0], at[1], at[2])
+	var item := _item(id)
+	if item == null:
+		item = _place(LootItem.Kind.MEAT, where, 0.0, id)
+	owners[id] = int(message.get("seat", -1))
+	item.call(&"pocket")
+	if world.insects:
+		for carcass: Node3D in world.insects.carcasses:
+			if is_instance_valid(carcass) and carcass.global_position.distance_to(where) < 2.5:
+				carcass.set_meta(&"meat", int(carcass.get_meta(&"meat", CARCASS_MEAT)) - 1)
+				break
+
+
+## The dog nearest in front of `player`, near enough to be fed from his hand
+## and willing (not springing at anyone), or null.
+func dog_to_feed(player: Player) -> MazeDog:
+	var best: MazeDog = null
+	var least := INF
+	var facing := Vector3(sin(player.facing_yaw), 0.0, cos(player.facing_yaw))
+	for node: Node in get_tree().get_nodes_in_group(&"dogs"):
+		var dog := node as MazeDog
+		if dog == null or not dog.takes_food():
+			continue
+		var to := dog.global_position - player.global_position
+		var level := Vector3(to.x, 0.0, to.z)
+		if level.length() < FEED_REACH and level.length() < least and absf(to.y) < 1.2 and (level.length() < 0.8 or facing.dot(level.normalized()) > 0.2):
+			least = level.length()
+			best = dog
+	return best
+
+
+## The meat in his hand, held out to `dog`: he stoops to it, and it is eaten
+## (where the hunters are run: alone, here; as a guest, the host is asked).
+func feed(dog: MazeDog, meat: Node3D) -> void:
+	var player := world.player
+	var id: int = meat.get(&"loot_id")
+	player.pickup_point = dog.global_position + Vector3.UP * 0.3
+	player.pickup_progress = 0.0
+	if not world.online or Net.is_host:
+		dog.feed(player, world.slot)
+	elif world.enemies:
+		Net.send_json(Net.BROADCAST, {"loot": "feed", "enemy": world.enemies.enemies.find(dog)})
+	_stowing = true
+	player.let_go()
+	_stowing = false
+	hand = -1
+	var i := slots.find(id)
+	if i >= 0:
+		slots[i] = -1
+	_spend(id)
+	_tell_hand(null)
+	said.emit("THE DOG TAKES IT")
+	changed.emit()
+
+
+## Told by meat that something has eaten it: used up, everywhere.
+func _on_eaten(item: Node3D) -> void:
+	var id: int = item.get(&"loot_id")
+	if id == hand:
+		return
+	_spend(id)
+
+
+## (Where the hunters are run.) What eats meat, is after no player and smells
+## meat lying within MEAT_SMELL goes to it, and coming to it eats it there. The
+## dogs see to it themselves (MazeDog), and are passed over here.
+func _meat_lures() -> void:
+	if world.online and not Net.is_host:
+		return
+	var meats := get_tree().get_nodes_in_group(&"meat")
+	if meats.is_empty():
+		return
+	for node: Node in get_tree().get_nodes_in_group(&"maze_enemies"):
+		var enemy := node as MazeEnemy
+		if enemy == null or enemy is MazeDog or enemy.puppet or enemy.dead or enemy.process_mode == Node.PROCESS_MODE_DISABLED:
+			continue
+		if Ecology.diet(enemy) != Ecology.Diet.MEAT or enemy.hunting() or enemy._eating > 0.0:
+			continue
+		var best: Node3D = null
+		var least := MEAT_SMELL
+		for meat: Node3D in meats:
+			var apart := meat.global_position.distance_to(enemy.global_position)
+			if apart < least:
+				least = apart
+				best = meat
+		if best == null:
+			continue
+		var level := Vector2(best.global_position.x - enemy.global_position.x, best.global_position.z - enemy.global_position.z).length()
+		if level < Ecology.reach(enemy) + 0.4:
+			enemy.ate(MEAT_EATEN)
+			best.call(&"eat")
+			meats.erase(best)
+			if meats.is_empty():
+				return
+		else:
+			enemy._last_seen = best.global_position
+
+
 # --- Every step -------------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
@@ -956,9 +1137,21 @@ func _physics_process(delta: float) -> void:
 	if _look_in <= 0.0:
 		_look_in = 0.1
 		var near := nearest(player) if player.state == Player.State.FREE else null
-		if near != in_reach:
+		var words := ""
+		if near:
+			words = "TAKE THE " + String(near.call(&"title"))
+		elif player.state == Player.State.FREE and carcass_near(player):
+			words = "CUT MEAT FROM IT"
+		elif _item(hand) and _item(hand).get(&"kind") == LootItem.Kind.MEAT and dog_to_feed(player):
+			words = "FEED THE DOG"
+		if near != in_reach or words != prompt:
 			in_reach = near
+			prompt = words
 			changed.emit()
+	_meat_in -= delta
+	if _meat_in <= 0.0:
+		_meat_in = MEAT_EVERY
+		_meat_lures()
 	for id: int in _pending.keys():
 		_pending[id] -= delta
 		if _pending[id] <= 0.0:
@@ -1408,6 +1601,13 @@ func hear(message: Dictionary, from: int) -> void:
 			if hunter:
 				Stagger.hit(hunter, Vector3(push[0], 0.0, push[1]), float(message.get("secs", Stagger.SECONDS)), float(message.get("shove", Stagger.SHOVE)))
 			return
+		if what == "feed":
+			# (a guest's meat held out to a dog: fed here, where the dogs are run)
+			var index := int(message.get("enemy", -1))
+			var dog: MazeDog = world.enemies.enemies[index] as MazeDog if world.enemies and index >= 0 and index < world.enemies.enemies.size() else null
+			if dog:
+				dog.feed(world.remotes.get(from), from)
+			return
 		if what == "fell":
 			var hunter := _hunter_at(int(message.get("enemy", -1)))
 			var push: Array = message.get("push", [0, 0])
@@ -1455,6 +1655,8 @@ func hear(message: Dictionary, from: int) -> void:
 			ladders.append(RopeLadder.hang(self, Vector3(at[0], at[1], at[2]), Vector3(out[0], 0.0, out[1]), float(message.get("drop", 3.0))))
 		"spent":
 			_spend(id, false)
+		"cut":
+			_heard_cut(message)
 		"swing":
 			var other: RemotePlayer = world.remotes.get(int(message.get("seat", -1)))
 			if other:
@@ -1521,6 +1723,7 @@ func _heard_drop(message: Dictionary) -> void:
 	if other and other.carried == item:
 		other.carried = null
 	owners[id] = -1
+	item.set_meta(&"by", seat if other else -1)
 	var at: Array = message.get("at", [0, 0, 0])
 	var vel: Array = message.get("vel", [0, 0, 0])
 	item.global_position = Vector3(at[0], at[1], at[2])
@@ -1542,6 +1745,11 @@ func dev_drop(what: String) -> void:
 	if what == "camp" or what == "camp_lit":
 		var at := _ahead(player, look, 7.0)
 		add_camp(at, Campsite.Kind.OCCUPIED if what == "camp_lit" else Campsite.Kind.ABANDONED, randi(), not maze.in_clearing(maze.cell_at(at)))
+		return
+	if what == "carcass":
+		# (a carcass to cut meat from: here only, as the Insects' are)
+		if world.insects:
+			world.insects.add_carcass(_ahead(player, look, 3.0), randf_range(0.0, TAU))
 		return
 	var at := _ahead(player, look, 2.2) + Vector3.UP * 0.02
 	var id := (world.slot + 1) * 100000 + _next

@@ -19,7 +19,9 @@ class_name FleshMoundLook
 ## on all fours under the other, face up, on all eight limbs like a crab; an
 ## AMALGAM (3 or 4), the boys joined at the hips in a star, a wheel of limbs;
 ## a STRIDER (5 or 6), the boys joined at the hips in a ring, bent over
-## outwards, walking on all their legs; and a MOUND (7 and up), the boys lying
+## outwards, walking on all their legs; a BALL (7 or 8), the boys grown together
+## into a sphere, heads and arms out all round it, that rolls; and a MOUND (9 and
+## up), the boys lying
 ## half sunk in it with their mask faces up, or rising out of it to the waist,
 ## and the men's limbs growing out of it between them.
 ##
@@ -36,8 +38,9 @@ const MOST := 10
 const PAIR := 2
 const SMALL := 4
 const STRIDER := 6
+const BALL := 8
 
-enum Form { PAIR, AMALGAM, STRIDER, MOUND }
+enum Form { PAIR, AMALGAM, STRIDER, BALL, MOUND }
 
 ## Core space: forward -Z, up +Y, the origin on the ground under its middle.
 ## Half its width, height and length at its biggest, and how high its middle is.
@@ -55,7 +58,9 @@ static func form(bodies: int) -> Form:
 		return Form.PAIR
 	if bodies <= SMALL:
 		return Form.AMALGAM
-	return Form.STRIDER if bodies <= STRIDER else Form.MOUND
+	if bodies <= STRIDER:
+		return Form.STRIDER
+	return Form.BALL if bodies <= BALL else Form.MOUND
 
 const SHADER := """
 shader_type spatial;
@@ -226,6 +231,8 @@ static func radii(bodies: int) -> Vector3:
 			return Vector3(0.3, 0.3, 0.3)
 		Form.STRIDER:
 			return Vector3(0.26, 0.2, 0.26)
+		Form.BALL:
+			return Vector3(0.55, 0.8, 0.5)
 	var t := clampf(float(bodies - SMALL - 1) / float(MOST - SMALL - 1), 0.0, 1.0)
 	return Vector3(1.3, 0.9, 1.5).lerp(Vector3(2.6, 1.6, 2.9), t)
 
@@ -239,6 +246,8 @@ static func boy_size(bodies: int) -> float:
 			return 1.3
 		Form.STRIDER:
 			return 1.45
+		Form.BALL:
+			return 1.7
 	return lerpf(1.8, 2.3, clampf(float(bodies - SMALL - 1) / float(MOST - SMALL - 1), 0.0, 1.0))
 
 
@@ -531,6 +540,8 @@ static func people(bodies: int, low := false) -> FleshParts.Build:
 			_star(build, bodies, low, rng)
 		Form.STRIDER:
 			_ring(build, bodies, low, rng)
+		Form.BALL:
+			_ball(build, bodies, low, rng)
 		_:
 			_mound(build, bodies, low, rng)
 	build.make()
@@ -561,6 +572,30 @@ static func _pair(build: FleshParts.Build, low: bool, rng: RandomNumberGenerator
 		var copy := build.add("boy", place, 0.15, 0.5, rng.randf(), low)
 		copy.data = {"boy": true, "top": top, "along": along, "phase": rng.randf() * TAU,
 			"roles": {"arm_l": Role.CRAWL, "arm_r": Role.CRAWL, "leg_l": Role.CRAWL, "leg_r": Role.CRAWL}}
+
+
+## How high a ball's middle is at rest (for a boy of size 1), and how far out from it each boy's hips are.
+const BALL_HIGH := 0.8
+const BALL_HIPS := 0.2
+
+
+## A ball: the boys grown together at their hips and bellies into a sphere,
+## each pointing out from its middle (spread evenly over it), heads, shoulders
+## and arms out all round, the legs sunk into it. It rolls along -Z.
+static func _ball(build: FleshParts.Build, bodies: int, low: bool, rng: RandomNumberGenerator) -> void:
+	var s := boy_size(bodies)
+	for k in bodies:
+		# (spread over the sphere: a spiral from pole to pole)
+		var y := 1.0 - 2.0 * (k + 0.5) / bodies
+		var round_by := k * PI * (3.0 - sqrt(5.0))
+		var out := Vector3(cos(round_by) * sqrt(1.0 - y * y), y, sin(round_by) * sqrt(1.0 - y * y))
+		var front := out.cross(Vector3.RIGHT if absf(out.x) < 0.9 else Vector3.FORWARD).normalized()
+		var basis := FleshParts.frame(out, front)
+		var hips := Vector3.UP * BALL_HIGH * s + out * BALL_HIPS * s
+		var place := Transform3D(basis * s, hips - (basis * s) * HIPS)
+		var copy := build.add("boy", place, 0.25, 0.5, rng.randf(), low or bodies > 7)
+		copy.data = {"boy": true, "dir": out, "front": front, "phase": rng.randf() * TAU,
+			"roles": {"arm_l": Role.WHEEL, "arm_r": Role.WHEEL, "leg_l": Role.TUCKED, "leg_r": Role.TUCKED}}
 
 
 ## A strider: the boys joined at their hips in a ring about a hub held up on

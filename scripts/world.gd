@@ -61,6 +61,7 @@ var dev: DevTools
 var day: DayCycle
 var gates: ClearingGates
 var weather: Weather
+var ecology: Ecology
 ## Everyone starts in front of a gate instead of in the middle (with dev tools on,
 ## unless the flag `start=middle` is given).
 var start_at_gate := false
@@ -129,6 +130,8 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 			player = load("res://player.tscn").instantiate()
 			player.name = "Player"
 			player.add_to_group(&"bridge_weights")
+			# (the hunters' bodies stop him, as the walls do: layer 4, and theirs that another machine runs)
+			player.collision_mask |= 4 | MazeEnemy.PUPPET_LAYER
 			Grass.push(player)
 			add_child(player)
 			player.global_position = spawn(seat)
@@ -191,6 +194,10 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	insects.name = "Insects"
 	add_child(insects)
 	insects.populate(maze, hash("insects/%d" % seed_value), self)
+	# The hunters' own lives: hunger, the hunted and the hunters, the dead coming back
+	# (run where the hunters are: alone, or the host)
+	if not (online and not Net.is_host):
+		ecology = Ecology.put(self, seed_value, insects)
 	birds = Birds.put(self, maze, hash("birds/%d" % seed_value))
 	if DevTools.enabled():
 		dev = DevTools.new(self)
@@ -286,6 +293,10 @@ func try_cut() -> bool:
 				player._hold_rope(his, his.length - 0.2, player.velocity)
 			if online:
 				Net.send_json(Net.BROADCAST, {"cut": i, "at": [hands.x, hands.y, hands.z]})
+			return true
+	# (a hydra's head near his hands is cut off, where the hunters are run: two grow back)
+	for enemy: Node in get_tree().get_nodes_in_group(&"maze_enemies"):
+		if enemy is MazeHydra and (enemy as MazeHydra).cut(hands):
 			return true
 	return false
 
@@ -490,8 +501,7 @@ func _on_packet(from: int, kind: int, data: PackedByteArray) -> void:
 			Vector3(data.decode_float(13), data.decode_float(17), data.decode_float(21)),
 			data.decode_float(25), data[29] == 1)
 	elif kind == K_ENEMIES and not Net.is_host:
-		enemies.unpack(data, 0)
-		var at := 1 + MazeEnemy.STATE_SIZE * enemies.enemies.size()
+		var at := enemies.unpack(data, 0)
 		if data.size() >= at + Griever.STATE_SIZE:
 			griever.from_bytes(data, at)
 	elif kind == K_RUNNERS and not Net.is_host:
@@ -576,8 +586,8 @@ func _sleep_far() -> void:
 		var thing := node as Node3D
 		if thing == null or not is_instance_valid(thing) or thing == player:
 			continue
-		# (a hunter felled by a shot is gone for good: Stagger.fell)
-		if thing.has_meta(&"felled"):
+		# (the dead are the world's to bring back: Ecology; a hunter felled by a shot is gone for good: Stagger.fell)
+		if (thing is MazeEnemy and (thing as MazeEnemy).dead) or thing.has_meta(&"felled"):
 			continue
 		var nearest := INF
 		for eye in eyes:

@@ -6,7 +6,7 @@ extends Node3D
 ## `populate(maze, seed)` puts Apophis and packs of mummies in the passages, out
 ## of the clearing and well away from it, and `add_hunters(style, seed)` the
 ## rest of what a ring's MazeStyle asks for (ghouls, centipedes, spiders,
-## abominations, flesh mounds and amalgams, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms, harpies, boars, chickens, gargoyles, deer, elk, imps and imp swarms, a colossus, coyotes and skinwalkers, tripods: each kind's own
+## abominations, flesh mounds and amalgams, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms, harpies, boars, chickens, gargoyles, deer, elk, imps and imp swarms, a colossus, coyotes and skinwalkers, tripods, clowns, stegosaurs, spider monkeys, lizard people, the masked tribe, deinonychus, pterodactyls, giant snails, hydras, gibbons: each kind's own
 ## script is in scripts/enemies/, its look and motion in creatures/). The same maze and seed always give the
 ## same ones in the same places in the same order, so every machine in a room
 ## can build the same set without it being sent; then one machine (the host)
@@ -112,6 +112,12 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ## - Coyotes go about in packs, put round one cell; a skinwalker is put in with
 ##   a pack (as one of them).
 ## - A tripod stands over any passage (it walks round the ring over the walls).
+## - Clowns, stegosaurs (some with a calf), spider monkey troops (stringing vines
+##   along its walls), bands of lizard people (on both walls), deinonychus packs,
+##   pterodactyls (roosting on the nearest high wall top), giant snails and hydras
+##   (each in a marsh pool of its own across it) wait in halls; gibbons in halls
+##   past the first section, where there are ledges and terraces.
+## - Hunting parties of the masked tribe camp in a dead end round their totem.
 func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	var nav := MazeNav.new(maze)
 	var rng := RandomNumberGenerator.new()
@@ -161,7 +167,7 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
 		taken.append(cell)
 		var mound := MazeFleshMound.new()
-		mound.bodies = rng.randi_range(7, 8)
+		mound.bodies = rng.randi_range(9, 10)
 		add(mound, cell, rng.randf_range(-PI, PI), rng.randi())
 	for i in style.amalgams:
 		var cell := _far_from(taken, lairs, rng)
@@ -181,6 +187,13 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var strider := MazeFleshMound.new()
 		strider.bodies = rng.randi_range(5, 6)
 		add(strider, cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.balls:
+		# (in a straight hall, where it rolls fastest)
+		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		taken.append(cell)
+		var ball := MazeFleshMound.new()
+		ball.bodies = rng.randi_range(7, 8)
+		add(ball, cell, rng.randf_range(-PI, PI), rng.randi())
 	for i in style.bat_colonies:
 		var cell := _far_from(taken, lairs, rng)
 		taken.append(cell)
@@ -289,6 +302,249 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var cell := _far_from(taken, lairs, rng)
 		taken.append(cell)
 		add(MazeTripod.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	var some_halls := halls if not halls.is_empty() else lairs
+	for i in style.clowns:
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeClown.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.stegosaurs:
+		# (it grazes in a straight hall, along it: where people must get past it)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		var facing := atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI)
+		var family: Array = MazeStegosaurus.family(1 if rng.randf() < 0.4 else 0)
+		for k in family.size():
+			var round_about := rng.randf_range(0.0, TAU)
+			add(family[k], cell, facing + rng.randf_range(-0.4, 0.4), rng.randi(), Vector3(cos(round_about), 0.0, sin(round_about)) * 4.0 if k > 0 else Vector3.ZERO)
+	for i in style.spider_monkey_troops:
+		# (a troop strings its vines along the walls of a hall: everyone in it put in the one cell)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var troop: Array = MazeSpiderMonkey.troop(rng.randi_range(4, 7))
+		for k in troop.size():
+			add(troop[k], cell, 0.0, rng.randi())
+	for i in style.lizard_people:
+		# (a band in a straight hall, put on alternate sides so that they climb both walls over it)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		if along == Vector2i.ZERO:
+			along = Vector2i(0, 1)
+		var band := MazeLizardPerson.band(rng.randi_range(2, 3))
+		for k in band.size():
+			var offset := Vector3(along.x, 0.0, along.y) * (k - (band.size() - 1) * 0.5) * 3.5 + Vector3(along.y, 0.0, along.x) * (2.5 if k % 2 == 0 else -2.5)
+			add(band[k], cell, rng.randf_range(-PI, PI), rng.randi(), offset)
+	for i in style.tribe_parties:
+		# (a party camps in a dead end, its chief's totem at the back of it)
+		var camp := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		_add_pack(MazeTribesman.party_of(rng.randi_range(3, 5), rng.randi(), maze.world(camp)), camp, nav, rng, taken)
+	for i in style.deinonychus_packs:
+		# (a pack waits in a hall, where it can be seen far off; from there it goes round the loops of the halls after anyone)
+		var den := _far_from(taken, some_halls, rng)
+		_add_pack(MazeDeinonychus.pack_of(rng.randi_range(3, 4), rng.randi()), den, nav, rng, taken)
+	for i in style.pterodactyls:
+		# (over a wide hall, where it hunts best; it finds a high wall top near it to roost on)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazePterodactyl.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.snails:
+		# (a snail crawls a straight hall, where its slime lies across the way people pass)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		add(MazeSnail.new(), cell, atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI), rng.randi())
+	for i in style.hydras:
+		# (its pool across a hall, where everyone going that way must pass it)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		add(MazeHydra.new(), cell, atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI), rng.randi())
+	for i in style.bears:
+		# (it prowls the halls: put in one, far from the rest)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeBear.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.dimetrodons:
+		# (it basks on the open ground of a hall, side on to the sun)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeDimetrodon.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.griffinfly_pairs:
+		# (a pair holds a stretch of halls: the first over a fish person's pool, if there is one)
+		var cell := _far_from(taken, some_halls, rng)
+		for enemy in enemies:
+			if i == 0 and enemy is MazeFishPerson:
+				cell = maze.cell_at(enemy.global_position)
+		taken.append(cell)
+		for k in 2:
+			add(MazeGriffinfly.new(), cell, rng.randf_range(-PI, PI), rng.randi(), Vector3(rng.randf_range(-3.0, 3.0), 0.0, rng.randf_range(-3.0, 3.0)))
+	for i in style.psychic_children:
+		# (she drifts about a hall, where people pass her)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazePsychicChild.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.lynxes:
+		# (a lynx lies up on the ledge over a hall)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeLynx.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.panthers:
+		# (a panther lies up on the ledge over a hall, far from the rest)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazePanther.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.wolf_packs:
+		# (each a den in a dead end, the pack round it: the leader in the den)
+		var den := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		_add_pack(MazeWolf.pack_of(rng.randi_range(4, 6), rng.randi()), den, nav, rng, taken)
+	for i in style.frog_ponds:
+		# (a pond of frogs in a hall or a dead end, where people pass it)
+		var cell := _far_from(taken, halls + ends if not (halls + ends).is_empty() else lairs, rng)
+		taken.append(cell)
+		var pond := MazePondFrogs.new()
+		pond.frogs = rng.randi_range(9, 14)
+		pond.pond_radius = rng.randf_range(1.4, 2.2)
+		add(pond, cell, 0.0, rng.randi())
+	for i in style.fox_pairs:
+		_add_pack(MazeFox.pair_of(1 if rng.randf() < 0.5 else 2, rng.randi()), _far_from(taken, lairs, rng), nav, rng, taken)
+	for i in style.rabbit_warrens:
+		# (a bank of burrows at the foot of a wall in a hall, its colony grazing in front of it)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var bank := MazeRabbit.bank_in_hall(maze, cell, rng)
+		MazeRabbit.add_colony(self, bank[0], bank[1], RabbitWarren.Kind.BANK, rng.randi_range(3, 5), rng.randi())
+	for i in style.hares:
+		# (lying up in a hall; every other one a pair that box)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		MazeHare.add_hares(self, maze.world(cell), i % 2 == 1, rng.randi())
+	for i in style.jackalopes:
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeJackalope.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.octopuses:
+		# (a pool in a hall, or every other one a drain in the wall of a hall)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var octopus := MazeOctopus.new()
+		octopus.drain = i % 2 == 1
+		add(octopus, cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.moose:
+		# (a bull, or a cow and her calf, at a wallow in a straight hall: room to wade and to charge)
+		var ground := _far_from(taken, some_halls, rng)
+		taken.append(ground)
+		var along := _straight(ground)
+		var yaw := atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI)
+		if i % 2 == 1:
+			var family := MazeMoose.family(rng.randi())
+			add(family[0], ground, yaw, rng.randi())
+			add(family[1], ground, yaw + rng.randf_range(-0.6, 0.6), rng.randi(), Vector3(2.0, 0.0, 1.5))
+		else:
+			var bull := MazeMoose.new()
+			bull.rut = 0.4
+			add(bull, ground, yaw, rng.randi())
+	# Carnivorous plants in clumps at the feet of the walls; mushrooms, and the zombies' hordes round them.
+	MazePlants.populate(self, nav, rng, taken, halls, ends, lairs, style.flytraps, style.sundews, style.pitchers, style.mushroom_patches, style.zombie_hordes)
+	for i in style.gnome_bands:
+		# (in a dead end: the first finds the nearest wall and digs the hollow at its foot)
+		var cell := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		taken.append(cell)
+		var band := MazeGnome.band_of(rng.randi_range(3, 5))
+		for k in band.size():
+			var round_about := rng.randf_range(0.0, TAU)
+			add(band[k], cell, rng.randf_range(-PI, PI), rng.randi(), Vector3(cos(round_about), 0.0, sin(round_about)) * 1.2)
+	for i in style.weavers:
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		add(MazeWeaver.new(), cell, atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI), rng.randi())
+	for i in style.ant_colonies:
+		# (a colony's nest is in a dead end: its trail runs out from it along the halls)
+		var cell := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(MazeAnts.new(), cell, 0.0, rng.randi())
+	for i in style.mantises:
+		# (a mantis waits against the wall of a straight hall, where people must pass it)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeMantis.new(), cell, 0.0, rng.randi())
+	for i in style.rat_mischiefs:
+		var rats := MazeRat.mischief(rng.randi_range(3, 6), rng.randi())
+		var home := _far_from(taken, some_halls, rng)
+		taken.append(home)
+		for k in rats.size():
+			add(rats[k], home, rng.randf_range(-PI, PI), rng.randi(), Vector3(rng.randf_range(-1.5, 1.5), 0.0, rng.randf_range(-1.5, 1.5)))
+	var rat_dens: Array[Vector2i] = []
+	for i in style.rat_swarms:
+		var places: Array[Vector2i] = halls if i % 2 == 0 and not halls.is_empty() else (ends if not ends.is_empty() else lairs)
+		var cell := _far_from(taken, places, rng)
+		taken.append(cell)
+		rat_dens.append(cell)
+		add(MazeRatSwarm.new(), cell, 0.0, rng.randi())
+	for i in style.rat_kings:
+		# (its realm: a few cells from a swarm's drains, within its call)
+		var cell := _far_from(taken, lairs, rng)
+		if not rat_dens.is_empty():
+			var field := nav.field(rat_dens[i % rat_dens.size()])
+			var near: Array[Vector2i] = []
+			for c in lairs:
+				var d := field[maze.index(c)]
+				if d >= 2 and d <= 4:
+					near.append(c)
+			if not near.is_empty():
+				cell = near[rng.randi_range(0, near.size() - 1)]
+		taken.append(cell)
+		add(MazeRatKing.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.luck_dragons:
+		# (one for the whole maze: put over the outermost square section; it rises to the sky itself)
+		var outer: Array[Vector2i] = []
+		for c in lairs:
+			if maze.ring_of(c) == maze.rings:
+				outer.append(c)
+		var cell := _far_from(taken, outer if not outer.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(MazeLuckDragon.new(), cell, 0.0, rng.randi())
+	for i in style.horses:
+		# (alone, in a wide straight hall; it wanders from there)
+		var ground := _far_from(taken, some_halls, rng)
+		taken.append(ground)
+		var horse := MazeHorse.new()
+		horse.coat = rng.randi_range(0, 2)
+		horse.haltered = rng.randf() < 0.4
+		add(horse, ground, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.mammoth_herds:
+		# (a herd grazes in a straight hall, as far from the rest as can be, strung along it)
+		var pasture := _far_from(taken, some_halls, rng)
+		taken.append(pasture)
+		var along := _straight(pasture)
+		var yaw := atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI)
+		var way := Vector3(along.x, 0.0, along.y)
+		var herd := MazeMammoth.herd_of(rng.randi_range(4, 5), rng.randi())
+		for k in herd.size():
+			var spot := way * (4.5 * ((k + 1) / 2) * (1 if k % 2 == 1 else -1)) if k > 0 and k < herd.size() - 1 else (way * -2.0 if k > 0 else Vector3.ZERO)
+			add(herd[k], pasture, yaw + rng.randf_range(-0.5, 0.5), rng.randi(), spot)
+	# Out past the square maze: brachiosaurs in the desert and the wide round halls,
+	# and dimetrodons basking in the desert.
+	for spot: Vector3 in MazeBrachiosaurus.spots(maze, style.brachiosaurs, rng.randi()):
+		var cell := maze.cell_at(spot)
+		add(MazeBrachiosaurus.new(), cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell) - Vector3.UP * 0.05)
+	for spot: Vector3 in MazeBrachiosaurus.spots(maze, style.desert_dimetrodons, rng.randi()):
+		var cell := maze.cell_at(spot)
+		add(MazeDimetrodon.new(), cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell) - Vector3.UP * 0.05)
+	# (gibbons only where there are ledges and terraces for them: past the first section)
+	var high_halls: Array[Vector2i] = []
+	for cell in some_halls:
+		if maze.ring_of(cell) > 1:
+			high_halls.append(cell)
+	for i in style.gibbon_troops:
+		if high_halls.is_empty():
+			break
+		var middle := _far_from(taken, high_halls, rng)
+		taken.append(middle)
+		var troop: Array = MazeGibbon.troop(rng.randi_range(3, 5))
+		for k in troop.size():
+			add(troop[k], middle, rng.randf_range(-PI, PI), rng.randi(), Vector3(k - 2.0, 0.0, 0.0))
 
 
 ## Puts in the wildlife of the clearing that is run with what hunts (so that
@@ -313,6 +569,52 @@ func add_wildlife(clearing: ClearingStyle, seed_value: int) -> void:
 			var spot := home + Vector3(rng.randf_range(-4.0, 4.0), 0.0, rng.randf_range(-4.0, 4.0))
 			var cell := maze.cell_at(spot)
 			add(one, cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell) + Vector3.UP * (maze.ground_height(spot) + 0.3))
+	# Frogs along the marsh's pools, the meadow's foxes, its rabbit warrens and hares.
+	for one: Array in MazePondFrogs.marsh_colonies(maze, clearing.marsh_frog_colonies, rng):
+		var frogs := MazePondFrogs.new()
+		frogs.banks = one[1]
+		frogs.frogs = (one[1] as Array).size()
+		var at: Vector3 = one[0]
+		var cell := maze.cell_at(at)
+		add(frogs, cell, 0.0, rng.randi(), at - maze.world(cell) - Vector3.UP * 0.05)
+	for i in clearing.foxes:
+		var round_about := rng.randf_range(0.0, TAU)
+		var home := Vector3(cos(round_about), 0.0, sin(round_about)) * rng.randf_range(110.0, 180.0)
+		home.y = maze.ground_height(home)
+		for one in MazeFox.pair_of(1 if rng.randf() < 0.6 else 2, rng.randi()):
+			one.tame = true
+			one.keep_out_of_clearing = false
+			one.home = home
+			var spot := home + Vector3(rng.randf_range(-3.0, 3.0), 0.0, rng.randf_range(-3.0, 3.0))
+			var cell := maze.cell_at(spot)
+			add(one, cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell) + Vector3.UP * (maze.ground_height(spot) + 0.3))
+	for spot: Array in MazeRabbit.clearing_spots(maze, clearing.rabbit_warrens, rng):
+		MazeRabbit.add_colony(self, spot[0], spot[1], RabbitWarren.Kind.MOUND, rng.randi_range(4, 6), rng.randi(), true)
+	var meadow := MazeHare.clearing_spots(maze, clearing.hares, rng)
+	for i in meadow.size():
+		MazeHare.add_hares(self, meadow[i], i % 2 == 1, rng.randi(), true)
+	# Lonely horses at the clearing's edge.
+	for i in clearing.horses:
+		var round_about := rng.randf_range(0.0, TAU)
+		var edge := maze.clearing * Maze.CELL * 0.5 - 45.0
+		var home := Vector3(cos(round_about), 0.0, sin(round_about)) * edge
+		home.y = maze.ground_height(home)
+		var horse := MazeHorse.new()
+		horse.coat = rng.randi_range(0, 2)
+		horse.haltered = rng.randf() < 0.4
+		horse.home = home
+		horse.home_range = 40.0
+		var cell := maze.cell_at(home)
+		add(horse, cell, rng.randf_range(-PI, PI), rng.randi(), home - maze.world(cell) + Vector3.UP * 0.3)
+	# Griffinflies over the marsh (ClearingStyle: none by default, the clearing is safe).
+	var marsh := MazeGriffinfly.marsh_middle(maze)
+	for i in (clearing.marsh_griffinflies if marsh.is_finite() else 0):
+		var one := MazeGriffinfly.new()
+		one.keep_out_of_clearing = false
+		one.home_radius = 30.0
+		var spot := marsh + Vector3(rng.randf_range(-12.0, 12.0), 0.0, rng.randf_range(-12.0, 12.0))
+		var cell := maze.cell_at(spot)
+		add(one, cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell))
 
 
 ## Puts a pack round `middle`: one to a cell within two steps of it, and two
@@ -388,25 +690,55 @@ func set_targets(players: Array) -> void:
 		enemy.targets = players
 
 
-## All their states, for the host to send: a count, then MazeEnemy.STATE_SIZE bytes each.
+## How many of those asleep (far from everyone: World._sleep_far) go in each
+## `pack`, in turn: the rest of them, and the dead, every time.
+const ASLEEP_EACH := 24
+
+var _asleep_next := 0
+
+
+## Their states, for the host to send: a count (two bytes), then for each its
+## number (two bytes) and MazeEnemy.STATE_SIZE bytes. Every one awake (near
+## someone) and every dead one goes in each time; of those asleep, ASLEEP_EACH
+## at a time in turn, so that a big maze's news stays small.
 func pack() -> PackedByteArray:
-	var data := PackedByteArray()
-	data.resize(1 + enemies.size() * MazeEnemy.STATE_SIZE)
-	data[0] = enemies.size()
+	var chosen: Array[int] = []
+	var asleep: Array[int] = []
 	for i in enemies.size():
-		var one := enemies[i].state_bytes()
+		if enemies[i].process_mode == Node.PROCESS_MODE_DISABLED and not enemies[i].dead:
+			asleep.append(i)
+		else:
+			chosen.append(i)
+	for k in mini(ASLEEP_EACH, asleep.size()):
+		chosen.append(asleep[(_asleep_next + k) % asleep.size()])
+	_asleep_next += ASLEEP_EACH
+	var each := 2 + MazeEnemy.STATE_SIZE
+	var data := PackedByteArray()
+	data.resize(2 + chosen.size() * each)
+	data.encode_u16(0, chosen.size())
+	for k in chosen.size():
+		var one := enemies[chosen[k]].state_bytes()
+		data.encode_u16(2 + k * each, chosen[k])
 		for b in one.size():
-			data[1 + i * MazeEnemy.STATE_SIZE + b] = one[b]
+			data[4 + k * each + b] = one[b]
 	return data
 
 
-## Hears what `pack` made (from `offset` in `data`).
-func unpack(data: PackedByteArray, offset := 0) -> void:
-	if data.size() <= offset:
-		return
-	var count := mini(data[offset], enemies.size())
-	for i in count:
-		enemies[i].from_bytes(data, offset + 1 + i * MazeEnemy.STATE_SIZE)
+## Hears what `pack` made (from `offset` in `data`). Gives where in `data` what
+## follows it begins.
+func unpack(data: PackedByteArray, offset := 0) -> int:
+	if data.size() < offset + 2:
+		return offset
+	var each := 2 + MazeEnemy.STATE_SIZE
+	var count := data.decode_u16(offset)
+	for k in count:
+		var at := offset + 2 + k * each
+		if data.size() < at + each:
+			break
+		var index := data.decode_u16(at)
+		if index < enemies.size():
+			enemies[index].from_bytes(data, at + 2)
+	return offset + 2 + count * each
 
 
 func _on_caught(player: Node3D, enemy: MazeEnemy) -> void:

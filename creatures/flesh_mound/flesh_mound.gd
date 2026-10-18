@@ -21,7 +21,11 @@ extends Node3D
 ##   faces every way, its ring turning slowly as it goes, the heads hanging, the
 ##   arms groping at the floor. It GRABS (`grab`): the ring tips towards the
 ##   target and the boys facing it throw their arms at it.
-## - MOUND (7 to FleshMoundLook.MOST): a heaving mound of grown-together flesh
+## - BALL (7 or 8): the boys grown together into a sphere as high as two men,
+##   heads, shoulders and arms out all round it: it ROLLS wherever it goes,
+##   turning on its own axle by how fast it moves, the arms that come round
+##   under it slapping down on the ground as it goes over them.
+## - MOUND (9 to FleshMoundLook.MOST): a heaving mound of grown-together flesh
 ##   filling more of a hall the more are in it, the boys lying in it face up
 ##   or rising from it to the waist, men's arms and legs growing out of it.
 ##   It hauls itself along on the hands at its flanks (on the walls, where
@@ -245,9 +249,9 @@ func form() -> FleshMoundLook.Form:
 	return FleshMoundLook.form(bodies)
 
 
-## Its people stand about a hub (a pair, an amalgam, a strider), not in a mound.
+## Its people stand about a hub (a pair, an amalgam, a strider, a ball), not in a mound.
 func hubbed() -> bool:
-	return bodies <= FleshMoundLook.STRIDER
+	return bodies <= FleshMoundLook.BALL
 
 
 # --- Rolling (small) ---
@@ -270,9 +274,9 @@ func roll_stage() -> Roll:
 
 # --- Grabbing (big) ---
 
-## Sends the hands at its front (a strider's facing it) for `target` (big ones only). Does nothing if a grab is under way.
+## Sends the hands at its front (a strider's facing it) for `target` (striders and mounds only). Does nothing if a grab is under way.
 func grab(target: Vector3) -> void:
-	if small() or grab_stage() != Stage.NONE:
+	if small() or form() == FleshMoundLook.Form.BALL or grab_stage() != Stage.NONE:
 		return
 	_grab_time = 0.0
 	_grab_at = target
@@ -299,7 +303,7 @@ func grab_target() -> Vector3:
 
 ## How far from its middle (ahead of it) its hands can grab, metres (0 for a small one).
 func reach() -> float:
-	if small():
+	if small() or form() == FleshMoundLook.Form.BALL:
 		return 0.0
 	if hubbed():
 		return (1.25 * FleshMoundLook.boy_size(bodies) + RING_LUNGE) * size
@@ -335,6 +339,8 @@ func touches(point: Vector3, margin := 0.0) -> bool:
 				return Geometry3D.get_closest_point_to_segment(point, hub - ends, hub + ends).distance_to(point) < (0.45 + margin) * size
 			FleshMoundLook.Form.STRIDER:
 				near = 0.75
+			FleshMoundLook.Form.BALL:
+				near = FleshMoundLook.BALL_HIGH * FleshMoundLook.boy_size(bodies) * 0.85
 		return point.distance_to(hub) < (near + margin) * size
 	var local := _core.global_transform.affine_inverse() * point
 	var scale_now := _core.global_transform.basis.get_scale()
@@ -446,6 +452,8 @@ func _process(delta: float) -> void:
 			_pose_star(delta, flat)
 		FleshMoundLook.Form.STRIDER:
 			_pose_ring(delta, flat)
+		FleshMoundLook.Form.BALL:
+			_pose_ball(delta, flat)
 		_:
 			_squeezing(delta, basis)
 			_shade(flat)
@@ -548,6 +556,8 @@ static func _girth_of(one: FleshMound) -> float:
 			return 0.7 * one.size
 		FleshMoundLook.Form.STRIDER:
 			return 0.8 * one.size
+		FleshMoundLook.Form.BALL:
+			return FleshMoundLook.BALL_HIGH * FleshMoundLook.boy_size(one.bodies) * 0.8 * one.size
 	return FleshMoundLook.radii(one.bodies).y * one.size
 
 
@@ -875,6 +885,59 @@ func _ring_arm(chain: FleshParts.Chain, root: Vector3, out: Vector3, across: Vec
 		_hands.append(to_world * (to + along * chain.end_long * 0.6))
 
 
+# --- A ball: rolling ---
+
+func _pose_ball(delta: float, flat: float) -> void:
+	var s := FleshMoundLook.boy_size(bodies)
+	# It rolls without slipping, turning about its own axle as it goes (and a
+	# little by itself), leaning into its turns.
+	var radius := FleshMoundLook.BALL_HIGH * s
+	_wheel += flat * delta / (radius * size) + delta * 0.08
+	_tilt = lerpf(_tilt, clampf(_turning * 0.25, -0.3, 0.3), 1.0 - exp(-3.0 * delta))
+	_hub = radius + absf(sin(_wheel * bodies * 0.5)) * 0.05 * s
+	var hub := Vector3.UP * _hub
+	_hub_at = hub
+	var turn := Basis(Vector3.FORWARD, _tilt) * Basis(Vector3.RIGHT, -_wheel)
+	_hub_core(turn, hub)
+	var to_skeleton := _skeleton.global_transform.affine_inverse()
+	var ground := (to_skeleton * Vector3(global_position.x, global_position.y + 0.05 * size, global_position.z)).y
+	var reach_for := _aim_now() if (_merge_to or _pulled_by) else Vector3.INF
+	var local_reach := to_skeleton * reach_for if reach_for.is_finite() else Vector3.INF
+	for copy in _build.copies:
+		var d := copy.data
+		var phase: float = d.phase
+		var out := turn * (d.dir as Vector3)
+		var frame := FleshParts.frame(out, turn * (d.front as Vector3))
+		var hips := hub + out * FleshMoundLook.BALL_HIPS * s
+		var globals := copy.body.pose(_skeleton, hips, frame, sin(_time * 2.1 + phase) * 0.12, 0.3 + clampf(-out.y, 0.0, 1.0) * 0.3 + sin(_time * 1.7 + phase) * 0.2, sin(_time * 0.9 + phase) * 0.5)
+		var chest: Transform3D = globals[2]
+		var hip_bone: Transform3D = globals[0]
+		for chain_name: String in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+			var chain: FleshParts.Chain = copy.chains[chain_name]
+			var parent := chest if chain.arm else hip_bone
+			var root := chain.root_from(parent)
+			var long := chain.upper_long + chain.lower_long
+			if not chain.arm:
+				# (its legs sunk into it, out of sight)
+				chain.reach_to(_skeleton, root, root - out * long * 0.7, frame.z, -out, Vector3.DOWN, parent)
+				continue
+			# Arms out from it, splayed and flailing; those that come round under
+			# it slap down flat on the ground as it goes over them.
+			var dir := out * 0.8 + frame.x * chain.side * 0.6 + Vector3(sin(_time * 3.1 + phase + chain.side), cos(_time * 2.6 + phase), sin(_time * 2.3 - phase)) * 0.18
+			if local_reach.is_finite():
+				dir += (local_reach - root).normalized() * 1.4
+			dir = dir.normalized()
+			var to := root + dir * long * 0.95
+			var palm := (-out + dir * 0.3).normalized()
+			var along := dir
+			if to.y < ground:
+				to.y = ground
+				palm = Vector3.DOWN
+				along = Vector3(dir.x, 0.0, dir.z).normalized() if Vector2(dir.x, dir.z).length() > 0.05 else Vector3.FORWARD
+			chain.reach_to(_skeleton, root, to - along * chain.end_long * 0.5, (out * 0.4 + frame.z * 0.6).normalized(), along, palm, parent)
+			chain.hand(_skeleton, 0.3 + 0.4 * absf(sin(_time * 4.0 + phase)), 0.4, 0.6, _time, 0.5)
+
+
 # --- A mound ---
 
 func _squeezing(delta: float, basis: Basis) -> void:
@@ -1172,7 +1235,7 @@ func _pose_grabber(chain: FleshParts.Chain, root: Vector3, out: Vector3, long: f
 	# The grab: drawn up and back, splayed; thrown out round the point; clutching.
 	if weights.x > 0.0:
 		var to := target - root
-		var spot := target + Vector3(cos(phase * 2.4), 0.0, sin(phase * 2.4)) * 0.35 * chain.size
+		var spot := target + Vector3(cos(phase * 2.4), 0.0, sin(phase * 2.4)) * 0.2 * chain.size
 		spot.y = clampf(spot.y + 0.6, 0.3, 1.6)
 		var room_out := slide / size * (1.0 if long_arm else 0.3)
 		var rise := root + (Vector3.UP * 0.8 + out * 0.3 - Vector3(to.x, 0.0, to.z).normalized() * 0.25).normalized() * long * 0.8

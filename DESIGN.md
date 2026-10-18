@@ -41,7 +41,11 @@ own), seen and lit like *Inside*. A secret cart in the Scareathon arcade (code *
   in the editor).
 - **Walls.** Brutalist concrete: cast concrete inside the rings, precast slabs between them; photographed textures
   without visible tiling, rain stains running down from ledges. Plain boxes by default (no crowning or footing);
-  decorated styles are for particular places. Solid, never planes.
+  decorated styles are for particular places. Solid, never planes. "Maze walls should be very slightly weathered
+  and rounded rather than perfect squares" (2026-10-18): their top edges and corners are worn round (unevenly: deeper
+  in places, nearly sharp in others; rounder on the great walls), paler where worn, with chips, grime where the rain
+  runs off their tops, and faces very slightly uneven. Still clearly huge brutalist concrete. Rules per section:
+  wall edge rounding, border wall edge rounding, wall weathering (WallMesh builds them; collision stays boxes).
 - **Ground.** Damp dirt and mud in the halls (cracked dry patches, stones, wet mud, moss along the wall feet,
   puddles that reflect the walls), at the quality of Outside's sand. Real 3D grass in the clearing that bends round
   you and stands back up, never mown.
@@ -65,6 +69,19 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
   4 m, level again near the walls. All set by `ClearingStyle` (`scripts/clearing_style.gd`, `MazeLayout.clearing_style`).
 - Something different before each entrance (`ClearingStyle.entrances`): dense woods round one, grass up to his chest
   round another, a marsh in front of another, nothing at all near the last.
+- The tall grass (ClearingStyle "Entrances": tall grass width, reach, ragged, height, hollow): a meadow of grass up to
+  his chest, half an oval with its straight side along the wall, about 340 m along it and 150 m out into the
+  clearing, its edge wandering in bays and spits. It runs right up to the foot of the wall and to the gate on both
+  sides of it; the doorway stays open (grass has no colliders). Changed 2026-10-18 at the user's word ("the tall
+  grass area needs to be bigger in the clearing and run right up to the walls and door"): before, it was a round
+  meadow of 75 m radius, its middle 55 m in from the gate, that met the wall only near the gate.
+- Plants (`scripts/undergrowth.gd`): ferns and moss round the pines, bushes over the field. A bush is a rooted dome
+  of leafy lumps a couple of metres across: thin stems from its foot, and over each lump a shell of small cards on
+  which a shader draws sprays of pointed leaves, the gaps cut out, darker inside and low down, lit as one rounded
+  mass. (2026-10-18, the user: "the bush just looks like floating squares": they had been flat-shaded diamonds hung
+  round their lumps.)
+- The ground casts no shadow (2026-10-18, the user: "I can see lines in the ground"): with the sun low it shaded
+  itself in fine stripes (shadow acne), which showed between the grass.
 - The marsh (`scripts/marsh.gd`, the marsh settings of `ClearingStyle`): not a pond but a wide, ragged bog, about
   190 m along the wall and 125 m out, beginning a few metres from the wall's foot. Many shallow, irregular pools and
   channels of standing water between hummocks and tussocks of wet ground, black mud at the water's edge, broad open
@@ -201,7 +218,8 @@ lays out the same spots from the seed; a hooked vine swings on each player's own
     maybe pussy"; "different size abominations that can grow and merge together or by absorbing people"): people grown
     together, one creature in sizes by how many bodies are in it. Pallid waxy skin flowing from body to body, puckered
     scar-dark seams, stretch marks, veins, boils of pus; the boys' blank mask faces; men's arms, long gaunt arms and legs.
-    Four forms (2026-10-18, the user: "a couple more amalgam stages rather than just the 2"):
+    Five forms (2026-10-18, the user: "a couple more amalgam stages rather than just the 2", then "one more stage before
+    abominations thats like a sphere of bodys that rolls around"):
     - **Pair** (2): two boys grown together back to back, the one under on all fours, the one on top face up with
       his arms and legs waving like an upturned beetle's. Scuttles nearly as fast as a run (3.9 m/s); where its quarry
       is in a straight line within 9 m it crouches (0.6 s) and rushes at 6.6 m/s, faster than a sprint, for only
@@ -214,13 +232,18 @@ lays out the same spots from the seed; a hooked vine swings on each player's own
       all ten or twelve legs, the ring turning slowly. A little slower than a run hunting (3.5 m/s); it faces every
       way, so it grabs at anyone within about 2.5 m on any side (0.95 s wind-up, the ring tipping and lunging, the
       boys on that side throwing their arms). A closing hand or walking into it catches.
-    - **Mound** (7 to 10): fills more of a hall the bigger it is, crawls slower (no faster than a walk). Hauls itself on
+    - **Ball** (7 or 8): the boys grown into a sphere as high as two men, heads, shoulders and arms out all round it.
+      It rolls wherever it goes, the arms that come round under it slapping down; down a straight hall it gathers speed
+      until it is faster than a sprint (6.4 m/s), but it turns only slowly and must slow nearly to a stop for a corner:
+      a turning off its way, or a climb, gets away. Rolled over, you are caught.
+    - **Mound** (9 to 10, the "abomination"): fills more of a hall the bigger it is, crawls slower (no faster than a walk). Hauls itself on
       its hands, on the walls where they are near; grabs with the hands at its front after a wind-up (arms drawn up,
       hands splayed and shaking). A closing hand or walking into it catches.
     - **Growing**: whom it catches it absorbs (their body is seen dragged in; the player still goes back to the clearing)
       and it gains a body; two that meet merge, the smaller flowing into the bigger. Growing past a form's most makes it
-      the next form (pair, amalgam, strider, mound). Capped at 10 bodies (phones). Each section has, by default, two
-      pairs, two amalgams, a strider of 5 or 6 and a mound of 7 or 8 (MazeStyle pairs, amalgams, striders, flesh_mounds).
+      the next form (pair, amalgam, strider, ball, mound). Capped at 10 bodies (phones). Each section has, by default, two
+      pairs, two amalgams, a strider of 5 or 6, a ball of 7 or 8 and a mound of 9 or 10 (MazeStyle pairs, amalgams,
+      striders, balls, flesh_mounds).
   - **Slime wall**: see-through jelly full of skeletons that fills a hall wall to wall, below walking pace;
     touching it catches (you are drawn in and tumble among the bones). Find another way round.
   - **Bats**: a colony roosts on a wall; running or sprinting near wakes it. They catch nobody: they mob the
@@ -399,6 +422,135 @@ lays out the same spots from the seed; a hooked vine swings on each player's own
   kind. The dev panel puts any of them in ahead of you.
 - None enters the clearing. Caught, a player is put back in the clearing. Once out, nobody is hunted.
 - With friends, the room's maker runs them; everyone else sees copies.
+- **Solid** (2026-10-18, the user: "the enemies should have collision"): the boy is stopped by a hunter's body as by
+  a wall (layer 4; copies run by another machine on their own layer, MazeEnemy.PUPPET_LAYER, so a guest is stopped
+  by them too). Swarms, flocks and the giants stay passable.
+
+### The added hunters (2026-10-18)
+
+- **Clown**: a horror clown, too tall and too thin, stained baggy suit and ruff, a greasepaint mask with a painted
+  grin, one red balloon floating over the walls (the only colour near him). He stalks whoever he has noticed to a
+  music box, slower than a run, and is only ever still when someone looks at him (frozen mid-pose, the head tilting).
+  Within 10 m, unwatched, he giggles (look at him then and he stops), then sprints in flailing stop-motion at 8 m/s for
+  2.3 s and stands winded. Touching him catches. The reverse of the angel: watched, he is harmless.
+- **Stegosaurus**: Stegosaurus stenops at its real size, a grazer in the wide halls (sometimes with a calf), often
+  across the hall. It barely notices anyone creeping; within about 7 m of its body it turns side on, rumbles and raises
+  the thagomizer (2.6 s), then swings it low: whoever the spikes hit is thrown and caught. It never chases.
+- **Spider monkeys**: troops of four to seven hang by their tails from a vine they string about 6 m up a hall's
+  walls, still and dark. They stir and swing along over you; pass under one and it shrieks (0.6 s) and drops at where
+  you will be: walking or running you are landed on, a sprint carries you past. A miss and it chases briefly, then
+  climbs back.
+- **Lizard people**: bands of two or three, reptile men clinging head down to the walls over a hall, tasting the air.
+  They skitter along the face beside you and climb after you; they hiss and fan the dewlap, then leap at where you
+  were (keep moving and they miss). On the ground a little faster than a run. Cold-blooded: by night or in rain slow
+  enough that a run escapes.
+- **The masked tribe** (the user: "natives with masks and spears"; a fictional feral tribe of the maze's own lost
+  boys, after Lord of the Flies, not any real people): parties of three to five boys, clay-grey, in rags, each face
+  behind a crude carved mask of wood, bone or bark, each with a stick spear. They camp round a skull totem in a dead
+  end and patrol in file; one drums and chants on seeing you and they hunt at a run (a sprint gets away), fanning
+  out. One at a time draws back with a yell (0.85 s) and throws where you are going (ducked, it goes over); close to,
+  they jab. They cannot reach anyone up high.
+- **Deinonychus**: packs of three or four, feathered and as the bones say. One holds off about 9 m, crouched and
+  clicking, while the others go round by loops of the halls to cut you off; then all burst faster than a sprint for
+  about two seconds and tire. Close and facing you: a crouch, tail flick and hiss, then a pinning leap (step aside and
+  it stumbles). They cannot climb: up high you are safe.
+- **Pterodactyls**: Pteranodon-like, 6.8 m across, soaring over the rings and roosting on high wall tops. They hunt
+  anyone in the open: a low pass with its shadow and a croak, then a dive with the roar of the wind, feet forward; its
+  line is set the last half second (step aside). Caught, you are carried off. Not into a passage under 9 m wide, or
+  under anything.
+- **Giant snail**: a land snail as big as a car, slower than a walk but relentless; it climbs walls and over the tops
+  after anyone up high, and its slime trail lies two minutes and holds you back to less than its speed. Touching it
+  catches; it pulls into its shell when bumped or when it loses you.
+- **Hydra**: a heavy, low reptile body with seven serpent necks, sunk in a black marsh pool of its own across a hall.
+  Awake, its heads weave and watch; anyone within about 8.5 m is struck at: a head coils back and hisses (0.75 s), then
+  darts, up to three at once from different angles. Sprint and swerve past, or slip by behind it. A head cut off (act,
+  near it) falls, and two grow back.
+- **Gibbons**: troops of three to five living high on the ledges, terraces and wall tops (past the first section),
+  swinging under the edges and flying the gaps. On the ground you are safe but seen: the great call fetches every
+  hunter within 40 m. Climbing near their ways you are prey: one winds up shrieking and swings at you feet first; get
+  down or away from the edges first.
+
+- **Screaming bear** (the user: "annihilation bears"; an original creature in that spirit): a huge bear starved to
+  the bone and changed, legs far too long, half its face bare skull with a clouded eye, no lips. It cries out with the
+  voice of the last thing it killed ("help!", "no, no, no!", sobbing; made in code, the same every time), which
+  carries far: you hear it long before you see it. It stalks slower than a run, calling; in a line within about 13 m
+  it rears and screams (about 2 s), then charges faster than a sprint, briefly, and swipes. Caught, you are mauled and
+  it takes your voice. Climb out of reach, break its sight, never go toward the voice.
+- **Brachiosaurus**: life size, 13 m tall, roaming the desert and the wide round halls and browsing at the walls; a
+  gentle landmark, dangerous only underfoot: each foot lifts slowly over a darkening spot where it will land, the
+  ground shakes near it, and whoever is on the spot is crushed. Walk under its belly or clear of the spots.
+- **Dimetrodon**: a 3.4 m sail-backed synapsid basking side on to the sun in wide halls and the desert, cold-blooded
+  (slow at night and in rain). Come near and it rises gaping and hissing, then lunges; it chases slower than a run.
+- **Griffinflies** (the user: "a giant dragonfly"): Meganeura 1.4 m across, four wings each beating on its own, in
+  pairs over a stretch of halls. One hangs in front of you at head height, warns for a second (legs out in a basket,
+  jaws open, wings clattering) and strikes through where you were: duck or step aside. Hit, you are knocked down, not
+  caught; two harrying someone alone catch them.
+
+- **Psychic child** (the user: "not necessarily hostile but dangerous", then "should have telekinesis and protect you
+  from hostiles"): a small barefoot girl in a washed-out hospital smock, a blank mask face, drifting a hand's breadth
+  off the ground humming, debris circling her. She hunts nobody; come slowly and stay calm by her and she follows you.
+  Anything that comes after someone calm near her she takes hold of with her mind (arm out, the air warped, a
+  nosebleed): lifted, held, then killed, flung or shoved back by its size. Each hold costs her; several in a row, a
+  sprint near her, a bump or a loud thing frighten her, and after a warning (warp, racing debris, ringing, hands to
+  her head) she bursts: everyone within 10 m thrown, whoever is right by her caught. Then she sits drained.
+- **Lynx**: shy, it watches from the ledges and slips away, hunting the small animals; cornered or at its kill it
+  hisses, then swipes. **Black panthers**: stalkers on the ledges and from behind, strongest at night (eyeshine, a
+  low growl, the wiggle before the spring); face one and it hesitates and gives up; turn your back and it pounces;
+  run from it close and it chases briefly faster than a sprint.
+- **Grey wolves** (the user: "might as well add wolves"): packs of four to six with a den in a dead end, patrolling
+  in file, howling together at dusk and through the night (other packs answer). They hunt by endurance: a trot slower
+  than a run that never tires, others covering the side passages; they close in (low, snarling, a growl) only on the
+  slow, stopped, cornered or long-hunted, then one bursts and grabs. Climb, stand by a fire, reach the clearing, or
+  keep together: they wait for a straggler.
+
+- **Giant octopus** (the user: "New monster: giant octopus"): mantle 2.5 m, arms 8 m, camouflaged in a black pool  against a hall's wall or a drain through a wall, one or two arms feeling along the floor and up the walls (curling  tips, rings on the water, a wet slither). Linger within an arm's reach and an arm rears and coils (about a second,  the skin blanching), then lashes where you were: a walk is caught, a run missed. It drags you to its water: four  jumps break its grip, or a friend's act cuts the arm (it inks, which blinds, and hides; the arm grows back). It may  crawl out after you, slower than a walk; from a drain it pours itself through the wall.- **Moose** ("Moose"): unpredictable at its own wallow: a cow charges anyone near her calf, a bull in the rut whoever  he sees; ears back, hackles up, head-low stare first. The charge knocks you down and it rears: still in reach when  the hooves land, you are caught. **Woolly mammoths** ("wooly mammoth"): herds in the widest halls; they ring the  calf, the matriarch trumpets and mock-charges, then charges and tramples; step aside late, she is slow to turn.  Nothing hunts the giant plant-eaters (Ecology: size 4 plant-eaters are nobody's prey).
+- **Carnivorous plants** (the user: "carnivorous plants"): giant real ones that never move. A Venus flytrap shivers
+  at a touch (the warning) and snaps on whoever is still in it 0.75 s later; a sundew's sticky leaves slow you, then
+  hold you a couple of seconds (jumping tears you free); a pitcher's slippery lip at a wall's foot takes whoever
+  steps on it. They eat small creatures. **Mushrooms**: patches on walls and floors, bonnets glowing at night;
+  puffballs puff spores when trodden or run near (the screen blurs and greys, you slow, the zombies hear).
+  **Mushroom zombies**: boys taken over by a fungus, moved like puppets, clicking; blind, they hunt by sound only
+  (running, sprinting, hard landings; walking only close; crouching never): they stop and listen (the warning),
+  lurch slower than a run and lunge at the sound. A creature they take raises another from the ground.
+- **Gnomes** (the user: "gnomes"): knee-high folk-tale gnomes, old and eerie, a band in a hollow at a wall's foot.
+  Stock-still while anyone faces them; unwatched they creep up behind whoever has something in their pockets,
+  snatch one thing and run home with it (catch one and it drops it; the hoard by the door can be taken back). Run at
+  their hollow and two pull a rope across at shin height. They catch nobody; a lit torch keeps them off.
+- **The weaver** (the user: "a four winged six-armed humanoid"): a tall faceless waxen figure, six arms whose hands
+  never stop signing, four torn lacewing wings, drifting over the halls and weaving strands of shining thread across
+  them at chest height. Walk into one upright and you stick; duck or slide under, or cut it with act. Stuck, it comes
+  and lifts you away unless you tear free (mash jump or act) or a friend cuts you out.
+- **Giant ants** (the user: "giant ants"): a colony of dog-sized carpenter ants, a nest in a dead end and a trail
+  out along the halls. Keep off the trail and away from the nest and they let you be; tread on it and the alarm runs
+  through them (they rear and click), and they pour out faster than a run: three holding you a second catch you; a
+  sprint or a jump tears them off. They haul carcasses home. **Giant praying mantis**: 3 m, still among ferns by a
+  hall wall, its head turning in jerks to follow you (the tell); within about 3 m in front it strikes faster than
+  anything (ducking is no help); a miss leaves it still a moment to slip past.
+- **Rats** (the user: "rats, rat swarms and rat kings"): mischiefs that run the wall feet and gnaw carcasses,
+  fleeing; **rat swarms** in drains at a wall's foot that roar, then pour out like a river after you (stand in them a
+  moment and you are caught; a sprint, getting two metres up, or fire saves you); the **rat king**, rats knotted by
+  their tails dragging themselves slower than a walk, whose shriek calls every swarm near, bold and past the fire.
+- **The luck dragon** (the user: "falcor like long dragon"; original): 35 m, pearly scales, white fur, a gentle
+  hound's head, no wings, swimming through the sky over the outer rings and the desert. Stand still in the open and
+  it comes down, lays its head before you and sings; climb onto its neck and it carries you over the walls further
+  out. While it is down the hunters near back off. (The wyverns are still to come.)
+- **Lonely horses** (the user: "there should be lonely horses as well, rarely"): one or two in the whole maze, each  alone, feral and a little thin, mane and tail long and tangled, an old rope halter on some. They wander the wide  halls and the clearing's edge, graze, doze, roll and shake, and now and then whinny; nothing answers. Wary: run at  one and it canters off; come slowly and stand and in time it lets you near; touch it (act, empty-handed) three  times a little apart and it trusts and follows you. A hunter near and it bolts. (Riding is still to come.)
+- **Dogs and meat**: meat is cut from carcasses (act) and now and then found at camps; thrown, what eats meat goes
+  to it. A dog fed meat (thrown near it, or held out) becomes the giver's friend: it hunts no player, follows at heel,
+  barks at what hunts near and goes for what comes at its friend. Left far behind long, it goes feral again.
+
+### The maze lives on its own (2026-10-18, Ecology)
+
+The user: "they should also interact with each other. We should have world game manager ... like a Rain World or
+Kenshi kind of sim ... relatively simple". scripts/ecology.gd, run where the hunters are (alone, or the host):
+- Every kind that takes part has a size (0 a hen to 4 the biggest) and a diet (Ecology.KINDS). Meat-eaters grow hungry
+  over about five minutes; hungry and after no player, they hunt the nearest smaller creature they see (or one as big
+  that eats only plants), never their own kind. Catching it kills it: a carcass where it fell (the flies come), and
+  the killer eats a while. Players still come first.
+- What could be eaten runs from a meat-eater near it that is after it or hungry.
+- Out of everyone's sight the creatures still go on their ways, and a hungry one may kill sleeping prey it comes on:
+  the maze is not as it was left.
+- The dead come back after three minutes at their dens (where they began), once nobody is within 150 m.
 
 ## Who else is in the maze
 
@@ -437,6 +589,7 @@ catch nobody and are nothing to be afraid of, which makes the ones that are wron
 MazeStyle, "Wildlife". Each machine runs its own copy from the round's seed, frightened by the same players, so they
 agree.
 ## Wildlife
+- **Foxes, frogs, rabbits, hares and jackalopes** (2026-10-18, the user: "regular frogs ... foxes", "rabbits, hares,  jackalopes"): the life of the place and what the hunters eat. Red foxes follow at a distance, sit and watch, slip  away, carry off things lying about and pounce for the small things (tame ones in the meadow). Frogs sing round the  marsh and little ponds at dusk and in rain and plop into the water as you come near. Rabbits graze round their  warrens and bolt down the holes, thumping; hares lie flat, then explode away jinking; the rare jackalope stares,  and butts whoever comes too near (knocked down, not caught).
 
 Not everything in the clearing and the maze is a threat. Added 2026-10-18 at the user's request ("there should be
 non hostile regular deer and elk and chicken as well. Some should be in the clearing"):
@@ -464,6 +617,9 @@ non hostile regular deer and elk and chicken as well. Some should be in the clea
   The clearing has a couple of flocks (ClearingStyle, "Wildlife"), the first pecking at the edge of the woods, all well
   away from the middle and the paths to the gates; a ring can have some in its halls too (MazeStyle, "Wildlife", none
   by default). Placed from the round's seed, so everyone in a room sees the same flocks.
+- **Fireflies** (the user: "fire flies"): at dusk and through the night clouds rise from the clearing's tall grass,
+  woods, marsh and meadow, and from the ivy and the walls' feet in the maze: cold yellow-green, three kinds each
+  blinking in its own rhythm (one in waves all together); they scatter from anyone running through and drift back.
 - **Insects** (added 2026-10-18: "moths and flys", "dragon flys"). Mostly atmosphere, and a tell or two:
   - **Moths**: pale, dusty moths fluttering erratically in clouds round every light in the mist: the angel's burning
     heart, fires and torches, the pale light past the exit; they blunder into the light and bounce off it, and a few

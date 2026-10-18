@@ -1,0 +1,10 @@
+# A red fox: its look, every move (the mousing pounce among them) and its barks and scream, for any game (no thinking). Needs godot/dog.
+creatures/fox/fox.gd
+creatures/fox/fox_look.gd
+creatures/fox/fox_rig.gd
+creatures/fox/models/fox_a.glb
+creatures/fox/models/fox_a_lo.glb
+creatures/fox/models/fox_b.glb
+creatures/fox/models/fox_b_lo.glb
+creatures/fox/tools/.gdignore
+creatures/fox/tools/build_fox.py

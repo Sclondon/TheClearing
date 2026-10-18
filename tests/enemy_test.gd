@@ -340,7 +340,7 @@ func _run() -> void:
 			lurk_ok = false
 	check("none of them starts in or near the clearing", lurk_ok)
 	var data: PackedByteArray = a.pack()
-	check("pack() is a byte for the count and %d each" % MazeEnemy.STATE_SIZE, data.size() == 1 + a.enemies.size() * MazeEnemy.STATE_SIZE, "(%d bytes)" % data.size())
+	check("pack() is two bytes for the count and %d each (two for its number)" % (2 + MazeEnemy.STATE_SIZE), data.size() == 2 + a.enemies.size() * (2 + MazeEnemy.STATE_SIZE), "(%d bytes)" % data.size())
 	b.unpack(data)
 	await frames(2)
 	var far_off := 0.0

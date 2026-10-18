@@ -1,0 +1,8 @@
+# A deinonychus: its look, every move and its calls, for any game (no thinking)
+creatures/deinonychus/deinonychus.gd
+creatures/deinonychus/deinonychus_look.gd
+creatures/deinonychus/deinonychus_rig.gd
+creatures/deinonychus/models/deinonychus.glb
+creatures/deinonychus/models/deinonychus_lo.glb
+creatures/deinonychus/tools/.gdignore
+creatures/deinonychus/tools/build_deinonychus.py

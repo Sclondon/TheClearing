@@ -30,6 +30,9 @@ extends Node3D
 ##   the game moves it forward by `Dog.lunge_push`.)
 ## - THE SHAKE: after a miss, a shake that runs from its head to its tail like
 ##   a wet dog's, ears flapping.
+## - GLAD (friendly): its tail carried high and wagging hard, the whole of it,
+##   its ears pricked up, its head up, hackles flat, its mouth a little open.
+## - EATING: its head down to the ground, worrying at what it eats, jaws working.
 ## - Sitting and lying down, panting when it has run, the hackles (the Dog
 ##   sets the crest material's `bristle`).
 ##
@@ -187,6 +190,8 @@ var _twitch_timer := 3.0
 var _track := 0.0
 var _stalk := 0.0
 var _snarl := 0.0
+var _happy := 0.0
+var _eat := 0.0
 var _bristle := 0.0
 ## Tracking: the head casting from side to side, and the nose working.
 var _cast := 0.0
@@ -276,7 +281,10 @@ func _process(delta: float) -> void:
 	var snarling := _dog.snarling or stage != Dog.Lunge.NONE
 	_snarl = _approach(_snarl, 1.0 if snarling else 0.6 * _stalk, 9.0 if snarling else 4.0, delta)
 	_howl = _approach(_howl, 1.0 if _dog.howling() else 0.0, 5.0 if _dog.howling() else 3.0, delta)
-	_bristle = _approach(_bristle, maxf(maxf(_stalk, _snarl), maxf(1.0 if stage != Dog.Lunge.NONE else 0.0, _track * 0.25)), 6.0, delta)
+	var glad := _dog.friendly and not snarling and not _dog.stalking and stage == Dog.Lunge.NONE
+	_happy = _approach(_happy, 1.0 if glad else 0.0, 3.0, delta)
+	_eat = _approach(_eat, 1.0 if _dog.eating and stage == Dog.Lunge.NONE else 0.0, 5.0, delta)
+	_bristle = _approach(_bristle, maxf(maxf(_stalk, _snarl), maxf(1.0 if stage != Dog.Lunge.NONE else 0.0, _track * 0.25)) * (1.0 - _happy), 6.0, delta)
 	if materials.has("crest"):
 		(materials["crest"] as ShaderMaterial).set_shader_parameter(&"bristle", _bristle)
 	_barked += delta
@@ -370,7 +378,7 @@ func _process(delta: float) -> void:
 	var flat: Array[float] = [0.0, 0.0, 0.0, 0.0]
 
 	# Tracking: the front of it a little lower, nose to the ground.
-	body_turn.x += 0.12 * _track
+	body_turn.x += 0.12 * maxf(_track, _eat)
 	# Stalking: down on bent legs, the shoulders hunched up over the forelegs, rump low.
 	body_at.y -= 0.075 * _size * _stalk
 	chest_turn.x += -0.10 * _stalk
@@ -482,14 +490,17 @@ func _pose_head(delta: float, upstream: float, level: float, sit: float, lie: fl
 		_sniff_in = randf_range(0.08, 0.22) if randf() < 0.85 else randf_range(0.5, 0.9)
 		_sniff = randf_range(-1.0, 1.0)
 	var cast := sin(_cast * 2.1) * 0.32 + sin(_cast * 3.7 + 1.0) * 0.1
-	var yaw := _look.x * awake * (1.0 - _track) + cast * _track + _sniff * 0.03 * _track
-	var pitch := _look.y * awake * (1.0 - _track) * (1.0 - _stalk)
+	var yaw := _look.x * awake * (1.0 - _track) * (1.0 - _eat) + cast * _track + _sniff * 0.03 * _track
+	var pitch := _look.y * awake * (1.0 - _track) * (1.0 - _stalk) * (1.0 - _eat)
 	# Nose down: the neck goes down and forward, the head turns down at the end of it.
 	pitch += 1.4 * _track + _sniff * 0.025 * _track
 	# Stalking: the neck stretched forward, level with the back; the head low.
 	pitch += 0.35 * _stalk - 0.15 * _stalk
 	# Howling: nose to the sky.
 	pitch -= 1.25 * _howl
+	# Eating: head down to it on the ground, worrying at it. Glad: the head carried up.
+	pitch += 1.5 * _eat * (1.0 - _track) + sin(_time * 5.3) * 0.06 * _eat
+	pitch -= 0.12 * _happy * (1.0 - _eat)
 	# Snarling: the head a little lower, so it looks up from under its brow.
 	pitch += 0.12 * _snarl * (1.0 - _howl)
 	var laid := lie * _doze
@@ -524,6 +535,9 @@ func _pose_jaw(stage: int, through: float, flung: float) -> void:
 		open = _keyed(SNAP, through * Dog.BITE_TIME)
 	var panting := smoothstep(0.25, 0.6, _puffed) * (1.0 - _doze) * (1.0 - _snarl)
 	open = maxf(open, panting * (0.25 + 0.08 * sin(_breath)))
+	# (glad, its mouth hangs a little open; eating, its jaws work)
+	open = maxf(open, _happy * (0.16 + 0.04 * sin(_breath)))
+	open = maxf(open, _eat * (0.08 + 0.22 * maxf(sin(_time * 10.5), 0.0)))
 	_mouth = lerpf(_mouth, open, 0.6)
 	_jaw.rotation.x = _mouth * GAPE
 	var lift := maxf(_snarl, flung) * (1.0 - _howl * 0.7)
@@ -633,14 +647,15 @@ func _look_about(delta: float) -> void:
 ## straight back and stiff stalking, streaming at a gallop, low howling, down
 ## when it is at rest; flung about in a shake.
 func _carry_tail(delta: float, gallop: float, sit: float, lie: float, flung: float, shook: float) -> void:
-	_wag = _approach(_wag, 0.5 * _track, 4.0, delta)
-	_wag_phase += delta * TAU * lerpf(2.4, 4.0, _wag)
-	var carried := 0.05 + 0.35 * _track + 0.5 * _stalk + 0.3 * gallop + 0.3 * _alert * (1.0 - _stalk) - 0.35 * _howl + 0.4 * flung
+	# (glad, the tail is carried up and wags hard, the whole of it, faster the gladder; less at a gallop)
+	_wag = _approach(_wag, maxf(0.5 * _track, _happy * lerpf(1.0, 0.45, gallop) * (1.0 - 0.5 * lie)), 4.0, delta)
+	_wag_phase += delta * TAU * lerpf(2.4, 4.6, _wag)
+	var carried := 0.05 + 0.35 * _track + 0.5 * _stalk + 0.3 * gallop + 0.3 * _alert * (1.0 - _stalk) - 0.35 * _howl + 0.4 * flung + 0.55 * _happy
 	carried = lerpf(carried, 0.35, sit)
 	carried = lerpf(carried, 0.05, lie)
 	for i in _tail.size():
 		var link := _tail[i]
-		var swing := sin(_wag_phase - i * 0.8) * _wag * (0.3 if i == 0 else 0.2) + lie * _side * 0.3
+		var swing := sin(_wag_phase - i * 0.8) * _wag * ((0.3 if i == 0 else 0.2) + 0.3 * _happy) + lie * _side * 0.3
 		if shook > 0.0:
 			swing += sin(TAU * SHAKE_RATE * _shaken - 2.0 - i * 0.5) * 0.5 * shook
 		var curl := carried - _pelvis.rotation.x * 0.8 - _body.rotation.x * 0.5 * (1.0 - sit) if i == 0 else -gallop * 0.08 - _stalk * 0.05
@@ -663,7 +678,7 @@ func _flick(which: int, push: Vector3) -> void:
 ## run flat out, one or other turned aside to listen when it is at ease.
 func _carry_ears(delta: float, gallop: float) -> void:
 	var flat := maxf(gallop * 0.7, maxf(_snarl * 0.85, _howl * 0.75))
-	flat = maxf(flat, _doze * 0.55) * (1.0 - 0.6 * _stalk)
+	flat = maxf(flat, _doze * 0.55) * (1.0 - 0.6 * _stalk) * (1.0 - 0.8 * _happy)
 	_ear_flat = _approach(_ear_flat, clampf(flat, 0.0, 1.0), 9.0 if flat > _ear_flat else 4.0, delta)
 	_ear_timer -= delta
 	if _ear_timer <= 0.0:
@@ -672,7 +687,8 @@ func _carry_ears(delta: float, gallop: float) -> void:
 		_ear_turn_to = Vector2(randf_range(0.5, 1.1) if pick == 0 else 0.0, randf_range(0.5, 1.1) if pick == 1 else 0.0)
 	var listening := (1.0 - _alert) * (1.0 - _ear_flat) * (1.0 - _track)
 	_ear_turn = _ear_turn.lerp(_ear_turn_to * listening, 1.0 - exp(-9.0 * delta))
-	var forward := maxf(_track, _stalk)
+	# (glad, the ears are up and a little forward: pricked)
+	var forward := maxf(maxf(_track, _stalk), 0.7 * _happy)
 	for side in 2:
 		var out := 1.0 if side == 0 else -1.0
 		var turn: float = _ear_turn[side]

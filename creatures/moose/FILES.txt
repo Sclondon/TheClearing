@@ -1,0 +1,7 @@
+# Moose, a bull and a cow (and a calf): their look, every move, the warning, the strike and the calls, for any game (needs godot/elk and godot/deer installed too)
+creatures/moose/moose.gd
+creatures/moose/models/moose_bull.glb
+creatures/moose/models/moose_bull_lo.glb
+creatures/moose/models/moose_cow.glb
+creatures/moose/models/moose_cow_lo.glb
+creatures/moose/tools/build_moose.py

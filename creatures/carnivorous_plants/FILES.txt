@@ -1,0 +1,13 @@
+# Giant carnivorous plants: a Venus flytrap, a sundew and a pitcher plant (needs godot/character-controller installed too)
+creatures/carnivorous_plants/plant_look.gd
+creatures/carnivorous_plants/flytrap.gd
+creatures/carnivorous_plants/sundew.gd
+creatures/carnivorous_plants/pitcher.gd
+creatures/carnivorous_plants/models/flytrap.glb
+creatures/carnivorous_plants/models/flytrap_lo.glb
+creatures/carnivorous_plants/models/sundew.glb
+creatures/carnivorous_plants/models/sundew_lo.glb
+creatures/carnivorous_plants/models/pitcher.glb
+creatures/carnivorous_plants/models/pitcher_lo.glb
+creatures/carnivorous_plants/tools/.gdignore
+creatures/carnivorous_plants/tools/build_plants.py

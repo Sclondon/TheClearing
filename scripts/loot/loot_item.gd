@@ -3,9 +3,12 @@ extends RigidBody3D
 ## Something left lying about the clearing and the maze, to find and take (see
 ## Loot, which places them, keeps everyone's copies in step and keeps the
 ## inventory): a grappling hook, a backpack, a spear, a torch, a flare, a scrap of
-## a map, a rope ladder; and something to fight with: a stick, a bat, a sword,
+## a map, a rope ladder; something to fight with: a stick, a bat, a sword,
 ## rarely a revolver or a shotgun, and more rarely still a box of a few rounds
-## for one (DESIGN.md: "What lies about", "Fighting back").
+## for one (DESIGN.md: "What lies about", "Fighting back"); and meat, cut from a
+## carcass. Meat is for what eats it: lying on the ground it is in the group
+## `meat` (meat-eaters that smell it go to it, and a feral dog fed it is a
+## friend: MazeDog), and `eat` is how it is eaten.
 ##
 ## One of these is a loose body like anything the boy can carry (Player.carried),
 ## and what Player does with what is in his hand works on it: act throws it. A
@@ -19,7 +22,7 @@ extends RigidBody3D
 ## Its models are built in Blender: props/tools/build_props.py (props/models/).
 
 ## What it is. (Sent over the network by number: new kinds go on the end.)
-enum Kind { HOOK, BACKPACK, SPEAR, TORCH, FLARE, MAP, LADDER, STICK, BAT, SWORD, REVOLVER, SHOTGUN, ROUNDS, SHELLS }
+enum Kind { HOOK, BACKPACK, SPEAR, TORCH, FLARE, MAP, LADDER, STICK, BAT, SWORD, REVOLVER, SHOTGUN, ROUNDS, SHELLS, MEAT }
 ## Where it is: lying about, in someone's pocket (pack), in someone's hand, in
 ## the air (thrown or dropped), or used up (a burnt-out flare, a hung ladder).
 enum State { LYING, POCKET, HAND, FLYING, SPENT }
@@ -29,13 +32,13 @@ const NAMES := {
 	Kind.HOOK: "GRAPPLING HOOK", Kind.BACKPACK: "BACKPACK", Kind.SPEAR: "SPEAR", Kind.TORCH: "TORCH",
 	Kind.FLARE: "FLARE", Kind.MAP: "MAP SCRAP", Kind.LADDER: "ROPE LADDER", Kind.STICK: "STICK", Kind.BAT: "BAT",
 	Kind.SWORD: "SWORD", Kind.REVOLVER: "REVOLVER", Kind.SHOTGUN: "SHOTGUN", Kind.ROUNDS: "BOX OF ROUNDS",
-	Kind.SHELLS: "BOX OF SHELLS",
+	Kind.SHELLS: "BOX OF SHELLS", Kind.MEAT: "RAW MEAT",
 }
 const SHORT := {
 	Kind.HOOK: "HOOK", Kind.BACKPACK: "BACKPACK", Kind.SPEAR: "SPEAR", Kind.TORCH: "TORCH",
 	Kind.FLARE: "FLARE", Kind.MAP: "MAP", Kind.LADDER: "LADDER", Kind.STICK: "STICK", Kind.BAT: "BAT",
 	Kind.SWORD: "SWORD", Kind.REVOLVER: "REVOLVER", Kind.SHOTGUN: "SHOTGUN", Kind.ROUNDS: "ROUNDS",
-	Kind.SHELLS: "SHELLS",
+	Kind.SHELLS: "SHELLS", Kind.MEAT: "MEAT",
 }
 const MODELS := {
 	Kind.HOOK: "res://props/models/hook.glb", Kind.BACKPACK: "res://props/models/pack.glb",
@@ -45,10 +48,12 @@ const MODELS := {
 	Kind.BAT: "res://props/models/bat.glb", Kind.SWORD: "res://props/models/sword.glb",
 	Kind.REVOLVER: "res://props/models/revolver.glb", Kind.SHOTGUN: "res://props/models/shotgun.glb",
 	Kind.ROUNDS: "res://props/models/rounds.glb", Kind.SHELLS: "res://props/models/shells.glb",
+	Kind.MEAT: "res://props/models/meat.glb",
 }
-## Held in the hand to be used (act throws, casts, swings or fires it), or used
-## from the inventory straight off (read, hung).
-const IN_HAND := [Kind.HOOK, Kind.SPEAR, Kind.TORCH, Kind.FLARE, Kind.STICK, Kind.BAT, Kind.SWORD, Kind.REVOLVER, Kind.SHOTGUN]
+## Held in the hand to be used (act throws, casts, swings or fires it, or holds
+## meat out to a dog), or used from the inventory straight off (read, hung).
+const IN_HAND := [Kind.HOOK, Kind.SPEAR, Kind.TORCH, Kind.FLARE, Kind.STICK, Kind.BAT, Kind.SWORD, Kind.REVOLVER, Kind.SHOTGUN,
+	Kind.MEAT]
 ## Swung (Loot: what a blow does). `reach`: metres past his middle to what it
 ## hits (past its girth); `seconds` and `shove`: the stagger (Stagger.hit);
 ## `uses`: blows that land before it breaks (a range; 0, never); `swing`: how
@@ -94,6 +99,8 @@ const MASK := 1
 signal released(item: Node3D)
 ## Told when it comes to rest after being thrown or dropped.
 signal rested(item: Node3D)
+## Told when (meat) it is eaten.
+signal eaten(item: Node3D)
 
 var kind := Kind.TORCH
 ## Its number, the same on every copy of the game (Loot gives it).
@@ -151,6 +158,11 @@ func _ready() -> void:
 			shape.radius = 0.05
 			shape.height = 0.8
 			collider.position.y = 0.18
+		Kind.MEAT:
+			# (it hangs below the knuckle it is held by)
+			shape.radius = 0.07
+			shape.height = 0.3
+			collider.position.y = -0.18
 		Kind.STICK, Kind.BAT:
 			shape.radius = 0.04
 			shape.height = 0.85
@@ -253,15 +265,17 @@ func lie() -> void:
 	collision_mask = MASK
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
+	if kind == Kind.MEAT:
+		add_to_group(&"meat")
 
 
 ## Laid on the ground at `at` (its foot), turned `yaw`, as it was left there.
 func lay_at(at: Vector3, yaw: float) -> void:
 	var tip := Basis(Vector3.UP, yaw)
-	if kind in [Kind.SPEAR, Kind.TORCH, Kind.FLARE, Kind.STICK, Kind.BAT, Kind.SWORD]:
+	if kind in [Kind.SPEAR, Kind.TORCH, Kind.FLARE, Kind.STICK, Kind.BAT, Kind.SWORD, Kind.MEAT]:
 		# (long things lie along the ground)
 		tip = tip * Basis(Vector3.RIGHT, PI * 0.5)
-		at += Vector3.UP * (0.045 if kind == Kind.SPEAR else (0.025 if kind == Kind.SWORD else 0.035))
+		at += Vector3.UP * (0.045 if kind == Kind.SPEAR else (0.025 if kind == Kind.SWORD else (0.06 if kind == Kind.MEAT else 0.035)))
 	elif kind in GUNS:
 		# (a gun lies on its side)
 		tip = tip * Basis(Vector3.BACK, PI * 0.5)
@@ -279,11 +293,13 @@ func pocket() -> void:
 	collision_mask = 0
 	bearer = null
 	set_lit(false)
+	remove_from_group(&"meat")
 
 
 ## Let go in the air (thrown or dropped): it falls, and comes to rest.
 func fly(velocity_now: Vector3, spin := Vector3.ZERO) -> void:
 	loot_state = State.FLYING
+	remove_from_group(&"meat")
 	visible = true
 	bearer = null
 	collision_layer = LAYER
@@ -308,6 +324,7 @@ func spend(gone := true) -> void:
 	loot_state = State.SPENT
 	set_lit(false)
 	remove_from_group(&"loot")
+	remove_from_group(&"meat")
 	if gone:
 		visible = false
 		freeze = true
@@ -316,6 +333,13 @@ func spend(gone := true) -> void:
 	else:
 		lie()
 		loot_state = State.SPENT
+
+
+## (Meat) eaten, by whatever has come to it where it lies or been fed it from a
+## hand: Loot hears, and it is used up everywhere.
+func eat() -> void:
+	if kind == Kind.MEAT and loot_state != State.SPENT:
+		eaten.emit(self)
 
 
 ## Told by the Player who picks it up (Player._take), and with nobody when it
@@ -419,6 +443,11 @@ func _process(_delta: float) -> void:
 		global_basis = Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, lerpf(0.32, PI * 0.5 - 0.12, level))
 	elif kind == Kind.FLARE and rig == null:
 		global_basis = Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, 0.4)
+	elif kind == Kind.MEAT:
+		# (held by the knuckle of its bone, the meat hanging from his hand, swinging a little as he goes)
+		var going: Vector3 = bearer.get(&"velocity") if bearer.get(&"velocity") != null else Vector3.ZERO
+		var swing := clampf(Vector2(going.x, going.z).length() * 0.06, 0.0, 0.35)
+		global_basis = Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, -swing * sin(Time.get_ticks_msec() * 0.009) - 0.15)
 
 
 ## Whether it is something to fight with (swung or fired).

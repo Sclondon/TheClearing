@@ -99,7 +99,7 @@ func _mound(count: int, at: Vector3, yaw := 0.0) -> FleshMound:
 
 
 func _sizes() -> void:
-	var xs := [-14.0, -11.0, -7.0, -2.0, 3.0, 12.0]
+	var xs := [-14.0, -11.0, -7.0, -2.0, 4.0, 13.0]
 	var counts := [2, 3, 4, 5, 7, 10]
 	for i in counts.size():
 		_mound(counts[i], Vector3(xs[i], 0, 0), 0.0)
@@ -109,6 +109,23 @@ func _sizes() -> void:
 	await shot("s1_sizes")
 	look(Vector3(-2, 2.5, 0.5), Vector3(-9, 1.2, 0), 45)
 	await shot("s2_small_ones")
+	look(Vector3(4, 2.4, 7.5), Vector3(4, 2.0, 0), 45)
+	await shot("s3_ball")
+	# The ball rolling along.
+	var ball := _mound(7, Vector3(4, 0, 0))
+	for one: Node in stage.get_children():
+		if one is FleshMound and one != ball and one.bodies == 7:
+			one.queue_free()
+	var t := 0.0
+	for k in 3:
+		var left := 0.3
+		while left > 0.0:
+			await process_frame
+			t += 1.0 / 60.0
+			left -= 1.0 / 60.0
+			ball.global_position = Vector3(4, 0, -t * 5.0)
+		look(ball.global_position + Vector3(7.0, 2.2, 0.0), ball.global_position + Vector3(0, 2.0, 0), 45)
+		await shot("s%d_ball_rolling" % (k + 4))
 
 
 func _small() -> void:

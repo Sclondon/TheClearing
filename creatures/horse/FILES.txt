@@ -1,0 +1,8 @@
+# A lonely feral horse: its look, its gaits and moves and its calls, for any game (no thinking; needs nothing else at run time)
+creatures/horse/horse.gd
+creatures/horse/horse_look.gd
+creatures/horse/horse_rig.gd
+creatures/horse/models/horse.glb
+creatures/horse/models/horse_lo.glb
+creatures/horse/models/horse_haltered.glb
+creatures/horse/models/horse_haltered_lo.glb

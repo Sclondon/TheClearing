@@ -1,0 +1,7 @@
+# The giant mantis: its rig and look, two models, and the Blender script that makes them
+creatures/mantis/mantis.gd
+creatures/mantis/mantis_look.gd
+creatures/mantis/models/mantis.glb
+creatures/mantis/models/mantis_lo.glb
+creatures/mantis/tools/.gdignore
+creatures/mantis/tools/build_mantis.py

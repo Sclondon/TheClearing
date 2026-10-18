@@ -48,8 +48,11 @@ var _own_clock := 0.0
 var time_fixed := -1.0
 var _far_next := 0
 
-# [part, section, stretch] -> [vertices, normals].
+# [part, section, stretch] -> [vertices, normals] (and colours, for the light) of
+# the plain boxes, to walk into (the light's, only drawn).
 var _parts := {}
+# [part, section, stretch] -> WallMesh: the boxes as drawn, their edges worn round.
+var _drawn := {}
 
 
 func _ready() -> void:
@@ -114,17 +117,22 @@ func _ready() -> void:
 			elif style:
 				made.set_shader_parameter(&"tile_size", Wall.LOOKS[MazeBuilder.MAZE_LOOK][1] * style.wall_texture_scale)
 			MazeBuilder.moss(made, style)
+			MazeBuilder.weather(made, style, great)
 			materials[[key[0], key[1]]] = made
 	for key: Array in _parts:
 		var part: Array = _parts[key]
-		var arrays := []
-		arrays.resize(Mesh.ARRAY_MAX)
-		arrays[Mesh.ARRAY_VERTEX] = part[0]
-		arrays[Mesh.ARRAY_NORMAL] = part[1]
-		if part.size() > 2:
-			arrays[Mesh.ARRAY_COLOR] = part[2]
-		var mesh := ArrayMesh.new()
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var mesh: ArrayMesh
+		if _drawn.has(key):
+			mesh = (_drawn[key] as WallMesh).mesh()
+		else:
+			var arrays := []
+			arrays.resize(Mesh.ARRAY_MAX)
+			arrays[Mesh.ARRAY_VERTEX] = part[0]
+			arrays[Mesh.ARRAY_NORMAL] = part[1]
+			if part.size() > 2:
+				arrays[Mesh.ARRAY_COLOR] = part[2]
+			mesh = ArrayMesh.new()
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var shown := MeshInstance3D.new()
 		shown.mesh = mesh
 		shown.material_override = materials[[key[0], key[1]]]
@@ -194,7 +202,7 @@ func _arc(k: int, r: float, a0: float, a1: float, thick: float, high: float, par
 		var half := (b1 - b0) * 0.5
 		# (a little longer than the chord, so that the lengths meet round the outside)
 		var long := 2.0 * r * sin(half) + thick * tan(half) * 2.0 + 0.05
-		_box(k, middle, r * cos(half), Vector3(long, high, thick), part, base)
+		_box(k, middle, r * cos(half), Vector3(long, high, thick), part, base, false)
 
 
 ## A wall out from `r0` to `r1` at angle `a` (as long again as the walls it meets are thick, to meet them).
@@ -202,9 +210,16 @@ func _radial(k: int, a: float, r0: float, r1: float, thick: float, high: float, 
 	_box(k, a, (r0 + r1) * 0.5, Vector3(thick, high, r1 - r0 + thick), part)
 
 
+## Section `k`'s style (null if it has none).
+func _style(k: int) -> MazeStyle:
+	return plan.rings[k].style if k < plan.rings.size() else null
+
+
 ## A box `size` (along the circle, high, out) standing with its middle `r` out
-## at angle `a`, from `base` up.
-func _box(k: int, a: float, r: float, size: Vector3, part := Part.MAZE, base := 0.0) -> void:
+## at angle `a`, from `base` up. Drawn with its edges worn round
+## (MazeStyle.wall_edge_rounding; a tunnel's lining not), but for its ends along
+## the circle unless `round_ends` (a length of a curved wall runs on into the next).
+func _box(k: int, a: float, r: float, size: Vector3, part := Part.MAZE, base := 0.0, round_ends := true) -> void:
 	var out := Vector3(cos(a), 0.0, sin(a))
 	var along := Vector3(-out.z, 0.0, out.x)
 	var middle := out * r + Vector3.UP * base
@@ -212,6 +227,11 @@ func _box(k: int, a: float, r: float, size: Vector3, part := Part.MAZE, base := 
 	var key := [part, k, stretch]
 	if not _parts.has(key):
 		_parts[key] = [PackedVector3Array(), PackedVector3Array()]
+		_drawn[key] = WallMesh.new()
+	var great := part == Part.GREAT
+	var rounding := 0.0 if part == Part.LINING else MazeBuilder.edge_rounding(_style(k), great)
+	(_drawn[key] as WallMesh).add_box(Transform3D(Basis(along, Vector3.UP, -out), middle), Vector3.UP * size.y * 0.5, size,
+		rounding, round_ends, true, MazeBuilder.edge_spacing(great), base > 0.0)
 	var bits: Array = _parts[key]
 	var points: PackedVector3Array = bits[0]
 	var normals: PackedVector3Array = bits[1]
