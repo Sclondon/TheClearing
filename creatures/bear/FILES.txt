@@ -1,0 +1,9 @@
+# A screaming bear: its look, every move and its stolen voice (made in code), for any game (no thinking)
+creatures/bear/bear.gd
+creatures/bear/bear_voice.gd
+creatures/bear/bear_look.gd
+creatures/bear/bear_rig.gd
+creatures/bear/models/bear.glb
+creatures/bear/models/bear_lo.glb
+creatures/bear/tools/.gdignore
+creatures/bear/tools/build_bear.py
