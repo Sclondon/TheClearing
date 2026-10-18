@@ -341,15 +341,28 @@ func _maze() -> void:
 	await shot("35_gallop_at_camera")
 	front.queue_free()
 	world.camera.make_current()
-	# The alpha, holding back and baring its fangs.
+	# The alpha, holding back and baring its fangs at him down the passage.
 	var alpha := troop[0]
-	_stand(maze.cell_at(alpha.global_position), way, 0.0)
-	boy.global_position = alpha.global_position + Vector3(sin(alpha.facing_yaw), 0, cos(alpha.facing_yaw)) * 7.0 + Vector3.UP * 0.1
-	world.camera._yaw = alpha.facing_yaw
-	world.camera.snap()
-	alpha._display(3.0)
+	for one in troop:
+		if one != alpha:
+			one.body.visible = false
+			one.process_mode = Node.PROCESS_MODE_DISABLED
+	_stand(cell, way, 0.0)
+	alpha._put(maze.world(cell) + along * 8.0 + Vector3.UP * 0.05, atan2(-along.x, -along.z))
+	alpha.mode = MazeBaboon.Mode.HOLDING
+	alpha._display(4.0)
 	await wait(0.8)
 	await shot("36_alpha_display")
+	# Close, from in front of it, as he would see it rear up at him.
+	var near := Camera3D.new()
+	world.add_child(near)
+	near.fov = 50.0
+	near.position = maze.world(cell) + along * 3.6 + across * 1.0 + Vector3.UP * 1.1
+	near.look_at(alpha.global_position + Vector3.UP * 1.25 - along * 0.6)
+	near.make_current()
+	alpha._display(3.0)
+	await wait(0.7)
+	await shot("37_alpha_display_close")
 	quit()
 
 

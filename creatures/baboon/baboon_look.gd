@@ -64,14 +64,50 @@ void vertex() {
 	furry = UV.y;
 }
 
+// The mandrill's face, cut sharp here from where on the muzzle a point is
+// (UV2: x how far along it, y how far round from the side towards the top;
+// see BaboonLook.MUZZLE): the crimson ridge and nose, the ribbed blue cheeks
+// with dark grooves, the black skin between.
+uniform vec3 crimson : source_color = vec3(0.42, 0.04, 0.06);
+uniform vec3 wet : source_color = vec3(0.66, 0.3, 0.3);
+uniform vec3 slate : source_color = vec3(0.21, 0.31, 0.46);
+uniform vec3 groove : source_color = vec3(0.07, 0.08, 0.12);
+uniform vec3 skin : source_color = vec3(0.07, 0.06, 0.06);
+
+float inside(float value, float from, float to) {
+	float pixel = max(fwidth(value), 0.0005);
+	return smoothstep(from - pixel, from + pixel, value) * (1.0 - smoothstep(to - pixel, to + pixel, value));
+}
+
+vec3 face(vec2 at) {
+	float t = at.x;
+	float phi = at.y;
+	vec3 c = skin;
+	// The cheek pads, and their ribs: ridges blue, grooves dark.
+	float pad = inside(phi, -0.33, 0.93) * inside(t, 0.05, 0.8);
+	float rib = fract((phi + 0.35) / 1.3 * 5.0);
+	float ribbed = inside(rib, 0.14, 0.86);
+	c = mix(c, mix(groove, slate, ribbed), pad);
+	// The ridge down the nose, narrow, and the broad nose pad at the end.
+	float ridge = inside(abs(phi - 1.5708), -1.0, mix(0.2, 0.26, t)) * step(0.02, t);
+	float nose = inside(t, 0.84, 2.0) * inside(phi, -0.5, 2.0);
+	c = mix(c, crimson, max(ridge, nose));
+	// A wet shine on the top of the nose.
+	c = mix(c, wet, inside(t, 0.91, 0.955) * inside(phi, 1.25, 2.0));
+	return c;
+}
+
 void fragment() {
 	// Fine streaks in the fur, running along the body.
 	float streak = noise(UV2 * vec2(70.0, 10.0));
 	float shade = 1.0 + (streak - 0.5) * 0.22 * furry;
 	ALBEDO = COLOR.rgb * shade * mix(1.0, tone, furry);
+	if (glow > 1.5) {
+		ALBEDO = face(UV2);
+	}
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;
-	EMISSION = COLOR.rgb * glow * 1.6;
+	EMISSION = COLOR.rgb * clamp(glow, 0.0, 1.0) * step(glow, 1.5) * 1.3;
 }
 
 float cut(float value, float edge) {
@@ -145,12 +181,13 @@ class Maker:
 		return mesh
 
 	## One vertex, weighted to `b0` and (by `w1`) to `b1`.
-	func vertex(at: Vector3, normal: Vector3, color: Color, glow: float, fur: float, b0: int, b1 := -1, w1 := 0.0) -> int:
+	## (`mapped`, if given, is its UV2 in place of where it is: see `sculpt`.)
+	func vertex(at: Vector3, normal: Vector3, color: Color, glow: float, fur: float, b0: int, b1 := -1, w1 := 0.0, mapped := Vector2.INF) -> int:
 		verts.append(at)
 		normals.append(normal.normalized())
 		colors.append(color)
 		uvs.append(Vector2(glow, fur))
-		uv2s.append(Vector2(at.x * 0.8 + at.z * 0.6, at.y + at.z * 0.3))
+		uv2s.append(mapped if mapped.is_finite() else Vector2(at.x * 0.8 + at.z * 0.6, at.y + at.z * 0.3))
 		if b1 < 0 or w1 <= 0.0:
 			bones.append_array([b0, 0, 0, 0])
 			weights.append_array([1.0, 0.0, 0.0, 0.0])
@@ -192,8 +229,9 @@ class Maker:
 		_caps(first, n, sides, centers, radii, frames, rig, fur, paint, color)
 
 	## A tube whose every point is placed by `shape`: shape(ring, angle) -> [offset
-	## from the ring's middle in its frame (x across, y up, z along), colour, fur].
-	## Its normals are worked out from the surface.
+	## from the ring's middle in its frame (x across, y up, z along), colour, fur,
+	## and optionally glow and a UV2 of its own]. Its normals are worked out from
+	## the surface.
 	func sculpt(centers: PackedVector3Array, up: Vector3, rig: Array, sides: int, shape: Callable) -> void:
 		var n := centers.size()
 		var first := verts.size()
@@ -207,7 +245,7 @@ class Maker:
 				var got: Array = shape.call(i, TAU * k / sides)
 				var off: Vector3 = got[0]
 				ring.append(centers[i] + frames[i] * off)
-				cols.append([got[1], got[2]])
+				cols.append([got[1], got[2], got[3] if got.size() > 3 else 0.0, got[4] if got.size() > 4 else Vector2.INF])
 			grid.append(ring)
 			paint.append(cols)
 		for i in n:
@@ -219,7 +257,7 @@ class Maker:
 					normal = -normal
 				if normal.length() < 0.000001:
 					normal = frames[i].z if i == n - 1 else -frames[i].z
-				vertex(grid[i][k], normal, paint[i][k][0], 0.0, paint[i][k][1], rig[i][0], rig[i][1], rig[i][2])
+				vertex(grid[i][k], normal, paint[i][k][0], paint[i][k][2], paint[i][k][1], rig[i][0], rig[i][1], rig[i][2], paint[i][k][3])
 		_join(first, n, sides)
 		# (the first ring is closed with a point; the last comes to one already)
 		var tip := vertex(centers[0] - frames[0].z * 0.01, -frames[0].z, paint[0][0][0], 0.0, paint[0][0][1], rig[0][0], rig[0][1], rig[0][2])
@@ -511,8 +549,6 @@ class Maker:
 		var fur: Color = build["fur"]
 		var dark: Color = build["dark"]
 		var face: Color = build["face"]
-		var nose: Color = build["nose"]
-		var cheek: Color = build["cheek"]
 		var mane_fur: Color = build["mane_fur"]
 		var beard: Color = build["beard"]
 		var h: Transform3D = j["head_xform"] * Transform3D(Basis.from_scale(Vector3.ONE * hs), Vector3.ZERO)
@@ -524,31 +560,36 @@ class Maker:
 
 		# The skull, low and long.
 		lump(h * Vector3(0.0, 0.03, -0.03), hb, Vector3(0.088, 0.08, 0.1) * hs, fur, HEAD, 1.0)
-		# The brow: one heavy ridge arched over the eyes.
+		# The brow: one heavy ridge, overhanging the eyes.
 		var brow := PackedVector3Array()
 		var brow_r := PackedVector2Array()
 		var brow_rig := []
-		for k in 9:
-			var u := (k / 8.0) * 2.0 - 1.0
-			brow.append(h * Vector3(u * 0.056, 0.058 - 0.016 * u * u, 0.044 - 0.035 * u * u))
-			brow_r.append(Vector2(0.024, 0.017) * hs * (1.0 - 0.3 * u * u))
+		for k in 11:
+			var u := (k / 10.0) * 2.0 - 1.0
+			brow.append(h * Vector3(u * 0.055, 0.062 - 0.018 * u * u, 0.045 - 0.03 * u * u))
+			brow_r.append(Vector2(0.026, 0.02) * hs * (1.0 - 0.35 * u * u))
 			brow_rig.append([HEAD, -1, 0.0])
-		tube(brow, brow_r, hb.y, brow_rig, face.lerp(fur, 0.35), 0.3, 10)
-		# The eyes, deep under it in dark sockets, glowing like embers.
+		tube(brow, brow_r, hb.y, brow_rig, fur.darkened(0.25), 0.6, 12)
+		# The eyes: small, deep in dark sockets under it, their ember glow in its shadow.
 		for s: float in [1.0, -1.0]:
-			lump(h * Vector3(0.034 * s, 0.04, 0.062), hb, Vector3(0.02, 0.015, 0.016) * hs, Color(0.03, 0.02, 0.02), HEAD, 0.0)
-			lump(h * Vector3(0.034 * s, 0.04, 0.07), hb, Vector3(0.0095, 0.0068, 0.008) * hs, Baboon.EMBER, HEAD, 0.0, 1.0, 5, 8)
+			lump(h * Vector3(0.033 * s, 0.038, 0.05), hb, Vector3(0.019, 0.014, 0.016) * hs, Color(0.03, 0.02, 0.02), HEAD, 0.0)
+			lump(h * Vector3(0.033 * s, 0.038, 0.058), hb, Vector3(0.0075, 0.0055, 0.006) * hs, Baboon.EMBER, HEAD, 0.0, 1.0, 5, 8)
 			lump(h * Vector3(0.08 * s, 0.04, -0.035), hb * Basis(Vector3.UP, 0.4 * s), Vector3(0.012, 0.028, 0.024) * hs, dark, HEAD, 0.4, 0.0, 5, 8)
 
-		# The muzzle: one sculpted surface, from under the eyes to a rounded nose.
-		var length := 0.215 if alpha else 0.22
+		# The muzzle: one sculpted surface, from under the eyes to the nose. The
+		# mandrill's narrows to a broad, flattened nose pad; its cheeks swell out
+		# in ribs either side of a narrow raised ridge, and its colours are cut
+		# in the shader from where on the muzzle each point is (UV2: along, round).
+		var length := 0.25 if alpha else 0.22
 		var muzzle_at := func(t: float) -> Vector3:
-			return Vector3(0.0, lerpf(0.004, -0.028, t), lerpf(0.035, 0.035 + length, t))
+			return Vector3(0.0, lerpf(0.0, -0.03, t), lerpf(0.03, 0.03 + length, t))
 		var base_r := func(t: float) -> Vector2:
 			if alpha:
-				return Vector2(lerpf(0.05, 0.033, t), lerpf(0.047, 0.03, t))
+				if t < 0.78:
+					return Vector2(lerpf(0.05, 0.03, t / 0.78), lerpf(0.046, 0.03, t / 0.78))
+				return Vector2(lerpf(0.03, 0.039, (t - 0.78) / 0.22), lerpf(0.03, 0.025, (t - 0.78) / 0.22))
 			return Vector2(lerpf(0.043, 0.026, t), lerpf(0.043, 0.027, t))
-		var rings := 16
+		var rings := 22 if alpha else 16
 		var m_centers := PackedVector3Array()
 		var m_rig := []
 		for i in rings:
@@ -558,40 +599,33 @@ class Maker:
 			var t := float(i) / (rings - 1)
 			var r: Vector2 = base_r.call(t) * hs
 			# (rounded off at the nose)
-			var round_off := sqrt(maxf(0.0, 1.0 - pow(maxf(t - 0.84, 0.0) / 0.16, 2.0)))
+			var round_off := sqrt(maxf(0.0, 1.0 - pow(maxf(t - 0.86, 0.0) / 0.14, 2.0)))
 			var c := cos(angle)
 			var s := sin(angle)
 			# How far up from the side this point is (0 at the side, PI/2 on top).
 			var phi := atan2(s, absf(c))
-			var pad := exp(-pow((phi - 0.32) / 0.5, 2.0)) * pow(sin(PI * clampf((t - 0.02) / 0.82, 0.0, 1.0)), 0.6)
-			var ribs := 0.5 - 0.5 * cos((phi + 0.6) * 12.0)
-			var ridge := exp(-pow((phi - PI * 0.5) / 0.2, 2.0))
 			var swell := 1.0
-			var colour := face
-			var furriness := 0.05
 			if alpha:
-				swell += pad * (0.62 - 0.2 * ribs) + ridge * 0.2 * (1.0 - 0.5 * t)
-				if pad > 0.3 and t < 0.86:
-					colour = cheek * lerpf(0.45, 1.0, 1.0 - ribs * smoothstep(0.3, 0.6, pad))
-				if ridge > 0.4 or (t > 0.8 and s > -0.35):
-					colour = nose
-				elif ridge > 0.25:
-					colour = nose.lerp(face, 0.5)
+				# (the same numbers as the face() in the shader)
+				var pad := pow(sin(PI * clampf((phi + 0.35) / 1.3, 0.0, 1.0)), 0.6) * pow(sin(PI * clampf((t - 0.03) / 0.8, 0.0, 1.0)), 0.6)
+				var rib := fposmod((phi + 0.35) / 1.3 * 5.0, 1.0)
+				var bump := 0.5 - 0.5 * cos(TAU * rib)
+				var ridge := exp(-pow((phi - PI * 0.5) / 0.15, 2.0)) * smoothstep(0.0, 0.1, t) * (1.0 - smoothstep(0.8, 0.95, t))
+				swell += pad * (0.4 + 0.2 * (bump - 0.5)) + ridge * 0.3
 			else:
-				swell += pad * 0.12 + ridge * 0.05
-				if t > 0.88 and s > -0.4:
-					colour = face.darkened(0.3)
-			# The upper lip, dark, under it all.
-			if s < -0.55:
-				colour = face
+				var pad := exp(-pow((phi - 0.32) / 0.5, 2.0)) * pow(sin(PI * clampf((t - 0.02) / 0.82, 0.0, 1.0)), 0.6)
+				swell += pad * 0.12 + exp(-pow((phi - PI * 0.5) / 0.2, 2.0)) * 0.05
 			var off := Vector3(c * r.x, s * r.y, 0.0) * swell * round_off
-			off.z = (1.0 - round_off) * 0.01 * hs
-			return [off, colour, furriness]
-		sculpt(m_centers, hb.y, m_rig, 64, shape)
-		# The nostrils.
-		var tip_at: Vector3 = muzzle_at.call(0.97)
+			off.z = (1.0 - round_off) * 0.012 * hs
+			var colour := face
+			if not alpha and t > 0.88 and s > -0.4:
+				colour = face.darkened(0.3)
+			return [off, colour, 0.0, 2.0 if alpha else 0.0, Vector2(t, phi) if alpha else Vector2.INF]
+		sculpt(m_centers, hb.y, m_rig, 160 if alpha else 48, shape)
+		# The nostrils, at the end of the nose.
+		var tip_at: Vector3 = muzzle_at.call(0.985)
 		for s: float in [1.0, -1.0]:
-			lump(h * (tip_at + Vector3(0.011 * s, -0.004, 0.01)), hb, Vector3(0.007, 0.005, 0.005) * hs, Color(0.05, 0.02, 0.02), HEAD, 0.0, 0.0, 4, 6)
+			lump(h * (tip_at + Vector3(0.012 * s, -0.007, 0.004)), hb, Vector3(0.008, 0.005, 0.005) * hs, Color(0.05, 0.02, 0.02), HEAD, 0.0, 0.0, 4, 6)
 
 		# The roof of the mouth, red; long upper canines down past the lip, and the front teeth.
 		lump(h * Vector3(0.0, -0.038, 0.15), hb, Vector3(0.03, 0.01, 0.1) * hs, Baboon.GUM, HEAD, 0.0)
@@ -638,6 +672,16 @@ class Maker:
 			var x := rng.randf_range(-0.06, 0.06)
 			var at := h * Vector3(x, 0.085, rng.randf_range(-0.05, 0.03))
 			clump(at, (hb * Vector3(x * 2.0, 0.25, -1.0)).normalized() * rng.randf_range(0.08, 0.12) * hs * mane, 0.04 * hs, (hb * Vector3(x * 4.0, 1.0, -0.2)).normalized(), mane_fur.lerp(fur, rng.randf_range(0.2, 0.6)), HEAD)
+		if alpha:
+			# A short crest down the middle of the crown, standing up and back.
+			for k in 8:
+				var at := h * Vector3(rng.randf_range(-0.012, 0.012), 0.09 - k * 0.004, 0.035 - k * 0.019)
+				clump(at, (hb * Vector3(0.0, 1.0, -0.8 - k * 0.1)).normalized() * (0.07 + 0.012 * (4.0 - absf(k - 3.5))) * hs, 0.03 * hs, (hb * Vector3(0.0, 1.0, -0.3)).normalized(), mane_fur.lerp(fur, 0.35), HEAD)
+			# A tuft of beard at the chin, yellow-orange.
+			for k in 9:
+				var u := rng.randf_range(-1.0, 1.0)
+				var at := jx * Vector3(u * 0.018, -0.03, length * rng.randf_range(0.55, 0.78))
+				clump(at, (jb * Vector3(u * 0.25, -1.0, -0.25)).normalized() * rng.randf_range(0.07, 0.11) * hs, 0.03 * hs, (jb * Vector3(u * 0.5, -0.6, 1.0)).normalized(), beard.lerp(Color(0.9, 0.75, 0.45), rng.randf_range(0.0, 0.4)), JAW)
 
 	## A hand walking on its knuckles: the back of the hand, four fingers curled
 	## under it, and a thumb. `palm`: x out to the side, y up the forearm, z ahead.

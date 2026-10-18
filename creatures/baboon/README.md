@@ -9,7 +9,7 @@ is doing it for.
 Two scripts and nothing else: `creatures/baboon/baboon.gd` (`class_name Baboon`, a `Node3D`) and
 `creatures/baboon/baboon_look.gd` (`class_name BaboonLook`). The mesh is built in code round a skeleton made in code
 (one mesh per kind, shared), skinned, cel shaded with its own shader: **one draw per baboon** (and its shadow), about
-5,300 vertices (7,300 for the alpha). Works in GL Compatibility (web, phones).
+5,100 vertices (10,000 for the alpha, most of them its sculpted face). Works in GL Compatibility (web, phones).
 
 ## Using it
 

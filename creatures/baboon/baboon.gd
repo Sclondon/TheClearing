@@ -71,7 +71,7 @@ const BUILDS := {
 	Kind.ALPHA: {"chest": 0.2, "belly": 0.15, "haunch": 0.13, "arm": Vector2(0.08, 0.062), "leg": Vector2(0.084, 0.058),
 		"head": 1.12, "fang": 0.1, "mane": 1.0, "tail_step": 0.032, "legs_long": 0.97, "muzzle": "mandrill",
 		"fur": Color(0.24, 0.22, 0.17), "belly_fur": Color(0.42, 0.39, 0.32), "mane_fur": Color(0.36, 0.32, 0.24), "rump": Color(0.52, 0.48, 0.44), "rump_patch": Color(0.36, 0.3, 0.55, 1.0),
-		"dark": Color(0.12, 0.11, 0.1), "face": Color(0.09, 0.08, 0.08), "nose": Color(0.85, 0.08, 0.07), "cheek": Color(0.22, 0.43, 0.95), "beard": Color(0.72, 0.66, 0.46)},
+		"dark": Color(0.12, 0.11, 0.1), "face": Color(0.09, 0.08, 0.08), "nose": Color(0.85, 0.08, 0.07), "cheek": Color(0.22, 0.43, 0.95), "beard": Color(0.82, 0.62, 0.3)},
 }
 const EMBER := Color(1.0, 0.3, 0.05)
 const BONE := Color(0.86, 0.82, 0.7)
