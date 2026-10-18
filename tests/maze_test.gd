@@ -20,7 +20,7 @@ func _initialize() -> void:
 	var c := Maze.generate(Maze.seed_for("ABCD", 2))
 	check("same seed, same maze", a.east == b.east and a.south == b.south and a.exit == b.exit)
 	check("next round, new maze", a.east != c.east or a.south != c.south)
-	check("first ring only, for now", a.rings == 1 and a.size == Maze.CLEARING + (a.styles[0].width + a.styles[0].rampart) * 2)
+	check("first ring only, for now", a.rings == 1 and a.size == Maze.CLEARING + (a.styles[0].section_depth_cells + a.styles[0].border_wall_thickness_cells) * 2)
 
 	for built in [1, 3]:
 		for seed_value in [1, 2, 3, 99, 12345]:
@@ -57,7 +57,7 @@ func _initialize() -> void:
 			check("%s: still a maze" % name, open < ring_cells * 1.7, "(%d open of %d cells)" % [open, ring_cells])
 			# Each way in from the clearing is a narrow entrance as long as the style says:
 			# walled both sides all along, but for where it opens up at its far end.
-			var entrance := maze.styles[0].entrance
+			var entrance := maze.styles[0].entrance_corridor_cells
 			var open_sided := 0
 			if entrance >= 2:
 				for way: Array in maze.gates[0]:
@@ -103,11 +103,11 @@ func _initialize() -> void:
 					cell += step
 				var past := cell
 				var ahead := 0
-				while not maze.blocked(cell, step) and ahead <= maze.styles[0].span:
+				while not maze.blocked(cell, step) and ahead <= maze.styles[0].hallway_diameter_cells:
 					cell += step
 					ahead += 1
 				var side := Vector2i(step.y, step.x)
-				if ahead >= maze.styles[0].span or maze.blocked(past, side) or maze.blocked(past, -side):
+				if ahead >= maze.styles[0].hallway_diameter_cells or maze.blocked(past, side) or maze.blocked(past, -side):
 					straight_on += 1
 			check("%s: every gate into a hall across it" % name, straight_on == 0, "(%d of %d not)" % [straight_on, maze.gates[0].size()])
 			var first_ring := 0
@@ -115,7 +115,7 @@ func _initialize() -> void:
 				var counted := Vector2i(i % maze.size, i / maze.size)
 				if maze.ring_of(counted) == 1 and not maze.solid.has(counted) and not maze.entrances.has(counted):
 					first_ring += 1
-			check("%s: wide halls in the first ring" % name, maze.styles[0].span < 2 or narrow < first_ring * 0.12, "(%d of %d cells in a narrow hall)" % [narrow, first_ring])
+			check("%s: wide halls in the first ring" % name, maze.styles[0].hallway_diameter_cells < 2 or narrow < first_ring * 0.12, "(%d of %d cells in a narrow hall)" % [narrow, first_ring])
 			var middle := maze.size / 2
 			check("%s: clearing open" % name, not maze.blocked(Vector2i(middle, middle), Vector2i(1, 0)) and not maze.blocked(Vector2i(middle - 3, middle - 3), Vector2i(0, 1)))
 			var edge := maze.exit + maze.exit_side

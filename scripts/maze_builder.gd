@@ -271,7 +271,7 @@ func _ground() -> void:
 	visual.material_override = MazeStone.ground(maze.clearing * Maze.CELL * 0.5, maze.extent() * 0.5, WALL_THICK, boxes)
 	body.add_child(visual)
 	# The clearing's hills over it, and a heightmap to walk on them.
-	if maze.clearing_style.hills > 0.0:
+	if maze.clearing_style.hill_height > 0.0:
 		var field := hills(maze.clearing_style, maze.maze_seed, visual.material_override)
 		body.add_child(field)
 		var heights := HeightMapShape3D.new()
@@ -450,7 +450,7 @@ func _grass() -> void:
 
 
 ## The low plants. Along the foot of the walls in the rings, as thick as each
-## ring's style says (MazeStyle.undergrowth): ferns a little out from the wall,
+## ring's style says (MazeStyle.plant_density): ferns a little out from the wall,
 ## moss right at its foot, tufts of grass between. In the clearing, as its style
 ## says: ferns and moss round the foot of the pines (so thickest in the woods)
 ## and bushes over the field, most of them near the trees. All from the seed.
@@ -464,7 +464,7 @@ func _undergrowth(pieces: MazeLayout) -> void:
 		var ring := maze.ring_of(cell)
 		if ring < 1 or ring > maze.rings or maze.solid.has(cell) or maze.entrances.has(cell):
 			continue
-		var thick: float = maze.styles[ring - 1].undergrowth
+		var thick: float = maze.styles[ring - 1].plant_density
 		if thick <= 0.0:
 			continue
 		for step: Vector2i in Maze.STEPS:
@@ -493,20 +493,20 @@ func _undergrowth(pieces: MazeLayout) -> void:
 		if maxf(absf(foot.x), absf(foot.z)) > half:
 			continue
 		near_trees.append(foot)
-		for f in int(look.ferns) + (1 if rng.randf() < fmod(look.ferns, 1.0) else 0):
+		for f in int(look.ferns_per_tree) + (1 if rng.randf() < fmod(look.ferns_per_tree, 1.0) else 0):
 			var round_about := rng.randf() * TAU
 			var at := foot + Vector3(cos(round_about), 0.0, sin(round_about)) * rng.randf_range(1.2, 4.5)
 			undergrowth.add(Undergrowth.Kind.FERN, _plant(at, rng, Undergrowth.Kind.FERN))
-		if rng.randf() < look.moss:
+		if rng.randf() < look.moss_per_tree_chance:
 			undergrowth.add(Undergrowth.Kind.MOSS, _plant(foot + Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.0, 1.0)), rng, Undergrowth.Kind.MOSS))
-	for b in look.bushes:
+	for b in look.bush_count:
 		var at: Vector3
 		if not near_trees.is_empty() and rng.randf() < 0.75:
 			var round_about := rng.randf() * TAU
 			at = near_trees[rng.randi() % near_trees.size()] + Vector3(cos(round_about), 0.0, sin(round_about)) * rng.randf_range(2.5, 7.0)
 		else:
 			at = Vector3(rng.randf_range(-half, half), 0.0, rng.randf_range(-half, half))
-		if Vector2(at.x, at.z).length() < look.glade or maxf(absf(at.x), absf(at.z)) > half:
+		if Vector2(at.x, at.z).length() < look.treeless_radius or maxf(absf(at.x), absf(at.z)) > half:
 			continue
 		undergrowth.add(Undergrowth.Kind.BUSH, _plant(at, rng, Undergrowth.Kind.BUSH))
 	undergrowth.build()

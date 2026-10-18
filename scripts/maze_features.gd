@@ -119,25 +119,32 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 		for step: Vector2i in Maze.STEPS:
 			if not plan.blocked(cell, step) or _taken.has([cell, step]):
 				continue
-			if _rng.randf() >= _style.terraces:
+			if _rng.randf() >= _style.terrace_share:
 				# (or ivy up the bare wall from the ground, part of the way, and now and
 				# then a vine hanging from its top: climb the ivy, swing from the vine)
-				var hangs := _rng.randf() < _style.wall_vines
-				if hangs or _rng.randf() < _style.wall_ivy:
+				var hangs := _rng.randf() < _style.hanging_vine_share
+				if hangs or _rng.randf() < _style.wall_ivy_share:
 					_taken[[cell, step]] = true
-					var high := minf(_face_top(cell, step) * _rng.randf_range(_style.ivy_reach.x, _style.ivy_reach.y), IVY_MOST)
+					var high := minf(_face_top(cell, step) * _rng.randf_range(_style.wall_ivy_height_range.x, _style.wall_ivy_height_range.y), IVY_MOST)
+					# (with a ledge along the walls, a curtain of it hanging from the ledge's
+					# edge to the ground instead: he climbs it onto the ledge)
+					var off_wall := 0.0
+					if _style.mezzanine_height > 0.0:
+						high = _style.mezzanine_height
+						off_wall = _style.mezzanine_depth
 					var ivy_along := _rng.randf_range(-0.3, 0.3) * Maze.CELL
-					_climb(_edge(cell, step, 0.0, ivy_along), step, high, WALL_IVY)
+					_climb(_edge(cell, step, off_wall, ivy_along), step, high, WALL_IVY)
 					if hangs:
 						var beside := ivy_along + (VINE_BESIDE if ivy_along < 0.0 else -VINE_BESIDE)
-						_vine(cell, step, WALL_VINE_OUT, beside, high, VINE_CLEAR, false)
+						var out := WALL_VINE_OUT + off_wall
+						_vine(cell, step, out, beside, high, VINE_CLEAR, false)
 				continue
-			var upper := _rng.randf() < _style.upper_terraces
+			var upper := _rng.randf() < _style.upper_terrace_share
 			var along := _rng.randf_range(-0.2, 0.2) * Maze.CELL
 			var across := -step
 			# A terrace across the hall too (however wide it is), and a bridge between them.
 			var far := _far_side(cell, across)
-			var paired := _rng.randf() < _style.bridges and far != NOWHERE and not _taken.has([far, across])
+			var paired := _rng.randf() < _style.terrace_bridge_share and far != NOWHERE and not _taken.has([far, across])
 			_terrace(cell, step, upper or paired, along)
 			if paired:
 				# (along that wall runs the other way)
@@ -159,9 +166,9 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 				continue
 			var far := _far_side(cell, step)
 			if far != NOWHERE and not plan.ring_wall(far, step):
-				if _rng.randf() < _style.top_bridges:
-					var a := _edge(far, step, MazeBuilder.CORNICE.x, 0.0) + Vector3.UP * MazeBuilder.WALL_HEIGHT
-					var b := _edge(cell, -step, MazeBuilder.CORNICE.x, 0.0) + Vector3.UP * MazeBuilder.WALL_HEIGHT
+				if _rng.randf() < _style.wall_top_bridge_share:
+					var a := _edge(far, step, MazeBuilder.CORNICE.x, 0.0) + Vector3.UP * _maze.wall_height(far, step)
+					var b := _edge(cell, -step, MazeBuilder.CORNICE.x, 0.0) + Vector3.UP * _maze.wall_height(cell, -step)
 					_bridge(a, b)
 
 
@@ -177,10 +184,10 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 			if not plan.blocked(cell, -step):
 				continue
 			var far := _far_side(cell, step)
-			if far == NOWHERE or _taken.has([cell, -step]) or _rng.randf() >= _style.strands:
+			if far == NOWHERE or _taken.has([cell, -step]) or _rng.randf() >= _style.tightrope_vine_share:
 				continue
 			var low := minf(_face_top(cell, -step), _face_top(far, step))
-			var high := low * _rng.randf_range(_style.strand_reach.x, _style.strand_reach.y)
+			var high := low * _rng.randf_range(_style.tightrope_vine_height_range.x, _style.tightrope_vine_height_range.y)
 			var along := _rng.randf_range(-0.4, 0.4) * Maze.CELL
 			# (held at one end on top of a buttress of stone against the wall, with ivy up
 			# its face, so that he can climb to it, step onto it and walk it)
@@ -247,7 +254,7 @@ func _terrace(cell: Vector2i, step: Vector2i, upper: bool, along: float) -> void
 	# Ivy up its face, somewhere along it.
 	var ivy_along := _rng.randf_range(-0.3, 0.3) * length
 	_climb(_edge(cell, step, LOWER.y, ivy_along), step, LOWER.x)
-	if _rng.randf() < _style.terrace_vines:
+	if _rng.randf() < _style.terrace_vine_share:
 		_vine(cell, step, LOWER.y + VINE_OUT, _away_from(ivy_along, length), LOWER.x, VINE_CLEAR)
 	if not upper:
 		return
@@ -256,13 +263,13 @@ func _terrace(cell: Vector2i, step: Vector2i, upper: bool, along: float) -> void
 	# Ivy from the lower terrace up the upper's face, away from the one below.
 	var up_along := along + (_rng.randf_range(0.1, 0.35) if ivy_along < along else _rng.randf_range(-0.35, -0.1)) * upper_length
 	_climb(_edge(cell, step, UPPER.y, up_along) + Vector3.UP * LOWER.x, step, UPPER.x - LOWER.x)
-	if _rng.randf() < _style.terrace_vines:
+	if _rng.randf() < _style.terrace_vine_share:
 		# (out past the lower terrace's edge, over the hall: jumped to from that edge)
 		_vine(cell, step, LOWER.y + 1.0, along + _away_from(up_along - along, upper_length), UPPER.x, LOWER.x + 1.6)
 	# And now and then on up the wall to its top (stood off it by the cornice).
-	if not _maze.ring_wall(cell, step) and _rng.randf() < _style.ivy_to_top:
+	if not _maze.ring_wall(cell, step) and _rng.randf() < _style.ivy_to_wall_top_share:
 		var top_along := along + _rng.randf_range(-0.3, 0.3) * upper_length
-		_climb(_edge(cell, step, MazeBuilder.CORNICE.x, top_along) + Vector3.UP * UPPER.x, step, MazeBuilder.WALL_HEIGHT - UPPER.x)
+		_climb(_edge(cell, step, MazeBuilder.CORNICE.x, top_along) + Vector3.UP * UPPER.x, step, _maze.wall_height(cell, step) - UPPER.x)
 
 
 func _climb(at: Vector3, step: Vector2i, high: float, wide := 1.8) -> void:
