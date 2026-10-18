@@ -7,8 +7,8 @@ extends SceneTree
 ## sizes: one of each size side by side, with the boy. small: an amalgam
 ## close, shambling, and cartwheeling frame by frame (side on). big: a mound
 ## close (front, side, three quarters, its faces, its hands), creeping, and a
-## grab frame by frame. grow: an amalgam absorbing a body, and two merging,
-## each mid-way. maze: in a real round, and what it costs (draws, posing time).
+## grab frame by frame (from beside the boy). grow: an amalgam absorbing a body, and two merging,
+## each mid-way. maze: in a real round (and from the boy's height), and what it costs (draws, posing time).
 
 var folder := "flesh_mound_shots"
 var what := "all"
@@ -152,7 +152,7 @@ func _small() -> void:
 
 func _big() -> void:
 	var mound := _mound(10, Vector3.ZERO)
-	boy.global_position = Vector3(2.5, 0.05, -8.5)
+	boy.global_position = Vector3(1.5, 0.05, -6.2)
 	boy.rotation.y = PI
 	await wait(1.5)
 	var middle := Vector3(0, 2.0, 0)
@@ -180,7 +180,7 @@ func _big() -> void:
 	for mark in marks:
 		while mound._grab_time < mark[0]:
 			await process_frame
-		look(Vector3(-5.5, 2.4, -11.5), Vector3(0.5, 1.2, -5.5), 50)
+		look(Vector3(-3.5, 1.5, -10.5), Vector3(0.5, 1.3, -4.5), 55)
 		print("  grab: %s, %.2f s in, hits him: %s" % [FleshMound.Stage.keys()[mound.grab_stage()], mound._grab_time, mound.grab_hits(target, target + Vector3.UP * 1.5, 0.3)])
 		await shot(mark[1])
 
@@ -298,3 +298,9 @@ func _maze() -> void:
 	look(hunter.global_position + across * 11.0 + along * 4.0 + Vector3.UP * 6.0, hunter.global_position + Vector3.UP * 2.0, 55)
 	await wait(0.3)
 	await shot("m2_coming_side")
+	# From his height, as he sees it coming.
+	look(him.global_position + Vector3.UP * 1.0 + along * 0.5 + across * 0.4, hunter.global_position + Vector3.UP * 1.6, 60)
+	await wait(0.3)
+	await shot("m3_his_height")
+	look(him.global_position + Vector3.UP * 1.0 + along * 0.5 + across * 0.4, small.global_position + Vector3.UP * 1.0, 60)
+	await shot("m4_his_height_small")

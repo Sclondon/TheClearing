@@ -74,24 +74,30 @@ class Template:
 		return rests[bone(bone_name)].origin
 
 
-## A part (read from its model once, then kept).
+## A part (read from its model once, then kept). The boy's body is from his
+## low-detail model if `low`, his head always the full one (unless every part
+## is low, `low_poly`): the head is what is seen of him.
 static func template(part: String, low := low_poly) -> Template:
-	var key := part + ("_lo" if low else "")
+	var key := part + ("_lo" if low else "") + ("_all_lo" if low_poly else "")
 	if _templates.has(key):
 		return _templates[key]
 	var t := Template.new()
 	t.name = part
-	var root: Node
+	var roots: Array[Node] = []
 	var meshes: Array[MeshInstance3D] = []
 	if part == "boy":
-		root = (load(BOY % ("_lo" if low else "")) as PackedScene).instantiate()
-		var prefix := "boy_lo" if low else "boy"
-		for node: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
-			for suffix: String in BOY_MESHES:
-				if node.name == prefix + suffix:
-					meshes.append(node)
+		for head in [false, true]:
+			var lo := (low_poly if head else low)
+			var root := (load(BOY % ("_lo" if lo else "")) as PackedScene).instantiate()
+			roots.append(root)
+			var prefix := "boy_lo" if lo else "boy"
+			for node: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
+				for suffix: String in BOY_MESHES:
+					if node.name == prefix + suffix and suffix.contains("head") == head:
+						meshes.append(node)
 	else:
-		root = (load(MODELS % ("_lo" if low else "")) as PackedScene).instantiate()
+		var root := (load(MODELS % ("_lo" if low else "")) as PackedScene).instantiate()
+		roots.append(root)
 		for node: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
 			if node.name == part:
 				meshes.append(node)
@@ -103,10 +109,33 @@ static func template(part: String, low := low_poly) -> Template:
 		t.rests.append(skeleton.get_bone_global_rest(b))
 		t.locals.append(skeleton.get_bone_rest(b))
 	for found in meshes:
-		_read_mesh(t, found, skeleton, part == "boy")
-	root.free()
+		_read_mesh(t, found, found.get_parent() as Skeleton3D, part == "boy")
+	for root in roots:
+		root.free()
 	_templates[key] = t
 	return t
+
+
+## The boy's long sleeves and trouser legs end in cuffs: drawn in here to his
+## wrists and ankles, so that his arms and legs run on into his hands and feet
+## as one skin.
+static func _no_cuffs(p: Vector3, what: String) -> Vector3:
+	if what == "shirt" and absf(p.x) > 0.26 and absf(p.y - 0.895) < 0.1:
+		var round_arm := Vector2(p.y - 0.895, p.z)
+		var r := round_arm.length()
+		var want := lerpf(r, minf(r, 0.03), smoothstep(0.27, 0.37, absf(p.x)))
+		if r > 0.0001:
+			round_arm *= want / r
+		return Vector3(p.x, 0.895 + round_arm.x, round_arm.y)
+	if what == "overalls" and p.y < 0.2:
+		var side := signf(p.x) * 0.074
+		var round_leg := Vector2(p.x - side, p.z)
+		var r := round_leg.length()
+		var want := lerpf(r, minf(r, 0.045), smoothstep(0.18, 0.09, p.y))
+		if r > 0.0001:
+			round_leg *= want / r
+		return Vector3(side + round_leg.x, p.y, round_leg.y)
+	return p
 
 
 ## Adds a skinned mesh's surfaces to a template: its vertices in the part's
@@ -120,6 +149,8 @@ static func _read_mesh(t: Template, found: MeshInstance3D, skeleton: Skeleton3D,
 		var b := skin.get_bind_bone(i)
 		if b < 0:
 			b = skeleton.find_bone(skin.get_bind_name(i))
+		# (by name: the head may come from the other model, on the same rig)
+		b = t.bone(skeleton.get_bone_name(b))
 		bind_bone.append(b)
 		to_part.append(t.rests[b] * skin.get_bind_pose(i))
 	for s in found.mesh.get_surface_count():
@@ -141,7 +172,7 @@ static func _read_mesh(t: Template, found: MeshInstance3D, skeleton: Skeleton3D,
 				mask = Color(0, 0.3, 0, 0)
 		for v in verts.size():
 			var xform := to_part[bones[v * per]]
-			t.verts.append(xform * verts[v])
+			t.verts.append(_no_cuffs(xform * verts[v], what) if boy else xform * verts[v])
 			t.normals.append((xform.basis * normals[v]).normalized())
 			t.colours.append(colours[v] if not boy and colours != null and colours.size() > v else mask)
 			var total := 0.0
@@ -554,27 +585,27 @@ void light() {
 	vec3 n = normalize(mix(form, NORMAL, 0.35));
 	float shine = max(dot(n, half_way), 0.0);
 	float glint = cut(pow(shine, 80.0), 0.5) * wet;
-	float wax = cut(pow(shine, 24.0), 0.5);
-	SPECULAR_LIGHT += (glint * 0.6 + wax * 0.05) * lit * reach * LIGHT_COLOR;
+	// (matte, waxy: no sheen; only what weeps glints)
+	SPECULAR_LIGHT += glint * 0.5 * lit * reach * LIGHT_COLOR;
 	float graze = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
-	SPECULAR_LIGHT += cut(graze, 0.8) * lit * 0.1 * LIGHT_COLOR * vec3(0.85, 0.82, 0.75);
+	SPECULAR_LIGHT += cut(graze, 0.85) * lit * 0.035 * LIGHT_COLOR;
 }
 """
 
 const COMMON := """
-uniform vec3 pale : source_color = vec3(0.5, 0.48, 0.45);
-uniform vec3 ashen : source_color = vec3(0.42, 0.43, 0.45);
-uniform vec3 jaundiced : source_color = vec3(0.5, 0.46, 0.32);
+uniform vec3 pale : source_color = vec3(0.42, 0.4, 0.38);
+uniform vec3 ashen : source_color = vec3(0.35, 0.35, 0.35);
+uniform vec3 jaundiced : source_color = vec3(0.42, 0.38, 0.27);
 uniform vec3 livid : source_color = vec3(0.33, 0.22, 0.32);
 uniform vec3 bruise : source_color = vec3(0.22, 0.12, 0.2);
 uniform vec3 nail : source_color = vec3(0.5, 0.45, 0.32);
 uniform vec3 hollow : source_color = vec3(0.07, 0.05, 0.06);
 uniform vec3 blue_vein : source_color = vec3(0.26, 0.29, 0.42);
-uniform vec3 wax_face : source_color = vec3(0.62, 0.6, 0.55);
+uniform vec3 wax_face : source_color = vec3(0.5, 0.48, 0.44);
 uniform vec3 scar : source_color = vec3(0.34, 0.16, 0.2);
 uniform vec3 pus : source_color = vec3(0.72, 0.64, 0.36);
 uniform vec3 weep : source_color = vec3(0.52, 0.5, 0.28);
-uniform vec3 through : source_color = vec3(0.42, 0.3, 0.26);
+uniform vec3 through : source_color = vec3(0.36, 0.3, 0.28);
 uniform float wrap = 0.35;
 uniform float bump = 0.08;
 
@@ -608,7 +639,9 @@ float cut(float value, float edge) {
 vec3 skin_colour(vec3 p, float kind, float pixel) {
 	vec3 c = kind < 0.45 ? mix(pale, ashen, kind / 0.45) : mix(ashen, jaundiced, (kind - 0.45) / 0.55);
 	float blotch = noise3(p * 2.2 + kind * 40.0) * 0.65 + noise3(p * 7.0) * 0.35;
-	c = mix(c, livid, smoothstep(0.56, 0.78, blotch) * 0.5);
+	c = mix(c, livid, smoothstep(0.6, 0.8, blotch) * 0.5);
+	// (grime and shadow in its creases and hollows: darker where the skin is mottled)
+	c *= 0.86 + 0.14 * smoothstep(0.2, 0.6, blotch);
 	float spots = noise3(p * 11.0 + 2.0);
 	c = mix(c, bruise, smoothstep(0.76, 0.86, spots) * 0.55 * smoothstep(0.4, 0.6, blotch));
 	float v = abs(noise3(p * 3.5 + vec3(1.0, kind * 9.0, 3.0)) - 0.5);
@@ -642,9 +675,14 @@ varying vec4 masks;
 varying vec2 along;
 varying float kind;
 varying float swollen;
+varying vec3 posed;
+// The mass it is grown into, in its space (its middle; its half sizes, and w 1 if there is one).
+uniform vec4 core_at = vec4(0.0);
+uniform vec4 core_size = vec4(1.0, 1.0, 1.0, 0.0);
 
 void vertex() {
 	obj = CUSTOM0.xyz;
+	posed = VERTEX;
 	masks = COLOR;
 	along = UV;
 	kind = UV2.x;
@@ -661,11 +699,17 @@ void fragment() {
 	c = mix(c, mix(livid, bruise, 0.45), smoothstep(0.1, 0.9, masks.g) * 0.75);
 	c = mix(c, mix(nail, livid, 0.25 + 0.3 * noise3(p * 30.0)), smoothstep(0.3, 0.6, masks.r));
 	c = mix(c, hollow, smoothstep(0.2, 0.8, masks.b));
-	// Where it grows out of the flesh: a puckered, folded, scar-dark join.
+	// Where it grows out of the flesh: the skin gathered into folds round it,
+	// a little darker in the creases, no wound.
 	float edge = along.y + (noise3(p * 9.0) - 0.5) * 0.06;
-	float join = smoothstep(edge + 0.1, edge - 0.02, along.x);
+	float join = smoothstep(edge + 0.12, edge - 0.02, along.x);
 	float folds = 0.5 + 0.5 * sin(along.x * 90.0 + noise3(p * 12.0) * 6.0);
-	c = mix(c, mix(scar, livid, folds * 0.6), join * (0.5 + 0.3 * folds));
+	// And where it meets the mass it is grown into: webbed and knitted to it.
+	vec3 into = (posed - core_at.xyz) / max(core_size.xyz, vec3(0.01));
+	float meet = core_size.w * (1.0 - smoothstep(0.0, 0.14, abs(length(into) - 1.02)));
+	join = max(join, meet);
+	c = mix(c, c * mix(0.7, 0.95, folds), join * 0.75);
+	c = mix(c, mix(scar, livid, 0.5), join * smoothstep(0.85, 0.97, folds) * 0.35);
 	vec2 boil = pustules(p * 7.0, swollen * 0.35 + join * 0.3);
 	c = mix(c, pus * (0.85 + 0.15 * noise3(p * 30.0)), boil.x);
 	c = mix(c, mix(c, weep, 0.5), boil.y);
@@ -679,7 +723,7 @@ void fragment() {
 	vec3 slope = vec3(noise3(q + vec3(e, 0, 0)) - n0, noise3(q + vec3(0, e, 0)) - n0, noise3(q + vec3(0, 0, e)) - n0) / e;
 	vec3 tilt = (VIEW_MATRIX * MODEL_MATRIX * vec4(slope, 0.0)).xyz;
 	NORMAL = normalize(NORMAL - tilt * bump * (0.25 + join * 0.8 + boil.x * 0.5));
-	wet = max(cut(noise3(p * 16.0 + 5.0), 0.72), max(boil.x * 0.8, boil.y));
+	wet = max(boil.x * 0.8, boil.y);
 }
 %s
 """
@@ -693,3 +737,11 @@ static func material() -> ShaderMaterial:
 		_material = ShaderMaterial.new()
 		_material.shader = shader
 	return _material
+
+
+## A material of the parts' own for one creature (its uniforms its own: where
+## the mass it is grown into is, for the seams where its people meet it).
+static func own_material() -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = material().shader
+	return m

@@ -283,7 +283,7 @@ def arm(name, side, long=False):
     p.girth = 1.3
     U = 0.60 if long else 0.30
     F = 0.52 if long else 0.26
-    thin = 0.78 if long else 1.0
+    thin = 1.0
     W = U + F
     # Upper arm: the deltoid's end, the biceps in front, narrowing to the elbow.
     p.loft([(V(0, -0.14 if not long else -0.5, 0), 0.05 * thin, 0.05 * thin),
