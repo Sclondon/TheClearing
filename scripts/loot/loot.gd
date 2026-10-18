@@ -350,9 +350,9 @@ func _clearing_spot(region: int, others: Array[Vector2], apart: float, from_midd
 			spot = pond + Vector2.from_angle(_rng.randf_range(0.0, TAU)) * _pond_radius() * _rng.randf_range(1.3, 1.7)
 		if maxf(absf(spot.x), absf(spot.y)) > half - 14.0 or spot.length() < from_middle:
 			continue
-		if pond.is_finite() and spot.distance_to(pond) < _pond_radius() * 1.2:
+		if look.marsh_rect().has_point(spot):
 			continue
-		if maze.ground_height(Vector3(spot.x, 0.0, spot.y)) < ClearingStyle.POND_LEVEL + 0.1:
+		if maze.ground_height(Vector3(spot.x, 0.0, spot.y)) < ClearingStyle.MARSH_LEVEL + 0.1:
 			continue
 		var ok := true
 		for gate: Array in look.entrance_spots:
@@ -366,15 +366,16 @@ func _clearing_spot(region: int, others: Array[Vector2], apart: float, from_midd
 	return Vector2.INF
 
 
-## The pond's (or the marsh's) middle and size, if the clearing has one.
+## The marsh's middle and (half its) size, if the clearing has one: loot is
+## left round its shore.
 func _pond_middle() -> Vector2:
-	var look := maze.clearing_style
-	return look.call(&"pond_middle") if look.has_method(&"pond_middle") else Vector2.INF
+	var marsh := maze.clearing_style.marsh_rect()
+	return marsh.get_center() if marsh.has_area() else Vector2.INF
 
 
 func _pond_radius() -> float:
-	var radius: Variant = maze.clearing_style.get(&"pond_radius")
-	return float(radius) if radius != null else 20.0
+	var marsh := maze.clearing_style.marsh_rect()
+	return maxf(marsh.size.x, marsh.size.y) * 0.5 if marsh.has_area() else 20.0
 
 
 ## The grass trodden down round (x, z), out to `radius`: a camp's patch, a
