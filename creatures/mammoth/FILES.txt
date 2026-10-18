@@ -1,0 +1,9 @@
+# Woolly mammoths, a grown cow and a calf: their look (a coat of wool and long swaying hair), every move (the walk, the trunk grazing, feeling, trumpeting, the charge) and their sounds, for any game (no thinking), and the Blender script that makes the models
+creatures/mammoth/mammoth.gd
+creatures/mammoth/mammoth_rig.gd
+creatures/mammoth/mammoth_look.gd
+creatures/mammoth/models/mammoth.glb
+creatures/mammoth/models/mammoth_lo.glb
+creatures/mammoth/models/mammoth_calf.glb
+creatures/mammoth/models/mammoth_calf_lo.glb
+creatures/mammoth/tools/build_mammoth.py
