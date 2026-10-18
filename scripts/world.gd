@@ -95,6 +95,9 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 			Grass.push(player)
 			add_child(player)
 			player.global_position = spawn(seat)
+			# (the grass round him there now; the rest as the camera comes near it)
+			for field: Grass in get_tree().get_nodes_in_group(Grass.FIELDS):
+				field.fill_near(player.global_position, 40.0)
 			player.rotation.y = spawn_yaw(seat)
 			Looks.apply(player.get_node("Rig") as CharacterRig, look)
 			# (sprinting is a button of its own here, and an all-out run after The Maze Runner)
@@ -259,6 +262,8 @@ func put_player(at: Vector3, yaw: float) -> void:
 	player.rotation.y = yaw
 	player.facing_yaw = yaw
 	camera.snap()
+	for field: Grass in get_tree().get_nodes_in_group(Grass.FIELDS):
+		field.fill_near(at, 40.0)
 
 
 ## Where a seat starts: round the middle of the clearing, facing out (or in

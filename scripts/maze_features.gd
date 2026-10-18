@@ -144,10 +144,16 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 					if _style.mezzanine_height > 0.0 and plan.ring_of(beyond) == ring and not plan.solid.has(beyond):
 						high = _style.mezzanine_height
 						off_wall = _style.mezzanine_depth
-					var ivy_along := _rng.randf_range(-0.3, 0.3) * Maze.CELL
+					# (somewhere along the face clear of any wall meeting it)
+					var low := -_room(cell, step, -1) + WALL_IVY * 0.5
+					var high_along := _room(cell, step, 1) - WALL_IVY * 0.5
+					if low > high_along:
+						continue
+					var ivy_along := clampf(_rng.randf_range(-0.3, 0.3) * Maze.CELL, low, high_along)
 					_climb(_edge(cell, step, off_wall, ivy_along), step, high, WALL_IVY)
 					if hangs:
 						var beside := ivy_along + (VINE_BESIDE if ivy_along < 0.0 else -VINE_BESIDE)
+						beside = clampf(beside, low - WALL_IVY * 0.5 + 0.5, high_along + WALL_IVY * 0.5 - 0.5)
 						var out := WALL_VINE_OUT + off_wall
 						_vine(cell, step, out, beside, high, VINE_CLEAR, false)
 				continue
@@ -257,12 +263,7 @@ func _levels(plan: Maze) -> void:
 			while count < _style.mezzanine_levels and _rng.randf() < _style.mezzanine_upper_share:
 				count += 1
 			levels[[cell, step]] = count
-			var thick := _thick(cell, step)
-			var side := Vector2i(-step.y, step.x)
-			var room := {}
-			for way: int in [-1, 1]:
-				var meets := plan.blocked(cell, side * way)
-				room[way] = Maze.CELL * 0.5 - (thick * 0.5 if meets else 0.0)
+			var room := {-1: _room(cell, step, -1), 1: _room(cell, step, 1)}
 			var s := Vector3(step.x, 0.0, step.y)
 			var flat_side := Vector3(-s.z, 0.0, s.x)
 			var length: float = room[-1] + room[1]
@@ -327,8 +328,8 @@ func _pipe(cell: Vector2i, step: Vector2i) -> void:
 	# meeting this one at either end)
 	var room := {}
 	for way: int in [-1, 1]:
-		var meets := _maze.blocked(cell, side * way) or _maze.blocked(other, side * way)
-		room[way] = Maze.CELL * 0.5 - (thick * 0.5 if meets else 0.0) - PLATFORM.y * 0.5 - 0.5
+		# (the other face runs the other way along the wall)
+		room[way] = minf(_room(cell, step, way), _room(other, -step, -way)) - PLATFORM.y * 0.5 - 0.5
 	if room[-1] + room[1] < 0.0:
 		return
 	var along := _rng.randf_range(-room[-1], room[1])
@@ -385,6 +386,23 @@ func _hole(middle: Vector3, through: Vector3) -> bool:
 			_layout.add_piece(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, part[0]), made)
 		return true
 	return false
+
+
+## How far along the face (cell, step) it is clear, from the middle of the face
+## the `way` way along it (1 or -1, along the face's side, as _edge has it): to
+## the face of a wall meeting it at that end, and the step of ledge along that
+## wall's foot, if there is one there.
+func _room(cell: Vector2i, step: Vector2i, way: int) -> float:
+	var side := Vector2i(-step.y, step.x) * way
+	if not _maze.blocked(cell, side):
+		return Maze.CELL * 0.5
+	var room := Maze.CELL * 0.5 - _maze.wall_thick(cell, side) * 0.5
+	var ring := _maze.ring_of(cell)
+	if not _maze.ring_wall(cell, side) and ring >= 1 and ring <= _maze.styles.size():
+		var style: MazeStyle = _maze.styles[ring - 1]
+		if style.mezzanine_height > 0.0:
+			room -= style.mezzanine_depth
+	return room
 
 
 ## How high the face (cell, step) goes: its wall's height, or a rampart's.

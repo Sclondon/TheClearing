@@ -18,6 +18,8 @@ enum Quality { LOW, MEDIUM, HIGH }
 const PUSHERS := &"grass_pushers"
 const FIELDS := &"grass_fields"
 const MAX_PUSHERS := 8
+## How long a frame may spend filling squares with tufts, microseconds.
+const FILL_BUDGET := 3000
 
 ## Per quality: tufts per square metre at full density, blades in a tuft, segments in a blade,
 ## how far full density reaches, where the grass has gone entirely, the least share kept far
@@ -298,6 +300,10 @@ var _trail_dirty := false
 var _trail_wait := 0.0
 var _stamped := {}
 var _instances := 0
+# The tuft, the plainer tuft for far off, and the flower; and the squares near
+# the camera still to be filled, nearest first.
+var _tufts: Array = []
+var _unfilled: Array[int] = []
 
 
 ## Makes a field over `area` (world x, z) under `parent` and builds it. `settings` sets any
@@ -368,62 +374,87 @@ func build() -> void:
 	_materials = [blade_mat, flower_mat]
 	_make_trail()
 	apply_settings()
-	var tuft := _tuft_mesh(_preset.blades, _preset.segments)
-	var tuft_far := _tuft_mesh(_preset.blades, 1)
-	var bloom := _flower_mesh()
-	var rng := RandomNumberGenerator.new()
-	rng.seed = seed
-	var per_m2: float = _preset.tufts * density
-	if per_m2 <= 0.0:
+	_tufts = [_tuft_mesh(_preset.blades, _preset.segments), _tuft_mesh(_preset.blades, 1), _flower_mesh()]
+	if _preset.tufts * density <= 0.0:
 		return
-	var step := 1.0 / sqrt(per_m2)
+	# (each square is filled with tufts only when the camera first comes near it:
+	# a big field has more than a million, too many to work out all at once)
 	var nx := ceili(area.size.x / chunk)
 	var nz := ceili(area.size.y / chunk)
 	for cz in nz:
 		for cx in nx:
 			var rect := Rect2(area.position + Vector2(cx, cz) * chunk, Vector2(chunk, chunk)).intersection(area)
-			var blades: Array = []
-			var blooms: Array = []
-			var low := INF
-			var high := -INF
-			var gx := floori(rect.position.x / step)
-			var gz := floori(rect.position.y / step)
-			while gz * step < rect.end.y:
-				var x := gx
-				while x * step < rect.end.x:
-					var p := Vector2((x + rng.randf()) * step, (gz + rng.randf()) * step)
-					x += 1
-					if not rect.has_point(p):
-						continue
-					var chance := 1.0
-					if mask.is_valid():
-						chance = mask.call(p)
-					if chance <= 0.0 or rng.randf() >= chance:
-						continue
-					var y := 0.0
-					if height.is_valid():
-						y = height.call(p)
-					low = minf(low, y)
-					high = maxf(high, y)
-					var one := [p.x, y, p.y, rng.randf(), rng.randf(), rng.randf()]
-					if rng.randf() < flowers:
-						blooms.append(one)
-					else:
-						blades.append(one)
-				gz += 1
-			if blades.is_empty() and blooms.is_empty():
+			_chunks.append({"rect": rect, "low": 0.0, "high": 0.0, "parts": [], "grass": null, "meshes": [_tufts[0], _tufts[1]], "filled": false})
+
+
+## Fills the squares within `radius` metres of `point` with their tufts now (as
+## the camera coming near does, a few a frame): where a round begins.
+func fill_near(point: Vector3, radius: float) -> void:
+	for i in _chunks.size():
+		var c: Dictionary = _chunks[i]
+		if not c.filled and _distance_to(c, point) <= radius:
+			_fill(i)
+	_thinned_for = Vector3.INF
+
+
+func _distance_to(c: Dictionary, point: Vector3) -> float:
+	var rect: Rect2 = c.rect
+	return Vector2(point.x, point.z).distance_to(Vector2(clampf(point.x, rect.position.x, rect.end.x), clampf(point.z, rect.position.y, rect.end.y)))
+
+
+## Fills square `i` with its tufts (the same ones whenever it is filled: its own seed).
+func _fill(i: int) -> void:
+	var c: Dictionary = _chunks[i]
+	c.filled = true
+	var rect: Rect2 = c.rect
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([seed, i])
+	var step := 1.0 / sqrt(_preset.tufts * density)
+	var blades: Array = []
+	var blooms: Array = []
+	var low := INF
+	var high := -INF
+	var gx := floori(rect.position.x / step)
+	var gz := floori(rect.position.y / step)
+	while gz * step < rect.end.y:
+		var x := gx
+		while x * step < rect.end.x:
+			var p := Vector2((x + rng.randf()) * step, (gz + rng.randf()) * step)
+			x += 1
+			if not rect.has_point(p):
 				continue
-			var box := AABB(Vector3(rect.position.x - 1.5, low - 0.5, rect.position.y - 1.5),
-					Vector3(rect.size.x + 3.0, high - low + 1.0 + blade_height * 2.5, rect.size.y + 3.0))
-			var parts: Array = []
-			for kind in 2:
-				var list: Array = blades if kind == 0 else blooms
-				if list.is_empty():
-					continue
-				_shuffle(list, rng)
-				parts.append(_part(list, tuft if kind == 0 else bloom, _materials[kind], box))
-				_instances += list.size()
-			_chunks.append({"rect": rect, "low": low, "high": high, "parts": parts, "grass": parts[0] if not blades.is_empty() else null, "meshes": [tuft, tuft_far]})
+			var chance := 1.0
+			if mask.is_valid():
+				chance = mask.call(p)
+			if chance <= 0.0 or rng.randf() >= chance:
+				continue
+			var y := 0.0
+			if height.is_valid():
+				y = height.call(p)
+			low = minf(low, y)
+			high = maxf(high, y)
+			var one := [p.x, y, p.y, rng.randf(), rng.randf(), rng.randf()]
+			if rng.randf() < flowers:
+				blooms.append(one)
+			else:
+				blades.append(one)
+		gz += 1
+	if blades.is_empty() and blooms.is_empty():
+		return
+	c.low = low
+	c.high = high
+	var box := AABB(Vector3(rect.position.x - 1.5, low - 0.5, rect.position.y - 1.5),
+			Vector3(rect.size.x + 3.0, high - low + 1.0 + blade_height * 2.5, rect.size.y + 3.0))
+	for kind in 2:
+		var list: Array = blades if kind == 0 else blooms
+		if list.is_empty():
+			continue
+		_shuffle(list, rng)
+		var part := _part(list, _tufts[0] if kind == 0 else _tufts[2], _materials[kind], box)
+		c.parts.append(part)
+		if kind == 0:
+			c.grass = part
+		_instances += list.size()
 
 
 ## Pushes the exported colours, wind and lighting settings to the materials (call after
@@ -482,6 +513,12 @@ func _process(delta: float) -> void:
 			for x in range(at.x - reach, at.x + reach + 1):
 				for i: int in _by_place.get(Vector2i(x, y), []):
 					looked[i] = true
+		# (squares not filled yet are filled over the next frames, nearest first)
+		_unfilled.clear()
+		for i: int in looked:
+			if not _chunks[i].filled:
+				_unfilled.append(i)
+		_unfilled.sort_custom(func(a: int, b: int) -> bool: return _distance_to(_chunks[a], eye) < _distance_to(_chunks[b], eye))
 		for i: int in _showing:
 			looked[i] = true
 		_showing.clear()
@@ -503,6 +540,12 @@ func _process(delta: float) -> void:
 					mmi.multimesh.visible_instance_count = count
 				if count > 0:
 					_showing[i] = true
+	if not _unfilled.is_empty():
+		var started := Time.get_ticks_usec()
+		while not _unfilled.is_empty() and Time.get_ticks_usec() - started < FILL_BUDGET:
+			_fill(_unfilled.pop_front())
+		# (thinned again, to show what was filled)
+		_thinned_for = Vector3.INF
 	# The nearest pushers to the camera (or to the field) go to the shader.
 	var found: Array = []
 	for node in get_tree().get_nodes_in_group(PUSHERS):

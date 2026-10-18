@@ -13,6 +13,12 @@ static var _stem: StandardMaterial3D
 static var _leaf: StandardMaterial3D
 static var _leaf_mesh: ArrayMesh
 
+## How near the camera must come for it to be drawn, metres (it is lost in the
+## mist further off: its leaves are not drawn past 160 m), and how often it looks.
+const SHOWN_FROM := 175.0
+const LOOK_EVERY := 0.5
+var _look_in := 0.0
+
 
 func _ready() -> void:
 	add_to_group(&"ladders")
@@ -27,6 +33,28 @@ func _ready() -> void:
 		_leaf.roughness = 1.0
 		_leaf.metallic_specular = 0.0
 		_leaf_mesh = Vine.leaf_mesh(0.13)
+	# (drawn only once the camera first comes near enough to see it: a maze has
+	# hundreds of patches, too many leaves to lay all at once; the editor draws all)
+	if Engine.is_editor_hint():
+		_grow()
+	else:
+		_look_in = randf() * LOOK_EVERY
+		set_process(true)
+
+
+func _process(delta: float) -> void:
+	_look_in -= delta
+	if _look_in > 0.0:
+		return
+	_look_in = LOOK_EVERY
+	var camera := get_viewport().get_camera_3d()
+	if camera and camera.global_position.distance_to(global_position) < SHOWN_FROM:
+		set_process(false)
+		_grow()
+
+
+## Draws its stems and leaves.
+func _grow() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(global_position.snappedf(0.01))
 	# Stems: a few thick ones that wander up the face, close against it.
@@ -58,6 +86,9 @@ func _ready() -> void:
 	var count := int(width * height * 70.0 * 1.3 / leaf_scale)
 	multi.instance_count = count
 	var ragged := rng.randf() * TAU
+	# (all at once, as the multimesh's buffer: a transform, then a colour, for each)
+	var buffer := PackedFloat32Array()
+	buffer.resize(count * 16)
 	for i in count:
 		var across := rng.randf_range(-0.5, 0.5)
 		# (fewer out at the sides)
@@ -66,8 +97,19 @@ func _ready() -> void:
 		var reach := 1.0 - 0.28 * (0.5 + 0.5 * sin(across * 11.0 + ragged)) * (0.5 + 0.5 * sin(across * 4.3 - ragged))
 		var at := Vector3(across * width, pow(rng.randf(), 1.25) * height * reach, rng.randf_range(-0.05, 0.12))
 		var basis := Basis(Vector3.BACK, rng.randf_range(-1.2, 1.2) + PI).rotated(Vector3.RIGHT, rng.randf_range(-0.9, -0.2))
-		multi.set_instance_transform(i, Transform3D(basis.scaled(Vector3.ONE * rng.randf_range(0.7, 1.4) * leaf_scale), at))
-		multi.set_instance_color(i, Color(0.09, 0.17, 0.07).lightened(rng.randf_range(-0.05, 0.14)))
+		basis = basis.scaled(Vector3.ONE * rng.randf_range(0.7, 1.4) * leaf_scale)
+		var colour := Color(0.09, 0.17, 0.07).lightened(rng.randf_range(-0.05, 0.14))
+		var o := i * 16
+		for row in 3:
+			buffer[o + row * 4] = basis[0][row]
+			buffer[o + row * 4 + 1] = basis[1][row]
+			buffer[o + row * 4 + 2] = basis[2][row]
+			buffer[o + row * 4 + 3] = at[row]
+		buffer[o + 12] = colour.r
+		buffer[o + 13] = colour.g
+		buffer[o + 14] = colour.b
+		buffer[o + 15] = colour.a
+	multi.buffer = buffer
 	var leaves := MultiMeshInstance3D.new()
 	leaves.multimesh = multi
 	leaves.material_override = _leaf

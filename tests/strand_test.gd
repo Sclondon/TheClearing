@@ -76,7 +76,7 @@ func _run() -> void:
 		if climb.bottom_y() < 0.1 and absf(climb.top_y() - ledge_top) < 0.1:
 			ivy = climb
 			break
-	check("ivy up to the ledge", ivy != null)
+	check("ivy up to the ledge", ivy != null, "(at %s)" % [ivy.global_position if ivy else Vector3.ZERO])
 	if ivy:
 		player.global_position = ivy.stand(0.05) + ivy.global_basis.z * 0.6
 		player.velocity = Vector3.ZERO
