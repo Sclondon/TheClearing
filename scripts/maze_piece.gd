@@ -24,8 +24,8 @@ extends Node3D
 ## A pond (standing water in a hall: Ponds) lies with its origin in the middle of
 ## its still surface, `size` across (x and z) and as deep (y) at its deepest, its
 ## corners as round as `length`, with `width` fish in it; it is never turned.
-## A grappling hook spot (an anchor: an iron
-## ring, hook or pipe, GrappleSpots) is where the hook bites, its +Z out of the
+## A grappling hook spot (an anchor: an iron ring,
+## hook or pipe, GrappleSpots) is where the hook bites, its +Z out of the
 ## wall it is on.
 
 enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, PROP, WIRE, POND, ANCHOR }
