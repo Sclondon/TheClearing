@@ -129,6 +129,12 @@ func _run() -> void:
 	# A bridge: set him down on the middle of it.
 	var bridge: RopeBridge = features.bridges[0]
 	var middle: Vector3 = (bridge.from + bridge.to) * 0.5
+	# (first by its end, so that it wakes and settles as it hangs with nobody on it:
+	# asleep, it keeps the shape it was laid out in)
+	player.state = player.State.FREE
+	player.global_position = bridge.from + Vector3.UP * 0.5
+	player.velocity = Vector3.ZERO
+	await frames(120)
 	var level_before: float = bridge._points[RopeBridge.POINTS / 2].y
 	player.state = player.State.FREE
 	player.global_position = bridge._points[RopeBridge.POINTS / 2] + Vector3.UP * 0.5

@@ -12,10 +12,11 @@ extends Node3D
 ## foot, `size` across, and they may be turned about Y. A wall has a footing and
 ## a cornice besides. Ivy faces its +Z, out from what it grows on, from its origin
 ## up `length` metres. A vine hangs `length` from its origin. A bridge runs from
-## its origin to its child `End` (move that to move the far end). A tree stands
+## its origin to its child `End` (move that to move the far end), and so does a
+## vine strung across a hall (a strand). A tree stands
 ## at its origin, as big as its scale.
 
-enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON }
+enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND }
 
 @export var kind := Kind.WALL:
 	set(value):
@@ -89,7 +90,7 @@ func bridge_end() -> Vector3:
 
 func _process(_delta: float) -> void:
 	# (in the editor, a bridge redraws when its far end is moved)
-	if Engine.is_editor_hint() and kind == Kind.BRIDGE and _shown and bridge_end() != _drawn_end:
+	if Engine.is_editor_hint() and kind in [Kind.BRIDGE, Kind.STRAND] and _shown and bridge_end() != _drawn_end:
 		_refresh()
 
 
@@ -100,7 +101,7 @@ func _refresh() -> void:
 	if _shown:
 		_shown.queue_free()
 		_shown = null
-	set_process(kind == Kind.BRIDGE)
+	set_process(kind in [Kind.BRIDGE, Kind.STRAND])
 	match kind:
 		Kind.WALL, Kind.PIER, Kind.TERRACE:
 			var tool := SurfaceTool.new()
@@ -131,6 +132,14 @@ func _refresh() -> void:
 			bridge.to = get_parent().to_global(bridge_end()) if get_parent() is Node3D else bridge_end()
 			_drawn_end = bridge_end()
 			_shown = bridge
+		Kind.STRAND:
+			if not has_node(^"End"):
+				return
+			var strand := VineStrand.new()
+			strand.from = global_position
+			strand.to = get_parent().to_global(bridge_end()) if get_parent() is Node3D else bridge_end()
+			_drawn_end = bridge_end()
+			_shown = strand
 		Kind.TREE:
 			var pine := PineTree.new()
 			pine.height = 13.0
@@ -145,5 +154,5 @@ func _refresh() -> void:
 
 func _notification(what: int) -> void:
 	# (a vine's rope and a bridge's planks are laid where they hang in the world: moved, they are laid again)
-	if what == NOTIFICATION_TRANSFORM_CHANGED and Engine.is_editor_hint() and kind in [Kind.VINE, Kind.BRIDGE]:
+	if what == NOTIFICATION_TRANSFORM_CHANGED and Engine.is_editor_hint() and kind in [Kind.VINE, Kind.BRIDGE, Kind.STRAND]:
 		_refresh()

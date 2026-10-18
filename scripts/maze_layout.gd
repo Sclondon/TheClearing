@@ -43,7 +43,7 @@ extends Node3D
 const GROUPS := {
 	MazePiece.Kind.WALL: "Walls", MazePiece.Kind.PIER: "Piers", MazePiece.Kind.TERRACE: "Terraces",
 	MazePiece.Kind.IVY: "Ivy", MazePiece.Kind.VINE: "Vines", MazePiece.Kind.BRIDGE: "Bridges",
-	MazePiece.Kind.TREE: "Trees", MazePiece.Kind.BEACON: "Beacon",
+	MazePiece.Kind.TREE: "Trees", MazePiece.Kind.BEACON: "Beacon", MazePiece.Kind.STRAND: "Strands",
 }
 
 var _editor_shown: Array[Node] = []
@@ -171,7 +171,7 @@ func _add(kind: MazePiece.Kind, where: Transform3D, settings: Dictionary) -> Maz
 	piece.transform = where
 	group.add_child(piece)
 	_own(piece)
-	if kind == MazePiece.Kind.BRIDGE:
+	if kind in [MazePiece.Kind.BRIDGE, MazePiece.Kind.STRAND]:
 		var end := Marker3D.new()
 		end.name = "End"
 		end.position = where.affine_inverse() * settings.get("to", where.origin + Vector3(6, 0, 0))

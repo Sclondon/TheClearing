@@ -52,20 +52,28 @@ func _ready() -> void:
 	multi.transform_format = MultiMesh.TRANSFORM_3D
 	multi.use_colors = true
 	multi.mesh = _leaf_mesh
-	var count := int(width * height * 70.0)
+	# (a wide patch, up a bare wall, has bigger leaves, so that it reads from across
+	# a hall, and more than cover it, so that it is a mat and not a scatter)
+	var leaf_scale := clampf(width / 1.8, 1.0, 2.4)
+	var count := int(width * height * 70.0 * 1.3 / leaf_scale)
 	multi.instance_count = count
+	var ragged := rng.randf() * TAU
 	for i in count:
 		var across := rng.randf_range(-0.5, 0.5)
 		# (fewer out at the sides)
 		across *= 0.6 + 0.4 * rng.randf()
-		var at := Vector3(across * width, rng.randf() * height, rng.randf_range(-0.05, 0.12))
+		# (its top ragged: some stems reach higher than others)
+		var reach := 1.0 - 0.28 * (0.5 + 0.5 * sin(across * 11.0 + ragged)) * (0.5 + 0.5 * sin(across * 4.3 - ragged))
+		var at := Vector3(across * width, pow(rng.randf(), 1.25) * height * reach, rng.randf_range(-0.05, 0.12))
 		var basis := Basis(Vector3.BACK, rng.randf_range(-1.2, 1.2) + PI).rotated(Vector3.RIGHT, rng.randf_range(-0.9, -0.2))
-		multi.set_instance_transform(i, Transform3D(basis.scaled(Vector3.ONE * rng.randf_range(0.7, 1.4)), at))
+		multi.set_instance_transform(i, Transform3D(basis.scaled(Vector3.ONE * rng.randf_range(0.7, 1.4) * leaf_scale), at))
 		multi.set_instance_color(i, Color(0.09, 0.17, 0.07).lightened(rng.randf_range(-0.05, 0.14)))
 	var leaves := MultiMeshInstance3D.new()
 	leaves.multimesh = multi
 	leaves.material_override = _leaf
 	leaves.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# (lost in the mist further off than this anyway)
+	leaves.visibility_range_end = 160.0
 	add_child(leaves)
 
 
