@@ -1,0 +1,3 @@
+# The alien: two scripts, made in code (no scenes, models or textures)
+creatures/alien/alien_body.gd
+creatures/alien/alien_model.gd
