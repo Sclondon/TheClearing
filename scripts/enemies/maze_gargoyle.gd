@@ -130,7 +130,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	add_to_group(&"pursuers")
-	collision_layer = 0 if puppet else 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 1 if puppet else 1 | 4
 	floor_snap_length = 0.4
 	var shape := CapsuleShape3D.new()
@@ -783,7 +783,7 @@ func _put(at: Vector3, facing: float) -> void:
 
 
 func _puppet_changed() -> void:
-	collision_layer = 0 if puppet else 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 1 if puppet else 1 | 4
 
 

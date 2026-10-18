@@ -136,7 +136,7 @@ func _ready() -> void:
 	add_to_group(&"pursuers")
 	# Players pass through it; the world stops it, and so do the others (layer 4)
 	# where it is thinking for itself, so that a pack does not stand in one place.
-	collision_layer = 0 if puppet else 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 1 if puppet else 1 | 4
 	floor_snap_length = 0.3
 
@@ -435,5 +435,5 @@ func _put(at: Vector3, facing: float) -> void:
 
 
 func _puppet_changed() -> void:
-	collision_layer = 0 if puppet else 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 1 if puppet else 1 | 4

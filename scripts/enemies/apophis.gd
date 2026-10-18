@@ -280,7 +280,7 @@ func _ready() -> void:
 	_step = clampf(0.15 * _k, 0.15, 0.4)
 	_radius = RADIUS * _k
 	# Players pass through his head; the world stops it.
-	collision_layer = 0 if puppet else 4
+	collision_layer = PUPPET_LAYER if puppet else 4
 	collision_mask = 1
 	floor_snap_length = 0.3 * _k
 	floor_max_angle = deg_to_rad(50.0)
@@ -1173,4 +1173,4 @@ static func _wave(samples: PackedFloat32Array, rate: int, loops: bool) -> AudioS
 
 
 func _puppet_changed() -> void:
-	collision_layer = 0 if puppet else 4
+	collision_layer = PUPPET_LAYER if puppet else 4

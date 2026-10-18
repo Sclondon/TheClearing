@@ -61,6 +61,7 @@ var dev: DevTools
 var day: DayCycle
 var gates: ClearingGates
 var weather: Weather
+var ecology: Ecology
 ## Everyone starts in front of a gate instead of in the middle (with dev tools on,
 ## unless the flag `start=middle` is given).
 var start_at_gate := false
@@ -109,6 +110,8 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 			player = load("res://player.tscn").instantiate()
 			player.name = "Player"
 			player.add_to_group(&"bridge_weights")
+			# (the hunters' bodies stop him, as the walls do: layer 4, and theirs that another machine runs)
+			player.collision_mask |= 4 | MazeEnemy.PUPPET_LAYER
 			Grass.push(player)
 			add_child(player)
 			player.global_position = spawn(seat)
@@ -167,6 +170,10 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	insects.name = "Insects"
 	add_child(insects)
 	insects.populate(maze, hash("insects/%d" % seed_value), self)
+	# The hunters' own lives: hunger, the hunted and the hunters, the dead coming back
+	# (run where the hunters are: alone, or the host)
+	if not (online and not Net.is_host):
+		ecology = Ecology.put(self, seed_value, insects)
 	birds = Birds.put(self, maze, hash("birds/%d" % seed_value))
 	if DevTools.enabled():
 		dev = DevTools.new(self)
@@ -547,6 +554,9 @@ func _sleep_far() -> void:
 	for node: Node in found:
 		var thing := node as Node3D
 		if thing == null or not is_instance_valid(thing) or thing == player:
+			continue
+		# (the dead are the world's to bring back: Ecology)
+		if thing is MazeEnemy and (thing as MazeEnemy).dead:
 			continue
 		var nearest := INF
 		for eye in eyes:

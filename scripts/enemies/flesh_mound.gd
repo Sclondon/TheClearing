@@ -521,6 +521,6 @@ func _put(at: Vector3, facing: float) -> void:
 
 
 func _puppet_changed() -> void:
-	# Players pass through it (it catches them instead); the world stops it.
-	collision_layer = 0 if puppet or mode == Mode.GONE else 4
+	# Solid (puppets too, so that guests are stopped by it as the host is); the world stops it.
+	collision_layer = 0 if mode == Mode.GONE else (PUPPET_LAYER if puppet else 4)
 	collision_mask = 0 if mode == Mode.GONE else 1
