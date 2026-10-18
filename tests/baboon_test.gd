@@ -197,9 +197,15 @@ func _run() -> void:
 	await wait(0.2)
 	var was_at: Vector3 = example.alpha.global_position
 	var sizes := []
-	for kind in [Baboon.Kind.BABOON, Baboon.Kind.ALPHA]:
-		var mesh: ArrayMesh = BaboonLook._meshes[kind]
-		sizes.append(mesh.surface_get_array_len(0))
+	for one: Baboon in [example.baboon, example.alpha]:
+		sizes.append(one._body.mesh.surface_get_array_len(0))
+	# (every bone of the skeleton it is given is found in the model)
+	var found := true
+	for one: Baboon in [example.baboon, example.alpha]:
+		for b in Baboon.BONES.size():
+			if one._index[b] < 0:
+				found = false
+	check("the models have every bone", found)
 	await wait(3.0)
 	check("the example runs them round", example.alpha.global_position.distance_to(was_at) > 1.0, "(vertices: baboon %d, alpha %d)" % sizes)
 	example.free()

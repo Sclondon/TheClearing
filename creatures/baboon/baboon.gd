@@ -66,11 +66,11 @@ const SIZES := {Kind.BABOON: 1.2, Kind.ALPHA: 2.05}
 const BUILDS := {
 	Kind.BABOON: {"chest": 0.14, "belly": 0.105, "haunch": 0.105, "arm": Vector2(0.056, 0.044), "leg": Vector2(0.066, 0.047),
 		"head": 0.92, "fang": 0.06, "mane": 0.55, "tail_step": 0.075, "legs_long": 1.0, "muzzle": "dog",
-		"fur": Color(0.33, 0.31, 0.24), "belly_fur": Color(0.5, 0.47, 0.38), "mane_fur": Color(0.42, 0.39, 0.3), "rump": Color(0.45, 0.4, 0.35), "rump_patch": Color(0.0, 0.0, 0.0, 0.0),
+		"fur": Color(0.25, 0.235, 0.18), "belly_fur": Color(0.38, 0.36, 0.29), "mane_fur": Color(0.29, 0.27, 0.2), "rump": Color(0.4, 0.36, 0.31), "rump_patch": Color(0.0, 0.0, 0.0, 0.0),
 		"dark": Color(0.16, 0.15, 0.13), "face": Color(0.15, 0.13, 0.13), "nose": Color(0.15, 0.13, 0.13), "cheek": Color(0.15, 0.13, 0.13), "beard": Color(0.47, 0.44, 0.36)},
 	Kind.ALPHA: {"chest": 0.2, "belly": 0.15, "haunch": 0.13, "arm": Vector2(0.08, 0.062), "leg": Vector2(0.084, 0.058),
 		"head": 1.12, "fang": 0.1, "mane": 1.0, "tail_step": 0.032, "legs_long": 0.97, "muzzle": "mandrill",
-		"fur": Color(0.24, 0.22, 0.17), "belly_fur": Color(0.42, 0.39, 0.32), "mane_fur": Color(0.36, 0.32, 0.24), "rump": Color(0.52, 0.48, 0.44), "rump_patch": Color(0.36, 0.3, 0.55, 1.0),
+		"fur": Color(0.17, 0.155, 0.12), "belly_fur": Color(0.3, 0.28, 0.22), "mane_fur": Color(0.2, 0.18, 0.13), "rump": Color(0.45, 0.42, 0.38), "rump_patch": Color(0.36, 0.3, 0.55, 1.0),
 		"dark": Color(0.12, 0.11, 0.1), "face": Color(0.09, 0.08, 0.08), "nose": Color(0.85, 0.08, 0.07), "cheek": Color(0.22, 0.43, 0.95), "beard": Color(0.82, 0.62, 0.3)},
 }
 const EMBER := Color(1.0, 0.3, 0.05)
@@ -96,6 +96,13 @@ const GALLOP := {"offsets": [0.5, 0.58, 0.02, 0.0], "duty": 0.3, "cycle": 1.45, 
 @export var size := 0.0
 ## Its own small differences (coat, build): two with one seed are alike.
 @export var seed_value := 0
+## Use the low-poly model (models/*_lo.glb), as `low_poly` does for every baboon.
+@export var force_low := false
+
+## The models (creatures/baboon/models/, made by tools/build_baboon.py).
+const MODELS := {Kind.BABOON: "baboon", Kind.ALPHA: "mandrill"}
+## Every baboon uses the low-poly model (phones).
+static var low_poly := false
 
 ## What it looks at (world). INF: it looks where it goes, or about it.
 var look_at_point := Vector3.INF
@@ -105,11 +112,15 @@ var sitting := false
 var panting := 0.0
 
 var _build := {}
+var _model: Node3D
 var _skeleton: Skeleton3D
 var _body: MeshInstance3D
-## Each bone as it stands (skeleton space), and how long each is.
+## Each bone as it stands, as `_joints` puts it (its own units and space).
 var _rest: Array[Transform3D] = []
-var _rest_len := PackedFloat32Array()
+## Each of BONES: its index in the model's skeleton, and how it stands there.
+var _index := PackedInt32Array()
+var _model_rest: Array[Transform3D] = []
+var _skeleton_from_model := Transform3D.IDENTITY
 ## Every bone is put through this (lean, lift) when it is posed.
 var _frame := Transform3D.IDENTITY
 
@@ -144,27 +155,24 @@ func _ready() -> void:
 	_tone = _rng.randf_range(0.88, 1.12)
 	if size <= 0.0:
 		size = SIZES[kind] * _rng.randf_range(0.94, 1.06)
-	# Its skeleton as it stands, and the mesh of its kind built round it.
-	var rest_joints := _joints(_standing(), STANDING_GAZE)
-	var pairs := _pairs(rest_joints)
-	_rest_len.resize(BONES.size())
-	for b in BONES.size():
-		_rest_len[b] = (pairs[b][1] - pairs[b][0]).length() if pairs[b] is Array else 1.0
-	_rest = _bone_globals(rest_joints)
-	_skeleton = Skeleton3D.new()
-	_skeleton.scale = Vector3.ONE * size
-	add_child(_skeleton)
-	for b in BONES.size():
-		_skeleton.add_bone(BONES[b])
-		_skeleton.set_bone_rest(b, _rest[b])
-	_skeleton.reset_bone_poses()
-	_body = MeshInstance3D.new()
-	_body.mesh = BaboonLook.mesh_for(kind, _build, rest_joints)
-	_body.custom_aabb = AABB(Vector3(-1.4, -0.4, -1.6), Vector3(2.8, 2.6, 3.4))
-	_skeleton.add_child(_body)
-	_body.skin = _skeleton.create_skin_from_rest_transforms()
-	_body.skeleton = NodePath("..")
+	# Its skeleton as it stands (the model was built round the same), and the model.
+	_rest = _bone_globals(_joints(_standing(), STANDING_GAZE))
+	var low := low_poly or force_low
+	_model = (load("res://creatures/baboon/models/%s%s.glb" % [MODELS[kind], "_lo" if low else ""]) as PackedScene).instantiate()
+	_model.scale = Vector3.ONE * size
+	add_child(_model)
+	_skeleton = _model.find_children("*", "Skeleton3D", true, false)[0]
+	_body = _model.find_children("*", "MeshInstance3D", true, false)[0]
+	_body.material_override = BaboonLook.material()
+	_body.custom_aabb = AABB(Vector3(-0.9, -0.3, -1.0), Vector3(1.8, 1.8, 2.2))
 	_body.set_instance_shader_parameter(&"tone", _tone)
+	_index.resize(BONES.size())
+	_model_rest.resize(BONES.size())
+	var to_skeleton := _skeleton.global_transform.affine_inverse() * _model.global_transform
+	for b in BONES.size():
+		_index[b] = _skeleton.find_bone(BONES[b])
+		_model_rest[b] = _skeleton.get_bone_global_rest(_index[b])
+	_skeleton_from_model = to_skeleton
 	settle()
 
 
@@ -630,11 +638,7 @@ func _bone_globals(j: Dictionary) -> Array[Transform3D]:
 		var a: Vector3 = pairs[b][0]
 		var c: Vector3 = pairs[b][1]
 		var length := (c - a).length()
-		var basis := _along((c - a) / maxf(length, 0.0001), torso.x)
-		# (stretched to reach, if it must)
-		if not _rest_len.is_empty() and _rest_len[b] > 0.0:
-			basis.y *= length / _rest_len[b]
-		out.append(Transform3D(basis, a))
+		out.append(Transform3D(_along((c - a) / maxf(length, 0.0001), torso.x), a))
 	return out
 
 
@@ -664,13 +668,20 @@ static func _bend(a: Vector3, target: Vector3, l1: float, l2: float, pole: Vecto
 func _apply(p: Pose) -> void:
 	var j := _joints(p, _gaze)
 	var globals := _bone_globals(j)
+	# Each bone is moved from where it stands by as much as `_joints` has moved
+	# its own idea of that bone (the model's bones may be turned otherwise).
 	for b in globals.size():
-		var g := _frame * globals[b]
-		_skeleton.set_bone_pose_position(b, g.origin)
-		_skeleton.set_bone_pose_rotation(b, g.basis.get_rotation_quaternion())
-		_skeleton.set_bone_pose_scale(b, g.basis.get_scale())
+		var moved := _frame * globals[b] * _rest[b].affine_inverse()
+		var g := _skeleton_from_model * moved * _skeleton_from_model.affine_inverse() * _model_rest[b]
+		var bone := _index[b]
+		var parent := _skeleton.get_bone_parent(bone)
+		if parent >= 0:
+			g = _skeleton.get_bone_global_pose(parent).affine_inverse() * g
+		_skeleton.set_bone_pose_position(bone, g.origin)
+		_skeleton.set_bone_pose_rotation(bone, g.basis.get_rotation_quaternion())
+		_skeleton.set_bone_pose_scale(bone, g.basis.get_scale())
 	# Where it can take hold of something: its hands, and its jaws.
-	var to_world := _skeleton.global_transform * _frame
+	var to_world := _model.global_transform * _frame
 	_grabbers = PackedVector3Array()
 	for i in 2:
 		var end: Vector3 = j["ends"][i]

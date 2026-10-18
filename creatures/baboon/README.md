@@ -1,15 +1,27 @@
 # Baboon: demonic baboons and the mandrill that leads them (Godot 4.7)
 
-A coarse grey ape on all fours, high-shouldered, walking on its knuckles, with a dog's muzzle, fangs and two small
-eyes glowing like embers under a heavy brow. The alpha is a mandrill: twice as heavy, a shaggy cape of mane, and the
-face, a vivid red ridge down the nose and ridged blue cheeks, the one colour in it. Made 2026-10-18 for The Clearing
-(its baboon troops), as a creature any game can use: it is only the look and the motion, and knows nothing of what it
-is doing it for.
+A coarse olive-grey ape on all fours, high-shouldered, walking on its knuckles, with a dog's muzzle, fangs and two
+small eyes glowing like embers under a heavy brow. The alpha is a mandrill: twice as heavy, a shaggy cape of mane, a
+yellow-orange beard, and the face: a crimson ridge down the snout to a bulb of a nose, and swollen, ribbed slate-blue
+cheeks, the one colour in it. Made 2026-10-18 for The Clearing (its baboon troops), as a creature any game can use: it
+is only the look and the motion, and knows nothing of what it is doing it for.
 
-Two scripts and nothing else: `creatures/baboon/baboon.gd` (`class_name Baboon`, a `Node3D`) and
-`creatures/baboon/baboon_look.gd` (`class_name BaboonLook`). The mesh is built in code round a skeleton made in code
-(one mesh per kind, shared), skinned, cel shaded with its own shader: **one draw per baboon** (and its shadow), about
-5,100 vertices (10,000 for the alpha, most of them its sculpted face). Works in GL Compatibility (web, phones).
+- `creatures/baboon/baboon.gd` (`class_name Baboon`, a `Node3D`): the motion, all procedural (no animations).
+- `creatures/baboon/baboon_look.gd` (`class_name BaboonLook`): its shader (cel shading; the mandrill's face cut sharp
+  from where on the snout each point is).
+- `creatures/baboon/models/`: `mandrill.glb` and `baboon.glb` (about 34,000 and 27,000 vertices), and `_lo` versions
+  (13,000 and 9,000) for phones (`force_low`, or `Baboon.low_poly` for all). One draw per baboon, and its shadow.
+- `creatures/baboon/tools/build_baboon.py` makes the models in Blender 4.3 (Skin modifier and subdivision for the
+  body, a sculpted snout, fur as many small clumps with their normals bent out from the body), round the skeleton
+  `rest_joints.gd` writes out from Baboon (`rest_alpha.json`, `rest_baboon.json`). Change the skeleton or a build in
+  `baboon.gd`, then run both:
+
+```
+godot --headless --path . -s res://creatures/baboon/tools/rest_joints.gd
+blender --background --python creatures/baboon/tools/build_baboon.py [-- <folder for previews>]
+```
+
+Works in GL Compatibility (web, phones).
 
 ## Using it
 

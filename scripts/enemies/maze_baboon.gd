@@ -115,6 +115,7 @@ func _ready() -> void:
 		grab_reach = 0.95
 	body = Baboon.new()
 	body.kind = Baboon.Kind.ALPHA if alpha else Baboon.Kind.BABOON
+	body.force_low = Settings.low_poly or Mummy.low_poly
 	body.seed_value = _rng.randi()
 	add_child(body)
 	body.top_level = true
