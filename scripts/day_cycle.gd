@@ -35,6 +35,11 @@ var daylight := 1.0
 ## How gloomy the weather makes it (Weather): 0 the overcast of every day, 1 the
 ## dark of heavy rain: dimmer, the sky darker, the mist thicker.
 var gloom := 0.0
+## Lightning now (Weather), 0 to 1: the mist and the shade lit up white for a moment.
+var flash := 0.0
+var _fog_base := Color.WHITE
+var _ambient_base := 1.0
+var _flashed := false
 
 var _sun: DirectionalLight3D
 var _environment: Environment
@@ -81,6 +86,10 @@ func _process(delta: float) -> void:
 	if _wait <= 0.0:
 		_wait = 0.25
 		_apply()
+	if _environment and (flash > 0.0 or _flashed):
+		_flashed = flash > 0.0
+		_environment.fog_light_color = _fog_base.lerp(Color(0.86, 0.9, 1.0), flash * 0.55)
+		_environment.ambient_light_energy = _ambient_base + flash * 1.6
 	var day_now := is_day()
 	if day_now != _was_day:
 		_was_day = day_now
@@ -153,3 +162,5 @@ func _apply() -> void:
 		_environment.fog_light_color = Color(0.15, 0.18, 0.22).lerp((_day["fog"] as Color).lerp(dusk_horizon, low * 0.35).lerp(grey, gloom * 0.5), light)
 		_environment.ambient_light_energy = lerpf(0.55, _day["ambient"], light) * (1.0 - gloom * 0.25)
 		_environment.fog_density = _day["fog_density"] * (1.0 + gloom * 0.9)
+		_fog_base = _environment.fog_light_color
+		_ambient_base = _environment.ambient_light_energy

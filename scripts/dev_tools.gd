@@ -434,10 +434,10 @@ func to_exit() -> void:
 	world.put_player(world.maze.world(world.maze.exit) - out * 3.0 + Vector3.UP * 0.05, atan2(out.x, out.z))
 
 
-## The weather: as the spells have it, or always overcast, cloudy or raining.
+## The weather: as the spells have it, or always one kind (overcast, cloudy, a sprinkle, rain, a downpour, a thunderstorm).
 func next_weather() -> void:
 	if world.weather:
-		world.weather.forced = world.weather.forced + 1 if world.weather.forced < Weather.Kind.RAIN else -1
+		world.weather.forced = world.weather.forced + 1 if world.weather.forced < Weather.Kind.THUNDERSTORM else -1
 	_show()
 
 

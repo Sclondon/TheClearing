@@ -1,5 +1,5 @@
 extends SceneTree
-## Pictures of the weather (Weather): overcast, cloudy and raining, from the
+## Pictures of the weather (Weather): each kind, overcast to thunderstorm (caught mid-flash), from the
 ## clearing looking up at its wall and the sky, and in a hall of the first ring.
 ##
 ##     godot --path . --resolution 1280x720 -s res://tools/weather_shots.gd -- <folder>
@@ -33,18 +33,24 @@ func _run() -> void:
 	var spot: Transform3D = world.gate_spot(maxi(world.maze.clearing_style.entrances.find(ClearingStyle.Entrance.CLEAR), 0))
 	var out := spot.basis.z
 	var hall: Vector3 = world.maze.world(world.maze.gates[0][0][0] + world.maze.gates[0][0][1] * 6)
-	for kind: int in [Weather.Kind.OVERCAST, Weather.Kind.CLOUDY, Weather.Kind.RAIN]:
+	for kind: int in Weather.Kind.values():
 		weather.forced = kind
 		var look: Array = Weather.LOOKS[kind]
 		weather.clouds = look[0]
 		weather.rain = look[1]
+		weather.wind = look[2]
 		var name := String(Weather.Kind.keys()[kind]).to_lower()
 		camera.position = Vector3(0.0, 4.0, 0.0)
 		camera.look_at(spot.origin + Vector3.UP * 260.0)
 		await _shot("%s/%s_clearing.png" % [folder, name])
-		camera.position = hall + Vector3.UP * 1.7
-		camera.look_at(hall + Vector3(1.0, 0.25, 0.3) * 20.0)
-		await _shot("%s/%s_hall.png" % [folder, name])
+		camera.position = Vector3(0.0, 1.7, 0.0)
+		camera.look_at(spot.origin + Vector3.UP * 30.0)
+		await _shot("%s/%s_low.png" % [folder, name])
+		if kind == Weather.Kind.THUNDERSTORM:
+			weather.strike()
+			for i in 3:
+				await process_frame
+			root.get_texture().get_image().save_png("%s/%s_low_flash.png" % [folder, name])
 	quit()
 
 
