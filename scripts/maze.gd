@@ -81,7 +81,8 @@ static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] 
 static func sizes_for(ring_styles: Array[MazeStyle]) -> Array[int]:
 	var sizes: Array[int] = [CLEARING]
 	for style in ring_styles:
-		sizes.append(sizes.back() + style.width * 2)
+		# (its rampart is on top of its width: a thicker wall moves the ring out)
+		sizes.append(sizes.back() + (style.width + style.rampart) * 2)
 	return sizes
 
 

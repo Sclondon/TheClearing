@@ -69,7 +69,7 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
 
 | | Avenues (ring 1) | Warren (ring 2, planned) | Tangle (ring 3, planned) |
 | --- | --- | --- | --- |
-| Depth | 9 cells (3 of them rampart) | 4 cells | 4 cells |
+| Depth | 6 cells, inside 3 of rampart (9 in all) | 4 cells | 4 cells |
 | Halls | 2 cells wide (about 16 m between walls) | 1 cell | 1 cell |
 | Walls | 12 m thick, 34 m high | 3.2 m thick | 3.2 m thick |
 | Passages | go on straight half the time; no extra branching; no loops | winding, forking | branching often, many loops |

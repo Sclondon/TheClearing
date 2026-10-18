@@ -20,7 +20,7 @@ func _initialize() -> void:
 	var c := Maze.generate(Maze.seed_for("ABCD", 2))
 	check("same seed, same maze", a.east == b.east and a.south == b.south and a.exit == b.exit)
 	check("next round, new maze", a.east != c.east or a.south != c.south)
-	check("first ring only, for now", a.rings == 1 and a.size == Maze.CLEARING + a.styles[0].width * 2)
+	check("first ring only, for now", a.rings == 1 and a.size == Maze.CLEARING + (a.styles[0].width + a.styles[0].rampart) * 2)
 
 	for built in [1, 3]:
 		for seed_value in [1, 2, 3, 99, 12345]:
