@@ -114,6 +114,8 @@ func _init(in_world: World) -> void:
 		grid.add_child(_button(String(one[0]), spawn_loot.bind(one[1])))
 	for one: Array in WILDLIFE:
 		grid.add_child(_button("+ " + String(one[0]), spawn_wildlife.bind(one[1])))
+	for one: Array in [["MOTHS", InsectLook.Kind.MOTH], ["FLIES", InsectLook.Kind.FLY], ["DRAGONFLIES", InsectLook.Kind.DRAGONFLY]]:
+		grid.add_child(_button("+ " + String(one[0]), spawn_insects.bind(one[1])))
 	grid.add_child(_button("CLEAR ALL", clear))
 	grid.add_child(_button("TO GATE", to_gate))
 	grid.add_child(_button("TO MIDDLE", to_middle))
@@ -298,6 +300,12 @@ func spawn_loot(what: String) -> void:
 func spawn_wildlife(kind: Wildlife.Kind) -> void:
 	var at := _ahead(SNAKE_AHEAD)
 	world.wildlife.add_herd(kind, at, world.maze.in_clearing(world.maze.cell_at(at)), randi())
+
+
+## Puts insects in ahead of him (Insects.put): moths round a lantern, flies on a
+## carcass, a patch of dragonflies.
+func spawn_insects(kind: InsectLook.Kind) -> void:
+	world.insects.put(kind, _ahead(7.0))
 
 
 ## Takes away everything that hunts (the Griever World put in is only put to
