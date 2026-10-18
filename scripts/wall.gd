@@ -77,15 +77,14 @@ func _ready() -> void:
 
 
 func _build() -> void:
+	_fill_missing()
 	if not is_inside_tree():
 		return
-	if _mesh == null:
-		_mesh = MeshInstance3D.new()
-		_mesh.name = "Mesh"
-		add_child(_mesh, false, Node.INTERNAL_MODE_BACK)
-		_shape = CollisionShape3D.new()
-		_shape.name = "Shape"
-		add_child(_shape, false, Node.INTERNAL_MODE_BACK)
+	# (its own mesh and shape, found again if the script was reloaded in the editor, never made twice)
+	if _mesh == null or not is_instance_valid(_mesh):
+		_mesh = _own_child("Mesh", MeshInstance3D) as MeshInstance3D
+	if _shape == null or not is_instance_valid(_shape):
+		_shape = _own_child("Shape", CollisionShape3D) as CollisionShape3D
 	var size := Vector3(width, height, depth)
 	var box := BoxMesh.new()
 	box.size = size
@@ -109,3 +108,37 @@ func _build() -> void:
 	shape.size = size
 	_shape.shape = shape
 	_shape.position = _mesh.position
+
+
+## The internal child called `called` of class `kind`, made if there is none (and
+## any others of that name, left over, taken away).
+func _own_child(called: String, kind: Variant) -> Node:
+	var found: Node = null
+	for child in get_children(true):
+		if String(child.name).begins_with(called) and is_instance_of(child, kind):
+			if found == null:
+				found = child
+			else:
+				child.queue_free()
+	if found == null:
+		found = kind.new()
+		found.name = called
+		add_child(found, false, Node.INTERNAL_MODE_BACK)
+	return found
+
+
+## Gives any setting that is empty its default. (When the editor reloads this
+## script after it has changed, a wall already in an open scene can come back with
+## settings it did not have before left empty.)
+func _fill_missing() -> void:
+	var defaults := {
+		"width": 14.0, "height": 34.0, "depth": 3.2, "look": Look.CONCRETE_PANELS, "relief": 1.0, "tile_size": 9.6, "tint": Color.WHITE,
+	}
+	for key: String in defaults:
+		if get(key) == null:
+			set(key, defaults[key])
+	if look != Look.CUSTOM:
+		if texture == null:
+			texture = load("res://textures/%s.png" % LOOKS[look][0])
+		if normal_map == null:
+			normal_map = load("res://textures/%s_normal.png" % LOOKS[look][0])
