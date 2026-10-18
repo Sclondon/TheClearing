@@ -69,8 +69,10 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
   channels of standing water between hummocks and tussocks of wet ground, black mud at the water's edge, broad open
   meres in some parts and flats of tussocks in others, and a few deep dark pools he has to swim. The water is one
   sheet at one level that the ground stands up through: the shape is all the ground's, from the seed. Sedges grow all
-  over it, up out of the shallow water too (thinner there, darker and yellower than the field's grass, and none in the
-  deep pools), with reeds and bulrushes in clumps along the pools' edges and lily pads and a scum of duckweed on the
+  over it, up out of the shallow water too (thinner there and in open gaps, so the eye catches water at his height;
+  darker and yellower than the field's grass; none in the
+  deep pools), with reeds and bulrushes in clumps along the pools' edges (rounded heads of brown velvet; some gone to
+  seed, some broken, some leant over) and lily pads and a scum of duckweed on the
   open water. All of it bends round whoever pushes through. Wading slows him (the deeper, the slower), he splashes
   going in and leaves rings. A lane in from the gate has nothing deep and nothing standing in it: the way in is wet
   but open.

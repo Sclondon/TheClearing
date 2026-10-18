@@ -117,7 +117,7 @@ func populate(plan: Maze, seed_value: int) -> void:
 
 
 ## Somewhere out in the clearing's meadow for a herd: towards one of its
-## corners (not the middle of a side, where the gates are), clear of the pond.
+## corners (not the middle of a side, where the gates are), clear of the marsh.
 func _meadow_spot(rng: RandomNumberGenerator, corners: Array) -> Vector3:
 	var look := maze.clearing_style
 	var corner: int = corners.pop_at(rng.randi_range(0, corners.size() - 1)) if not corners.is_empty() else rng.randi_range(0, 3)
@@ -125,8 +125,7 @@ func _meadow_spot(rng: RandomNumberGenerator, corners: Array) -> Vector3:
 	for attempt in 12:
 		var angle := PI * 0.25 + PI * 0.5 * corner + rng.randf_range(-0.3, 0.3)
 		spot = Vector3(sin(angle), 0.0, cos(angle)) * rng.randf_range(MEADOW.x, MEADOW.y)
-		var pond := look.pond_middle()
-		if not pond.is_finite() or Vector2(spot.x, spot.z).distance_to(pond) > look.pond_radius * 1.6:
+		if look.marsh_wet_at(Vector2(spot.x, spot.z), maze.maze_seed) <= 0.0:
 			break
 	spot = _in_bounds(spot)
 	spot.y = maze.ground_height(spot)
