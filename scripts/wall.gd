@@ -23,6 +23,15 @@ extends StaticBody3D
 	set(value):
 		texture = value
 		_build()
+## Its relief: a normal map laid on as the texture is (and how strong).
+@export var normal_map: Texture2D = preload("res://textures/stone_blocks_normal.png"):
+	set(value):
+		normal_map = value
+		_build()
+@export_range(0.0, 4.0, 0.05) var relief := 1.0:
+	set(value):
+		relief = value
+		_build()
 ## How many metres one tile of the texture covers.
 @export_range(0.5, 50.0, 0.1, "or_greater", "suffix:m") var tile_size := 8.0:
 	set(value):
@@ -60,6 +69,10 @@ func _build() -> void:
 	var material := StandardMaterial3D.new()
 	material.albedo_texture = texture
 	material.albedo_color = tint
+	if normal_map:
+		material.normal_enabled = true
+		material.normal_texture = normal_map
+		material.normal_scale = relief
 	material.roughness = 1.0
 	material.metallic_specular = 0.2
 	# (laid on from each side in the box's own metres, so it tiles at the same size on every face)
