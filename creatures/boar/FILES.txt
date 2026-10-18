@@ -1,0 +1,8 @@
+# A giant wild boar: its look, every move and its sounds, for any game (no thinking)
+creatures/boar/boar.gd
+creatures/boar/boar_look.gd
+creatures/boar/boar_rig.gd
+creatures/boar/models/boar.glb
+creatures/boar/models/boar_lo.glb
+creatures/boar/tools/.gdignore
+creatures/boar/tools/build_boar.py
