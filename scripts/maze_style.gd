@@ -87,6 +87,12 @@ extends Resource
 ## high (tightrope vine height range), as shares of the lower wall's height.
 @export_range(0.0, 1.0) var tightrope_vine_share := 0.0
 @export var tightrope_vine_height_range := Vector2(0.3, 0.75)
+## The share of maze walls with a sewer pipe through them, high up, dripping: a
+## platform under each mouth with ivy up to it from the ground, so that he can
+## climb to one, crawl through the wall and come down the other side. How high
+## (sewer pipe height), as a share of the wall's height.
+@export_range(0.0, 0.5) var sewer_pipe_share := 0.0
+@export_range(0.2, 0.9) var sewer_pipe_height := 0.62
 
 @export_group("Plants")
 ## How thickly ferns, moss and tufts of grass grow along the foot of its walls (0
@@ -161,7 +167,7 @@ static func made(depth_cells: int, hallway_cells: int, straightness: float, bran
 ## clearing is 54 m thick and 92 m high (twice the other border walls), each gate
 ## a slot through it. A mezzanine a third of the way up every wall, ivy up to it,
 ## vines hanging from it and strung across the hallways above it, plants at the
-## foot of the walls.
+## foot of the walls, and sewer pipes through the walls high up.
 static func avenues() -> MazeStyle:
 	var style := made(6, 2, 0.5, 0.0, 0.0)
 	style.maze_wall_diameter = 12.0
@@ -174,6 +180,7 @@ static func avenues() -> MazeStyle:
 	style.hanging_vine_share = 0.08
 	style.tightrope_vine_share = 0.12
 	style.tightrope_vine_height_range = Vector2(0.45, 0.75)
+	style.sewer_pipe_share = 0.08
 	style.plant_density = 0.8
 	return style
 

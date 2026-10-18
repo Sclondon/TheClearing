@@ -7,7 +7,9 @@ extends Node3D
 ## (IvyClimb), and now and then on up the wall above to its top, where he can walk
 ## along it as far as the next pier. Vines hang from beams of stone out over their
 ## edges (Vine) to swing on, and rope bridges (RopeBridge) cross the halls between
-## terraces facing each other, and between wall tops.
+## terraces facing each other, and between wall tops. Sewer pipes (SewerPipe) go
+## through walls high up, a platform under each mouth with ivy up to it: up one
+## side, through the wall ducked, and down the other.
 ##
 ## `lay_out` chooses them from the maze's seed, so every copy of the game in a room
 ## has the same, as pieces of a MazeLayout; `realize` makes the real things from a
@@ -48,6 +50,7 @@ var climbs: Array[IvyClimb] = []
 var vines: Array[Vine] = []
 var bridges: Array[RopeBridge] = []
 var strands: Array[VineStrand] = []
+var pipes: Array[SewerPipe] = []
 ## Where the terraces stand, in the world's x and z (for keeping grass off them).
 var footprints: Array[Rect2] = []
 
@@ -102,6 +105,13 @@ func realize(layout: MazeLayout) -> void:
 		strand.to = piece.bridge_end()
 		add_child(strand)
 		strands.append(strand)
+	for piece in layout.pieces(MazePiece.Kind.PIPE):
+		var pipe := SewerPipe.new()
+		pipe.length = piece.length
+		pipe.wall = piece.width
+		pipe.transform = Transform3D(piece.transform.basis.orthonormalized(), piece.position)
+		add_child(pipe)
+		pipes.append(pipe)
 
 
 func _place(layout: MazeLayout, plan: Maze) -> void:
@@ -203,6 +213,103 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 			# (along that wall runs the other way)
 			var b := _edge(far, step, 0.05, -along + _rng.randf_range(-3.0, 3.0)) + Vector3.UP * (high + _rng.randf_range(-1.5, 1.5))
 			_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b})
+
+	# Sewer pipes through the maze walls, high up, between halls on both sides.
+	for i in plan.size * plan.size:
+		var cell := Vector2i(i % plan.size, i / plan.size)
+		var ring := plan.ring_of(cell)
+		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
+			continue
+		_style = plan.styles[ring - 1]
+		if _style.sewer_pipe_share <= 0.0:
+			continue
+		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+			var other := cell + step
+			if not plan.blocked(cell, step) or plan.ring_wall(cell, step) or plan.ring_of(other) != ring \
+					or plan.solid.has(other) or plan.entrances.has(other) or _taken.has([cell, step]) or _taken.has([other, -step]):
+				continue
+			if _rng.randf() < _style.sewer_pipe_share:
+				_pipe(cell, step)
+
+
+## How far a pipe stands out of each face of its wall, and how deep and wide the
+## platform under each mouth is (the ivy hangs from its edge).
+const PIPE_OUT := 0.8
+const PLATFORM := Vector2(1.8, 2.6)
+const PLATFORM_THICK := 0.5
+
+
+## A sewer pipe through the wall on the `step` side of `cell`, with a platform
+## under each mouth and ivy from the ground up to its edge: somewhere along the
+## wall clear of any wall meeting it at either end, on either side, if there is
+## room (none if not).
+func _pipe(cell: Vector2i, step: Vector2i) -> void:
+	var other := cell + step
+	var thick := _thick(cell, step)
+	var s := Vector3(step.x, 0.0, step.y)
+	var side := Vector2i(-step.y, step.x)
+	# (how far along it may be from the middle of the face, to keep clear of walls
+	# meeting this one at either end)
+	var room := {}
+	for way: int in [-1, 1]:
+		var meets := _maze.blocked(cell, side * way) or _maze.blocked(other, side * way)
+		room[way] = Maze.CELL * 0.5 - (thick * 0.5 if meets else 0.0) - PLATFORM.y * 0.5 - 0.5
+	if room[-1] + room[1] < 0.0:
+		return
+	var along := _rng.randf_range(-room[-1], room[1])
+	var high := _maze.wall_height(cell, step) * _style.sewer_pipe_height
+	var middle := _edge(cell, step, -thick * 0.5, along) + Vector3.UP * high
+	if not _hole(middle, s):
+		return
+	_taken[[cell, step]] = true
+	_taken[[other, -step]] = true
+	_layout.add_piece(MazePiece.Kind.PIPE, Transform3D(Basis(Vector3.UP, atan2(s.x, s.z)), middle),
+		{"length": thick + PIPE_OUT * 2.0, "width": thick})
+	var flat_side := Vector3(-s.z, 0.0, s.x)
+	for end: Array in [[cell, step, along], [other, -step, -along]]:
+		var size := flat_side.abs() * PLATFORM.y + s.abs() * PLATFORM.x + Vector3.UP * PLATFORM_THICK
+		_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(end[0], end[1], PLATFORM.x * 0.5, end[2]) + Vector3.UP * (high - PLATFORM_THICK)), {"size": size})
+		_climb(_edge(end[0], end[1], PLATFORM.x, end[2]), end[1], high, PLATFORM.y * 0.7)
+
+
+## Cuts the hole for a pipe through the wall at `middle` (the middle of its floor,
+## in the middle of the wall), the wall running across `through`: the wall's run
+## is split into the parts either side of it, under it and over it. Whether there
+## was a wall there to cut.
+func _hole(middle: Vector3, through: Vector3) -> bool:
+	var probe := middle + Vector3.UP * SewerPipe.HOLE.y * 0.5
+	for piece in _layout.pieces(MazePiece.Kind.WALL):
+		if piece.rotation != Vector3.ZERO or not piece.box_has(probe):
+			continue
+		var size := piece.box_size()
+		var foot := piece.position
+		# (along the wall: x or z, whichever the pipe does not run along)
+		var along := Vector3(1.0, 0.0, 0.0) if absf(through.x) < 0.5 else Vector3(0.0, 0.0, 1.0)
+		var long := size.dot(along)
+		var start := foot.dot(along) - long * 0.5
+		var end := start + long
+		var hole_from := middle.dot(along) - SewerPipe.HOLE.x * 0.5
+		var hole_to := hole_from + SewerPipe.HOLE.x
+		var across := size - along * long
+		var base := foot - along * foot.dot(along)
+		var settings := {"style": piece.style, "great": piece.great}
+		var parts: Array = []
+		if hole_from - start > 0.01:
+			parts.append([base + along * (start + hole_from) * 0.5, across + along * (hole_from - start)])
+		if end - hole_to > 0.01:
+			parts.append([base + along * (hole_to + end) * 0.5, across + along * (end - hole_to)])
+		var gap := across + along * SewerPipe.HOLE.x
+		parts.append([base + along * (hole_from + hole_to) * 0.5, Vector3(gap.x, middle.y, gap.z)])
+		var over := middle.y + SewerPipe.HOLE.y
+		parts.append([base + along * (hole_from + hole_to) * 0.5 + Vector3.UP * over, Vector3(gap.x, size.y - over, gap.z)])
+		piece.get_parent().remove_child(piece)
+		piece.free()
+		for part: Array in parts:
+			var made := settings.duplicate()
+			made["size"] = part[1]
+			_layout.add_piece(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, part[0]), made)
+		return true
+	return false
 
 
 ## How high the face (cell, step) goes: its wall's height, or a rampart's.

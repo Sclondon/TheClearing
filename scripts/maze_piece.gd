@@ -2,7 +2,7 @@
 class_name MazePiece
 extends Node3D
 ## One piece of a maze laid out by MazeLayout: a run of wall, a pier, a terrace,
-## a patch of ivy, a vine, a rope bridge, a tree or the light past the exit. In
+## a patch of ivy, a vine, a rope bridge, a tree, a sewer pipe or the light past the exit. In
 ## the editor each shows itself as it will be, and can be moved, turned, resized,
 ## copied or deleted by hand; in the game MazeBuilder.realize makes the real thing
 ## from it (the walls merged into a few meshes, the ivy an IvyClimb, and so on)
@@ -11,12 +11,14 @@ extends Node3D
 ## Boxes (walls, piers, terraces) stand on their origin: it is the middle of their
 ## foot, `size` across, and they may be turned about Y. A wall has a footing and
 ## a cornice besides. Ivy faces its +Z, out from what it grows on, from its origin
-## up `length` metres. A vine hangs `length` from its origin. A bridge runs from
+## up `length` metres. A vine hangs `length` from its origin. A sewer pipe runs
+## along its Z through a wall `width` thick, `length` from mouth to mouth, its origin
+## the middle of its floor. A bridge runs from
 ## its origin to its child `End` (move that to move the far end), and so does a
 ## vine strung across a hall (a strand). A tree stands
 ## at its origin, as big as its scale.
 
-enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND }
+enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE }
 
 @export var kind := Kind.WALL:
 	set(value):
@@ -34,7 +36,7 @@ enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND }
 		_refresh()
 ## A wall between rings (only a note: thicker and higher walls are just bigger boxes).
 @export var great := false
-## How tall a patch of ivy is, or how long a vine.
+## How tall a patch of ivy is, how long a vine, or a pipe from mouth to mouth.
 @export var length := 6.5:
 	set(value):
 		length = value
@@ -147,6 +149,11 @@ func _refresh() -> void:
 			_shown = pine.instance(0)
 		Kind.BEACON:
 			_shown = MazeBuilder.beacon_light()
+		Kind.PIPE:
+			var pipe := SewerPipe.new()
+			pipe.length = length
+			pipe.wall = width
+			_shown = pipe
 	if _shown:
 		# (shown, but not part of the scene: it is made again whenever it is opened)
 		add_child(_shown, false, Node.INTERNAL_MODE_BACK)
