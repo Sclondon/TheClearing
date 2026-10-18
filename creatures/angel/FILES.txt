@@ -1,0 +1,10 @@
+# The ophan ("biblically accurate" angel): the script, its shaders, its model and the Blender script that builds it
+creatures/angel/ophan.gd
+creatures/angel/ophan_core.gdshader
+creatures/angel/ophan_eye.gdshader
+creatures/angel/ophan_glow.gdshader
+creatures/angel/ophan_lids.gdshader
+creatures/angel/ophan_ring.gdshader
+creatures/angel/ophan_wing.gdshader
+creatures/angel/models/ophan.glb
+creatures/angel/tools/build_ophan.py
