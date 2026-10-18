@@ -20,6 +20,13 @@ const STONE := Color(0.13, 0.14, 0.13, 0.86)
 const AHEAD := 12.0
 ## The snake is long: further off, so that he is not on top of him.
 const SNAKE_AHEAD := 20.0
+## The other kinds the panel puts in (spawn_hunter): the button, the kind, and
+## how far ahead (the big ones further off, like the snake).
+const HUNTERS := [
+	["GHOUL", "ghoul", AHEAD], ["CENTIPEDE", "centipede", SNAKE_AHEAD], ["SPIDER", "spider", AHEAD],
+	["ABOMINATION", "abomination", SNAKE_AHEAD], ["SLIME WALL", "slime", SNAKE_AHEAD], ["BATS", "bats", AHEAD],
+	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD],
+]
 
 var world: World
 ## He cannot be caught.
@@ -67,7 +74,8 @@ func _init(in_world: World) -> void:
 	_panel.visible = false
 	add_child(_panel)
 	var grid := GridContainer.new()
-	grid.columns = 2
+	# (three across, so that it all fits on a phone held either way)
+	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	_panel.add_child(grid)
@@ -81,6 +89,8 @@ func _init(in_world: World) -> void:
 	grid.add_child(_button("+ PACK", spawn_pack))
 	grid.add_child(_button("+ SNAKE", spawn_snake))
 	grid.add_child(_button("+ GRIEVER", spawn_griever))
+	for one: Array in HUNTERS:
+		grid.add_child(_button("+ " + String(one[0]), spawn_hunter.bind(one[1], one[2])))
 	grid.add_child(_button("CLEAR ALL", clear))
 	grid.add_child(_button("TO GATE", to_gate))
 	grid.add_child(_button("TO MIDDLE", to_middle))
@@ -147,6 +157,35 @@ func spawn_griever() -> void:
 	_grievers.append(griever)
 	if frozen:
 		griever.process_mode = Node.PROCESS_MODE_DISABLED
+
+
+## Puts one of the other kinds in ahead of him (see HUNTERS): one creature, or
+## a whole pack for those that go about in packs, side by side across his way.
+func spawn_hunter(kind: String, reach := AHEAD) -> void:
+	var at := _ahead(reach)
+	var across := _look().cross(Vector3.UP) * 2.6
+	var made: Array = []
+	match kind:
+		"ghoul":
+			made = [MazeGhoul.new()]
+		"centipede":
+			made = [Centipede.new()]
+		"spider":
+			made = [MazeSpider.new()]
+		"abomination":
+			made = [Abomination.new()]
+		"slime":
+			made = [MazeSlimeWall.new()]
+		"bats":
+			made = [Bats.new()]
+		"baboons":
+			made = MazeBaboon.troop(5)
+		"dogs":
+			made = MazeDog.pack_of(4, randi())
+		"aliens":
+			made = [Alien.new(), Alien.new()]
+	for k in made.size():
+		_add(made[k], at + across * (k - (made.size() - 1) * 0.5))
 
 
 ## Takes away everything that hunts (the Griever World put in is only put to

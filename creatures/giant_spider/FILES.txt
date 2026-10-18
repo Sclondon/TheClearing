@@ -1,0 +1,4 @@
+# The giant_spider
+creatures/giant_spider/giant_spider.gd
+creatures/giant_spider/giant_spider_legs.gd
+creatures/giant_spider/giant_spider_look.gd

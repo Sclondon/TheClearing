@@ -1,0 +1,6 @@
+# Bats: the colony (look and flight), the bat's mesh and its shader, and the body and head
+creatures/bats/bat.gdshader
+creatures/bats/bat_body.gd
+creatures/bats/bat_colony.gd
+creatures/bats/models/bat_body.glb
+creatures/bats/tools/build_bat.py

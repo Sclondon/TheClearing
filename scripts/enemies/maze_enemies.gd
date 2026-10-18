@@ -4,7 +4,10 @@ extends Node3D
 ## between machines.
 ##
 ## `populate(maze, seed)` puts Apophis and packs of mummies in the passages, out
-## of the clearing and well away from it. The same maze and seed always give the
+## of the clearing and well away from it, and `add_hunters(style, seed)` the
+## rest of what a ring's MazeStyle asks for (ghouls, centipedes, spiders,
+## abominations, slime walls, bats, baboons, dogs, aliens: each kind's own
+## script is in scripts/enemies/, its look and motion in creatures/). The same maze and seed always give the
 ## same ones in the same places in the same order, so every machine in a room
 ## can build the same set without it being sent; then one machine (the host)
 ## runs them and the rest are puppets (`set_puppet(true)`), fed with what
@@ -74,6 +77,109 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 			var round_about := rng.randf_range(0.0, TAU)
 			var spot := Vector3(cos(round_about), 0.0, sin(round_about)) * 2.0 * (k / near.size()) if k >= near.size() else Vector3.ZERO
 			add(mummy, cell, rng.randf_range(-PI, PI), rng.randi(), spot)
+
+
+## Puts in the rest of what hunts a ring, as many of each as `style` says
+## (MazeStyle, "What hunts it"), each kind where it waits best, as far by the
+## passages from the others as can be. Call it after `populate` (the snake and
+## the mummies) with the same maze; the same seed gives the same ones.
+##
+## - Ghouls stand in dead ends, facing out. Centipedes lie in dead ends too.
+## - Slime walls fill straight halls, set across them.
+## - Spiders, abominations and bat colonies wait in any passage well out of the
+##   clearing (a spider climbs the nearest high wall; bats roost on one).
+## - Baboon troops, dogs and aliens go about in packs, put round one cell.
+func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
+	var nav := MazeNav.new(maze)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var lairs := nav.lairs(away)
+	if lairs.is_empty():
+		lairs = nav.lairs(1)
+	var ends: Array[Vector2i] = []
+	var halls: Array[Vector2i] = []
+	for cell in lairs:
+		if nav.dead_end(cell):
+			ends.append(cell)
+		elif _straight(cell) != Vector2i.ZERO:
+			halls.append(cell)
+	var taken: Array[Vector2i] = []
+	for enemy in enemies:
+		taken.append(maze.cell_at(enemy.global_position))
+	for i in style.ghouls:
+		var cell := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(MazeGhoul.new(), cell, _facing_out(cell), rng.randi())
+	for i in style.centipedes:
+		var cell := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(Centipede.new(), cell, _facing_out(cell), rng.randi())
+	for i in style.slime_walls:
+		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		if along == Vector2i.ZERO:
+			along = Vector2i(0, 1)
+		add(MazeSlimeWall.new(), cell, atan2(float(along.x), float(along.y)), rng.randi())
+	for i in style.spiders:
+		var cell := _far_from(taken, lairs, rng)
+		taken.append(cell)
+		add(MazeSpider.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.abominations:
+		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(Abomination.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.bat_colonies:
+		var cell := _far_from(taken, lairs, rng)
+		taken.append(cell)
+		add(Bats.new(), cell, 0.0, rng.randi())
+	for i in style.baboon_troops:
+		var troop: Array = MazeBaboon.troop(rng.randi_range(4, 5))
+		_add_pack(troop, _far_from(taken, lairs, rng), nav, rng, taken)
+	for i in style.dog_packs:
+		# (a pack's den is a dead end: they go out from it on the scent)
+		var den := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		_add_pack(MazeDog.pack_of(rng.randi_range(3, 4), rng.randi()), den, nav, rng, taken)
+	for i in style.alien_packs:
+		var aliens: Array = []
+		for a in rng.randi_range(2, 3):
+			aliens.append(Alien.new())
+		_add_pack(aliens, _far_from(taken, lairs, rng), nav, rng, taken)
+
+
+## Puts a pack round `middle`: one to a cell within two steps of it, and two
+## to a cell (well apart) when there are more of them than cells.
+func _add_pack(pack_of: Array, middle: Vector2i, nav: MazeNav, rng: RandomNumberGenerator, taken: Array[Vector2i]) -> void:
+	taken.append(middle)
+	var near: Array[Vector2i] = [middle]
+	var steps := nav.field(middle)
+	for cell in nav.lairs(1):
+		var d := steps[maze.index(cell)]
+		if d > 0 and d <= 2:
+			near.append(cell)
+	for k in pack_of.size():
+		var cell: Vector2i = near[k % near.size()]
+		var round_about := rng.randf_range(0.0, TAU)
+		var spot := Vector3(cos(round_about), 0.0, sin(round_about)) * 2.5 if k >= near.size() else Vector3.ZERO
+		add(pack_of[k], cell, rng.randf_range(-PI, PI), rng.randi(), spot)
+
+
+## The way out of a dead end (as a yaw), or any way for another cell.
+func _facing_out(cell: Vector2i) -> float:
+	for s: Vector2i in Maze.STEPS:
+		if not maze.blocked(cell, s):
+			return atan2(float(s.x), float(s.y))
+	return 0.0
+
+
+## The step a hall runs along through `cell`, if it goes straight through it
+## (open both ways along one line and shut both ways across it), else zero.
+func _straight(cell: Vector2i) -> Vector2i:
+	for s: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+		var across := Vector2i(s.y, s.x)
+		if not maze.blocked(cell, s) and not maze.blocked(cell, -s) and maze.blocked(cell, across) and maze.blocked(cell, -across):
+			return s
+	return Vector2i.ZERO
 
 
 ## Puts one in, at `cell` facing `yaw`, `offset` from the middle of the cell.

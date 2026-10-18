@@ -96,6 +96,15 @@ func _run() -> void:
 	if picture != "":
 		await frames(30)
 		root.get_texture().get_image().save_png(picture.replace(".png", "_spawned.png"))
+	# Each of the other kinds, from its own button
+	for one: Array in world.dev.HUNTERS:
+		var had: int = world.enemies.enemies.size()
+		world.dev.spawn_hunter(one[1], one[2])
+		await frames(2)
+		var put: int = world.enemies.enemies.size() - had
+		var last = world.enemies.enemies.back()
+		check("+ %s" % one[0], put >= 1 and is_instance_valid(last) and last.is_inside_tree(), "(%d put in)" % put)
+	await frames(30)
 
 	world.dev.toggle_god()
 	var at: Vector3 = player.global_position

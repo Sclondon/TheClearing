@@ -20,9 +20,6 @@ const SEND_EVERY := 1.0 / 12.0
 ## The host's news of what hunts the maze: MazeEnemies.pack(), then the Griever's state.
 const K_ENEMIES := 69  # E
 const ENEMIES_EVERY := 0.1
-## How many packs of mummies, and how many snakes.
-const PACKS := 2
-const SNAKES := 1
 
 ## This player's seat (0 when playing alone).
 var slot := 0
@@ -136,8 +133,10 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 		Net.left.connect(_on_left)
 
 
-## What hunts the maze: an Apophis, packs of mummies (MazeEnemies) and a Griever,
-## all placed from the seed, so every copy has the same ones in the same places.
+## What hunts the maze: as many of each kind as the first ring's style says
+## (MazeStyle, "What hunts it": Apophis, packs of mummies, ghouls, centipedes,
+## spiders and the rest, put in by MazeEnemies) and a Griever, all placed from
+## the seed, so every copy has the same ones in the same places.
 ## Alone, or as the host, they are run here; a guest's are puppets that follow the
 ## host's news (K_ENEMIES).
 func _enemies(seed_value: int) -> void:
@@ -147,7 +146,9 @@ func _enemies(seed_value: int) -> void:
 	enemies = MazeEnemies.new()
 	enemies.name = "Enemies"
 	add_child(enemies)
-	enemies.populate(maze, hash("enemies/%d" % seed_value), PACKS, SNAKES)
+	var style: MazeStyle = maze.styles[0]
+	enemies.populate(maze, hash("enemies/%d" % seed_value), style.mummy_packs, style.snakes)
+	enemies.add_hunters(style, hash("hunters/%d" % seed_value))
 	griever = Griever.new()
 	griever.name = "Griever"
 	add_child(griever)

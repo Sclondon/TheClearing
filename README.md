@@ -92,9 +92,16 @@ from the seed. Generate again replaces everything in the layout.
 - `scripts/enemies/`: what hunts the maze. `Apophis` (Outside's great snake) and six kinds of `Mummy` (Outside's,
   with their rigs and models in `models/enemies/`) on a shared `MazeEnemy`, finding their way with `MazeNav` on the maze
   plan and placed from the seed by `MazeEnemies`; and the `Griever` (`griever*.gd`): a lump of wet meat on eight
-  procedural robotic spider legs that plant on walls and ground, with a stinger. `World` puts in an Apophis, two
-  packs of mummies and a Griever; alone or as the host they are run there and their state goes to guests ten times a
-  second (K_ENEMIES), where copies follow it. Caught, a player is put back in the clearing; out, nobody is hunted.
+  procedural robotic spider legs that plant on walls and ground, with a stinger. Then the newer kinds, each a thin
+  `MazeEnemy` driving a creature from `creatures/` (installed from GameCommon): `MazeGhoul`, `Centipede`,
+  `MazeSpider`, `Abomination`, `MazeSlimeWall`, `Bats`, `MazeBaboon`, `MazeDog`, `Alien`. How many of each a ring
+  has is its `MazeStyle` ("What hunts it"); `World` asks `MazeEnemies` for the first ring's (`populate`, then
+  `add_hunters`) and puts in a Griever; alone or as the host they are run there and their state goes to guests ten
+  times a second (K_ENEMIES), where copies follow it. Caught, a player is put back in the clearing; out, nobody is
+  hunted.
+- `creatures/`: GameCommon's creatures, look and motion only (see each one's README): `ghoul`, `centipede`,
+  `giant_spider`, `abomination`, `slime_wall`, `bats`, `baboon`, `dog`, `alien`. Change them here, then `kit.sh pull`
+  them back to GameCommon (`godot/<name>`, with `_` as `-`). Their models are built in Blender by their `tools/` scripts.
 - `scripts/remote_player.gd` (`RemotePlayer`): a friend, a `Figure` on the boy's rig chasing their news.
 - `scripts/looks.gd` (`Looks`): every player is the same boy, as Inside has him (no face, a basin cut, no cap,
   shirt, dark trousers and boots). Only the shirt's colour differs, by seat.
@@ -125,6 +132,10 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --editor --path . res://tests/editor_check.tscn       # (after layout_test) what the editor shows, saved to user://editor_view.png
 "$G" --headless --path . -s res://tests/enemy_test.gd     # Apophis and the mummies on their own
 "$G" --headless --path . -s res://tests/griever_test.gd   # the Griever on its own
+# each newer kind on its own (always with --audio-driver Dummy: some make sounds)
+for t in ghoul centipede spider abomination slime_wall bats baboon dog alien; do
+  "$G" --headless --audio-driver Dummy --path . -s res://tests/${t}_test.gd; done
+# pictures of each: tools/<kind>_shots.gd (windowed, 720x1280)
 "$G" --headless --path . -s res://tests/dev_test.gd -- --dev   # the dev tools (and the clearing wall's height)
 "$G" --path . --resolution 720x1280 -s res://tools/climb_shots.gd -- <folder>   # pictures of the ways up
 "$G" --headless --path . -s res://tools/bake_preview.gd -- [seed] [rings]   # a maze to look round in the editor: preview/maze_preview.scn
