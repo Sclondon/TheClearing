@@ -355,20 +355,50 @@ func _check_hits() -> void:
 
 
 func _wander() -> void:
-	var here := _cell()
-	for attempt in 12:
-		var cell := Vector2i(_rng.randi_range(0, maze.size - 1), _rng.randi_range(0, maze.size - 1))
-		if stay_out_of_clearing and maze.in_clearing(cell):
+	var path := _path_nearby(4, 24)
+	if path.is_empty():
+		_wait = 0.5
+		return
+	_path = path
+	_path_at = 0
+	_steer = 0.0
+	_wait = _rng.randf_range(0.6, 2.2)
+	_hug_side = 1 if _rng.randf() < 0.5 else -1
+
+
+## A path to a cell picked at random from those between `least` and `most` cells
+## away round the walls (a search only that far, not over the whole maze).
+func _path_nearby(least: int, most: int) -> Array[Vector2i]:
+	var path: Array[Vector2i] = []
+	var from := _cell()
+	var came := {from: from}
+	var depth := {from: 0}
+	var queue: Array[Vector2i] = [from]
+	var far: Array[Vector2i] = []
+	var head := 0
+	while head < queue.size():
+		var cell: Vector2i = queue[head]
+		head += 1
+		if depth[cell] >= least:
+			far.append(cell)
+		if depth[cell] >= most:
 			continue
-		var path := _find_path(here, cell)
-		if path.size() >= 4 and path.size() <= 24:
-			_path = path
-			_path_at = 0
-			_steer = 0.0
-			_wait = _rng.randf_range(0.6, 2.2)
-			_hug_side = 1 if _rng.randf() < 0.5 else -1
-			return
-	_wait = 0.5
+		for step: Vector2i in Maze.STEPS:
+			var next := cell + step
+			if not maze.inside(next) or came.has(next) or maze.blocked(cell, step):
+				continue
+			if stay_out_of_clearing and maze.in_clearing(next):
+				continue
+			came[next] = cell
+			depth[next] = depth[cell] + 1
+			queue.push_back(next)
+	if far.is_empty():
+		return path
+	var cell: Vector2i = far[_rng.randi() % far.size()]
+	while cell != from:
+		path.push_front(cell)
+		cell = came[cell]
+	return path
 
 
 ## Sends it wandering to `cell` (along one wall of each passage, climbing it

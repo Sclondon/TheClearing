@@ -96,7 +96,7 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 	for piece in boxes:
 		var size := piece.box_size()
 		var where := piece.box_transform()
-		var key := [surface_of(piece), Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK))]
+		var key := [_look_of(piece), Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK))]
 		if not chunks.has(key):
 			var tool := SurfaceTool.new()
 			tool.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -114,17 +114,37 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 	for key: Array in chunks:
 		if not materials.has(key[0]):
 			# (laid on in the world's space, so that the pieces meet without seams)
-			materials[key[0]] = Wall.material_for(key[0], true)
+			materials[key[0]] = Wall.material_for(key[0], true, LEDGE_TINT if key[0] == LEDGE_LOOK else Color.WHITE)
+			if key[0] == GREAT_LOOK:
+				# (the great walls are so big that their concrete is drawn bigger too)
+				materials[key[0]].set_shader_parameter(&"tile_size", Wall.LOOKS[GREAT_LOOK][1] * GREAT_TILE_SCALE)
 		var walls := MeshInstance3D.new()
 		walls.mesh = (chunks[key] as SurfaceTool).commit()
 		walls.material_override = materials[key[0]]
 		body.add_child(walls)
 
 
+## What the ledges along the walls (and the beams the vines hang from) are made
+## of: rougher, darker concrete than the walls, so that from below they stand out
+## against the wall behind them.
+const LEDGE_LOOK := Wall.Look.ROUGH
+const LEDGE_TINT := Color(0.55, 0.52, 0.47)
+## How many times bigger the great walls' concrete is drawn than the texture's own size.
+const GREAT_TILE_SCALE := 4.0
+const GREAT_LOOK := Wall.Look.CAST
+const MAZE_LOOK := Wall.Look.SLABS
+
+
+static func _look_of(piece: MazePiece) -> Wall.Look:
+	if piece.kind == MazePiece.Kind.PIER and piece.position.y > 0.5:
+		return LEDGE_LOOK
+	return surface_of(piece)
+
+
 ## The concrete a piece is made of (one of Wall's looks): the great walls between
-## rings precast slabs, everything else cast concrete.
+## rings cast concrete, the maze walls precast slabs.
 static func surface_of(piece: MazePiece) -> Wall.Look:
-	return Wall.Look.SLABS if piece.great else Wall.Look.CAST
+	return GREAT_LOOK if piece.great else MAZE_LOOK
 
 
 ## A box to bump into, `size` round `middle` in the space of `where`.

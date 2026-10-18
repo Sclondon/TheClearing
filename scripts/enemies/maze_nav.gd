@@ -28,14 +28,28 @@ extends RefCounted
 
 ## How far apart the points tested along a line are.
 const SAMPLE := 0.6
-## How many goals' fields are kept.
-const KEEP := 6
+## How many goals' fields are kept (shared by everything finding its way round
+## the same maze, so the field to where a boy is is worked out once for all).
+const KEEP := 96
 
 var maze: Maze
 var avoid_clearing := true
 
-var _fields := {}
-var _order: Array[Vector2i] = []
+# avoid_clearing -> {goal: field}, and the goals in the order they were worked
+# out, for the newest maze only.
+static var _shared := {}
+static var _shared_order := {}
+static var _shared_maze := 0
+static var _shared_links := {}
+
+## How many ticks a waypoint is kept for, and how far (metres) it may move meanwhile.
+const REWAY_TICKS := 6
+const REWAY_MOVED := 0.6
+var _way := Vector3.ZERO
+var _way_direct := false
+var _way_key := []
+var _way_tick := -100
+var _way_from := Vector3.ZERO
 
 
 func _init(plan: Maze = null, keep_out_of_clearing := true) -> void:
@@ -48,42 +62,71 @@ func allowed(cell: Vector2i) -> bool:
 	return maze.inside(cell) and not (avoid_clearing and maze.in_clearing(cell))
 
 
+## For each cell (by Maze.index), the index of the cell each of its four ways
+## leads to, or -1 where a wall is or the way leads nowhere it may go: worked out
+## once for the maze, so that the fields are quick to find.
+func _links() -> PackedInt32Array:
+	if _shared_links.has(avoid_clearing):
+		return _shared_links[avoid_clearing]
+	var links := PackedInt32Array()
+	links.resize(maze.size * maze.size * 4)
+	for i in maze.size * maze.size:
+		var cell := Vector2i(i % maze.size, i / maze.size)
+		for k in 4:
+			var step: Vector2i = Maze.STEPS[k]
+			var next := cell + step
+			links[i * 4 + k] = maze.index(next) if allowed(next) and not maze.blocked(cell, step) else -1
+	_shared_links[avoid_clearing] = links
+	return links
+
+
 ## Steps from every cell to `goal` (-1 where it cannot be got to from there).
 ## With `avoid_clearing`, a goal in the clearing is the whole clearing, reached
 ## at its gates; otherwise no way goes through the clearing.
 func field(goal: Vector2i) -> PackedInt32Array:
-	if _fields.has(goal):
-		return _fields[goal]
-	var size := maze.size
+	if _shared_maze != maze.get_instance_id():
+		_shared_maze = maze.get_instance_id()
+		_shared = {true: {}, false: {}}
+		_shared_order = {true: [], false: []}
+		_shared_links = {}
+	var fields: Dictionary = _shared[avoid_clearing]
+	if fields.has(goal):
+		return fields[goal]
+	var total := maze.size * maze.size
+	var links := _links()
 	var steps := PackedInt32Array()
-	steps.resize(size * size)
+	steps.resize(total)
 	steps.fill(-1)
-	var queue: Array[Vector2i] = []
+	var queue := PackedInt32Array()
+	queue.resize(total)
+	var tail := 0
 	if maze.inside(goal):
 		if avoid_clearing and maze.in_clearing(goal):
-			for i in size * size:
-				var cell := Vector2i(i % size, i / size)
-				if maze.in_clearing(cell):
+			for i in total:
+				if maze.in_clearing(Vector2i(i % maze.size, i / maze.size)):
 					steps[i] = 0
-					queue.append(cell)
+					queue[tail] = i
+					tail += 1
 		else:
 			steps[maze.index(goal)] = 0
-			queue.append(goal)
+			queue[tail] = maze.index(goal)
+			tail += 1
 	var head := 0
-	while head < queue.size():
-		var cell: Vector2i = queue[head]
+	while head < tail:
+		var i := queue[head]
 		head += 1
-		var here := steps[maze.index(cell)]
-		for step: Vector2i in Maze.STEPS:
-			var next := cell + step
-			if not allowed(next) or steps[maze.index(next)] != -1 or maze.blocked(cell, step):
-				continue
-			steps[maze.index(next)] = here + 1
-			queue.append(next)
-	_fields[goal] = steps
-	_order.append(goal)
-	if _order.size() > KEEP:
-		_fields.erase(_order.pop_front())
+		var further := steps[i] + 1
+		for k in range(i * 4, i * 4 + 4):
+			var j := links[k]
+			if j >= 0 and steps[j] == -1:
+				steps[j] = further
+				queue[tail] = j
+				tail += 1
+	fields[goal] = steps
+	var order: Array = _shared_order[avoid_clearing]
+	order.append(goal)
+	if order.size() > KEEP:
+		fields.erase(order.pop_front())
 	return steps
 
 
@@ -131,7 +174,23 @@ func path(from: Vector2i, goal: Vector2i) -> Array[Vector2i]:
 ## metres off the walls: `goal` itself if it is in a clear straight line (and
 ## somewhere it may go), else the furthest of the next `look` cells along the
 ## way that is, else the middle of the cell it is in.
+## (Worked out again only now and then, or when it has moved on or the goal has:
+## it is most of what those finding their way round cost.)
 func waypoint(from: Vector3, goal: Vector3, clearance: float, look := 5) -> Vector3:
+	var tick := Engine.get_physics_frames()
+	var key := [maze.cell_at(goal), clearance, look]
+	if key == _way_key and tick - _way_tick < REWAY_TICKS and Vector2(from.x - _way_from.x, from.z - _way_from.z).length() < REWAY_MOVED:
+		# (straight for the goal: for where it is now)
+		return Vector3(goal.x, from.y, goal.z) if _way_direct else Vector3(_way.x, from.y, _way.z)
+	_way = _waypoint(from, goal, clearance, look)
+	_way_direct = Vector2(_way.x - goal.x, _way.z - goal.z).length() < 0.01
+	_way_key = key
+	_way_tick = tick
+	_way_from = from
+	return _way
+
+
+func _waypoint(from: Vector3, goal: Vector3, clearance: float, look: int) -> Vector3:
 	var here := maze.cell_at(from)
 	var there := maze.cell_at(goal)
 	goal.y = from.y
@@ -222,20 +281,30 @@ static func clearance_for(radius: float) -> float:
 ## Somewhere to go: a cell between `near` and `far` steps away by the passages
 ## (or the furthest there is), chosen by `rng`.
 func wander(from: Vector2i, rng: RandomNumberGenerator, near := 3, far := 9) -> Vector2i:
-	var steps := field(from)
+	# (a search out to `far` steps only, not over the whole maze)
+	var depth := {from: 0}
+	var queue: Array[Vector2i] = [from]
 	var choices: Array[Vector2i] = []
 	var furthest := from
 	var most := 0
-	for i in steps.size():
-		var d := steps[i]
-		if d <= 0:
-			continue
-		var cell := Vector2i(i % maze.size, i / maze.size)
-		if d >= near and d <= far:
+	var head := 0
+	while head < queue.size():
+		var cell: Vector2i = queue[head]
+		head += 1
+		var d: int = depth[cell]
+		if d >= near:
 			choices.append(cell)
 		if d > most:
 			most = d
 			furthest = cell
+		if d >= far:
+			continue
+		for step: Vector2i in Maze.STEPS:
+			var next := cell + step
+			if not allowed(next) or depth.has(next) or maze.blocked(cell, step):
+				continue
+			depth[next] = d + 1
+			queue.append(next)
 	if choices.is_empty():
 		return furthest
 	return choices[rng.randi_range(0, choices.size() - 1)]
@@ -259,3 +328,9 @@ func dead_end(cell: Vector2i) -> bool:
 		if maze.blocked(cell, step):
 			walls += 1
 	return walls >= 3
+
+
+## Forgets every field worked out (for tests timing them).
+static func forget() -> void:
+	_shared = {true: {}, false: {}}
+	_shared_order = {true: [], false: []}

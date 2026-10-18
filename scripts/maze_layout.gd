@@ -146,7 +146,8 @@ func lay_out(maze: Maze) -> void:
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, rampart[0]), {"size": rampart[1], "great": true})
 	for gatehouse: Array in _gatehouses(maze):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, gatehouse[0]), {"size": gatehouse[1], "great": true})
-	for ledge: Array in _ledges(maze, _runs(maze) + _ramparts(maze) + _gatehouses(maze)):
+	# (along the maze walls only, not the great walls round the rings)
+	for ledge: Array in _ledges(maze, _runs(maze).filter(func(run: Array) -> bool: return not run[2])):
 		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1]})
 	MazeFeatures.lay_out(self, maze)
 	_trees(maze)

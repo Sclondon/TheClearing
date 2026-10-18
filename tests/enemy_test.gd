@@ -120,7 +120,7 @@ func _run() -> void:
 	check("does not see through a wall", not nav.sees(maze.world(walled) + Vector3.UP, maze.world(walled + Vector2i(1, 0)) + Vector3.UP))
 	var t0 := Time.get_ticks_usec()
 	for i in 200:
-		nav._fields.clear()
+		MazeNav.forget()
 		nav.field(Vector2i(i % maze.size, (i * 7) % maze.size))
 	print("      a field of the whole maze: %.3f ms" % ((Time.get_ticks_usec() - t0) / 200000.0))
 

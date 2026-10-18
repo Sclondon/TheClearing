@@ -129,7 +129,9 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 					# (with a ledge along the walls, a curtain of it hanging from the ledge's
 					# edge to the ground instead: he climbs it onto the ledge)
 					var off_wall := 0.0
-					if _style.mezzanine_height > 0.0:
+					# (only the maze walls have the ledge, not the great walls round the ring)
+					var beyond := cell + step
+					if _style.mezzanine_height > 0.0 and plan.ring_of(beyond) == ring and not plan.solid.has(beyond):
 						high = _style.mezzanine_height
 						off_wall = _style.mezzanine_depth
 					var ivy_along := _rng.randf_range(-0.3, 0.3) * Maze.CELL
