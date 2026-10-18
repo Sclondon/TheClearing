@@ -55,5 +55,5 @@ height = 26.0
 [node name="Snap" type="Node" parent="."]
 script = ExtResource("2")
 out = "user://wall_view.png"
-eye = Vector3(-6, 9, 30)
-look_at_point = Vector3(-8, 11, 0)
+eye = Vector3(-24, 7, 16)
+look_at_point = Vector3(-24, 11, 0)

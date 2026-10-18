@@ -106,10 +106,30 @@ void fragment() {
 	// A broad, slow change of tone across the whole wall, in metres, not tiles.
 	float broad = noise(metres / 17.0) * 0.65 + noise(metres / 6.5 + 31.0) * 0.35;
 	colour *= 1.0 + (broad - 0.5) * 2.0 * variation;
-	// Weathering: soft dark streaks run down it where rain has, long and few, in metres.
-	float run = noise(vec2(metres.x / 1.3, metres.y / 26.0)) * 0.7 + noise(vec2(metres.x / 0.45, metres.y / 9.0) + 7.0) * 0.3;
-	float streak = smoothstep(0.55, 0.85, run) * (0.6 + 0.4 * noise(metres / 11.0 + 3.0));
-	colour *= 1.0 - streak * weathering;
+	// Weathering, as rain stains concrete: streaks that start at a ledge (every so
+	// many metres down, at a place of their own), darkest where they start and
+	// fading and narrowing as they run down; ragged and streaky at their edges, in
+	// a brownish grime that darkens the concrete's own grain rather than laying a
+	// shade over it; and now and then a pale one, where lime has washed out.
+	float down = metres.y / 11.0 + noise(vec2(metres.x / 4.0, 2.0)) * 0.8;
+	float band = floor(down);
+	float along = fract(down);
+	// Each stain is many thin drips: lines a few centimetres wide and metres long...
+	float drips = noise(vec2(metres.x / 0.05, metres.y / 5.0)) * 0.65 + noise(vec2(metres.x / 0.018, metres.y / 1.6) + 5.0) * 0.35;
+	float streaky = smoothstep(0.3, 0.8, drips);
+	// ...gathered where the water ran off the ledge (each band its own places,
+	// a metre or two across), the patch narrowing as it runs down,
+	float zone = noise(vec2(metres.x / 1.6, band * 13.7)) * 0.75 + noise(vec2(metres.x / 0.5, band * 3.1)) * 0.25;
+	float gathered = smoothstep(0.42 + 0.22 * along, 0.66 + 0.22 * along, zone);
+	// ...coming on softly under the ledge, and fading as it goes.
+	float fall = smoothstep(0.0, 0.08, along) * pow(1.0 - along, 1.3);
+	float stain = gathered * streaky * fall;
+	float lime_zone = noise(vec2(metres.x / 0.9, band * 5.3 + 40.0));
+	float lime = smoothstep(0.78, 0.86, lime_zone) * streaky * fall * step(0.55, noise(vec2(band, 9.0)));
+	float grain = dot(colour, vec3(0.33));
+	vec3 grime = colour * vec3(0.5, 0.48, 0.43) * (0.85 + 0.3 * grain);
+	colour = mix(colour, grime, clamp(stain * weathering * 2.2, 0.0, 1.0));
+	colour = mix(colour, colour * vec3(1.22, 1.22, 1.2) + vec3(0.04), lime * weathering * 0.6);
 	ALBEDO = colour * tint.rgb;
 
 	if (has_rough) {
@@ -191,7 +211,7 @@ void fragment() {
 	set(value):
 		variation = value
 		_build()
-## How much rain has streaked it, in soft dark runs down its faces.
+## How much rain has stained it: grimy streaks running down from ledges, and a few pale ones.
 @export_range(0.0, 1.0, 0.01) var weathering := 0.35:
 	set(value):
 		weathering = value
