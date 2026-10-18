@@ -6,6 +6,20 @@ extends StaticBody3D
 ## tiled across every face at its true size (one tile every `tile_size` metres),
 ## so a bigger wall shows more stone, not stretched stone; and it can be bumped
 ## into. Change any of it in the Inspector and it is redrawn at once.
+##
+## The looks are brutalist concrete, and the old stone blocks (textures/, made by
+## tools/make_wall_textures.gd and tools/make_stone_texture.gd).
+
+enum Look { CONCRETE_PANELS, BOARD_MARKED, WEATHERED, MONOLITH, STONE_BLOCKS, CUSTOM }
+## Each look's texture (textures/<name>.png and <name>_normal.png) and how many
+## metres a tile of it covers.
+const LOOKS := {
+	Look.CONCRETE_PANELS: ["concrete_panels", 9.6],
+	Look.BOARD_MARKED: ["concrete_boards", 7.0],
+	Look.WEATHERED: ["concrete_weathered", 10.0],
+	Look.MONOLITH: ["concrete_monolith", 12.0],
+	Look.STONE_BLOCKS: ["stone_blocks", 8.0],
+}
 
 @export_range(0.1, 200.0, 0.1, "or_greater", "suffix:m") var width := 14.0:
 	set(value):
@@ -19,12 +33,23 @@ extends StaticBody3D
 	set(value):
 		depth = value
 		_build()
-@export var texture: Texture2D = preload("res://textures/stone_blocks.png"):
+## Its surface, chosen from LOOKS (which sets the texture, its relief and a
+## fitting tile size), or Custom to keep a texture of your own.
+@export var look := Look.CONCRETE_PANELS:
+	set(value):
+		look = value
+		if look != Look.CUSTOM:
+			var chosen: Array = LOOKS[look]
+			texture = load("res://textures/%s.png" % chosen[0])
+			normal_map = load("res://textures/%s_normal.png" % chosen[0])
+			tile_size = chosen[1]
+		_build()
+@export var texture: Texture2D = preload("res://textures/concrete_panels.png"):
 	set(value):
 		texture = value
 		_build()
 ## Its relief: a normal map laid on as the texture is (and how strong).
-@export var normal_map: Texture2D = preload("res://textures/stone_blocks_normal.png"):
+@export var normal_map: Texture2D = preload("res://textures/concrete_panels_normal.png"):
 	set(value):
 		normal_map = value
 		_build()
@@ -33,7 +58,7 @@ extends StaticBody3D
 		relief = value
 		_build()
 ## How many metres one tile of the texture covers.
-@export_range(0.5, 50.0, 0.1, "or_greater", "suffix:m") var tile_size := 8.0:
+@export_range(0.5, 50.0, 0.1, "or_greater", "suffix:m") var tile_size := 9.6:
 	set(value):
 		tile_size = value
 		_build()
