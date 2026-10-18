@@ -1,0 +1,12 @@
+# The masked tribe: how they look, move and sound, their spears and their totem (needs godot/character-controller installed too)
+creatures/masked_tribe/tribesman.gd
+creatures/masked_tribe/tribesman_rig.gd
+creatures/masked_tribe/tribe_spear.gd
+creatures/masked_tribe/models/masks.glb
+creatures/masked_tribe/models/masks_lo.glb
+creatures/masked_tribe/models/spears.glb
+creatures/masked_tribe/models/spears_lo.glb
+creatures/masked_tribe/models/totem.glb
+creatures/masked_tribe/models/totem_lo.glb
+creatures/masked_tribe/tools/.gdignore
+creatures/masked_tribe/tools/build_tribe.py
