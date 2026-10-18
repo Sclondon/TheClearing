@@ -623,10 +623,26 @@ func _plant(at: Vector3, rng: RandomNumberGenerator, kind: Undergrowth.Kind) -> 
 
 
 func _on_terrace(at: Vector3) -> bool:
-	for footprint: Rect2 in features.footprints:
-		if footprint.grow(0.3).has_point(Vector2(at.x, at.z)):
+	# (the footprints by the square of FOOTPRINT_SQUARE metres they are in, made
+	# once: there are thousands, and this is asked of every plant)
+	if _footprints_by_square.is_empty():
+		for footprint: Rect2 in features.footprints:
+			var grown := footprint.grow(0.3)
+			for sx in range(floori(grown.position.x / FOOTPRINT_SQUARE), floori(grown.end.x / FOOTPRINT_SQUARE) + 1):
+				for sz in range(floori(grown.position.y / FOOTPRINT_SQUARE), floori(grown.end.y / FOOTPRINT_SQUARE) + 1):
+					var key := Vector2i(sx, sz)
+					if not _footprints_by_square.has(key):
+						_footprints_by_square[key] = []
+					(_footprints_by_square[key] as Array).append(grown)
+	var flat := Vector2(at.x, at.z)
+	for footprint: Rect2 in _footprints_by_square.get(Vector2i((flat / FOOTPRINT_SQUARE).floor()), []):
+		if footprint.has_point(flat):
 			return true
 	return false
+
+
+const FOOTPRINT_SQUARE := 20.0
+var _footprints_by_square := {}
 
 
 ## Metres between the points of the desert's dunes, and how many points along

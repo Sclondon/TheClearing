@@ -1,15 +1,16 @@
 class_name ClearingGates
 extends Node3D
 ## The doors of the clearing's entrances, after the Glade's: in each way through
-## its great wall, two slabs as high as the wall, set back a little from its
-## face, that slide out of the wall's sides and meet in the middle at sunset,
-## shutting the clearing in for the night, and slide back into it at dawn
-## (DayCycle). They take `MOVE_SECONDS` to close, and push aside whatever is in
-## their way.
+## its great wall, two slabs as high as the wall and as deep as it is thick (the
+## whole length of the way through it), that slide out of the wall's sides and
+## meet in the middle at sunset, shutting the clearing in for the night, and
+## slide back into it at dawn (DayCycle). They take `MOVE_SECONDS` to close, and
+## push aside whatever is in their way.
 
 ## How long the doors take to close or open, seconds.
 const MOVE_SECONDS := 14.0
-## How thick each door is, and how far back from the face of the wall it stands.
+## Where the doorway is measured (how far back from the face of the wall: the
+## middle of a door this thick, so far back); the doors are as deep as the wall.
 const THICK := 3.0
 const BACK := 2.5
 ## How far each door goes past the middle of the way, closed (so that they
@@ -47,11 +48,27 @@ static func put(parent: Node3D, maze: Maze) -> ClearingGates:
 			reach[way] = from.distance_to(hit["position"]) if hit else Maze.CELL * 0.5
 		var middle: Vector3 = at + across * (reach[1.0] - reach[-1.0]) * 0.5
 		var wide: float = reach[1.0] + reach[-1.0]
+		# (and how far the way runs through the wall, to its far face: the doors fill
+		# all of it, the whole thickness of the wall)
+		var out := -Vector3(inward.x, 0.0, inward.y)
+		var start: Vector3 = Vector3(face.x, 0.0, face.y) + across * (reach[1.0] - reach[-1.0]) * 0.5 + Vector3.UP * 3.0
+		var deep := 1.0
+		while deep < 160.0:
+			var walled := true
+			for way: float in [-1.0, 1.0]:
+				var from: Vector3 = start + out * (deep + 1.0)
+				var side := PhysicsRayQueryParameters3D.create(from, from + across * way * (wide * 0.5 + 2.0))
+				walled = walled and not space.intersect_ray(side).is_empty()
+			if not walled:
+				break
+			deep += 1.0
+		middle = Vector3(middle.x, 0.0, middle.z) + out * (deep * 0.5 - (BACK + THICK * 0.5))
+		var thick := deep - 0.6
 		var half := wide * 0.5 + OVERLAP
 		for way: float in [-1.0, 1.0]:
 			var door := AnimatableBody3D.new()
 			door.sync_to_physics = true
-			var size := across.abs() * half + Vector3(inward.x, 0.0, inward.y).abs() * THICK + Vector3.UP * high
+			var size := across.abs() * half + Vector3(inward.x, 0.0, inward.y).abs() * thick + Vector3.UP * high
 			var shape := BoxShape3D.new()
 			shape.size = size
 			var collider := CollisionShape3D.new()
