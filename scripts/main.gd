@@ -370,7 +370,8 @@ func _on_failed(message: String) -> void:
 ## gets 10000 less the seconds taken (only from the web build, never in tests).
 func _report(seconds: float) -> void:
 	var score := maxi(10000 - int(seconds), 1)
-	if OS.has_feature("web") and not testing:
+	# (nor with dev tools on)
+	if OS.has_feature("web") and not testing and not world.dev:
 		JavaScriptBridge.eval("window.parent.postMessage({ type: 'PLAYER_DIED', score: %d }, '*')" % score)
 
 

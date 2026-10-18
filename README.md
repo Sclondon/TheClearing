@@ -44,7 +44,8 @@ from the seed. Generate again replaces everything in the layout.
 
 - `scripts/maze.gd` (`Maze`): the plan. Square cells 14 m across. `Maze.CLEARING` cells across the clearing (41),
   then each ring as its `MazeStyle` (`scripts/maze_style.gd`) says: depth, hall width (it carves over blocks of
-  cells), wall thickness, a rampart of solid cells round its inside, straightness, branching, loops, entrances, and
+  cells), wall thickness, a rampart of solid cells round its inside and how high that wall is, straightness,
+  branching, loops, entrances, and
   what is on its walls (see DESIGN.md). `rings` of them are built (1 for now) and the grid runs to the outside of
   the last. Each ring is grown from its first way in (into the first, a gate in the middle of each side of the
   clearing; into each later one, the gate out of the ring inside it), and its gate out put on its outside as far
@@ -55,7 +56,7 @@ from the seed. Generate again replaces everything in the layout.
   builds any layout. `scripts/mazes.gd` (`Mazes`) finds the ones in res://mazes/; `scripts/maze_light.gd`
   (`MazeLight`) is the sky, mist and sun, for the game and the editor alike.
 - `scripts/maze_builder.gd` (`MazeBuilder`): the walls inside a ring 34 m high and 3.2 thick, the walls between
-  rings 46 m and 4.2 thick, each with a footing and a cornice, and square piers standing above them where walls
+  rings as high as the outer ring's style says (the clearing's 92 m, the rest 46) and 4.2 thick, each with a footing and a cornice, and square piers standing above them where walls
   meet; built of real blocks (each a chamfered slab a little proud or sunk, with joints between) out to 110 m
   and plain boxes beyond, in squares of 70 m so that what is off screen is not drawn, with plain boxes for shadows;
   a box for each piece to bump into. The next ring's outside wall stands
@@ -119,6 +120,7 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --editor --path . res://tests/editor_check.tscn       # (after layout_test) what the editor shows, saved to user://editor_view.png
 "$G" --headless --path . -s res://tests/enemy_test.gd     # Apophis and the mummies on their own
 "$G" --headless --path . -s res://tests/griever_test.gd   # the Griever on its own
+"$G" --headless --path . -s res://tests/dev_test.gd -- --dev   # the dev tools (and the clearing wall's height)
 "$G" --path . --resolution 720x1280 -s res://tools/climb_shots.gd -- <folder>   # pictures of the ways up
 "$G" --headless --path . -s res://tools/bake_preview.gd -- [seed] [rings]   # a maze to look round in the editor: preview/maze_preview.scn
 "$G" --path . --resolution 900x900 -s res://tools/head_sheet.gd -- <file.png>    # every head shape
@@ -130,6 +132,12 @@ sh tools/coop_test.sh                                     # two copies in one ro
 ```
 
 Flags (command line `-- --name=value` or the page's `?name=value`): `server=<url>` for another rooms server.
+`dev` turns on the dev tools (on anyway when the game is run from the Godot editor): everyone starts in front of a
+gate of the clearing (`start=middle` for the middle), and a DEV button under the clock opens god mode: put mummies
+(of a chosen kind, alone or in a pack), the snake or a Griever into the maze ahead, freeze or clear everything that
+hunts, be uncatchable, go to a gate, the middle or the exit. Keys: ` the panel, G god, M a mummy, N the snake, B a
+Griever. What it puts in is only in your copy, so use it playing alone; no score is sent with it on
+(`scripts/dev_tools.gd`, `DevTools`).
 
 ## Not done yet
 

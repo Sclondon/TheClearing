@@ -58,8 +58,8 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
 ### The clearing
 
 - 41 cells across: about 574 m. Open grass, stands of pines round its edge.
-- Its wall is a special case, far thicker than the grid: about 54 m of solid stone (the first ring's `rampart`), 46
-  m high. Nothing grows or stands on it.
+- Its wall is a special case, far thicker than the grid: about 54 m of solid stone (the first ring's `rampart`), 92
+  m high (`inner_height`), twice the other walls between rings. Nothing grows or stands on it.
 - Four gates, one in the middle of each side, each a slot about 2 m wide (about three of him) running the whole way
   through that wall. Every gate leads on into the maze: none is a dead end.
 
@@ -74,7 +74,7 @@ The plan is a grid of 14 m cells. Walls stand on the lines between cells. Every 
 | On the walls | only vines from the wall tops | terraces, ivy, vines, rope bridges | as Warren |
 
 What a style can set: depth (cells), hall width (cells), wall thickness, rampart (extra cells of solid wall round
-its inside), how often passages go straight, how often they branch, how many loops, narrow entrances (a passage of
+its inside), how high the wall round its inside is, how often passages go straight, how often they branch, how many loops, narrow entrances (a passage of
 some length from each gate) and doorways (a slot through a gatehouse), and the share of walls with terraces, upper
 terraces, rope bridges, ivy to the top, vines on terraces, wall-top bridges and wall-top vines.
 

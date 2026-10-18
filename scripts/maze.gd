@@ -141,6 +141,23 @@ func _thick_in(ring: int) -> float:
 	return styles[ring - 1].wall_thick
 
 
+## How high the wall on the `step` side of `cell` is: a wall between rings as
+## the outer ring's style says (MazeStyle.inner_height), any other
+## MazeBuilder.WALL_HEIGHT.
+func wall_height(cell: Vector2i, step: Vector2i) -> float:
+	if ring_wall(cell, step):
+		return inner_height(maxi(ring_of(cell), ring_of(cell + step)))
+	return MazeBuilder.WALL_HEIGHT
+
+
+## How high the wall round the inside of `ring` is (MazeBuilder.RING_HEIGHT for
+## a ring that has no style).
+func inner_height(ring: int) -> float:
+	if ring < 1 or ring > styles.size():
+		return MazeBuilder.RING_HEIGHT
+	return styles[ring - 1].inner_height
+
+
 ## Whether there is a wall between `cell` and its neighbour the `step` way
 ## (a unit step). The outer edge is a wall, except at the exit.
 func blocked(cell: Vector2i, step: Vector2i) -> bool:

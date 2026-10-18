@@ -4,6 +4,8 @@ extends RefCounted
 ##   server=<url>   use this rooms server for co-op instead of the live site's
 ##   touch          show the touch controls, as on a phone
 ##   scale3d=<0-1>  draw the 3D view at this share of the window's resolution
+##   dev            god mode and the rest (DevTools); on anyway when run from the editor
+##   start=middle   with dev, start in the middle of the clearing, not at a gate
 
 static var _flags := {}
 static var _read := false

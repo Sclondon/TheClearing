@@ -14,6 +14,7 @@ signal escaped(slot: int, seconds: float)
 ## This player was caught, and is back in the clearing.
 signal caught(slot: int)
 
+const Flags := preload("res://scripts/flags.gd")
 const K_STATE := 83  # S
 const SEND_EVERY := 1.0 / 12.0
 ## The host's news of what hunts the maze: MazeEnemies.pack(), then the Griever's state.
@@ -40,6 +41,11 @@ var out := {}
 ## What hunts the maze (see _enemies).
 var enemies: MazeEnemies
 var griever: Griever
+## God mode and the rest (DevTools), when it is on for this run.
+var dev: DevTools
+## Everyone starts in front of a gate instead of in the middle (with dev tools on,
+## unless the flag `start=middle` is given).
+var start_at_gate := false
 
 var _send_in := 0.0
 var _enemies_in := 0.0
@@ -68,6 +74,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	else:
 		maze = Maze.generate(seed_value)
 		builder.build(maze)
+	start_at_gate = DevTools.enabled() and Flags.value("start") != "middle"
 
 	for entry: Dictionary in players:
 		var seat := int(entry["slot"])
@@ -118,6 +125,9 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	hud.add_child(touch)
 
 	_enemies(seed_value)
+	if DevTools.enabled():
+		dev = DevTools.new(self)
+		hud.add_child(dev)
 
 	if online:
 		Net.packet.connect(_on_packet)
@@ -167,6 +177,8 @@ func _enemies(seed_value: int) -> void:
 ## Something has caught `who`. Here (alone or as the host, where they are run):
 ## this player goes back to the clearing, and a guest is told to.
 func _on_caught(who: Node3D) -> void:
+	if who == player and dev and dev.god:
+		return
 	if who == player:
 		_back_to_the_clearing()
 	elif online and Net.is_host:
@@ -177,25 +189,48 @@ func _on_caught(who: Node3D) -> void:
 
 ## Caught: put back in the middle of the clearing, to try again.
 func _back_to_the_clearing() -> void:
+	put_player(spawn(slot), spawn_yaw(slot))
+	caught.emit(slot)
+
+
+## Puts this player straight down at `at`, facing `yaw` (off any ivy or vine).
+func put_player(at: Vector3, yaw: float) -> void:
 	if player.state == player.State.LADDER:
 		player._leave_ladder()
 	elif player.state == player.State.ROPE:
 		player._leave_rope()
-	player.global_position = spawn(slot)
+	player.global_position = at
 	player.velocity = Vector3.ZERO
-	player.rotation.y = spawn_yaw(slot)
+	player.rotation.y = yaw
+	player.facing_yaw = yaw
 	camera.snap()
-	caught.emit(slot)
 
 
-## Where a seat starts: round the middle of the clearing, facing out.
-func spawn(seat: int) -> Vector3:
+## Where a seat starts: round the middle of the clearing, facing out (or in
+## front of the first gate, with `start_at_gate`, unless `middle`).
+func spawn(seat: int, middle := false) -> Vector3:
+	if start_at_gate and not middle:
+		return gate_spot(0, seat).origin
 	var angle := seat * TAU / 4.0 + PI * 0.25
 	return Vector3(sin(angle), 0.0, cos(angle)) * 2.2 + Vector3.UP * 0.05
 
 
-func spawn_yaw(seat: int) -> float:
+func spawn_yaw(seat: int, middle := false) -> float:
+	if start_at_gate and not middle:
+		return gate_spot(0, seat).basis.get_euler().y
 	return seat * TAU / 4.0 + PI * 0.25
+
+
+## Standing in the clearing a few metres in front of gate `gate` out of it,
+## facing it; seats side by side.
+func gate_spot(gate: int, seat := 0) -> Transform3D:
+	var way: Array = maze.gates[0][gate % maze.gates[0].size()]
+	var step: Vector2i = way[1]
+	var out := Vector3(step.x, 0.0, step.y)
+	var side := Vector3(-out.z, 0.0, out.x)
+	var across: float = [0.0, 1.6, -1.6, 3.2][seat % 4]
+	var at := maze.world(way[0]) - out * 4.0 + side * across + Vector3.UP * 0.05
+	return Transform3D(Basis(Vector3.UP, atan2(out.x, out.z)), at)
 
 
 ## The light, after Inside (see MazeLight), and the edges of the picture darkened

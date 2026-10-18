@@ -188,10 +188,12 @@ static func _runs(maze: Maze) -> Array:
 		var start := -1
 		var kind := false
 		var thick := 0.0
+		var tall := 0.0
 		for x in n + 2:
 			var wall := false
 			var great := false
 			var here := 0.0
+			var high := 0.0
 			if x < n:
 				var cell := Vector2i(x, j) if j < n else Vector2i(x, n - 1)
 				var step := Vector2i(0, -1) if j < n else Vector2i(0, 1)
@@ -199,41 +201,45 @@ static func _runs(maze: Maze) -> Array:
 				wall = maze.blocked(cell, step) and not maze.solid.has(cell) and not maze.solid.has(cell + step)
 				great = maze.ring_wall(cell, step)
 				here = maze.wall_thick(cell, step)
-			if start >= 0 and (not wall or great != kind or here != thick):
+				high = maze.wall_height(cell, step)
+			if start >= 0 and (not wall or great != kind or here != thick or high != tall):
 				var z := (j - 0.5 - middle) * Maze.CELL
 				var cx := ((start + x - 1) * 0.5 - middle) * Maze.CELL
-				var high := MazeBuilder.RING_HEIGHT if kind else MazeBuilder.WALL_HEIGHT
-				runs.append([Vector3(cx, high * 0.5, z), Vector3((x - start) * Maze.CELL + thick, high, thick), kind])
+				runs.append([Vector3(cx, tall * 0.5, z), Vector3((x - start) * Maze.CELL + thick, tall, thick), kind])
 				start = -1
 			if wall and start < 0:
 				start = x
 				kind = great
 				thick = here
+				tall = high
 	# Along z, on the line west of column i.
 	for i in n + 1:
 		var start := -1
 		var kind := false
 		var thick := 0.0
+		var tall := 0.0
 		for y in n + 2:
 			var wall := false
 			var great := false
 			var here := 0.0
+			var high := 0.0
 			if y < n:
 				var cell := Vector2i(i, y) if i < n else Vector2i(n - 1, y)
 				var step := Vector2i(-1, 0) if i < n else Vector2i(1, 0)
 				wall = maze.blocked(cell, step) and not maze.solid.has(cell) and not maze.solid.has(cell + step)
 				great = maze.ring_wall(cell, step)
 				here = maze.wall_thick(cell, step)
-			if start >= 0 and (not wall or great != kind or here != thick):
+				high = maze.wall_height(cell, step)
+			if start >= 0 and (not wall or great != kind or here != thick or high != tall):
 				var x := (i - 0.5 - middle) * Maze.CELL
 				var cz := ((start + y - 1) * 0.5 - middle) * Maze.CELL
-				var high := MazeBuilder.RING_HEIGHT if kind else MazeBuilder.WALL_HEIGHT
-				runs.append([Vector3(x, high * 0.5, cz), Vector3(thick, high, (y - start) * Maze.CELL + thick), kind])
+				runs.append([Vector3(x, tall * 0.5, cz), Vector3(thick, tall, (y - start) * Maze.CELL + thick), kind])
 				start = -1
 			if wall and start < 0:
 				start = y
 				kind = great
 				thick = here
+				tall = high
 	return runs
 
 
@@ -268,13 +274,13 @@ static func _ramparts(maze: Maze) -> Array:
 			for i in range(0, cuts.size(), 2):
 				var long: float = cuts[i + 1] - cuts[i]
 				var middle := out * (near + far) * 0.5 + along * (cuts[i] + cuts[i + 1]) * 0.5
-				walls.append([middle, along * long + out.abs() * (far - near) + Vector3.UP * MazeBuilder.RING_HEIGHT])
+				walls.append([middle, along * long + out.abs() * (far - near) + Vector3.UP * style.inner_height])
 	return walls
 
 
 ## The walls either side of each narrow entrance (MazeStyle.doorway), as
 ## [middle of the foot, size]: filling the entrance's cells but for the doorway
-## down the middle, as high as the wall round the ring it leads out of.
+## down the middle, as high as the wall round the inside of the ring it leads into.
 static func _gatehouses(maze: Maze) -> Array:
 	var walls: Array = []
 	for ring in range(1, maze.rings + 1):
@@ -294,7 +300,7 @@ static func _gatehouses(maze: Maze) -> Array:
 			var start: Vector3 = maze.world(way[0]) + s * Maze.CELL * 0.5
 			var middle := start + s * cells * Maze.CELL * 0.5
 			var wide := (Maze.CELL - style.doorway) * 0.5
-			var size := side.abs() * wide + s.abs() * cells * Maze.CELL + Vector3.UP * MazeBuilder.RING_HEIGHT
+			var size := side.abs() * wide + s.abs() * cells * Maze.CELL + Vector3.UP * maze.inner_height(ring)
 			for out in [-1.0, 1.0]:
 				walls.append([middle + side * out * (style.doorway + wide) * 0.5, size])
 	return walls
@@ -305,10 +311,11 @@ static func _gatehouses(maze: Maze) -> Array:
 static func _next_ring(maze: Maze) -> Array:
 	var half := Maze.ring_extent(maze.rings + 1, maze.styles) * 0.5
 	var long := half * 2.0 + MazeBuilder.RING_THICK
+	var high := maze.inner_height(maze.rings + 1)
 	var runs: Array = []
 	for side in [-1.0, 1.0]:
-		runs.append([Vector3(0.0, MazeBuilder.RING_HEIGHT * 0.5, side * half), Vector3(long, MazeBuilder.RING_HEIGHT, MazeBuilder.RING_THICK), true])
-		runs.append([Vector3(side * half, MazeBuilder.RING_HEIGHT * 0.5, 0.0), Vector3(MazeBuilder.RING_THICK, MazeBuilder.RING_HEIGHT, long), true])
+		runs.append([Vector3(0.0, high * 0.5, side * half), Vector3(long, high, MazeBuilder.RING_THICK), true])
+		runs.append([Vector3(side * half, high * 0.5, 0.0), Vector3(MazeBuilder.RING_THICK, high, long), true])
 	return runs
 
 
@@ -339,7 +346,9 @@ static func _piers(maze: Maze, great: bool) -> Array:
 			if count < 2 or straight or any_great != great or thickest > MAX_PIERED:
 				continue
 			var thick := thickest + MazeBuilder.PIER.x
-			var high := (MazeBuilder.RING_HEIGHT if great else MazeBuilder.WALL_HEIGHT) + MazeBuilder.PIER.y
+			# (a great one as high as the wall round the outermost ring it stands at)
+			var ring := maxi(maxi(maze.ring_of(Vector2i(i - 1, j - 1)), maze.ring_of(Vector2i(i, j - 1))), maxi(maze.ring_of(Vector2i(i - 1, j)), maze.ring_of(Vector2i(i, j))))
+			var high := (maze.inner_height(ring) if great else MazeBuilder.WALL_HEIGHT) + MazeBuilder.PIER.y
 			piers.append([Vector3((i - 0.5 - middle) * Maze.CELL, high * 0.5, (j - 0.5 - middle) * Maze.CELL), Vector3(thick, high, thick)])
 	return piers
 

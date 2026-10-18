@@ -106,7 +106,7 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 				# (or a vine hanging from the top of the wall)
 				if _rng.randf() < _style.wall_vines:
 					_taken[[cell, step]] = true
-					var top := MazeBuilder.RING_HEIGHT if plan.ring_wall(cell, step) or plan.solid.has(cell + step) else MazeBuilder.WALL_HEIGHT
+					var top := plan.inner_height(ring) if plan.solid.has(cell + step) else plan.wall_height(cell, step)
 					_vine(cell, step, WALL_VINE_OUT, _rng.randf_range(-0.35, 0.35) * Maze.CELL, top, VINE_CLEAR, false)
 				continue
 			var upper := _rng.randf() < _style.upper_terraces

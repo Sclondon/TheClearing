@@ -22,6 +22,9 @@ extends Resource
 ## Rows of cells of solid stone round the inside of the ring, making the wall
 ## round what it is round that much thicker: each way in a slot through it.
 @export_range(0, 6) var rampart := 0
+## How high the wall round the inside of the ring is, metres: the wall between it
+## and what it is round, its rampart, and the walls either side of its entrances.
+@export_range(20.0, 200.0) var inner_height := 46.0
 ## The chance a passage goes on straight when it can.
 @export_range(0.0, 1.0) var straight := 0.0
 ## The chance a passage grows from an older place instead of the newest.
@@ -73,12 +76,14 @@ static func made(width_cells: int, hall_span: int, straightness: float, branches
 ## (about 25 m between walls) that run long and straight, few turns and few side
 ## branches. Its walls are massive, 12 m thick, so each way through a wall a
 ## cell long is a slot about three of him wide; and the wall round the clearing
-## is a rampart 54 m thick, each gate a slot through it.
+## is a rampart 54 m thick and 92 m high (twice the other walls between rings),
+## each gate a slot through it.
 static func avenues() -> MazeStyle:
 	var style := made(9, 2, 0.5, 0.0, 0.0)
 	style.wall_thick = 12.0
 	# (the clearing's wall three cells thicker, 54 m in all, a slot through it at each gate)
 	style.rampart = 3
+	style.inner_height = 92.0
 	# (nothing on its walls but vines hanging from their tops)
 	style.terraces = 0.0
 	style.top_bridges = 0.0
