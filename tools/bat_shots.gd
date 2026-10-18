@@ -127,6 +127,10 @@ func _studio() -> void:
 	await shot("06b_head")
 	_frame(head + Vector3.UP * 0.04, 0.17, 0.2, Vector3(-1, 0.15, -0.15))
 	await shot("06c_head_side")
+	# Shrieking (as it does hovering round someone): the jaw dropped on its teeth.
+	one.pose_bat(0, Transform3D(facing, middle), 0.5, 1.0, 0.0, 1.0)
+	_frame(head + Vector3.UP * 0.02, 0.17, 0.2, Vector3(0.45, 0.05, -1))
+	await shot("06h_face_shrieking")
 	# The wrist and its thumb, on the leading edge.
 	one.pose_bat(0, Transform3D(facing, middle), 0.0, 0.0, 0.0)
 	var wrist := middle + facing * (BatBody.WRIST * 1.4)
@@ -142,36 +146,23 @@ func _studio() -> void:
 	await shot("06g_folded_back")
 	one.queue_free()
 
-	# The wingbeat in eight steps, from the side and from the front (two across,
-	# four down: read left to right, top to bottom; the first is the top of the
-	# stroke, the downstroke runs to the fifth); then folding up, in eight.
-	var row := BatColony.new()
-	row.count = 8
-	row.frozen = true
-	stage.add_child(row)
-	for i in 8:
-		row._size[i] = 1.0
+	# The wingbeat in eight steps, from the side and from the front, each step
+	# framed to fill its own cell (two across, four down: read left to right,
+	# top to bottom; the first is the top of the stroke, the downstroke runs to
+	# the fifth); hovering, from the front; and folding up, in eight.
+	var solo := BatColony.new()
+	solo.count = 1
+	solo.frozen = true
+	stage.add_child(solo)
+	solo._size[0] = 1.0
 	var side_on := Basis(Vector3.UP, -PI * 0.5)
-	var side_grid := func(i: int) -> Vector3: return Vector3((0.5 - i % 2) * 0.75, 3.2 - (i / 2) * 0.95, 0)
-	for i in 8:
-		row.pose_bat(i, Transform3D(side_on, side_grid.call(i)), i / 8.0, 1.0, 0.0)
-	_frame(Vector3(0, 1.78, 0), 1.6, 3.8, Vector3(0, 0.05, -1))
-	await shot("07_wingbeat_side")
-	var front_grid := func(i: int) -> Vector3: return Vector3((0.5 - i % 2) * 1.15, 3.0 - (i / 2) * 0.8, 0)
-	for i in 8:
-		row.pose_bat(i, Transform3D(facing * Basis(Vector3.RIGHT, 0.15), front_grid.call(i)), i / 8.0, 1.0, 0.0)
-	_frame(Vector3(0, 1.8, 0), 2.2, 3.3, Vector3(0, 0.1, -1))
-	await shot("07b_wingbeat_front")
-	for i in 8:
-		row.pose_bat(i, Transform3D(facing * Basis(Vector3.RIGHT, 0.15), front_grid.call(i)), i / 8.0, 1.0, 0.0, 1.0)
-	await shot("07c_hovering_front")
-	for i in 8:
-		var fold := i / 7.0
-		row.pose_bat(i, Transform3D(facing * Basis(Vector3.RIGHT, 0.15 - fold * 1.2), front_grid.call(i)), 0.85, 0.4 * (1.0 - fold), fold)
-	await shot("08_folding_up")
-	_frame(Vector3(0, 1.8, 0), 2.2, 3.3, Vector3(0, 1, -0.4))
-	await shot("08b_folding_up_from_above")
-	row.queue_free()
+	var steps := func(i: int) -> Array: return [i / 8.0, 1.0, 0.0, 0.0]
+	await _strip(solo, "07_wingbeat_side", side_on, Vector3(0, 0.05, -1), 0.34, 0.5, steps)
+	var toward := facing * Basis(Vector3.RIGHT, 0.15)
+	await _strip(solo, "07b_wingbeat_front", toward, Vector3(0, 0.1, -1), 0.75, 0.5, steps)
+	await _strip(solo, "07c_hovering_front", toward, Vector3(0, 0.1, -1), 0.75, 0.55, func(i: int) -> Array: return [i / 8.0, 1.0, 0.0, 1.0])
+	await _strip(solo, "08_folding_up", toward, Vector3(0, 0.1, -1), 0.75, 0.38, func(i: int) -> Array: return [0.85, 0.4 * (1.0 - i / 7.0), i / 7.0, 0.0])
+	solo.queue_free()
 
 	# A roost on a wall.
 	var wall := MeshInstance3D.new()
@@ -237,6 +228,34 @@ func _frame(at: Vector3, wide: float, high: float, from: Vector3) -> void:
 	var up := Vector3.UP if absf(from.normalized().y) < 0.95 else Vector3.BACK
 	camera.look_at_from_position(at + from.normalized() * distance, at, up)
 
+
+
+## Eight poses of one bat, each framed so that something `wide` by `high`
+## fills its cell, laid out two across and four down in one picture.
+## `pose`(i) gives [beat, strength, fold, hover] for step i.
+func _strip(bat: BatColony, name: String, turned: Basis, from: Vector3, wide: float, high: float, pose: Callable) -> void:
+	var size := Vector2i(root.get_visible_rect().size)
+	var cell := Vector2i(size.x / 2, size.y / 4)
+	var sheet := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+	sheet.fill(Color(0.62, 0.63, 0.64))
+	var middle := Vector3(0, 1.5, 0)
+	# (the cell is cut from the middle of the picture, as wide as it and as
+	# high as the cell's shape lets it be: frame for that)
+	var cut := Vector2i(size.x, int(size.x * float(cell.y) / cell.x))
+	for i in 8:
+		var how: Array = pose.call(i)
+		bat.pose_bat(0, Transform3D(turned, middle), how[0], how[1], how[2], how[3])
+		_frame(middle, wide, high * size.y / cut.y, from)
+		await process_frame
+		await process_frame
+		await RenderingServer.frame_post_draw
+		var picture := root.get_texture().get_image()
+		var piece := picture.get_region(Rect2i(0, (size.y - cut.y) / 2, cut.x, cut.y))
+		piece.convert(Image.FORMAT_RGBA8)
+		piece.resize(cell.x, cell.y, Image.INTERPOLATE_LANCZOS)
+		sheet.blit_rect(piece, Rect2i(Vector2i.ZERO, cell), Vector2i((i % 2) * cell.x, (i / 2) * cell.y))
+	sheet.save_png("%s/%s.png" % [folder, name])
+	print("saved %s/%s.png" % [folder, name])
 
 # --- In the maze ---
 

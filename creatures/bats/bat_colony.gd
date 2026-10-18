@@ -78,7 +78,7 @@ enum Phase { HANG, DROP, FLY, HOME, LAND }
 @export var mantle := Color(0.22, 0.185, 0.16)
 ## The wings (and the backs of the ears), and the insides of the ears.
 @export var skin := Color(0.1, 0.086, 0.085)
-@export var ear := Color(0.36, 0.26, 0.25)
+@export var ear := Color(0.27, 0.2, 0.19)
 @export var eye := Color(0.95, 0.88, 0.72)
 
 ## Awake: off the roost and flying. Asleep: back to the roost and hanging.

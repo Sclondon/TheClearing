@@ -1,9 +1,14 @@
 # Bats (Godot 4.7)
 
 A colony of big bats: how they look and how they fly, and nothing about what they mean in a game. Made 2026-10-18
-for The Clearing (where they are the maze's alarm: `scripts/enemies/bats.gd` there). Three files, no scenes, no
-textures, no models: `creatures/bats/bat_colony.gd` (`class_name BatColony`), `bat_body.gd` (`BatBody`, the mesh
-and material, made in code) and `bat.gdshader`.
+for The Clearing (where they are the maze's alarm: `scripts/enemies/bats.gd` there). No scenes and no textures:
+`creatures/bats/bat_colony.gd` (`class_name BatColony`), `bat_body.gd` (`BatBody`: the mesh and material; the
+wings, legs and tail made in code), `bat.gdshader`, and `models/bat_body.glb`, the body and head (about a thousand
+triangles), built in Blender 4.3 by `tools/build_bat.py`:
+
+```
+blender --background --python creatures/bats/tools/build_bat.py
+```
 
 What you get:
 
@@ -23,8 +28,10 @@ What you get:
   way round), one diving at the target every few seconds; they follow it as it moves, and keep clear of it.
 - **Going home**: each flies back to its own place, brakes, swings over, takes hold and folds up.
 
-The bat itself: a round furry body, dark, with a lighter mantle over the shoulders and chest and a ragged ruff round
-the neck; a round head with a short snout, big cupped ears (paler inside) and small dark eyes with a glint. Its wings
+The bat itself: a compact furry torso with humped shoulders, a short neck, a lighter mantle over the shoulders and
+chest and a ragged fringe of tufts on the ruff, flanks and belly; a head with a short fox-like snout, a wet nose with
+a nose leaf and nostrils, a lower jaw that drops open on small sharp teeth when it shrieks (while hovering round its
+target), small bead eyes with a glint, and big curved ears cupped forward, ridged and paler inside, with a tragus. Its wings
 are hands: a skeleton of thin dark rods with knuckles (upper arm, forearm, a clawed thumb at the wrist, and four long
 fingers, digits 2 to 5, each a metacarpal and phalanges: 2 along the leading edge, 3 the longest to the wingtip, 4 and
 5 fanning back), with thin skin stretched between the fingers, in front of the arm, back to the body and hind leg, and
@@ -88,4 +95,4 @@ colony with the same seed and roost see the same bats in the same places.
 ## What it needs from a game
 
 Nothing: no autoloads, groups, input actions or project settings. The files must sit at `res://creatures/bats/`
-(BatBody loads the shader from there).
+(BatBody loads the shader and the model from there).

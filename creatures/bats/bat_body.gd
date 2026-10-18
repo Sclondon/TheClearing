@@ -1,26 +1,30 @@
 class_name BatBody
-## What a bat looks like: one mesh, made here in code, and its material
-## (creatures/bats/bat.gdshader). BatColony draws a whole colony with these as
-## one MultiMesh, so a colony is one draw however many bats are in it.
+## What a bat looks like: one mesh and its material (creatures/bats/bat.gdshader).
+## BatColony draws a whole colony with these as one MultiMesh, so a colony is
+## one draw however many bats are in it.
 ##
 ## The mesh is a big dark bat with a wingspan of 1 (scale it up by the span you
 ## want), facing +Z, its back up (+Y), wings out along X, open, at rest:
 ##
-## - a round furry body, darker on the rump and belly, with a lighter mantle
-##   over the shoulders and chest and a ragged ruff round the neck and flanks;
-## - a round head with a short snout, two small dark eyes that catch the
-##   light, and two big upright ears, cupped forward, paler inside;
-## - two wings that are hands. Each has a skeleton, drawn as thin dark rods
-##   with knuckles: the upper arm (humerus) from the shoulder, the forearm to
-##   the wrist, a clawed thumb at the wrist, and four long fingers (digits 2 to
-##   5), each a metacarpal and then its phalanges. Digit 2 runs along the
-##   leading edge, 3 (the longest) out to the wingtip, 4 and 5 fan back to the
-##   trailing edge. Skin is stretched between them: in front of the arm (the
-##   propatagium), between the fingers, from the fifth finger and the arm back
-##   to the body and the hind leg (the plagiopatagium), and between the legs
-##   and the tail (the uropatagium). The trailing edge is scalloped between
-##   the fingertips. The skin is thin: lighter where it is thinnest, with fine
-##   creases across it;
+## - the body and head, modelled in Blender (creatures/bats/tools/build_bat.py,
+##   models/bat_body.glb, about a thousand triangles) and merged in here: a
+##   compact furry torso with humped shoulders, darker on the rump and belly,
+##   a lighter mantle over the shoulders and chest; a short neck; a head with
+##   a short fox-like snout, a wet nose with a nose leaf and nostrils, a lower
+##   jaw that opens on small sharp teeth, small bead eyes, and big curved ears,
+##   cupped forward with ridges inside and a tragus; a ragged fringe of tufts
+##   on the ruff, the shoulders, the flanks and the belly;
+## - two wings that are hands, made here. Each has a skeleton, drawn as thin
+##   dark rods with knuckles: the upper arm (humerus) from the shoulder, the
+##   forearm to the wrist, a clawed thumb at the wrist, and four long fingers
+##   (digits 2 to 5), each a metacarpal and then its phalanges. Digit 2 runs
+##   along the leading edge, 3 (the longest) out to the wingtip, 4 and 5 fan
+##   back to the trailing edge. Skin is stretched between them: in front of
+##   the arm (the propatagium), between the fingers, from the fifth finger and
+##   the arm back to the body and the hind leg (the plagiopatagium), and
+##   between the legs and the tail (the uropatagium). The trailing edge is
+##   scalloped between the fingertips. The skin is thin: lighter where it is
+##   thinnest, with fine creases across it;
 ## - hind legs with little hooked toes, trailing behind, and a tail between them.
 ##
 ## Nothing in the mesh moves by itself. Every vertex of a wing or a leg says
@@ -29,9 +33,8 @@ class_name BatBody
 ## bat's custom data, through the wingbeat, the glide, the hover and the fold
 ## (see the shader). A vertex's bones are CUSTOM1 (bone, other bone, how much
 ## of the other); what it is is CUSTOM0 (part, how thin or light, how far it
-## billows); UV is where it lies on its panel of skin (for the creases) or,
-## on an eye, how far out from its middle; UV2 is (which side, 1 if it is on
-## a wing or leg).
+## billows, 1 if it is on the lower jaw); UV is where it lies on its panel of
+## skin (for the creases); UV2 is (which side, 1 if it is on a wing or leg).
 
 ## The bones, as the shader numbers them. A finger `k` (0 for digit 2 ... 3
 ## for digit 5) is its metacarpal DIGIT + 2k and its phalanges DIGIT + 2k + 1.
@@ -61,45 +64,32 @@ const TAIL := Vector3(0.0, -0.006, -0.178)
 ## to the wrist (or the shoulder).
 const SCALLOP := 0.24
 
-## The body, tail to neck, and the head, neck to nose: (along, half width,
-## half height, height of its middle).
-const BODY: Array[Vector4] = [
-	Vector4(-0.12, 0.006, 0.006, 0.0),
-	Vector4(-0.105, 0.022, 0.02, 0.0),
-	Vector4(-0.085, 0.034, 0.031, 0.0),
-	Vector4(-0.055, 0.046, 0.042, 0.0),
-	Vector4(-0.02, 0.054, 0.049, 0.002),
-	Vector4(0.015, 0.056, 0.05, 0.005),
-	Vector4(0.042, 0.048, 0.044, 0.008),
-	Vector4(0.06, 0.032, 0.03, 0.01),
-	Vector4(0.072, 0.024, 0.023, 0.011),
-]
-const HEAD: Array[Vector4] = [
-	Vector4(0.06, 0.016, 0.016, 0.014),
-	Vector4(0.07, 0.027, 0.026, 0.016),
-	Vector4(0.082, 0.032, 0.03, 0.017),
-	Vector4(0.096, 0.033, 0.03, 0.017),
-	Vector4(0.11, 0.029, 0.026, 0.015),
-	Vector4(0.121, 0.024, 0.021, 0.011),
-	Vector4(0.133, 0.017, 0.015, 0.008),
-	Vector4(0.146, 0.013, 0.011, 0.006),
-	Vector4(0.156, 0.009, 0.008, 0.006),
-	Vector4(0.161, 0.003, 0.003, 0.006),
-]
-const ROUND := 12
+## The body and head, modelled in Blender (creatures/bats/tools/build_bat.py).
+const MODEL := "res://creatures/bats/models/bat_body.glb"
 
 ## Parts, as the shader tells them apart (CUSTOM0.r).
 const FUR := 0.0
+const TEETH := 0.125
 const SKIN := 0.25
+const MOUTH := 0.375
 const BONE := 0.5
+const NOSE := 0.625
 const EAR := 0.75
 const EYE := 1.0
+## What each of the model's materials is: part, how light (the fur's own
+## lightness is worked out from where it is, see _mantle), and whether it is
+## on the lower jaw (which the shader opens).
+const MODEL_PARTS := {
+	"fur": [FUR, -1.0, false], "tuft": [FUR, -1.0, false], "jaw": [FUR, 0.15, true],
+	"ear": [EAR, 0.0, false], "ear_inner": [EAR, 1.0, false], "eye": [EYE, 0.0, false],
+	"teeth": [TEETH, 0.0, false], "jaw_teeth": [TEETH, 0.0, true],
+	"mouth": [MOUTH, 0.0, false], "tongue": [MOUTH, 1.0, true], "nose": [NOSE, 0.0, false],
+}
 
 static var _mesh: ArrayMesh
 static var _shader: Shader
 
 
-## The bat (made once, and shared).
 static func mesh() -> ArrayMesh:
 	if _mesh == null:
 		_mesh = _make()
@@ -109,7 +99,7 @@ static func mesh() -> ArrayMesh:
 ## A material for bats: `fur` (and `mantle`, the lighter fur of the shoulders
 ## and chest), `skin` (wings and the backs of the ears), `ear` (their insides),
 ## and eyes that catch light of `eye`.
-static func material(fur := Color(0.13, 0.115, 0.11), mantle := Color(0.22, 0.185, 0.16), skin := Color(0.1, 0.086, 0.085), ear := Color(0.36, 0.26, 0.25), eye := Color(0.95, 0.88, 0.72)) -> ShaderMaterial:
+static func material(fur := Color(0.13, 0.115, 0.11), mantle := Color(0.22, 0.185, 0.16), skin := Color(0.1, 0.086, 0.085), ear := Color(0.27, 0.2, 0.19), eye := Color(0.95, 0.88, 0.72)) -> ShaderMaterial:
 	if _shader == null:
 		_shader = load("res://creatures/bats/bat.gdshader")
 	var made := ShaderMaterial.new()
@@ -123,6 +113,8 @@ static func material(fur := Color(0.13, 0.115, 0.11), mantle := Color(0.22, 0.18
 	return made
 
 
+
+
 static func _make() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -131,34 +123,70 @@ static func _make() -> ArrayMesh:
 	# scrambles codes kept in it)
 	st.set_custom_format(0, SurfaceTool.CUSTOM_RGBA_FLOAT)
 	st.set_custom_format(1, SurfaceTool.CUSTOM_RGBA_FLOAT)
-	_loft(st, BODY, func(z: float) -> float: return _mantle(z))
-	_loft(st, HEAD, func(z: float) -> float: return 0.12 + 0.4 * smoothstep(0.112, 0.13, z) - 0.3 * smoothstep(0.15, 0.158, z))
-	_ruff(st)
+	_model(st)
 	_rod(st, TAIL_ROOT, TAIL, 0.004, 0.0015, BODY_BONE, 0.0)
 	for side: float in [-1.0, 1.0]:
 		_wing(st, side)
-		_ear(st, side)
-		_eye(st, side)
-		_flank(st, side)
 	return st.commit()
 
 
-# How light the fur is along the body: the mantle over the shoulders and chest.
-static func _mantle(z: float) -> float:
-	return smoothstep(-0.05, 0.0, z) * (1.0 - smoothstep(0.05, 0.075, z))
+# How light the fur is where it is: the mantle over the shoulders and chest
+# and round the neck, darker on the rump, the belly and the crown, and a paler
+# muzzle.
+static func _mantle(at: Vector3) -> float:
+	var mantle := smoothstep(-0.05, 0.0, at.z) * (1.0 - smoothstep(0.055, 0.075, at.z))
+	var muzzle := smoothstep(0.112, 0.13, at.z) * 0.4
+	return clampf(maxf(mantle * (0.75 + 0.25 * smoothstep(-0.03, 0.02, at.y)), muzzle), 0.0, 1.0)
 
 
 # One corner: where (on the right side: `side` -1 mirrors it), which way it
 # faces, what it is and how light or thin, which bones carry it, where it lies
-# on its panel, and how far it billows.
-static func _vert(st: SurfaceTool, at: Vector3, normal: Vector3, part: float, light := 0.0, side := 0.0, bone := 0, other := 0, share := 0.0, uv := Vector2.ZERO, billow := 0.0) -> void:
+# on its panel, how far it billows, and whether it is on the lower jaw.
+static func _vert(st: SurfaceTool, at: Vector3, normal: Vector3, part: float, light := 0.0, side := 0.0, bone := 0, other := 0, share := 0.0, uv := Vector2.ZERO, billow := 0.0, jaw := false) -> void:
 	var mirror := Vector3(-1.0 if side < 0.0 else 1.0, 1.0, 1.0)
-	st.set_custom(0, Color(part, light, billow, 0.0))
+	st.set_custom(0, Color(part, light, billow, 1.0 if jaw else 0.0))
 	st.set_custom(1, Color(bone, other, share, 0.0))
 	st.set_normal((normal * mirror).normalized())
 	st.set_uv(uv)
 	st.set_uv2(Vector2(1.0 if side >= 0.0 else 0.0, 1.0 if bone > 0 or other > 0 else 0.0))
 	st.add_vertex(at * mirror)
+
+
+# The body and head, from the model: every triangle of it, each vertex marked
+# with what its material says it is. They are carried by no bone (the shader
+# pitches the body, bows the head and opens the jaw itself).
+static func _model(st: SurfaceTool) -> void:
+	var scene := load(MODEL) as PackedScene
+	if scene == null:
+		push_error("BatBody: no model at %s (build it with creatures/bats/tools/build_bat.py)" % MODEL)
+		return
+	var root := scene.instantiate()
+	for piece: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
+		# (where it is in the model: its own transform and its parents')
+		var place := Transform3D.IDENTITY
+		var node: Node = piece
+		while node != root and node != null:
+			if node is Node3D:
+				place = (node as Node3D).transform * place
+			node = node.get_parent()
+		var mesh := piece.mesh
+		for surface in mesh.get_surface_count():
+			var named := mesh.surface_get_material(surface).resource_name if mesh.surface_get_material(surface) else "fur"
+			var what: Array = MODEL_PARTS.get(named, MODEL_PARTS["fur"])
+			var arrays := mesh.surface_get_arrays(surface)
+			var points: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+			var order: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+			if order.is_empty():
+				order.resize(points.size())
+				for i in points.size():
+					order[i] = i
+			for i in order:
+				var at := place * points[i]
+				var normal := (place.basis * normals[i]).normalized()
+				var light: float = what[1] if what[1] >= 0.0 else _mantle(at) * (1.15 if named == "tuft" else 1.0)
+				_vert(st, at, normal, what[0], light, 0.0, 0, 0, 0.0, Vector2.ZERO, 0.0, what[2])
+	root.free()
 
 
 # A triangle, wound so that its front faces `out` (and mirrored with it).
@@ -181,67 +209,6 @@ static func _tri(st: SurfaceTool, corners: Array, out: Vector3, part: float, lig
 
 # A round tube through `sections` (along, half width, half height, height of
 # its middle), smooth-shaded, lit along it by `light`(along).
-static func _loft(st: SurfaceTool, sections: Array[Vector4], light: Callable) -> void:
-	var rings: Array[PackedVector3Array] = []
-	var normals: Array[PackedVector3Array] = []
-	for s in sections.size():
-		var section := sections[s]
-		var before := sections[maxi(s - 1, 0)]
-		var after := sections[mini(s + 1, sections.size() - 1)]
-		# (how fast it narrows here, so that the normals lean along the tube)
-		var slope := ((after.y + after.z) - (before.y + before.z)) * 0.5 / maxf(after.x - before.x, 0.001)
-		var ring := PackedVector3Array()
-		var facing := PackedVector3Array()
-		for k in ROUND:
-			var a := TAU * k / ROUND
-			ring.append(Vector3(cos(a) * section.y, section.w + sin(a) * section.z, section.x))
-			var n := Vector3(cos(a) / maxf(section.y, 0.001), sin(a) / maxf(section.z, 0.001), 0.0).normalized()
-			facing.append(Vector3(n.x, n.y, -slope).normalized())
-		rings.append(ring)
-		normals.append(facing)
-	for r in rings.size() - 1:
-		for k in ROUND:
-			var j := (k + 1) % ROUND
-			for corner in [[r, k], [r + 1, k], [r + 1, j], [r, k], [r + 1, j], [r, j]]:
-				var at: Vector3 = rings[corner[0]][corner[1]]
-				_vert(st, at, normals[corner[0]][corner[1]], FUR, light.call(at.z))
-
-
-# A tuft of fur: a little ragged triangle standing out from the body at `root`,
-# pointing `out` (and back), `size` long.
-static func _tuft(st: SurfaceTool, root: Vector3, out: Vector3, across: Vector3, size: float, light: float) -> void:
-	var tip := root + (out + Vector3(0, 0, -0.9)).normalized() * size
-	for at: Vector3 in [root + across * size * 0.45, tip, root - across * size * 0.45]:
-		_vert(st, at, out, FUR, light)
-
-
-# The ruff: tufts all round the neck, pale like the mantle, lying back.
-static func _ruff(st: SurfaceTool) -> void:
-	for k in 14:
-		var a := TAU * (k + 0.5) / 14.0
-		var out := Vector3(cos(a), sin(a) * 0.9, 0.0)
-		var root := Vector3(cos(a) * 0.036, 0.011 + sin(a) * 0.033, 0.064)
-		_tuft(st, root, out, Vector3(-sin(a), cos(a), 0.0), 0.024 + 0.008 * float(k % 2), 0.95)
-
-
-# Ragged fur along each flank, where the wing meets the body.
-static func _flank(st: SurfaceTool, side: float) -> void:
-	for k in 5:
-		var z := -0.07 + k * 0.026
-		var round_at := 0.45 + 0.25 * float(k % 2)
-		var out := Vector3(cos(round_at) * side, sin(round_at), 0.0)
-		var section := _section_at(z)
-		var root := Vector3(out.x * section.y * 0.98, section.w + out.y * section.z * 0.98, z)
-		_tuft(st, root, out, Vector3(0, 0, 1).cross(out).normalized(), 0.018 + 0.006 * float(k % 2), _mantle(z) * 0.7)
-
-
-static func _section_at(z: float) -> Vector4:
-	for s in BODY.size() - 1:
-		if z <= BODY[s + 1].x:
-			return BODY[s].lerp(BODY[s + 1], (z - BODY[s].x) / (BODY[s + 1].x - BODY[s].x))
-	return BODY[-1]
-
-
 # --- The wing ---
 
 # A wing (and its leg): the bones, then the skin between them.
@@ -369,59 +336,3 @@ static func _knuckle(st: SurfaceTool, at: Vector3, size: float, bone: int, side:
 				_tri(st, corners, Vector3(sx, sy, sz), BONE, 0.0, side, bone)
 
 
-# --- The head ---
-
-# An ear: a tall cupped shell standing up from the top of the head, leaning
-# out, its hollow facing forward (its normals face out of the hollow: the
-# shader paints that side paler).
-static func _ear(st: SurfaceTool, side: float) -> void:
-	var base := Vector3(0.021, 0.044, 0.084)
-	var up := Vector3(0.38, 1.0, -0.12).normalized()
-	var across := (Vector3.RIGHT - up * up.x).normalized()
-	var back := across.cross(up).normalized()
-	if back.z > 0.0:
-		back = -back
-	var height := 0.072
-	var rows: Array[PackedVector3Array] = []
-	for r in 4:
-		var t := r / 3.0
-		var half := 0.019 * (1.0 - t * 0.78)
-		var row := PackedVector3Array()
-		for c: float in [-1.0, -0.5, 0.0, 0.5, 1.0]:
-			# (the middle drawn back into a hollow; the rim curled forward)
-			var hollow := (1.0 - c * c) * 0.017 * (1.0 - t * 0.55)
-			row.append(base + up * height * t + across * c * half + back * hollow)
-		rows.append(row)
-	var tip := base + up * height * 1.12 + back * 0.004
-	var tris := []
-	for r in 3:
-		for c in 4:
-			tris.append([rows[r][c], rows[r][c + 1], rows[r + 1][c + 1]])
-			tris.append([rows[r][c], rows[r + 1][c + 1], rows[r + 1][c]])
-	for c in 4:
-		tris.append([rows[3][c], rows[3][c + 1], tip])
-	for tri: Array in tris:
-		var normal: Vector3 = (tri[1] - tri[0]).cross(tri[2] - tri[0]).normalized()
-		if normal.dot(-back) < 0.0:
-			normal = -normal
-		var corners := tri if side > 0.0 else [tri[0], tri[2], tri[1]]
-		for at: Vector3 in corners:
-			_vert(st, at, normal, EAR, 0.0, side * 0.0001)
-
-
-# An eye: a small dark bead on the side of the face; UV.y runs from 0 in its
-# middle to 1 at its rim, for the shader's glint.
-static func _eye(st: SurfaceTool, side: float) -> void:
-	var out := Vector3(0.78, 0.5, 0.38).normalized()
-	var middle := Vector3(0.024, 0.031, 0.114) + out * 0.002
-	var across := out.cross(Vector3.UP).normalized()
-	var up := across.cross(out).normalized()
-	var r := 0.0065
-	for k in 8:
-		var a := TAU * k / 8.0
-		var b := TAU * (k + 1) / 8.0
-		var p := middle - out * 0.002 + (across * cos(a) + up * sin(a)) * r
-		var q := middle - out * 0.002 + (across * cos(b) + up * sin(b)) * r
-		var corners := [middle, p, q] if side > 0.0 else [middle, q, p]
-		for at: Vector3 in corners:
-			_vert(st, at, (at - (middle - out * 0.006)).normalized(), EYE, 0.0, side * 0.0001, 0, 0, 0.0, Vector2(0.0, 0.0 if at == middle else 1.0))

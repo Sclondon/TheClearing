@@ -29,16 +29,16 @@
 //   the forearm, the wrist and elbow fold, the arm comes back along the body,
 //   and the bundle is wrapped down round it.
 //
-// What each vertex is: CUSTOM0 (part: 0 fur, 0.25 skin, 0.5 bone, 0.75 ear,
-// 1 eye; how light (fur) or thin (skin); how far it billows); UV where it lies
-// on its panel of skin (or, on an eye, out from its middle); UV2 (side, 1 if
-// it is carried by bones).
+// What each vertex is: CUSTOM0 (part: 0 fur, 0.125 teeth, 0.25 skin, 0.375
+// mouth, 0.5 bone, 0.625 nose, 0.75 ear, 1 eye; how light (fur) or thin (skin);
+// how far it billows; 1 on the lower jaw, which opens as it shrieks); UV where
+// it lies on its panel of skin; UV2 (side, 1 if it is carried by bones).
 //
 // Lit as Toon (scripts/toon.gd in The Clearing) lights figures: two flat tones
 // with a one-pixel edge between them. The fur and the bones catch a rim of
 // light; the skin is thin and dark, and light from behind shines warm through
 // it, most where it is thinnest, and its edges glow side on; it has fine
-// creases across it; the eyes are dark and wet, with a glint.
+// creases across it; the eyes and nose are dark and wet, with a glint.
 
 shader_type spatial;
 render_mode cull_disabled;
@@ -46,11 +46,11 @@ render_mode cull_disabled;
 uniform vec3 fur : source_color = vec3(0.13, 0.115, 0.11);
 uniform vec3 mantle : source_color = vec3(0.22, 0.185, 0.16);
 uniform vec3 skin : source_color = vec3(0.1, 0.086, 0.085);
-uniform vec3 ear : source_color = vec3(0.36, 0.26, 0.25);
+uniform vec3 ear : source_color = vec3(0.27, 0.2, 0.19);
 uniform vec3 bone : source_color = vec3(0.06, 0.05, 0.05);
 uniform vec3 through : source_color = vec3(0.2, 0.115, 0.085);
-uniform vec3 eye : source_color = vec3(0.95, 0.88, 0.72);
-uniform float eye_glow = 0.9;
+uniform vec3 teeth : source_color = vec3(0.82, 0.78, 0.68);
+uniform vec3 mouth : source_color = vec3(0.13, 0.035, 0.035);
 uniform float wrap = 0.2;
 uniform float flatness = 0.65;
 uniform float rim_gain = 0.4;
@@ -68,6 +68,8 @@ const float FAN[4] = float[4](0.38, 0.0, -0.75, -1.43);
 // Where the head turns on the neck (along, up), and how far it is bowed when folded.
 const vec2 NECK = vec2(0.058, 0.011);
 const float BOW = 0.95;
+// Where the lower jaw hinges (along, up).
+const vec2 HINGE = vec2(0.1, 0.004);
 // How round the body is where a folded wing is wrapped about it.
 const float WRAP = 0.062;
 
@@ -93,6 +95,7 @@ struct Pose {
 	float cup;       // the hand cupped down at the wrist
 	float fold_tips; // the phalanges folded back along the metacarpals
 	float legs;      // the legs swung out (+)
+	float legs_up;   // the legs raised to the wall behind it (hanging)
 };
 
 Pose posed(float beat, float strength, float fold, float hover) {
@@ -121,6 +124,7 @@ Pose posed(float beat, float strength, float fold, float hover) {
 	p.cup = mix(p.cup, 0.25, fold);
 	p.fold_tips = 1.6 * fold;
 	p.legs = mix(p.legs, 0.05, fold);
+	p.legs_up = 0.7 * fold;
 	return p;
 }
 
@@ -130,6 +134,7 @@ vec3 carry(int b, vec3 v, float w, Pose p) {
 		// The leg: swung out and down from the hip.
 		v.xz = turn(v.xz - HIP.xz * w, -p.legs) + HIP.xz * w;
 		v.xy = turn(v.xy - HIP.xy * w, -p.legs * 0.6) + HIP.xy * w;
+		v.zy = turn(v.zy - HIP.zy * w, -p.legs_up) + HIP.zy * w;
 		return v;
 	}
 	if (b >= 5) {
@@ -196,11 +201,14 @@ void vertex() {
 		// Folded up, what the arm and hand carry lies in a narrow bundle along
 		// the flank; it is wrapped down round the belly like a cloak, the two
 		// meeting down the middle.
-		float on_arm = (first >= 1 && first <= 12 ? 1.0 - CUSTOM1.z : 0.0) + (second >= 1 && second <= 12 ? CUSTOM1.z : 0.0);
-		float wrapping = fold * fold * on_arm;
+		// (all the skin the arm has any hold on goes round, so none of it is
+		// left standing out at the hips; the thumbs are hooked out over the top)
+		bool on_arm = (first >= 1 && first <= 12) || (second >= 1 && second <= 12);
+		float wrapping = on_arm ? fold * fold : 0.0;
 		if (wrapping > 0.0) {
-			float round_by = min(max(at.x - 0.03, 0.0) / WRAP, 1.9);
-			vec3 wrapped = vec3(cos(round_by) * WRAP * 1.15, at.y * 0.3 - sin(round_by) * WRAP * 1.15, at.z);
+			float round_by = min(max(at.x - 0.02, 0.0) / (WRAP * 0.75), 2.6);
+			float out_by = first == 4 ? 1.55 : 1.15;
+			vec3 wrapped = vec3(cos(round_by) * WRAP * out_by, at.y * 0.3 - sin(round_by) * WRAP * out_by, at.z);
 			at = mix(at, wrapped, wrapping);
 			facing = mix(facing, vec3(cos(round_by), -sin(round_by), 0.0), wrapping);
 		}
@@ -208,13 +216,21 @@ void vertex() {
 		facing.x *= side;
 		VERTEX = at;
 		NORMAL = normalize(facing);
-	} else if (fold > 0.0) {
+	} else {
+		// The lower jaw drops open as it shrieks (hovering round someone).
+		if (CUSTOM0.a > 0.5) {
+			float open = hover * 0.55 * (1.0 - fold);
+			VERTEX.zy = turn(VERTEX.zy - HINGE, -open) + HINGE;
+			NORMAL.zy = turn(NORMAL.zy, -open);
+		}
 		// Hanging, its head is bowed forward on its neck, so that (head down)
-		// it looks out from the wall, ears pointing down.
-		float at_head = smoothstep(NECK.x - 0.006, NECK.x + 0.014, VERTEX.z);
-		float bow = -BOW * fold * at_head;
-		VERTEX.zy = turn(VERTEX.zy - NECK, bow) + NECK;
-		NORMAL.zy = turn(NORMAL.zy, bow);
+		// it looks out from the wall, ears forward.
+		if (fold > 0.0) {
+			float at_head = smoothstep(NECK.x - 0.006, NECK.x + 0.014, VERTEX.z);
+			float bow = -BOW * fold * at_head;
+			VERTEX.zy = turn(VERTEX.zy - NECK, bow) + NECK;
+			NORMAL.zy = turn(NORMAL.zy, bow);
+		}
 	}
 	// The body pitches against the beat, and the head pitches back against
 	// that: it is steadier than the body.
@@ -229,47 +245,54 @@ void vertex() {
 }
 
 void fragment() {
+	// (the part, by its code: 0 fur, 1 teeth, 2 skin, 3 mouth, 4 bone, 5 nose, 6 ear, 8 eye)
+	int kind = int(round(part * 8.0));
+	bool thin_skin = kind == 2 || kind == 6;
 	vec3 colour;
-	bool is_skin = part > 0.12 && part < 0.37;
-	bool is_ear = part > 0.62 && part < 0.87;
-	if (part < 0.12) {
+	if (kind == 0) {
 		colour = mix(fur, mantle, shade);
-	} else if (is_skin) {
+	} else if (kind == 2) {
 		// Fine creases running across the skin between the bones.
 		float across = panel.x * 9.0 + 0.12 * sin(panel.y * 11.0 + panel.x * 3.0);
 		float pixel = max(fwidth(across), 0.0001);
 		float crease = 1.0 - smoothstep(0.0, pixel * 1.5, abs(fract(across) - 0.5));
 		colour = skin * (1.0 - 0.13 * crease);
-	} else if (part < 0.62) {
+	} else if (kind == 1) {
+		colour = teeth;
+	} else if (kind == 3) {
+		colour = mix(mouth, mouth * 2.2, shade);
+	} else if (kind == 4) {
 		colour = bone;
-	} else if (is_ear) {
-		// (pale in the hollow, which its normals face out of)
-		colour = dot(NORMAL, VIEW) > 0.0 ? ear : skin;
+	} else if (kind == 5) {
+		colour = bone * 0.8;
+	} else if (kind == 6) {
+		// (the hollow of the ear paler than its back)
+		colour = shade > 0.5 ? ear : skin;
 	} else {
 		colour = vec3(0.025, 0.02, 0.02);
-		EMISSION = eye * eye_glow * (1.0 - smoothstep(0.1, 0.2, panel.y));
 	}
 	ALBEDO = colour;
 	SPECULAR = 0.0;
 	// What light() needs to know, passed in what it can read (varyings do not
-	// reach it everywhere): ROUGHNESS says what this is (1 fur or bone, 0.75
-	// skin, 0.5 an eye), BACKLIGHT the colour of its rim (fur, bone) or of the
-	// light through it (skin).
-	if (part < 0.12) {
+	// reach it everywhere): ROUGHNESS says how it is lit (1 a rim, as fur, bone
+	// and teeth are; 0.75 thin skin, lit through; 0.5 wet, with a glint: the
+	// eyes and the nose), BACKLIGHT the colour of the rim or of the light through it.
+	if (kind == 0) {
 		ROUGHNESS = 1.0;
 		BACKLIGHT = mix(fur * 1.6, mantle * 1.1, shade);
-	} else if (is_skin || is_ear) {
+	} else if (thin_skin) {
 		ROUGHNESS = 0.75;
-		BACKLIGHT = through * (0.1 + 0.32 * shade * shade);
-	} else if (part < 0.62) {
-		ROUGHNESS = 1.0;
-		BACKLIGHT = bone * 0.9;
-	} else {
+		BACKLIGHT = through * (kind == 6 ? 0.1 : 0.1 + 0.32 * shade * shade);
+	} else if (kind == 5 || kind == 8) {
 		ROUGHNESS = 0.5;
 		BACKLIGHT = vec3(0.0);
+	} else {
+		ROUGHNESS = 1.0;
+		BACKLIGHT = kind == 1 ? teeth * 0.4 : (kind == 4 ? bone * 0.9 : vec3(0.0));
 	}
-	// (both sides of the skin are its outside: it is lit from whichever is seen)
-	if ((is_skin || is_ear) && dot(NORMAL, VIEW) < 0.0) {
+	// (both sides of the skin, and of a tuft of fur, are its outside: lit from
+	// whichever is seen; the body itself is closed, so its back faces are hidden)
+	if ((thin_skin || kind == 0) && dot(NORMAL, VIEW) < 0.0) {
 		NORMAL = -NORMAL;
 	}
 }
@@ -301,7 +324,7 @@ void light() {
 		SPECULAR_LIGHT += rim * rim_gain * BACKLIGHT * strength * LIGHT_COLOR / PI;
 	} else {
 		// A wet eye: one small bright light on it.
-		float shine = cut(pow(max(dot(NORMAL, normalize(LIGHT + VIEW)), 0.0), 220.0), 0.5);
+		float shine = cut(pow(max(dot(NORMAL, normalize(LIGHT + VIEW)), 0.0), 90.0), 0.5);
 		SPECULAR_LIGHT += shine * 1.5 * LIGHT_COLOR;
 	}
 }
