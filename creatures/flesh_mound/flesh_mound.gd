@@ -1,16 +1,27 @@
 class_name FleshMound
 extends Node3D
 ## A flesh mound: people grown together into one thing. `bodies` says how
-## many are in it, and that says what it is:
+## many are in it, and that says what it is (`form()`):
 ##
-## - SMALL (3 or 4, an amalgam): boys fused at the hips in a star, a wheel of
+## - PAIR (2): two boys grown together back to back along their length, the
+##   one under on all fours, the one on top face up, his head to its back, his
+##   arms and legs waving in the air like an upturned beetle's. It scuttles on
+##   the four under it, and RUSHES: it crouches (`start_roll`, `roll_wind_up`
+##   s), then scuttles flat out, the limbs on top thrown forward, until
+##   `stop_roll`. It and an amalgam are `small()`.
+## - AMALGAM (3 or 4): boys fused at the hips in a star, a wheel of
 ##   arms and legs with their mask faces lolling, about as high as two of
 ##   them. It shambles on whichever limbs are under it, lurching, its hands
 ##   and feet planting and pushing; and it CARTWHEELS: it rears up with its
 ##   limbs splayed (`start_roll`, a warning of `roll_wind_up` s), then tips
 ##   onto them and rolls itself like a wheel, hands and feet slapping down in
 ##   turn, until `stop_roll`.
-## - BIG (5 to FleshMoundLook.MOST): a heaving mound of grown-together flesh
+## - STRIDER (5 or 6): the boys joined at the hips in a ring held up on their
+##   legs, each bent over outwards, so that it walks on ten or twelve legs and
+##   faces every way, its ring turning slowly as it goes, the heads hanging, the
+##   arms groping at the floor. It GRABS (`grab`): the ring tips towards the
+##   target and the boys facing it throw their arms at it.
+## - MOUND (7 to FleshMoundLook.MOST): a heaving mound of grown-together flesh
 ##   filling more of a hall the more are in it, the boys lying in it face up
 ##   or rising from it to the waist, men's arms and legs growing out of it.
 ##   It hauls itself along on the hands at its flanks (on the walls, where
@@ -52,6 +63,8 @@ enum Roll { NONE, WIND_UP, ROLLING }
 const Role := FleshMoundLook.Role
 const TRAIL := 40
 const TRAIL_STEP := 1.4
+## How far a strider's hub lunges at what it grabs (metres, at size 1).
+const RING_LUNGE := 0.7
 
 signal grown(bodies: int)
 ## It has flowed all the way into the other (it is hidden now).
@@ -127,9 +140,13 @@ var _roll_time := 0.0
 ## The wheel of a small one: how far it has turned, how high its hub is, how it tips over.
 var _wheel := 0.0
 var _hub := FleshMoundLook.HUB
+## Where the hub is now (the skeleton's space): a strider's sways and lunges.
+var _hub_at := Vector3.UP * FleshMoundLook.HUB
 ## How far below the ground the lowest limb would reach this frame (it presses on that).
 var _lowest := 0.0
 var _tilt := 0.0
+## How far a pair is into its rush (0..1, easing in and out).
+var _rush := 0.0
 var _u := {"crawl": 0.0, "surge": 0.3, "jiggle": Vector3.ZERO, "bounce": 0.0, "rear": 0.0, "bend": 0.0, "lunge": 0.0}
 var _hands := PackedVector3Array()
 var _absorbing: Array = []
@@ -218,14 +235,25 @@ func settle() -> void:
 				chain.data.erase("step")
 
 
-## A small one: a star of a few, that cartwheels (else a mound, that grabs).
+## A small one: a pair, that rushes, or an amalgam, that cartwheels (else a
+## strider or a mound, that grab).
 func small() -> bool:
 	return bodies <= FleshMoundLook.SMALL
 
 
+func form() -> FleshMoundLook.Form:
+	return FleshMoundLook.form(bodies)
+
+
+## Its people stand about a hub (a pair, an amalgam, a strider), not in a mound.
+func hubbed() -> bool:
+	return bodies <= FleshMoundLook.STRIDER
+
+
 # --- Rolling (small) ---
 
-## Rears up with its limbs splayed (the warning), then rolls (small ones only).
+## Rears up with its limbs splayed (the warning), then rolls (small ones only;
+## a pair crouches, then rushes).
 func start_roll() -> void:
 	if small() and _roll == Roll.NONE:
 		_roll = Roll.WIND_UP
@@ -242,7 +270,7 @@ func roll_stage() -> Roll:
 
 # --- Grabbing (big) ---
 
-## Sends the hands at its front for `target` (big ones only). Does nothing if a grab is under way.
+## Sends the hands at its front (a strider's facing it) for `target` (big ones only). Does nothing if a grab is under way.
 func grab(target: Vector3) -> void:
 	if small() or grab_stage() != Stage.NONE:
 		return
@@ -273,6 +301,8 @@ func grab_target() -> Vector3:
 func reach() -> float:
 	if small():
 		return 0.0
+	if hubbed():
+		return (1.25 * FleshMoundLook.boy_size(bodies) + RING_LUNGE) * size
 	var longer := clampf(1.0 / (_squeeze * clampf(pow(_squeeze, -0.35), 0.85, 1.45)), 0.75, 2.4)
 	return (FleshMoundLook.radii(bodies).z * longer + 3.0 + slide) * size
 
@@ -295,9 +325,17 @@ func grab_hits(a: Vector3, b: Vector3, radius: float) -> bool:
 func touches(point: Vector3, margin := 0.0) -> bool:
 	if not _flesh.visible or _merge_to:
 		return false
-	if small():
-		var hub := _flesh.global_transform * (Vector3.UP * _hub * size)
-		return point.distance_to(hub) < (0.95 * FleshMoundLook.boy_size(bodies) / 1.3 + margin) * size
+	if hubbed():
+		var hub := _flesh.global_transform * (_hub_at * size)
+		var near := 0.95 * FleshMoundLook.boy_size(bodies) / 1.3
+		match form():
+			FleshMoundLook.Form.PAIR:
+				# (along its length, the two of them)
+				var ends := _flesh.global_basis * Vector3.FORWARD * FleshMoundLook.PAIR_LONG * FleshMoundLook.boy_size(bodies) * size
+				return Geometry3D.get_closest_point_to_segment(point, hub - ends, hub + ends).distance_to(point) < (0.45 + margin) * size
+			FleshMoundLook.Form.STRIDER:
+				near = 0.75
+		return point.distance_to(hub) < (near + margin) * size
 	var local := _core.global_transform.affine_inverse() * point
 	var scale_now := _core.global_transform.basis.get_scale()
 	var widen := margin / (minf(scale_now.x, minf(scale_now.y, scale_now.z)) * 4.0)
@@ -401,12 +439,17 @@ func _process(delta: float) -> void:
 	_feel = lerpf(_feel, 1.0 if _aim_now().is_finite() else 0.0, 1.0 - exp(-1.8 * delta))
 	_swell = maxf(_swell - delta * 0.8, 0.0)
 	_growing(delta)
-	if small():
-		_pose_star(delta, flat)
-	else:
-		_squeezing(delta, basis)
-		_shade(flat)
-		_pose_mound(delta)
+	match form():
+		FleshMoundLook.Form.PAIR:
+			_pose_pair(delta, flat)
+		FleshMoundLook.Form.AMALGAM:
+			_pose_star(delta, flat)
+		FleshMoundLook.Form.STRIDER:
+			_pose_ring(delta, flat)
+		_:
+			_squeezing(delta, basis)
+			_shade(flat)
+			_pose_mound(delta)
 	_lay_trail(delta)
 
 
@@ -417,7 +460,7 @@ func _growing(delta: float) -> void:
 		it.time += delta
 		var t := clampf(it.time / absorb_time, 0.0, 1.0)
 		var skeleton: Skeleton3D = it.skeleton
-		var into := _flesh.global_transform * (Vector3.UP * (_hub if small() else FleshMoundLook.radii(bodies).y * 0.6) * size)
+		var into := _flesh.global_transform * ((_hub_at if hubbed() else Vector3.UP * FleshMoundLook.radii(bodies).y * 0.6) * size)
 		var from: Vector3 = it.from
 		var pull := smoothstep(0.15, 1.0, t)
 		# (dragged along the ground, feet first, toppling back into it)
@@ -491,12 +534,21 @@ func _stretch_bridge(t: float) -> void:
 
 ## The middle of one's flesh in the world, and about how thick it is.
 static func _middle_of(one: FleshMound) -> Vector3:
-	var high := (one._hub if one.small() else FleshMoundLook.radii(one.bodies).y * 0.55 + 0.3) * one.size
+	if one.hubbed():
+		return one._flesh.global_transform * (one._hub_at * one.size)
+	var high := (FleshMoundLook.radii(one.bodies).y * 0.55 + 0.3) * one.size
 	return one._flesh.global_position + Vector3.UP * high
 
 
 static func _girth_of(one: FleshMound) -> float:
-	return (0.7 if one.small() else FleshMoundLook.radii(one.bodies).y) * one.size
+	match one.form():
+		FleshMoundLook.Form.PAIR:
+			return 0.45 * one.size
+		FleshMoundLook.Form.AMALGAM:
+			return 0.7 * one.size
+		FleshMoundLook.Form.STRIDER:
+			return 0.8 * one.size
+	return FleshMoundLook.radii(one.bodies).y * one.size
 
 
 ## What its limbs reach for: whatever it is after, or, merging, the other one.
@@ -540,6 +592,7 @@ func _pose_star(delta: float, flat: float) -> void:
 		_hub += sin(_time * 4.2) * 0.006
 	var tip := Basis(Vector3.FORWARD, _tilt)
 	var hub := Vector3.UP * _hub
+	_hub_at = hub
 	# The lump at its hub turns with it.
 	var lump := FleshMoundLook.radii(bodies) / FleshMoundLook.RADII
 	_core.basis = (tip * Basis(Vector3.RIGHT, -_wheel)).scaled(lump * size * (1.0 + _swell * 0.15))
@@ -605,6 +658,221 @@ func _pose_star(delta: float, flat: float) -> void:
 			else:
 				chain.reach_to(_skeleton, root, to, pole, along, palm if planted > 0.0 else -dir, parent)
 				chain.curl_toes(_skeleton, 0.4 * planted - 0.2)
+
+
+## The lump where its boys are joined (a pair's, a strider's), at `hub` turned
+## by `turn`, its shader still.
+func _hub_core(turn: Basis, hub: Vector3) -> void:
+	var r := FleshMoundLook.radii(bodies) * (1.0 + _swell * 0.15)
+	_core.basis = turn * Basis.from_scale(r / FleshMoundLook.RADII * size)
+	_core.position = hub * size - _core.basis * (Vector3.UP * FleshMoundLook.MIDDLE)
+	_material.set_shader_parameter(&"breath", sin(_time * 2.0))
+	_material.set_shader_parameter(&"pulse", exp(-fposmod(_time * 1.6, 1.0) * 8.0))
+	for name: StringName in [&"crawl", &"surge", &"bounce", &"rear", &"bend", &"lunge"]:
+		_material.set_shader_parameter(name, 0.0)
+	_material.set_shader_parameter(&"jiggle", Vector3.ZERO)
+	_skin_material.set_shader_parameter(&"core_at", Vector4(hub.x, hub.y, hub.z, 0.0))
+	_skin_material.set_shader_parameter(&"core_size", Vector4(r.x, r.y, r.z, 1.0))
+
+
+# --- A pair: two back to back, scuttling ---
+
+func _pose_pair(delta: float, flat: float) -> void:
+	_roll_time += delta
+	var s := FleshMoundLook.boy_size(bodies)
+	var wind := 0.0
+	if _roll == Roll.WIND_UP:
+		wind = smoothstep(0.0, 1.0, _roll_time / roll_wind_up)
+		if _roll_time >= roll_wind_up:
+			_roll = Roll.ROLLING
+	_rush = lerpf(_rush, 1.0 if _roll == Roll.ROLLING else 0.0, 1.0 - exp(-6.0 * delta))
+	var gait := minf(flat / 2.0, 1.0)
+	# Crouched to spring, low and flat out rushing; bobbing and rocking as it scuttles.
+	_hub = FleshMoundLook.PAIR_HIGH * s * (1.0 - wind * 0.25 - _rush * 0.12) + absf(sin(_crawl * TAU / 0.8)) * 0.035 * gait * s
+	var rock := Basis(Vector3.FORWARD, sin(_crawl * TAU / 1.6) * 0.08 * gait + _jiggle.x * 0.25 + sin(_time * 1.3) * 0.03)
+	var tip := rock * Basis(Vector3.RIGHT, wind * 0.12 - _rush * 0.06 + _jiggle.z * 0.2)
+	var hub := Vector3.UP * _hub
+	_hub_at = hub
+	_hub_core(tip, hub)
+	var to_skeleton := _skeleton.global_transform.affine_inverse()
+	var to_world := _skeleton.global_transform
+	var ground := (to_skeleton * Vector3(global_position.x, global_position.y + 0.04 * size, global_position.z)).y
+	var reach_for := _aim_now()
+	var local_aim := to_skeleton * reach_for if reach_for.is_finite() else Vector3.INF
+	var step_time := lerpf(0.34, 0.15, clampf(flat / 6.0, 0.0, 1.0))
+	for copy in _build.copies:
+		var d := copy.data
+		var top: bool = d.top
+		var phase: float = d.phase
+		var along: Vector3 = tip * (d.along as Vector3)
+		var front := tip * (Vector3.UP if top else Vector3.DOWN)
+		var frame := FleshParts.frame(along, front)
+		var hips := hub + front * 0.07 * s - along * FleshMoundLook.PAIR_LONG * 0.5 * s
+		var bend := sin(_time * 1.7 + phase) * 0.08 + (wind * 0.2 if not top else -0.1)
+		# (the one under looks ahead; the head of the one on top hangs back off its end)
+		var head := -0.35 - wind * 0.2 if not top else -0.6 + sin(_time * 0.9 + phase) * 0.2
+		var globals := copy.body.pose(_skeleton, hips, frame, bend, head, sin(_time * 0.7 + phase) * (0.3 if not top else 0.6))
+		var chest: Transform3D = globals[2]
+		var hip_bone: Transform3D = globals[0]
+		for chain_name: String in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+			var chain: FleshParts.Chain = copy.chains[chain_name]
+			var parent := chest if chain.arm else hip_bone
+			var root := chain.root_from(parent)
+			var across := frame.x * chain.side
+			var long := chain.upper_long + chain.lower_long
+			if top:
+				_wave(chain, root, along, front, across, long, phase, local_aim, wind, parent)
+				continue
+			# The one under walks on all fours, its limbs splayed like a crab's.
+			var flat_across := Vector3(across.x, 0.0, across.z).normalized()
+			var ideal := root + (flat_across * (0.55 + _rush * 0.1) + Vector3.FORWARD * (0.25 if chain.arm else -0.1)) * long
+			ideal.y = ground
+			var planted := _planted(chain, ideal, long, delta, to_skeleton, to_world, step_time, 0.25)
+			var at: Vector3 = planted[0]
+			var lift: float = planted[1]
+			var toes := (Vector3.FORWARD + flat_across * 0.5).normalized()
+			if chain.arm:
+				var wrist := at - toes * chain.end_long * 0.5 + Vector3.UP * 0.03 * s
+				chain.reach_to(_skeleton, root, wrist, (Vector3.BACK * 0.5 + flat_across + Vector3.UP * 0.4).normalized(), toes, Vector3.DOWN.lerp(Vector3.BACK, lift * 0.5).normalized(), parent)
+				chain.hand(_skeleton, 0.2 + lift * 0.5, 0.6 * (1.0 - lift), 0.4, _time, 0.2 + wind * 0.6)
+			else:
+				chain.reach_to(_skeleton, root, at + Vector3.UP * 0.04 * s, (Vector3.FORWARD * 0.6 + flat_across + Vector3.UP * 0.3).normalized(), toes, Vector3.DOWN, parent)
+				chain.curl_toes(_skeleton, 0.3 * (1.0 - lift))
+
+
+## A limb of a pair's top one: waving in the air like an upturned beetle's,
+## an arm reaching for what it is after; thrown forward when it rushes.
+func _wave(chain: FleshParts.Chain, root: Vector3, along: Vector3, front: Vector3, across: Vector3, long: float, phase: float, local_aim: Vector3, wind: float, parent: Transform3D) -> void:
+	var t := _time * (2.2 if chain.arm else 1.6) + phase + chain.side * 1.3
+	var dir := front * 0.9 + across * 0.55 + (along * 0.3 if chain.arm else -along * 0.2)
+	dir += Vector3(sin(t), cos(t * 1.3) * 0.5, sin(t * 0.8 + 1.0)) * 0.35
+	if local_aim.is_finite() and chain.arm:
+		dir = dir.lerp((local_aim - root).normalized() * 1.2, _feel * 0.5)
+	# Crouched and rushing: thrown forward, splayed, quivering.
+	var thrown := Vector3.FORWARD * 0.9 + Vector3.UP * 0.5 + across * 0.6
+	var urge := maxf(wind, _rush)
+	dir = dir.lerp(thrown, urge * (0.8 if chain.arm else 0.5))
+	dir += Vector3(sin(_time * 40.0 + phase), cos(_time * 37.0), 0.0) * urge * 0.05
+	dir = dir.normalized()
+	var to := root + dir * long * (0.92 if chain.arm else 0.8)
+	var pole := (front * 0.3 + (Vector3.BACK if chain.arm else Vector3.FORWARD) * 0.5 + across * 0.5).normalized()
+	if chain.arm:
+		chain.reach_to(_skeleton, root, to, pole, dir, (-front + dir * 0.3).normalized(), parent)
+		chain.hand(_skeleton, 0.4 + 0.4 * sin(t * 1.7), 0.4, 0.4 + urge * 0.6, _time, 0.4 + urge)
+	else:
+		chain.reach_to(_skeleton, root, to, pole, pole, dir, parent)
+		chain.curl_toes(_skeleton, 0.3 * sin(t * 2.0))
+
+
+# --- A strider: a ring of them, walking ---
+
+func _pose_ring(delta: float, flat: float) -> void:
+	var s := FleshMoundLook.boy_size(bodies)
+	var gait := minf(flat / 2.0, 1.0)
+	var to_skeleton := _skeleton.global_transform.affine_inverse()
+	var to_world := _skeleton.global_transform
+	var weights := _grab_weights()
+	var stage := grab_stage()
+	var target := to_skeleton * _grab_at
+	var reach_for := _aim_now()
+	var local_aim := to_skeleton * reach_for if reach_for.is_finite() else Vector3.INF
+	# The ring turns slowly as it goes (so that it is never the same way round),
+	# leans into its going, and, grabbing, tips and lunges at what it grabs.
+	if stage == Stage.NONE:
+		_wheel += delta * (0.12 + gait * 0.1)
+	var going := _skeleton.global_basis.orthonormalized().inverse() * _speed
+	going.y = 0.0
+	var toward := Vector3(target.x, 0.0, target.z).normalized() if weights.x > 0.0 else Vector3.ZERO
+	var lunge := weights.y - 0.2 * weights.x * (1.0 - weights.y)
+	var lean := going.limit_length(3.0) * 0.04 + toward * 0.16 * lunge
+	var axis := Vector3.UP.cross(lean)
+	var tip := Basis(axis.normalized(), lean.length()) if axis.length() > 0.001 else Basis.IDENTITY
+	var bob := absf(sin(_crawl * TAU / 1.1)) * 0.04 * gait * s + sin(_time * 1.4) * 0.015 * s
+	_hub = FleshMoundLook.RING_HIGH * s + bob - weights.x * (1.0 - weights.y) * 0.08 * s
+	var hub := Vector3.UP * _hub + toward * lunge * RING_LUNGE
+	_hub_at = hub
+	_hub_core(tip * Basis(Vector3.UP, _wheel), hub)
+	var ground := (to_skeleton * Vector3(global_position.x, global_position.y + 0.04 * size, global_position.z)).y
+	_hands.clear()
+	for copy in _build.copies:
+		var d := copy.data
+		var phase: float = d.phase
+		var spoke: float = d.spoke + _wheel
+		var flat_out := Vector3(-sin(spoke), 0.0, -cos(spoke))
+		var out := tip * flat_out
+		# (those facing what it grabs throw themselves at it)
+		var facing := clampf(flat_out.dot(toward) * 1.6 - 0.3, 0.0, 1.0) if weights.x > 0.0 else 0.0
+		var throw := facing * weights.y
+		var frame := FleshParts.frame(tip * (flat_out * (0.65 + throw * 0.4) + Vector3.UP * (0.75 - throw * 0.25)), tip * (flat_out + Vector3.DOWN * 0.8))
+		var hips := hub + out * 0.1 * s
+		var globals := copy.body.pose(_skeleton, hips, frame, 0.2 + sin(_time * 1.1 + phase) * 0.08 + facing * weights.x * 0.2, 0.55 + sin(_time * 0.8 + phase) * 0.2 - throw * 0.6, sin(_time * 0.5 + phase) * 0.5)
+		var chest: Transform3D = globals[2]
+		var hip_bone: Transform3D = globals[0]
+		for chain_name: String in ["arm_l", "arm_r", "leg_l", "leg_r"]:
+			var chain: FleshParts.Chain = copy.chains[chain_name]
+			var parent := chest if chain.arm else hip_bone
+			var root := chain.root_from(parent)
+			var across := frame.x * chain.side
+			var long := chain.upper_long + chain.lower_long
+			if chain.arm:
+				_ring_arm(chain, root, out, across, long, phase, local_aim, target, weights, facing, stage, delta, parent, to_world)
+				continue
+			# Its legs walk it, planted round under it.
+			var flat_across := Vector3(across.x, 0.0, across.z)
+			var ideal := Vector3(hips.x, ground, hips.z) + (flat_out * 0.42 + flat_across * 0.22) * long
+			var planted := _planted(chain, ideal, long, delta, to_skeleton, to_world, 0.4, 0.28)
+			var at: Vector3 = planted[0]
+			var lift: float = planted[1]
+			chain.reach_to(_skeleton, root, at + Vector3.UP * 0.04 * s, (flat_out + Vector3.UP * 0.2).normalized(), flat_out, Vector3.DOWN, parent)
+			chain.curl_toes(_skeleton, 0.3 * (1.0 - lift))
+
+
+## An arm of a strider's: hanging and groping at the floor before it; feeling
+## for what it is after on that side; grabbing, if it faces what is grabbed.
+func _ring_arm(chain: FleshParts.Chain, root: Vector3, out: Vector3, across: Vector3, long: float, phase: float, local_aim: Vector3, target: Vector3, weights: Vector3, facing: float, stage: Stage, delta: float, parent: Transform3D, to_world: Transform3D) -> void:
+	var sway := Vector3(sin(_time * 0.7 + phase + chain.side), 0.0, cos(_time * 0.6 + phase)) * 0.25
+	var dir := (out * 0.55 + Vector3.DOWN * 0.8 + across * 0.25 + sway + _spasm(chain, delta, phase)).normalized()
+	var to := root + dir * long * 0.9
+	to.y = maxf(to.y, 0.08)
+	var grip := 0.45 + 0.35 * sin(_time * 1.3 + phase * 2.0)
+	var spread := 0.3
+	var jitter := 0.25
+	if local_aim.is_finite():
+		var toward := local_aim - root
+		var side := clampf(Vector2(out.x, out.z).normalized().dot(Vector2(toward.x, toward.z).normalized()) * 1.5, 0.0, 1.0)
+		var f := _feel * side * clampf(1.6 - toward.length() / (long * 3.0), 0.0, 1.0)
+		to = to.lerp(root + toward.limit_length(long * 0.92), f * 0.7)
+		spread = lerpf(spread, 0.6, f)
+		jitter = lerpf(jitter, 0.6, f)
+	# The grab: drawn up and splayed, then thrown at it, then clutching.
+	if facing > 0.0:
+		var spot := target + Vector3(cos(phase * 2.4 + chain.side), 0.0, sin(phase * 2.4 + chain.side)) * 0.3 * chain.size
+		spot.y = clampf(spot.y + 0.6, 0.3, 1.6)
+		var rise := root + (Vector3.UP * 0.7 + out * 0.5).normalized() * long * 0.85
+		rise += Vector3(sin(_time * 41.0 + phase), sin(_time * 37.0), cos(_time * 43.0 + phase)) * 0.05 * chain.size
+		var thrown := root + (spot - root).limit_length(long * 0.97)
+		to = to.lerp(rise.lerp(thrown, weights.y), weights.x * facing)
+		match stage:
+			Stage.WIND_UP:
+				grip = lerpf(grip, -0.2, weights.x)
+				spread = lerpf(spread, 1.0, weights.x)
+				jitter = lerpf(jitter, 1.0, weights.x)
+			Stage.STRIKE:
+				var closing := smoothstep(0.75, 1.0, weights.y)
+				grip = lerpf(-0.2, 1.0, closing)
+				spread = lerpf(1.0, 0.0, closing)
+				jitter = 0.4
+			Stage.HOLD:
+				grip = 1.0
+				jitter = 0.6
+			Stage.RECOVER:
+				grip = lerpf(grip, 0.6, weights.x)
+	var along := (to - root).normalized()
+	var palm := (Vector3.DOWN + along * 0.3).normalized()
+	chain.reach_to(_skeleton, root, to, (Vector3.UP * 0.5 + out * 0.5 - across * 0.3).normalized(), along, palm, parent)
+	chain.hand(_skeleton, clampf(grip, -0.3, 1.2), 0.35, spread, _time, jitter)
+	if facing > 0.3:
+		_hands.append(to_world * (to + along * chain.end_long * 0.6))
 
 
 # --- A mound ---
@@ -834,7 +1102,8 @@ func _wall_for(root: Vector3, flat: Vector3, long: float) -> Vector3:
 ## A hand put down at a point that stays put in the world while the body goes on,
 ## lifted and put down again near `ideal` when it is left too far behind.
 ## Gives where it is now (skeleton space) and how far it is lifted (0..1).
-func _planted(chain: FleshParts.Chain, ideal: Vector3, long: float, delta: float, to_skeleton: Transform3D, to_world: Transform3D) -> Array:
+## A step takes `step_time` s and is lifted `lift` of the limb's length.
+func _planted(chain: FleshParts.Chain, ideal: Vector3, long: float, delta: float, to_skeleton: Transform3D, to_world: Transform3D, step_time := 0.45, lift := 0.3) -> Array:
 	var d := chain.data
 	var ideal_w := to_world * ideal
 	if not d.has("plant"):
@@ -844,13 +1113,13 @@ func _planted(chain: FleshParts.Chain, ideal: Vector3, long: float, delta: float
 	if d.step < 0.0 and plant_now.distance_to(ideal) > long * 0.5:
 		d.from = d.plant
 		# (put down ahead of where it is going, so that it is not left behind at once)
-		d.to = ideal_w + _speed * 0.35
+		d.to = ideal_w + _speed * step_time * 0.78
 		d.step = 0.0
 	if d.step >= 0.0:
-		d.step += delta / 0.45
+		d.step += delta / step_time
 		var s := clampf(d.step, 0.0, 1.0)
 		var at: Vector3 = (d.from as Vector3).lerp(d.to, smoothstep(0.0, 1.0, s))
-		at += Vector3.UP * sin(s * PI) * long * 0.3 * size
+		at += Vector3.UP * sin(s * PI) * long * lift * size
 		if d.step >= 1.0:
 			d.plant = d.to
 			d.step = -1.0
@@ -958,11 +1227,11 @@ func _lay_trail(delta: float) -> void:
 			var i := _trail_next
 			_trail_next = (_trail_next + 1) % TRAIL
 			var r := FleshMoundLook.radii(bodies)
-			var under := _core.global_position if not small() else global_position
+			var under := _core.global_position if not hubbed() else global_position
 			under.y = at.y
 			_trail_at[i] = under - Vector3(gone.x, 0.0, gone.y).normalized() * r.z * 0.6 * size + Vector3.UP * 0.03
 			_trail_way[i] = atan2(gone.x, gone.y)
-			_trail_wide[i] = r.x * 1.3 * size * (_squeeze if not small() else 1.6)
+			_trail_wide[i] = r.x * 1.3 * size * (_squeeze if not hubbed() else (2.4 if form() == FleshMoundLook.Form.STRIDER else 1.6))
 			_trail_age[i] = 0.0
 			_trail_from = at
 	_trail_tick -= delta

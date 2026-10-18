@@ -1,15 +1,28 @@
 # Flesh mound
 
 People grown together, for Godot 4.7 (works in GL Compatibility, so on the web
-and phones). One creature in many sizes: `bodies` says how many are in it.
+and phones). One creature in many sizes: `bodies` says how many are in it,
+and that says its form (`form()`, `FleshMoundLook.Form`): a pair, an amalgam,
+a strider or a mound.
 
-- **Small, 3 or 4 bodies (an amalgam).** Boys fused at the hips in a star, a
+- **A pair, 2 bodies.** Two boys grown together back to back along their
+  length, the one under on all fours, the one on top lying face up, his head
+  hanging off its back end, his arms and legs waving in the air like an
+  upturned beetle's. It scuttles on the four limbs under it, splayed like a
+  crab's. It rushes: `start_roll()` crouches it (the warning), then it
+  scuttles flat out, the limbs on top thrown forward, until `stop_roll()`.
+- **An amalgam, 3 or 4 bodies.** Boys fused at the hips in a star, a
   wheel of arms and legs about as high as two of them, their blank mask faces
   lolling. It shambles on whichever limbs are under it, lurching, hands and
   feet planting and pushing. It cartwheels: it rears with its limbs splayed
   (the warning), then tips onto them and rolls like a wheel, hands and feet
   slapping down in turn.
-- **Big, 5 to 10 bodies.** A heaving mound of grown-together flesh, bigger the
+- **A strider, 5 or 6 bodies.** The boys joined at the hips in a ring held up
+  on their legs, each bent over outwards, heads hanging, arms groping at the
+  floor: it walks on ten or twelve legs and faces every way, the ring turning
+  slowly as it goes. It grabs (`grab(target)`): the ring tips and lunges at
+  the target and the boys facing it throw their arms at it.
+- **A mound, 7 to 10 bodies.** A heaving mound of grown-together flesh, bigger the
   more are in it (at 10 about 6 m across and 4 high, its limbs reaching
   further). The boys lie sunk in it face up (their mask faces out) or face down
   (their backs out), or rise from it to the waist; men lie sunk in it to their ribs;
@@ -20,8 +33,8 @@ and phones). One creature in many sizes: `bodies` says how many are in it.
 - **Growing.** `absorb(point)` drags a body in from there (seen dragged in
   backwards, arms reaching out of it) and it gains one; `merge_into(other)`
   reaches for another, stretches a bridge of skin to it and
-  pours itself along it into the other, which then `grow`s by its bodies. A small one that
-  grows past 4 becomes a mound.
+  pours itself along it into the other, which then `grow`s by its bodies. Past a form's most
+  bodies it is the next form: 2 a pair, 3 and 4 an amalgam, 5 and 6 a strider, 7 up a mound.
 
 No mouth, no teeth, hardly any blood: one pallid, waxy, matte skin (greys and ashen
 yellows, bruise purples in patches) flowing
@@ -73,10 +86,10 @@ if mound.grab_hits(feet, head, 0.3) or mound.touches(chest, 0.2):
 
 - **Speed.** It works out its own speed from how it moves (a small one turns
   its wheel by it, rolling without slipping). If it moves in jumps, set `moving`.
-- **Rolling.** `start_roll()`, `stop_roll()`, `roll_stage()` (NONE, WIND_UP,
-  ROLLING). Its hub rides on whichever limbs are under it.
+- **Rolling (rushing).** `start_roll()`, `stop_roll()`, `roll_stage()` (NONE, WIND_UP,
+  ROLLING): an amalgam cartwheels, a pair rushes. An amalgam's hub rides on whichever limbs are under it.
 - **Grabbing.** `grab(target)`, `grab_stage()`, `strikes_in()`, `grab_target()`,
-  `reach()`, `grab_hits(a, b, r)`, `hands()`. Big ones only.
+  `reach()`, `grab_hits(a, b, r)`, `hands()`. Striders and mounds only.
 - **Squeezing.** A mound, with `measure_room` on, casts rays to either side
   against `room_mask` five times a second and squeezes narrower, taller and
   longer in a narrow space; `sides()` says how far the walls are.

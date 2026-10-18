@@ -134,16 +134,26 @@ ring has is its style's choice. The wall tops are a second level you can travel 
     maybe pussy"; "different size abominations that can grow and merge together or by absorbing people"): people grown
     together, one creature in sizes by how many bodies are in it. Pallid waxy skin flowing from body to body, puckered
     scar-dark seams, stretch marks, veins, boils of pus; the boys' blank mask faces; men's arms, long gaunt arms and legs.
+    Four forms (2026-10-18, the user: "a couple more amalgam stages rather than just the 2"):
+    - **Pair** (2): two boys grown together back to back, the one under on all fours, the one on top face up with
+      his arms and legs waving like an upturned beetle's. Scuttles nearly as fast as a run (3.9 m/s); where its quarry
+      is in a straight line within 9 m it crouches (0.6 s) and rushes at 6.6 m/s, faster than a sprint, for only
+      about 1.1 s. A step aside or a side turning gets away. Running into it catches.
     - **Amalgam** (3 or 4): boys fused at the hips in a wheel of limbs. Shambles a little slower than a run; where its
       quarry is in a straight line down a hall it rears with its limbs splayed (0.6 s, the warning) and cartwheels at them
       at 5.1 m/s, faster than a run, slower than a sprint, for about 3 s, then is spent and lurches slowly. A sprint, a
       side turning or a climb gets away. Rolling into you catches.
-    - **Mound** (5 to 10): fills more of a hall the bigger it is, crawls slower (no faster than a walk). Hauls itself on
+    - **Strider** (5 or 6): the boys joined at the hips in a ring, each bent over outwards, heads hanging, walking on
+      all ten or twelve legs, the ring turning slowly. A little slower than a run hunting (3.5 m/s); it faces every
+      way, so it grabs at anyone within about 2.5 m on any side (0.95 s wind-up, the ring tipping and lunging, the
+      boys on that side throwing their arms). A closing hand or walking into it catches.
+    - **Mound** (7 to 10): fills more of a hall the bigger it is, crawls slower (no faster than a walk). Hauls itself on
       its hands, on the walls where they are near; grabs with the hands at its front after a wind-up (arms drawn up,
       hands splayed and shaking). A closing hand or walking into it catches.
     - **Growing**: whom it catches it absorbs (their body is seen dragged in; the player still goes back to the clearing)
-      and it gains a body; two that meet merge, the smaller flowing into the bigger. An amalgam that grows past 4 becomes
-      a mound. Capped at 10 bodies (phones). The first ring has two amalgams and a mound of 7 or 8.
+      and it gains a body; two that meet merge, the smaller flowing into the bigger. Growing past a form's most makes it
+      the next form (pair, amalgam, strider, mound). Capped at 10 bodies (phones). Each section has, by default, two
+      pairs, two amalgams, a strider of 5 or 6 and a mound of 7 or 8 (MazeStyle pairs, amalgams, striders, flesh_mounds).
   - **Slime wall**: see-through jelly full of skeletons that fills a hall wall to wall, below walking pace;
     touching it catches (you are drawn in and tumble among the bones). Find another way round.
   - **Bats**: a colony roosts on a wall; running or sprinting near wakes it. They catch nobody: they mob the

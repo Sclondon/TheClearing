@@ -86,7 +86,8 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ##
 ## - Ghouls stand in dead ends, facing out. Centipedes lie in dead ends too.
 ## - Slime walls fill straight halls, set across them.
-## - Flesh mounds wait in halls, as abominations do; amalgams in any passage.
+## - Flesh mounds and striders wait in halls, as abominations do; amalgams and
+##   pairs in any passage.
 ## - Spiders, abominations and bat colonies wait in any passage well out of the
 ##   clearing (a spider climbs the nearest high wall; bats roost on one).
 ## - Fish people lie each in a pool of its own in a hall (as slime walls do),
@@ -168,6 +169,18 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var amalgam := MazeFleshMound.new()
 		amalgam.bodies = rng.randi_range(3, 4)
 		add(amalgam, cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.pairs:
+		var cell := _far_from(taken, lairs, rng)
+		taken.append(cell)
+		var pair := MazeFleshMound.new()
+		pair.bodies = 2
+		add(pair, cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.striders:
+		var cell := _far_from(taken, halls if not halls.is_empty() else lairs, rng)
+		taken.append(cell)
+		var strider := MazeFleshMound.new()
+		strider.bodies = rng.randi_range(5, 6)
+		add(strider, cell, rng.randf_range(-PI, PI), rng.randi())
 	for i in style.bat_colonies:
 		var cell := _far_from(taken, lairs, rng)
 		taken.append(cell)

@@ -128,6 +128,41 @@ func _run() -> void:
 	check("it drags his body in and grows by one", grew, "(%d bodies)" % roller.bodies)
 	roller.free()
 
+	# --- A pair sees him near down the hall, crouches and rushes at him ---
+	caught_by.clear()
+	put_boy(maze.world(cell))
+	var pair := spawn(2, maze.world(cell) + along * 8.0, maze.world(cell))
+	pair._age = 10.0
+	await wait(0.1)
+	check("a pair is made", pair.look.form() == FleshMoundLook.Form.PAIR)
+	var crouched := await wait(4.0, func() -> bool: return pair.mode == MazeFleshMound.Mode.WINDING)
+	check("a pair sees him near down the hall and crouches to rush", crouched)
+	var quickest := [0.0]
+	var rushed := await wait(4.0, func() -> bool:
+		quickest[0] = maxf(quickest[0], Vector2(pair.velocity.x, pair.velocity.z).length())
+		return not caught_by.is_empty())
+	check("it rushes faster than a sprint", quickest[0] > 5.6, "(%.1f m/s)" % quickest[0])
+	check("rushing into him catches him", rushed and caught_by[0][0] == boy)
+	var joined := await wait(3.0, func() -> bool: return pair.bodies == 3)
+	check("it drags his body in and is an amalgam now", joined and pair.look.form() == FleshMoundLook.Form.AMALGAM)
+	pair.free()
+
+	# --- A strider grabs, whichever way round it is ---
+	caught_by.clear()
+	put_boy(maze.world(cell))
+	var ring := spawn(5, maze.world(cell) + along * 10.0, maze.world(cell) + along * 20.0)
+	ring._age = 10.0
+	ring.notice(boy)
+	await wait(0.1)
+	check("a strider is made", ring.look.form() == FleshMoundLook.Form.STRIDER)
+	var ring_grab := await wait(15.0, func() -> bool: return ring.look.grab_stage() == FleshMound.Stage.WIND_UP)
+	check("a strider comes up to him and winds up a grab", ring_grab, "(%.1f m from him)" % ring.global_position.distance_to(boy.global_position))
+	var ring_held := await wait(3.0, func() -> bool: return not caught_by.is_empty())
+	check("standing still, its hands catch him", ring_held and caught_by[0][0] == boy)
+	var six := await wait(3.0, func() -> bool: return ring.bodies == 6)
+	check("it grows by one, still a strider", six and ring.look.form() == FleshMoundLook.Form.STRIDER)
+	ring.free()
+
 	# --- A big one: the grab ---
 	caught_by.clear()
 	put_boy(maze.world(cell))

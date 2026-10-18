@@ -32,7 +32,8 @@ const HUNTERS := [
 	["BABOONS", "baboons", AHEAD], ["DOGS", "dogs", AHEAD], ["ALIENS", "aliens", AHEAD],
 	["BEETLES", "beetles", AHEAD], ["FISH PERSON", "fish_person", AHEAD], ["ANGEL", "angel", SNAKE_AHEAD],
 	["FROG", "frog", AHEAD], ["FROG SWARM", "frog_swarm", AHEAD],
-	["AMALGAM", "amalgam", AHEAD], ["ABOMINATION", "flesh_mound", SNAKE_AHEAD],
+	["PAIR", "flesh_pair", AHEAD], ["AMALGAM", "amalgam", AHEAD], ["STRIDER", "strider", AHEAD],
+	["ABOMINATION", "flesh_mound", SNAKE_AHEAD],
 	["HARPY", "harpy", AHEAD], ["BOAR", "boar", SNAKE_AHEAD], ["CHICKENS", "chickens", AHEAD],
 	["CHICKENS (TAME)", "tame_chickens", AHEAD], ["GARGOYLE", "gargoyle", AHEAD],
 	["DEER", "deer", SNAKE_AHEAD], ["ELK", "elk", SNAKE_AHEAD],
@@ -234,8 +235,12 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = MazeBaboon.troop(5)
 		"dogs":
 			made = MazeDog.pack_of(4, randi())
+		"flesh_pair":
+			made = [_flesh(2)]
 		"amalgam":
 			made = [_flesh(3)]
+		"strider":
+			made = [_flesh(5)]
 		"flesh_mound":
 			made = [_flesh(8)]
 		"aliens":
@@ -498,7 +503,7 @@ func _button(text: String, pressed: Callable) -> Button:
 	return button
 
 
-## A flesh mound of `count` bodies (an amalgam, small; or the big one).
+## A flesh mound of `count` bodies (a pair, an amalgam, a strider, or the big one).
 func _flesh(count: int) -> MazeFleshMound:
 	var mound := MazeFleshMound.new()
 	mound.bodies = count

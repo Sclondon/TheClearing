@@ -2,9 +2,11 @@ extends SceneTree
 ## Pictures of the flesh mounds (creatures/flesh_mound/, and MazeFleshMound,
 ## their hunter in the maze), landscape. Needs a real window:
 ##
-##     godot --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/flesh_mound_shots.gd -- <folder> [sizes|small|big|grow|maze|all] [low]
+##     godot --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/flesh_mound_shots.gd -- <folder> [sizes|pair|small|strider|big|grow|maze|all] [low]
 ##
-## sizes: one of each size side by side, with the boy. small: an amalgam
+## sizes: one of each size side by side, with the boy. pair: a pair close,
+## scuttling, crouching and rushing. strider: one close, walking, one of six,
+## and a grab. small: an amalgam
 ## close, shambling, and cartwheeling frame by frame (side on). big: a mound
 ## close (front, side, three quarters, its faces, its hands), creeping, and a
 ## grab frame by frame (from beside the boy). grow: an amalgam absorbing a body, and two merging,
@@ -53,7 +55,7 @@ func look(from: Vector3, at: Vector3, fov := 45.0) -> void:
 
 
 func _run() -> void:
-	for part: String in ["sizes", "small", "big", "grow"]:
+	for part: String in ["sizes", "pair", "small", "strider", "big", "grow"]:
 		if what in [part, "all"]:
 			_set_stage()
 			await wait(0.3)
@@ -97,8 +99,8 @@ func _mound(count: int, at: Vector3, yaw := 0.0) -> FleshMound:
 
 
 func _sizes() -> void:
-	var xs := [-11.0, -7.0, 0.0, 11.0]
-	var counts := [3, 4, 6, 10]
+	var xs := [-14.0, -11.0, -7.0, -2.0, 3.0, 12.0]
+	var counts := [2, 3, 4, 5, 7, 10]
 	for i in counts.size():
 		_mound(counts[i], Vector3(xs[i], 0, 0), 0.0)
 	boy.global_position = Vector3(-4.0, 0.05, 6.0)
@@ -148,6 +150,83 @@ func _small() -> void:
 			star.global_position = from + Vector3(0, 0, -t * 5.0)
 		look(star.global_position + Vector3(4.5, 1.2, 0.0), star.global_position + Vector3(0, 1.0, 0), 45)
 		await shot("c%d_roll" % (k + 1))
+
+
+func _pair() -> void:
+	var pair := _mound(2, Vector3.ZERO)
+	boy.global_position = Vector3(2.0, 0.05, 1.5)
+	await wait(1.2)
+	look(Vector3(3.2, 1.1, 0.0), Vector3(0, 0.6, 0), 45)
+	await shot("p1_side")
+	look(Vector3(2.0, 1.4, -2.4), Vector3(0, 0.6, 0), 45)
+	await shot("p2_three_quarter")
+	look(Vector3(0.4, 2.6, 1.2), Vector3(0, 0.6, 0), 45)
+	await shot("p3_above")
+	# Scuttling along, then the crouch and the rush.
+	var t := 0.0
+	for k in 3:
+		var left := 0.3
+		while left > 0.0:
+			await process_frame
+			t += 1.0 / 60.0
+			left -= 1.0 / 60.0
+			pair.global_position = Vector3(0, 0, -t * 3.6)
+		look(pair.global_position + Vector3(3.2, 1.0, 0.0), pair.global_position + Vector3(0, 0.6, 0), 45)
+		await shot("p%d_scuttle" % (k + 4))
+	pair.aim = pair.global_position + Vector3(0, 0.8, -8)
+	pair.start_roll()
+	await wait(0.5)
+	look(pair.global_position + Vector3(2.6, 1.2, -1.5), pair.global_position + Vector3(0, 0.6, 0), 45)
+	await shot("p7_crouch")
+	var from := pair.global_position
+	t = 0.0
+	for k in 3:
+		var left := 0.15
+		while left > 0.0:
+			await process_frame
+			t += 1.0 / 60.0
+			left -= 1.0 / 60.0
+			pair.global_position = from + Vector3(0, 0, -t * 6.6)
+		look(pair.global_position + Vector3(3.2, 1.1, 0.0), pair.global_position + Vector3(0, 0.6, 0), 45)
+		await shot("p%d_rush" % (k + 8))
+
+
+func _strider() -> void:
+	var ring := _mound(5, Vector3.ZERO)
+	boy.global_position = Vector3(3.0, 0.05, 2.0)
+	await wait(1.2)
+	look(Vector3(4.5, 1.8, 0.0), Vector3(0, 0.9, 0), 45)
+	await shot("r1_side")
+	look(Vector3(3.0, 2.6, -3.5), Vector3(0, 0.9, 0), 45)
+	await shot("r2_three_quarter")
+	look(Vector3(1.6, 0.7, -1.4), Vector3(0, 1.1, 0), 55)
+	await shot("r3_under")
+	var t := 0.0
+	for k in 3:
+		var left := 0.35
+		while left > 0.0:
+			await process_frame
+			t += 1.0 / 60.0
+			left -= 1.0 / 60.0
+			ring.global_position = Vector3(0, 0, -t * 3.0)
+		look(ring.global_position + Vector3(4.5, 1.6, 0.0), ring.global_position + Vector3(0, 0.9, 0), 45)
+		await shot("r%d_walk" % (k + 4))
+	var six := _mound(6, Vector3(-6, 0, 0))
+	await wait(0.6)
+	look(Vector3(-6, 2.2, 4.5), Vector3(-6, 0.9, 0), 45)
+	await shot("r7_six")
+	six.queue_free()
+	var target: Vector3 = ring.global_position + Vector3(1.6, 0.0, 0.6)
+	ring.aim = target + Vector3.UP
+	await wait(1.0)
+	ring.grab(target)
+	var marks := [[0.5, "r8_grab_wind_up"], [1.1, "r9_grab_strike"], [1.4, "r10_grab_closed"]]
+	for mark in marks:
+		while ring._grab_time < mark[0]:
+			await process_frame
+		look(ring.global_position + Vector3(0.6, 1.6, 4.0), ring.global_position + Vector3(0.8, 0.9, 0), 50)
+		print("  grab: %s, hits him: %s (target %s, at %s, hands %s)" % [FleshMound.Stage.keys()[ring.grab_stage()], ring.grab_hits(target, target + Vector3.UP * 1.5, 0.3), target, ring.global_position, ring.hands()])
+		await shot(mark[1])
 
 
 func _big() -> void:

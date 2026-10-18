@@ -14,20 +14,30 @@ class_name FleshMoundLook
 ## THE PEOPLE IN IT (`people(bodies)`): the boy (the character controller's,
 ## mask face and all) once for each body in it, and as it gets bigger, men's
 ## arms, long gaunt arms and legs (FleshParts), all one skinned mesh. Each
-## copy's `data` says what each of its limbs does (`Role`). Small (`SMALL` or
-## fewer) the boys are joined at the hips in a star, a wheel of limbs; bigger,
-## they lie half sunk in the mound with their mask faces up, or rise out of it
-## to the waist, and the men's limbs grow out of it between them.
+## copy's `data` says what each of its limbs does (`Role`). It grows through
+## four forms (`form`): a PAIR (2), two boys grown together back to back, one
+## on all fours under the other, face up, on all eight limbs like a crab; an
+## AMALGAM (3 or 4), the boys joined at the hips in a star, a wheel of limbs;
+## a STRIDER (5 or 6), the boys joined at the hips in a ring, bent over
+## outwards, walking on all their legs; and a MOUND (7 and up), the boys lying
+## half sunk in it with their mask faces up, or rising out of it to the waist,
+## and the men's limbs growing out of it between them.
 ##
 ## Vertex attributes of the core: COLOR.r how much a body lies just under it
 ## (the skin tight and pale), COLOR.g how much it hangs (bounces), COLOR.b a
 ## boil (raised, yellow-cream); the trail is a smear of fluid that dries.
 
 ## The fewest bodies and the most: a mound grows no bigger than MOST (phones).
-const FEWEST := 3
+const FEWEST := 2
 const MOST := 10
-## Up to this many bodies it is small: a star of boys, cartwheeling.
+## The most bodies in each form before the next: a pair, an amalgam (a star of
+## boys, cartwheeling; it and a pair are `small`, and rush), a strider; then a
+## mound.
+const PAIR := 2
 const SMALL := 4
+const STRIDER := 6
+
+enum Form { PAIR, AMALGAM, STRIDER, MOUND }
 
 ## Core space: forward -Z, up +Y, the origin on the ground under its middle.
 ## Half its width, height and length at its biggest, and how high its middle is.
@@ -37,6 +47,15 @@ const BELOW := 1.6
 
 ## What each limb does (FleshMound says how).
 enum Role { GRAB, CRAWL, REACH, LIMP, KICK, DANGLE, TUCKED, WHEEL }
+
+
+## Which form one with `bodies` in it takes.
+static func form(bodies: int) -> Form:
+	if bodies <= PAIR:
+		return Form.PAIR
+	if bodies <= SMALL:
+		return Form.AMALGAM
+	return Form.STRIDER if bodies <= STRIDER else Form.MOUND
 
 const SHADER := """
 shader_type spatial;
@@ -197,19 +216,29 @@ static func trail_material() -> ShaderMaterial:
 	return _trail_material
 
 
-## Half its width, height and length with `bodies` in it (a mound; a small
-## one's core is a lump at the hub of its star).
+## Half its width, height and length with `bodies` in it (a mound; the
+## others' core is a lump where their boys are joined).
 static func radii(bodies: int) -> Vector3:
-	if bodies <= SMALL:
-		return Vector3(0.3, 0.3, 0.3)
+	match form(bodies):
+		Form.PAIR:
+			return Vector3(0.15, 0.1, 0.24)
+		Form.AMALGAM:
+			return Vector3(0.3, 0.3, 0.3)
+		Form.STRIDER:
+			return Vector3(0.26, 0.2, 0.26)
 	var t := clampf(float(bodies - SMALL - 1) / float(MOST - SMALL - 1), 0.0, 1.0)
 	return Vector3(1.3, 0.9, 1.5).lerp(Vector3(2.6, 1.6, 2.9), t)
 
 
 ## How big each boy in it is against the player's boy.
 static func boy_size(bodies: int) -> float:
-	if bodies <= SMALL:
-		return 1.3
+	match form(bodies):
+		Form.PAIR:
+			return 1.2
+		Form.AMALGAM:
+			return 1.3
+		Form.STRIDER:
+			return 1.45
 	return lerpf(1.8, 2.3, clampf(float(bodies - SMALL - 1) / float(MOST - SMALL - 1), 0.0, 1.0))
 
 
@@ -484,7 +513,8 @@ const HIPS := Vector3(0.0, 0.62, 0.0)
 ##   "roles": the Role of each of its chains, by name,
 ##   "anchor": the point of the core (as built) its root grows from, so that
 ##       it heaves with it, and "offset": its root from there (the skeleton's
-##       space): a mound's; "spoke": its angle about the hub: a small one's,
+##       space): a mound's; "spoke": its angle about the hub: an amalgam's or a
+##       strider's; "top": whether it is the one on top: a pair's,
 ##   "out": the way out of the core there, "phase": a seed for its own motions.
 static func people(bodies: int, low := false) -> FleshParts.Build:
 	bodies = clampi(bodies, FEWEST, MOST)
@@ -494,10 +524,15 @@ static func people(bodies: int, low := false) -> FleshParts.Build:
 	var build := FleshParts.Build.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 404
-	if bodies <= SMALL:
-		_star(build, bodies, low, rng)
-	else:
-		_mound(build, bodies, low, rng)
+	match form(bodies):
+		Form.PAIR:
+			_pair(build, low, rng)
+		Form.AMALGAM:
+			_star(build, bodies, low, rng)
+		Form.STRIDER:
+			_ring(build, bodies, low, rng)
+		_:
+			_mound(build, bodies, low, rng)
 	build.make()
 	_people[key] = build
 	return build
@@ -505,6 +540,43 @@ static func people(bodies: int, low := false) -> FleshParts.Build:
 
 ## How high the hub of a small one is at rest, at size 1.
 const HUB := 1.0
+## How high a pair's backs are, and a strider's hips, at rest (for a boy of size 1).
+const PAIR_HIGH := 0.5
+const RING_HIGH := 0.56
+## How far apart a pair's hips are (for a boy of size 1): his hips to his shoulders.
+const PAIR_LONG := 0.4
+
+
+## A pair: two boys grown together back to back along their length, the one
+## under on all fours, his head to the front (-Z), the one on top lying face
+## up, his head to the back, so that each one's shoulders are on the other's
+## hips. All eight limbs reach down to the ground.
+static func _pair(build: FleshParts.Build, low: bool, rng: RandomNumberGenerator) -> void:
+	var s := boy_size(PAIR)
+	for top: bool in [false, true]:
+		var along := Vector3.BACK if top else Vector3.FORWARD
+		var basis := FleshParts.frame(along, Vector3.UP if top else Vector3.DOWN)
+		var hips := Vector3(0.0, (PAIR_HIGH + (0.07 if top else -0.07)) * s, 0.0) - along * PAIR_LONG * 0.5 * s
+		var place := Transform3D(basis * s, hips - (basis * s) * HIPS)
+		var copy := build.add("boy", place, 0.15, 0.5, rng.randf(), low)
+		copy.data = {"boy": true, "top": top, "along": along, "phase": rng.randf() * TAU,
+			"roles": {"arm_l": Role.CRAWL, "arm_r": Role.CRAWL, "leg_l": Role.CRAWL, "leg_r": Role.CRAWL}}
+
+
+## A strider: the boys joined at their hips in a ring about a hub held up on
+## their legs, each bent over outwards (his front out and down), facing out
+## all round.
+static func _ring(build: FleshParts.Build, bodies: int, low: bool, rng: RandomNumberGenerator) -> void:
+	var s := boy_size(bodies)
+	for k in bodies:
+		var spoke := TAU * (k + 0.5) / bodies
+		var out := Vector3(-sin(spoke), 0.0, -cos(spoke))
+		var basis := FleshParts.frame(out * 0.65 + Vector3.UP * 0.75, out + Vector3.DOWN * 0.8)
+		var hips := Vector3.UP * RING_HIGH * s + out * 0.1 * s
+		var place := Transform3D(basis * s, hips - (basis * s) * HIPS)
+		var copy := build.add("boy", place, 0.12, 0.45, rng.randf(), low)
+		copy.data = {"boy": true, "spoke": spoke, "out": out, "phase": rng.randf() * TAU,
+			"roles": {"arm_l": Role.GRAB, "arm_r": Role.GRAB, "leg_l": Role.CRAWL, "leg_r": Role.CRAWL}}
 
 
 ## A small one: the boys joined at their hips in a wheel (in the plane of Y and

@@ -6,7 +6,13 @@ extends MazeEnemy
 ## This finds its way, decides what to do, says whom it has caught, and makes
 ## it grow.
 ##
-## SMALL (an amalgam, 3 or 4 bodies): it shambles about the passages on its
+## A PAIR (2 bodies, back to back): it scuttles about the passages on all
+## fours, nearly as fast as a run when it hunts. Where its quarry is in a
+## straight line ahead and near, it crouches (the warning) and rushes at them
+## faster than a sprint, but only for a moment (`rush_time`); then it is spent.
+## So a step aside, or a turn off the hall, gets away. Running into it catches.
+##
+## AN AMALGAM (3 or 4 bodies): it shambles about the passages on its
 ## limbs, a little slower than a run when it hunts. Where its quarry is in a
 ## straight line ahead, near enough, it rears with its limbs splayed (the
 ## warning, FleshMound.roll_wind_up) and cartwheels at them, faster than a
@@ -15,7 +21,12 @@ extends MazeEnemy
 ## a turn off the hall, or a climb, gets away. Rolling into someone catches
 ## them.
 ##
-## BIG (5 or more): it hauls itself along at a crawl, no faster than a walk
+## A STRIDER (5 or 6 bodies, a ring of them on their legs): it walks the halls
+## a little slower than a run when it hunts, and grabs at anyone near it on
+## any side (it faces every way) after a wind-up, the ring tipping and
+## lunging at them. A closing hand catches, and so does walking into it.
+##
+## A MOUND (7 or more): it hauls itself along at a crawl, no faster than a walk
 ## when it hunts (slower the bigger it is), nearly filling a hall; the hands
 ## at its front grab at anyone in reach in front of it, after a wind-up
 ## (FleshMound.wind_up: the time to get away). A closing hand catches, and so
@@ -49,7 +60,16 @@ enum Mode { ABOUT, HUNTING, WINDING, ROLLING, SPENT, MERGING, GONE }
 ## It rolls at someone this far off or nearer (and further than `roll_near`), in a straight line.
 @export var roll_range := 22.0
 @export var roll_near := 3.0
-## A big one's speeds, at 5 bodies and at the most (between them by how many).
+## A pair's speeds: about, hunting, rushing (faster than a sprint); how long a
+## rush lasts and how far off (and no nearer than `roll_near`) it rushes at someone.
+@export var scuttle_speed := 1.8
+@export var hunt_scuttle_speed := 3.9
+@export var rush_speed := 6.6
+@export var rush_time := 1.1
+@export var rush_range := 9.0
+## A strider's speeds: about, hunting.
+@export var stride_speeds := Vector2(1.6, 3.5)
+## A mound's speeds, at its fewest bodies and at the most (between them by how many).
 @export var crawl_speeds := Vector2(1.3, 0.9)
 @export var hunt_speeds := Vector2(2.3, 1.8)
 @export var acceleration := 3.0
@@ -129,16 +149,32 @@ func _fit() -> void:
 
 
 func core_radius() -> float:
-	return (0.6 if small() else 0.8) * size
+	return [0.45, 0.6, 0.7, 0.8][FleshMoundLook.form(bodies)] * size
 
 
+## A pair or an amalgam: it rushes (rolls) at you, and does not grab.
 func small() -> bool:
 	return bodies <= FleshMoundLook.SMALL
 
 
-## Half its width, about (for merging): the star's reach, or the mound's.
+func pair() -> bool:
+	return FleshMoundLook.form(bodies) == FleshMoundLook.Form.PAIR
+
+
+func strider() -> bool:
+	return FleshMoundLook.form(bodies) == FleshMoundLook.Form.STRIDER
+
+
+## Half its width, about (for merging): the pair's, the star's or the ring's reach, or the mound's.
 func girth() -> float:
-	return (1.1 if small() else FleshMoundLook.radii(bodies).x) * size
+	match FleshMoundLook.form(bodies):
+		FleshMoundLook.Form.PAIR:
+			return 0.8 * size
+		FleshMoundLook.Form.AMALGAM:
+			return 1.1 * size
+		FleshMoundLook.Form.STRIDER:
+			return 1.2 * size
+	return FleshMoundLook.radii(bodies).x * size
 
 
 func gone() -> bool:
@@ -190,10 +226,13 @@ func _physics_process(delta: float) -> void:
 	_curr_pos = global_position
 
 
-## A small one: shamble, wind up, roll, be spent. Gives the way to go and how fast.
+## A small one: shamble (a pair scuttles), wind up, roll (rush), be spent.
+## Gives the way to go and how fast.
 func _small_moves(delta: float, after: Node3D) -> Array:
 	var to := way(core_radius())
 	var dir := to.normalized() if to.length() > 0.05 else Vector3.ZERO
+	var two := pair()
+	var fast := rush_speed if two else roll_speed
 	match mode:
 		Mode.ABOUT, Mode.HUNTING:
 			stamina = minf(1.0, stamina + delta / spent_time)
@@ -203,23 +242,25 @@ func _small_moves(delta: float, after: Node3D) -> Array:
 				_rolled = 0.0
 				look.start_roll()
 				return [Vector3.ZERO, 0.0]
+			if two:
+				return [dir, hunt_scuttle_speed if after else scuttle_speed]
 			return [dir, hunt_shamble_speed if after else shamble_speed]
 		Mode.WINDING:
 			if look.roll_stage() == FleshMound.Roll.ROLLING:
 				mode = Mode.ROLLING
 			return [Vector3.ZERO, 0.0]
 		Mode.ROLLING:
-			stamina -= delta / roll_time
+			stamina -= delta / (rush_time if two else roll_time)
 			# (it rolls on along the hall it is in: it cannot turn much at speed)
 			var forward := Vector3(-sin(facing_yaw), 0.0, -cos(facing_yaw))
 			var heading := forward.slerp(dir, 0.15) if dir != Vector3.ZERO else forward
 			_rolled += delta
 			# (spent, or it has lost them, or it has run into a wall and stopped)
-			if stamina <= 0.0 or after == null or (_rolled > 0.6 and is_on_wall() and Vector3(velocity.x, 0, velocity.z).length() < roll_speed * 0.4):
+			if stamina <= 0.0 or after == null or (_rolled > 0.6 and is_on_wall() and Vector3(velocity.x, 0, velocity.z).length() < fast * 0.4):
 				mode = Mode.SPENT
 				stamina = maxf(stamina, 0.0)
 				look.stop_roll()
-			return [heading.normalized(), roll_speed]
+			return [heading.normalized(), fast]
 		Mode.SPENT:
 			stamina += delta / spent_time
 			if stamina >= 0.6:
@@ -232,15 +273,15 @@ func _small_moves(delta: float, after: Node3D) -> Array:
 func _can_roll_at(player: Node3D) -> bool:
 	var to := player.global_position - global_position
 	var far := Vector2(to.x, to.z).length()
-	if far > roll_range * size or far < roll_near or absf(to.y) > 1.5:
+	if far > (rush_range if pair() else roll_range) * size or far < roll_near or absf(to.y) > 1.5:
 		return false
 	return nav.line_free(global_position + Vector3.UP, player.global_position + Vector3.UP, core_radius() * 0.5)
 
 
-## A big one: crawl, and grab at whoever is in reach.
+## A big one: walk (a strider) or crawl, and grab at whoever is in reach.
 func _big_moves(after: Node3D) -> Array:
 	mode = Mode.HUNTING if after else Mode.ABOUT
-	var t := clampf(float(bodies - FleshMoundLook.SMALL - 1) / float(FleshMoundLook.MOST - FleshMoundLook.SMALL - 1), 0.0, 1.0)
+	var t := clampf(float(bodies - FleshMoundLook.STRIDER - 1) / float(FleshMoundLook.MOST - FleshMoundLook.STRIDER - 1), 0.0, 1.0)
 	var stage := look.grab_stage()
 	if stage == FleshMound.Stage.NONE:
 		if after and _rest <= 0.0 and _in_reach(after):
@@ -249,6 +290,8 @@ func _big_moves(after: Node3D) -> Array:
 			look.grab(after.global_position)
 			return [Vector3.ZERO, 0.0]
 		var to := way(core_radius())
+		if to.length() > 0.05 and strider():
+			return [to.normalized(), stride_speeds.y if after else stride_speeds.x]
 		if to.length() > 0.05:
 			var wish := to.normalized()
 			# It keeps to the middle of a hall, as its bulk makes it.
@@ -270,7 +313,8 @@ func _in_reach(player: Node3D) -> bool:
 		return false
 	to.y = 0.0
 	var forward := Vector3(-sin(facing_yaw), 0.0, -cos(facing_yaw))
-	return to.length() < minf(grab_range * size, look.reach()) and forward.dot(to.normalized()) > grab_cone
+	# (a strider faces every way)
+	return to.length() < minf(grab_range * size, look.reach()) and (strider() or forward.dot(to.normalized()) > grab_cone)
 
 
 ## Anyone a closing hand finds, or who has walked (or been rolled) into it, is
@@ -350,6 +394,7 @@ func _on_grown(count: int) -> void:
 	_fit()
 	if not small() and mode in [Mode.WINDING, Mode.ROLLING, Mode.SPENT]:
 		mode = Mode.HUNTING if chasing else Mode.ABOUT
+		look.stop_roll()
 
 
 func _process(delta: float) -> void:
