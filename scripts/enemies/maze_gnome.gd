@@ -422,7 +422,7 @@ func _physics_process(delta: float) -> void:
 			if _mode_time > hide_time and threat == null:
 				escaped = false
 				visible = true
-				collision_layer = 4
+				collision_layer = PUPPET_LAYER if puppet else 4
 				mode = Mode.HOME
 				_mode_time = 0.0
 		Mode.ROPE_RUN:

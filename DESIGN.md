@@ -420,6 +420,40 @@ ring has is its style's choice. The wall tops are a second level you can travel 
   keep together: they wait for a straggler.
 
 - **Giant octopus** (the user: "New monster: giant octopus"): mantle 2.5 m, arms 8 m, camouflaged in a black pool  against a hall's wall or a drain through a wall, one or two arms feeling along the floor and up the walls (curling  tips, rings on the water, a wet slither). Linger within an arm's reach and an arm rears and coils (about a second,  the skin blanching), then lashes where you were: a walk is caught, a run missed. It drags you to its water: four  jumps break its grip, or a friend's act cuts the arm (it inks, which blinds, and hides; the arm grows back). It may  crawl out after you, slower than a walk; from a drain it pours itself through the wall.- **Moose** ("Moose"): unpredictable at its own wallow: a cow charges anyone near her calf, a bull in the rut whoever  he sees; ears back, hackles up, head-low stare first. The charge knocks you down and it rears: still in reach when  the hooves land, you are caught. **Woolly mammoths** ("wooly mammoth"): herds in the widest halls; they ring the  calf, the matriarch trumpets and mock-charges, then charges and tramples; step aside late, she is slow to turn.  Nothing hunts the giant plant-eaters (Ecology: size 4 plant-eaters are nobody's prey).
+- **Carnivorous plants** (the user: "carnivorous plants"): giant real ones that never move. A Venus flytrap shivers
+  at a touch (the warning) and snaps on whoever is still in it 0.75 s later; a sundew's sticky leaves slow you, then
+  hold you a couple of seconds (jumping tears you free); a pitcher's slippery lip at a wall's foot takes whoever
+  steps on it. They eat small creatures. **Mushrooms**: patches on walls and floors, bonnets glowing at night;
+  puffballs puff spores when trodden or run near (the screen blurs and greys, you slow, the zombies hear).
+  **Mushroom zombies**: boys taken over by a fungus, moved like puppets, clicking; blind, they hunt by sound only
+  (running, sprinting, hard landings; walking only close; crouching never): they stop and listen (the warning),
+  lurch slower than a run and lunge at the sound. A creature they take raises another from the ground.
+- **Gnomes** (the user: "gnomes"): knee-high folk-tale gnomes, old and eerie, a band in a hollow at a wall's foot.
+  Stock-still while anyone faces them; unwatched they creep up behind whoever has something in their pockets,
+  snatch one thing and run home with it (catch one and it drops it; the hoard by the door can be taken back). Run at
+  their hollow and two pull a rope across at shin height. They catch nobody; a lit torch keeps them off.
+- **The weaver** (the user: "a four winged six-armed humanoid"): a tall faceless waxen figure, six arms whose hands
+  never stop signing, four torn lacewing wings, drifting over the halls and weaving strands of shining thread across
+  them at chest height. Walk into one upright and you stick; duck or slide under, or cut it with act. Stuck, it comes
+  and lifts you away unless you tear free (mash jump or act) or a friend cuts you out.
+- **Giant ants** (the user: "giant ants"): a colony of dog-sized carpenter ants, a nest in a dead end and a trail
+  out along the halls. Keep off the trail and away from the nest and they let you be; tread on it and the alarm runs
+  through them (they rear and click), and they pour out faster than a run: three holding you a second catch you; a
+  sprint or a jump tears them off. They haul carcasses home. **Giant praying mantis**: 3 m, still among ferns by a
+  hall wall, its head turning in jerks to follow you (the tell); within about 3 m in front it strikes faster than
+  anything (ducking is no help); a miss leaves it still a moment to slip past.
+- **Rats** (the user: "rats, rat swarms and rat kings"): mischiefs that run the wall feet and gnaw carcasses,
+  fleeing; **rat swarms** in drains at a wall's foot that roar, then pour out like a river after you (stand in them a
+  moment and you are caught; a sprint, getting two metres up, or fire saves you); the **rat king**, rats knotted by
+  their tails dragging themselves slower than a walk, whose shriek calls every swarm near, bold and past the fire.
+- **The luck dragon** (the user: "falcor like long dragon"; original): 35 m, pearly scales, white fur, a gentle
+  hound's head, no wings, swimming through the sky over the outer rings and the desert. Stand still in the open and
+  it comes down, lays its head before you and sings; climb onto its neck and it carries you over the walls further
+  out. While it is down the hunters near back off. (The wyverns are still to come.)
+- **Dogs and meat**: meat is cut from carcasses (act) and now and then found at camps; thrown, what eats meat goes
+  to it. A dog fed meat (thrown near it, or held out) becomes the giver's friend: it hunts no player, follows at heel,
+  barks at what hunts near and goes for what comes at its friend. Left far behind long, it goes feral again.
+
 ### The maze lives on its own (2026-10-18, Ecology)
 
 The user: "they should also interact with each other. We should have world game manager ... like a Rain World or

@@ -266,6 +266,38 @@ extends Resource
 ## Herds of woolly mammoths (a matriarch, cows and a calf) grazing in the widest halls:
 ## they ring the calf, and the matriarch trumpets, mock-charges and then charges.
 @export_range(0, 2) var mammoth_herds := 1
+## Giant Venus flytraps (MazeFlytrap), in pairs at the foot of a hall's walls: a touch
+## makes one shiver, and it snaps shut on whoever is still in it.
+@export_range(0, 8) var flytraps := 4
+## Giant sundews (MazeSundew): sticky rosettes out from a wall's foot that slow and hold you.
+@export_range(0, 6) var sundews := 2
+## Giant pitcher plants (MazePitcher): a slippery mouth at a wall's foot; step on it and you go in.
+@export_range(0, 6) var pitchers := 2
+## Patches of mushrooms (MazeMushrooms) whose puffballs' spores blur and slow you and call the zombies.
+@export_range(0, 12) var mushroom_patches := 4
+## Hordes of mushroom zombies (three or four and a sleeper each): blind, hunting by sound.
+@export_range(0, 4) var zombie_hordes := 2
+## Bands of gnomes (three to five), each in a hollow at a wall's foot: statues when looked
+## at, they creep up and steal from pockets, and trip runners with a rope.
+@export_range(0, 4) var gnome_bands := 2
+## Weavers: six-armed, four-winged figures drifting over the halls, leaving strands across
+## them that hold whoever walks into them upright, until it comes and takes them.
+@export_range(0, 2) var weavers := 1
+## Colonies of giant ants (MazeAnts), each a nest in a dead end with a trail out along the
+## halls: they let alone whoever keeps off the trail, and come at whoever treads on it.
+@export_range(0, 3) var ant_colonies := 1
+## Giant praying mantises (MazeMantis), each still among ferns against a hall wall, striking
+## at whoever comes within its reach.
+@export_range(0, 3) var mantises := 1
+## Mischiefs of rats (three to six each) running the wall feet, scavenging; harmless.
+@export_range(0, 6) var rat_mischiefs := 2
+## Swarms of rats in drains at a wall's foot, that pour out like a river at whoever comes by.
+@export_range(0, 3) var rat_swarms := 1
+## Rat kings: knots of rats fused by their tails, slow, whose shriek calls the swarms in, bold.
+@export_range(0, 2) var rat_kings := 1
+## The luck dragon: soars over the outer rings and the desert, comes down to whoever stands
+## still in the open, calms the hunters near and may carry them further out (one in all).
+@export_range(0, 1) var luck_dragons := 1
 ## Murders of crows (Crows), each sitting along the wall tops over a hall: they
 ## follow whoever passes along the walls, and erupt cawing at anyone who runs,
 ## which calls the hunters.

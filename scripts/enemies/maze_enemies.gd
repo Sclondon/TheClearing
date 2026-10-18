@@ -444,6 +444,67 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 			var bull := MazeMoose.new()
 			bull.rut = 0.4
 			add(bull, ground, yaw, rng.randi())
+	# Carnivorous plants in clumps at the feet of the walls; mushrooms, and the zombies' hordes round them.
+	MazePlants.populate(self, nav, rng, taken, halls, ends, lairs, style.flytraps, style.sundews, style.pitchers, style.mushroom_patches, style.zombie_hordes)
+	for i in style.gnome_bands:
+		# (in a dead end: the first finds the nearest wall and digs the hollow at its foot)
+		var cell := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		taken.append(cell)
+		var band := MazeGnome.band_of(rng.randi_range(3, 5))
+		for k in band.size():
+			var round_about := rng.randf_range(0.0, TAU)
+			add(band[k], cell, rng.randf_range(-PI, PI), rng.randi(), Vector3(cos(round_about), 0.0, sin(round_about)) * 1.2)
+	for i in style.weavers:
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		add(MazeWeaver.new(), cell, atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI), rng.randi())
+	for i in style.ant_colonies:
+		# (a colony's nest is in a dead end: its trail runs out from it along the halls)
+		var cell := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(MazeAnts.new(), cell, 0.0, rng.randi())
+	for i in style.mantises:
+		# (a mantis waits against the wall of a straight hall, where people must pass it)
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeMantis.new(), cell, 0.0, rng.randi())
+	for i in style.rat_mischiefs:
+		var rats := MazeRat.mischief(rng.randi_range(3, 6), rng.randi())
+		var home := _far_from(taken, some_halls, rng)
+		taken.append(home)
+		for k in rats.size():
+			add(rats[k], home, rng.randf_range(-PI, PI), rng.randi(), Vector3(rng.randf_range(-1.5, 1.5), 0.0, rng.randf_range(-1.5, 1.5)))
+	var rat_dens: Array[Vector2i] = []
+	for i in style.rat_swarms:
+		var places: Array[Vector2i] = halls if i % 2 == 0 and not halls.is_empty() else (ends if not ends.is_empty() else lairs)
+		var cell := _far_from(taken, places, rng)
+		taken.append(cell)
+		rat_dens.append(cell)
+		add(MazeRatSwarm.new(), cell, 0.0, rng.randi())
+	for i in style.rat_kings:
+		# (its realm: a few cells from a swarm's drains, within its call)
+		var cell := _far_from(taken, lairs, rng)
+		if not rat_dens.is_empty():
+			var field := nav.field(rat_dens[i % rat_dens.size()])
+			var near: Array[Vector2i] = []
+			for c in lairs:
+				var d := field[maze.index(c)]
+				if d >= 2 and d <= 4:
+					near.append(c)
+			if not near.is_empty():
+				cell = near[rng.randi_range(0, near.size() - 1)]
+		taken.append(cell)
+		add(MazeRatKing.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.luck_dragons:
+		# (one for the whole maze: put over the outermost square section; it rises to the sky itself)
+		var outer: Array[Vector2i] = []
+		for c in lairs:
+			if maze.ring_of(c) == maze.rings:
+				outer.append(c)
+		var cell := _far_from(taken, outer if not outer.is_empty() else lairs, rng)
+		taken.append(cell)
+		add(MazeLuckDragon.new(), cell, 0.0, rng.randi())
 	for i in style.mammoth_herds:
 		# (a herd grazes in a straight hall, as far from the rest as can be, strung along it)
 		var pasture := _far_from(taken, some_halls, rng)

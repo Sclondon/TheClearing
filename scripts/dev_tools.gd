@@ -57,6 +57,11 @@ const HUNTERS := [
 	["RABBITS", "rabbits", AHEAD], ["HARES", "hares", AHEAD], ["JACKALOPE", "jackalope", AHEAD],
 	["OCTOPUS", "octopus", AHEAD], ["OCTOPUS (DRAIN)", "octopus_drain", AHEAD],
 	["MOOSE", "moose", SNAKE_AHEAD], ["MOOSE (COW, CALF)", "moose_family", SNAKE_AHEAD], ["MAMMOTHS", "mammoths", SNAKE_AHEAD],
+	["FLYTRAP", "flytrap", AHEAD], ["SUNDEW", "sundew", AHEAD], ["PITCHER", "pitcher", AHEAD],
+	["MUSHROOMS", "mushrooms", AHEAD], ["MUSHROOM ZOMBIES", "mushroom_zombies", AHEAD],
+	["GNOMES", "gnomes", AHEAD], ["WEAVER", "weaver", AHEAD], ["ANTS", "ants", SNAKE_AHEAD], ["MANTIS", "mantis", AHEAD],
+	["RATS", "rats", AHEAD], ["RAT SWARM", "rat_swarm", AHEAD], ["RAT KING", "rat_king", AHEAD],
+	["LUCK DRAGON", "luck_dragon", COLOSSUS_AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -393,6 +398,38 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			made = MazeMoose.family(randi())
 		"mammoths":
 			made = MazeMammoth.herd_of(4, randi())
+		"flytrap":
+			made = [MazeFlytrap.new()]
+		"sundew":
+			made = [MazeSundew.new()]
+		"pitcher":
+			made = [MazePitcher.new()]
+		"mushrooms":
+			made = [MazeMushrooms.new()]
+		"mushroom_zombies":
+			made = MazeMushroomZombie.horde_of(3, 0)
+		"gnomes":
+			made = MazeGnome.band_of(4)
+		"weaver":
+			made = [MazeWeaver.new()]
+		"ants":
+			# (its nest where it is put, its trail out from there along the passages)
+			made = [MazeAnts.new()]
+		"mantis":
+			# (it takes its post against the nearest wall, among plants it brings)
+			made = [MazeMantis.new()]
+		"rats":
+			made = MazeRat.mischief(5, randi())
+		"rat_swarm":
+			made = [MazeRatSwarm.new()]
+		"rat_king":
+			made = [MazeRatKing.new()]
+		"luck_dragon":
+			# (it rises over the walls ahead, and comes to him as soon as he stands still in the open)
+			var dragon := MazeLuckDragon.new()
+			dragon.still_time = 1.5
+			dragon._visit_rest = 0.0
+			made = [dragon]
 		"ravens":
 			# (wildlife: on the walls round where they are put, not among the hunters)
 			world.birds.add_ravens_at(at)

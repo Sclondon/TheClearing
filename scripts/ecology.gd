@@ -49,6 +49,8 @@ const KINDS := {
 	"MazeOctopus": [3, Diet.MEAT],
 	"MazeMoose": [3, Diet.PLANTS], "MazeMooseCalf": [2, Diet.PLANTS],
 	"MazeMammoth": [4, Diet.PLANTS], "MazeMammothCalf": [2, Diet.PLANTS],
+	"MazeMushroomZombie": [2, Diet.NONE], "MazeGnome": [1, Diet.PLANTS], "MazeMantis": [3, Diet.MEAT],
+	"MazeRat": [0, Diet.MEAT],
 }
 
 ## How long a fed meat-eater takes to starve, seconds, and how hungry it must be to hunt the others.
