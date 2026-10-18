@@ -49,6 +49,8 @@ func let_go() -> void:
 
 
 func _initialize() -> void:
+	# (the game's own rules, not whatever the maze editor is set to: they have strung vines and ledges)
+	MazeStyle.chosen = MazeStyle.defaults()
 	main = load("res://main.tscn").instantiate()
 	main.testing = true
 	root.add_child(main)

@@ -25,6 +25,9 @@ static var _leaf_mesh: ArrayMesh
 var _stems: Array[MeshInstance3D] = []
 var _leaves: MultiMeshInstance3D
 var _placing: Array = []
+## The tufts of leaves where its ends are tied to the walls (_anchor), and how many leaves each.
+var _tufts: Array[MultiMeshInstance3D] = []
+const ANCHOR_LEAVES := 28
 
 
 func _init() -> void:
@@ -36,13 +39,15 @@ func _init() -> void:
 func _ready() -> void:
 	super()
 	add_to_group(&"vine_strands")
-	# (no planks or hand ropes to be seen: only the vine, where the deck is)
+	# (no planks, hand ropes or posts to be seen: only the vine, where the deck is)
 	for plank in _planks:
 		for child in plank.get_children():
 			if child is MeshInstance3D:
 				child.visible = false
 	for rail in _rails:
 		rail.visible = false
+	for post in _posts:
+		post.visible = false
 	if _stem == null:
 		_stem = StandardMaterial3D.new()
 		_stem.albedo_color = Color(0.2, 0.24, 0.12)
@@ -86,7 +91,38 @@ func _ready() -> void:
 	_leaves.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_leaves.visibility_range_end = 160.0
 	add_child(_leaves)
+	_anchor(from, to, rng)
+	_anchor(to, from, rng)
 	_lay()
+
+
+## Where it is tied to the wall at `end`: a tuft of leaves spread over the face
+## behind it (the face looks towards `other`, the far end), so that it grows out
+## of the wall rather than stopping in the air. It does not move.
+func _anchor(end: Vector3, other: Vector3, rng: RandomNumberGenerator) -> void:
+	var out := Vector3(other.x - end.x, 0.0, other.z - end.z).normalized()
+	var across := out.cross(Vector3.UP)
+	var multi := MultiMesh.new()
+	multi.transform_format = MultiMesh.TRANSFORM_3D
+	multi.use_colors = true
+	multi.mesh = _leaf_mesh
+	multi.instance_count = ANCHOR_LEAVES
+	for i in ANCHOR_LEAVES:
+		# (thickest round the end, thinning out over the face, more of it below)
+		var spot := Vector2.from_angle(rng.randf() * TAU) * pow(rng.randf(), 0.7) * 0.75
+		spot.y = spot.y * 1.3 - 0.15
+		var at := end + across * spot.x + Vector3.UP * spot.y + out * rng.randf_range(0.0, 0.08)
+		var basis := Basis.looking_at(-out, Vector3.UP).rotated(out, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.3))
+		multi.set_instance_transform(i, Transform3D(basis, at))
+		multi.set_instance_color(i, Color(0.16, 0.27, 0.12).lightened(rng.randf_range(-0.12, 0.2)))
+	var tuft := MultiMeshInstance3D.new()
+	tuft.multimesh = multi
+	tuft.material_override = _leaf
+	tuft.top_level = true
+	tuft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	tuft.visibility_range_end = 160.0
+	add_child(tuft)
+	_tufts.append(tuft)
 
 
 func _physics_process(delta: float) -> void:

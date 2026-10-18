@@ -297,11 +297,15 @@ static func avenues() -> MazeStyle:
 	var style := made(6, 2, 0.5, 0.0, 0.0)
 	style.maze_wall_diameter = 12.0
 	style.mezzanine_height = style.maze_wall_height / 3.0
+	# (one thin ledge: a lip of concrete, not a balcony)
+	style.mezzanine_levels = 1
+	style.mezzanine_thickness = 0.25
+	style.mezzanine_depth = 0.9
 	style.terrace_share = 0.0
 	style.wall_top_bridge_share = 0.0
 	style.wall_ivy_share = 0.1
 	style.hanging_vine_share = 0.08
-	style.tightrope_vine_share = 0.12
+	style.tightrope_vine_share = 0.22
 	style.tightrope_vine_height_range = Vector2(0.45, 0.75)
 	style.sewer_pipe_share = 0.08
 	style.plant_density = 0.8
@@ -327,6 +331,7 @@ static func galleries() -> MazeStyle:
 	style.mezzanine_depth_step = 0.6
 	style.mezzanine_ivy_share = 0.25
 	style.mezzanine_bridge_share = 0.2
+	style.tightrope_vine_share = 0.15
 	style.terrace_share = 0.0
 	style.wall_top_bridge_share = 0.0
 	style.wall_ivy_share = 0.1
