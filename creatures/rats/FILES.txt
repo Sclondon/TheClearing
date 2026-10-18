@@ -1,0 +1,11 @@
+# Rats: a single rat, a swarm and a rat king (look, motion and sound), their shader, models and the model's builder
+creatures/rats/rat_look.gd
+creatures/rats/rat.gdshader
+creatures/rats/rat.gd
+creatures/rats/rat_swarm.gd
+creatures/rats/rat_king.gd
+creatures/rats/rat_voice.gd
+creatures/rats/models/rat.glb
+creatures/rats/models/rat_lo.glb
+creatures/rats/models/rat.json
+creatures/rats/tools/build_rats.py
