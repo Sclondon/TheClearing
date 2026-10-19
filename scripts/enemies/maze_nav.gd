@@ -284,7 +284,7 @@ func _half_of(cell: Vector2i, step: Vector2i) -> float:
 	var great := not maze.inside(cell + step) or maze.ring_wall(cell, step)
 	var half := (MazeBuilder.RING_THICK if great else MazeBuilder.WALL_THICK) * 0.5
 	if maze.has_ledge(cell, step):
-		half += maze.styles[maze.ring_of(cell) - 1].mezzanine_depth
+		half += maze.ledge_style(cell).mezzanine_depth
 	return half
 
 

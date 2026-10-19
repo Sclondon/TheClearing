@@ -564,7 +564,7 @@ func _room(cell: Vector2i, step: Vector2i, way: int) -> float:
 		return Maze.CELL * 0.5
 	var room := Maze.CELL * 0.5 - _maze.wall_thick(cell, side) * 0.5
 	if _maze.has_ledge(cell, side):
-		room -= _maze.styles[_maze.ring_of(cell) - 1].mezzanine_depth
+		room -= _maze.ledge_style(cell).mezzanine_depth
 	return room
 
 

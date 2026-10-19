@@ -229,6 +229,9 @@ static func zone_keys(maze: Maze) -> Dictionary:
 		# marsh gate's water; and the trees, in it and outside the maze)
 		if zone <= 1 or zone == maze.rings + 1:
 			parts.append(clearing)
+		# (the ledges round the inside of the clearing's wall are the first section's)
+		if zone == 0 and not maze.styles.is_empty():
+			parts.append(LEDGE_RULES.map(func(rule: String) -> Variant: return maze.styles[0].get(rule)))
 		if zone >= maze.rings:
 			parts.append([_rules_of(maze.desert_style), maze.ways_out])
 		keys[zone] = hash(var_to_str(parts))
@@ -237,6 +240,11 @@ static func zone_keys(maze: Maze) -> Dictionary:
 		outer.append(_rules_of(style))
 	keys["round"] = hash(var_to_str(outer))
 	return keys
+
+
+## Of a section's rules, those its ledges are laid by (the clearing's are the first section's).
+const LEDGE_RULES: Array[String] = ["mezzanine_height", "mezzanine_depth", "mezzanine_thickness", "mezzanine_levels",
+	"mezzanine_level_rise", "mezzanine_depth_step", "mezzanine_upper_share", "mezzanine_ivy_share"]
 
 
 ## Of a section's rules, those its walls are drawn by (MazeBuilder._walls).
@@ -605,7 +613,9 @@ func _lay_out(maze: Maze) -> void:
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, gatehouse[0]), {"size": gatehouse[1], "great": true})
 	# (along the maze walls and the great walls round the rings, the user, 2026-10-18;
 	# each in the zone of the ring it looks into)
-	for ledge: Array in _ledges(maze, runs, runs):
+	# (and the ramparts, the clearing's thick wall, both faces: as great walls, stopping at their gates)
+	var ramparts := _ramparts(maze).map(func(rampart: Array) -> Array: return [rampart[0], rampart[1], true])
+	for ledge: Array in _ledges(maze, runs + ramparts, runs + ramparts):
 		var was := laying_zone
 		laying_zone = ledge[2] if laying_zone < 0 else laying_zone
 		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1], "ledge": true})
@@ -838,8 +848,9 @@ static func _ledges(maze: Maze, boxes: Array, all: Array = []) -> Array:
 		return false
 	var style_at := func(p: Vector3) -> MazeStyle:
 		var cell := maze.cell_at(p)
-		var ring := maze.ring_of(cell)
-		if ring < 1 or ring > maze.rings or not maze.inside(cell) or maze.solid.has(cell):
+		# (the clearing's inside as the first ring's, the user, 2026-10-18)
+		var ring := maxi(maze.ring_of(cell), 1)
+		if ring > maze.rings or not maze.inside(cell) or maze.solid.has(cell):
 			return null
 		var style: MazeStyle = maze.styles[ring - 1]
 		return style if style.mezzanine_height > 0.0 else null
@@ -887,7 +898,11 @@ static func _ledges(maze: Maze, boxes: Array, all: Array = []) -> Array:
 				continue
 			var deep := style.mezzanine_depth
 			ledges.append([end_face + dir * end * deep * 0.5, out * half * 2.0 + dir * deep + Vector3.UP * style.mezzanine_height, maze.ring_of(maze.cell_at(end_face + dir * end * 1.0))])
-	return ledges
+	# (one of each: the clearing's wall and the rampart behind it share a face)
+	var once := {}
+	for ledge: Array in ledges:
+		once[[(ledge[0] as Vector3).snappedf(0.05), (ledge[1] as Vector3).snappedf(0.05)]] = ledge
+	return once.values()
 
 
 ## The walls either side of each narrow entrance (MazeStyle.entrance_doorway_width), as

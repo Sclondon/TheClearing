@@ -68,8 +68,10 @@ func _initialize() -> void:
 				# its cells along the wall round its inside, which the zone inside stands by too)
 				var others := changed.keys().filter(func(zone: Variant) -> bool: return zone is int and zone < section - 1)
 				check("%s: nothing further in" % rule, others.is_empty(), "(%s)" % _names(changed))
+				# (the first section's ledges go round the inside of the clearing's wall too)
+				var own: Array = [0, 1] if section == 1 and MazeLayout.LEDGE_RULES.has(rule) else [section]
 				if not CARVING.has(rule):
-					check("%s: only its own zone" % rule, changed.keys() == [section], "(%s)" % _names(changed))
+					check("%s: only its own zone" % rule, changed.keys() == own, "(%s)" % _names(changed))
 			again.free()
 			whole.free()
 		style.set(rule, was)

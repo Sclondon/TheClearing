@@ -58,6 +58,10 @@ func _run() -> void:
 		await _corners(world, folder)
 		quit()
 		return
+	if args.size() > 1 and args[1] == "clearing":
+		await _clearing_wall(world, folder)
+		quit()
+		return
 	if args.size() > 1 and args[1] == "border":
 		await _border(world, folder)
 		quit()
@@ -330,6 +334,52 @@ func _border(world: Node, folder: String) -> void:
 				await _shot("%s/border_ring%d.png" % [folder, ring])
 		if not found:
 			print("no border ledge in ring ", ring)
+
+
+## The ledges along the clearing's wall (the user: "the clearing wall still doesnt
+## have a mezzanine"): from inside the clearing, and from the first section's hall
+## along the rampart's face; and how many ledges overlap another (their tops flicker).
+func _clearing_wall(world: Node, folder: String) -> void:
+	var maze: Maze = world.maze
+	var layout: MazeLayout = world.get_node("Maze").layout
+	var ledges: Array = layout.pieces(MazePiece.Kind.PIER).filter(func(piece: MazePiece) -> bool: return piece.ledge)
+	var overlaps := 0
+	for a in ledges.size():
+		for b in range(a + 1, ledges.size()):
+			var p: MazePiece = ledges[a]
+			var q: MazePiece = ledges[b]
+			var gap: Vector3 = (p.position - q.position).abs() - (p.box_size() + q.box_size()) * 0.5
+			if gap.x < -0.05 and gap.z < -0.05 and absf(p.position.y - q.position.y) < 0.05:
+				overlaps += 1
+	print("ledges %d, overlapping pairs %d" % [ledges.size(), overlaps])
+	var camera := Camera3D.new()
+	camera.fov = 66.0
+	camera.far = 600.0
+	world.add_child(camera)
+	camera.make_current()
+	var high: float = maze.styles[0].mezzanine_height
+	# (inside: from near the clearing's south edge, looking along its wall)
+	var edge := maze.ring_sizes[0] * Maze.CELL * 0.5
+	var lean := maze.wall_thick(Vector2i.ZERO, Vector2i(0, 1)) * 0.5
+	camera.global_position = Vector3(-edge * 0.6, high + 4.0, edge - lean - 14.0)
+	camera.look_at(Vector3(edge * 0.2, high * 0.6, edge - lean))
+	await _shot("%s/clearing_inside.png" % folder)
+	# (outside: a ring 1 cell whose wall towards the clearing is the rampart's face)
+	for i in maze.size * maze.size:
+		var cell := Vector2i(i % maze.size, i / maze.size)
+		if maze.ring_of(cell) != 1 or maze.solid.has(cell):
+			continue
+		for step: Vector2i in Maze.STEPS:
+			var side := Vector2i(-step.y, step.x)
+			if not maze.solid.has(cell + step) or maze.blocked(cell, side) or maze.blocked(cell, -side):
+				continue
+			var s := Vector3(step.x, 0.0, step.y)
+			var along := Vector3(side.x, 0.0, side.y)
+			camera.global_position = maze.world(cell) - s * 2.0 - along * Maze.CELL * 1.2 + Vector3.UP * (high + 4.0)
+			camera.look_at(maze.world(cell) + s * Maze.CELL * 0.4 + along * Maze.CELL + Vector3.UP * high * 0.6)
+			await _shot("%s/clearing_outside.png" % folder)
+			return
+	print("no ring 1 hall along the rampart")
 
 
 func _solid(layout: MazeLayout, p: Vector3) -> bool:
