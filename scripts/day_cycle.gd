@@ -37,6 +37,14 @@ var daylight := 1.0
 var gloom := 0.0
 ## Lightning now (Weather), 0 to 1: the mist and the shade lit up white for a moment.
 var flash := 0.0
+## The colour of the mist now (for the rain and the fog Weather draws to match it).
+var mist := Color(0.66, 0.7, 0.69)
+## How sunny the weather makes it (Weather), 0 to 1: at 1 a clear day, a blue
+## sky, a bright warm sun with sharper shadows, the mist thin and the colour back.
+var sunshine := 0.0
+## How much thicker the mist is round the camera, for a fog bank it is in
+## (Weather: the clearing's), 0 the usual.
+var thicken := 0.0
 var _fog_base := Color.WHITE
 var _ambient_base := 1.0
 var _flashed := false
@@ -70,10 +78,13 @@ func _ready() -> void:
 			"top": _sky.sky_top_color, "horizon": _sky.sky_horizon_color,
 			"ground": _sky.ground_horizon_color, "fog": _environment.fog_light_color,
 			"ambient": _environment.ambient_light_energy, "fog_density": _environment.fog_density,
+			"fog_height_density": _environment.fog_height_density, "saturation": _environment.adjustment_saturation,
 		}
 	if _sun:
 		_day["sun"] = _sun.light_energy
 		_day["sun_colour"] = _sun.light_color
+		_day["shadow_blur"] = _sun.shadow_blur
+		_day["shadow_opacity"] = _sun.shadow_opacity
 	seconds = _seconds_to(start_hour)
 	_apply()
 	_was_day = is_day()
@@ -148,19 +159,31 @@ func _apply() -> void:
 		_sun.rotation_degrees = Vector3(-high, turn, 0.0)
 		var moon := Color(0.55, 0.64, 0.82)
 		var warm := Color(1.0, 0.78, 0.6)
-		var by_day: Color = (_day["sun_colour"] as Color).lerp(warm, low * 0.6)
+		# (a sunny day's sun warmer and much brighter, its shadows darker and sharper)
+		var sunny := Color(1.0, 0.95, 0.84)
+		var by_day: Color = (_day["sun_colour"] as Color).lerp(sunny, sunshine).lerp(warm, low * 0.6)
 		_sun.light_color = moon.lerp(by_day, light)
-		_sun.light_energy = lerpf(0.32, _day["sun"], light) * lerpf(1.0, 0.75, low) * (1.0 - gloom * 0.6)
+		_sun.light_energy = lerpf(0.32, _day["sun"] * lerpf(1.0, 2.6, sunshine), light) * lerpf(1.0, 0.75, low) * (1.0 - gloom * 0.6)
+		_sun.shadow_blur = lerpf(_day["shadow_blur"], 0.9, sunshine)
+		_sun.shadow_opacity = lerpf(_day["shadow_opacity"], 0.92, sunshine)
 	if _environment:
 		var night_top := Color(0.09, 0.11, 0.15)
 		var night_horizon := Color(0.17, 0.2, 0.24)
 		var dusk_horizon := Color(0.62, 0.52, 0.47)
-		_sky.sky_top_color = night_top.lerp((_day["top"] as Color).lerp(storm, gloom * 0.6), light)
+		# (a sunny day's sky blue, deep overhead and pale at the horizon, and its mist a bright pale blue haze)
+		var blue_top := Color(0.26, 0.46, 0.78)
+		var blue_horizon := Color(0.64, 0.76, 0.9)
+		var blue_haze := Color(0.74, 0.8, 0.86)
+		_sky.sky_top_color = night_top.lerp((_day["top"] as Color).lerp(blue_top, sunshine).lerp(storm, gloom * 0.6), light)
 		var grey := Color(0.46, 0.48, 0.49)
-		_sky.sky_horizon_color = night_horizon.lerp((_day["horizon"] as Color).lerp(dusk_horizon, low * 0.5).lerp(grey, gloom * 0.5), light)
-		_sky.ground_horizon_color = night_horizon.lerp(_day["ground"], light)
-		_environment.fog_light_color = Color(0.15, 0.18, 0.22).lerp((_day["fog"] as Color).lerp(dusk_horizon, low * 0.35).lerp(grey, gloom * 0.5), light)
-		_environment.ambient_light_energy = lerpf(0.55, _day["ambient"], light) * (1.0 - gloom * 0.25)
-		_environment.fog_density = _day["fog_density"] * (1.0 + gloom * 0.9)
+		_sky.sky_horizon_color = night_horizon.lerp((_day["horizon"] as Color).lerp(blue_horizon, sunshine).lerp(dusk_horizon, low * 0.5).lerp(grey, gloom * 0.5), light)
+		_sky.ground_horizon_color = night_horizon.lerp((_day["ground"] as Color).lerp(blue_haze, sunshine * 0.5), light)
+		_environment.fog_light_color = Color(0.15, 0.18, 0.22).lerp((_day["fog"] as Color).lerp(blue_haze, sunshine).lerp(dusk_horizon, low * 0.35).lerp(grey, gloom * 0.5), light)
+		_environment.ambient_light_energy = lerpf(0.55, _day["ambient"] * lerpf(1.0, 1.2, sunshine), light) * (1.0 - gloom * 0.25)
+		var clear := lerpf(1.0, 0.3, sunshine * light)
+		_environment.fog_density = _day["fog_density"] * (1.0 + gloom * 0.9) * clear * (1.0 + thicken)
+		_environment.fog_height_density = _day["fog_height_density"] * clear
+		_environment.adjustment_saturation = lerpf(_day["saturation"], 1.0, sunshine * light)
 		_fog_base = _environment.fog_light_color
+		mist = _fog_base
 		_ambient_base = _environment.ambient_light_energy

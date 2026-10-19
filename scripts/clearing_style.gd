@@ -14,6 +14,22 @@ extends Resource
 ## How many cells (14 m each) of solid wall thicken it past its face, moving the first section out.
 @export_range(0, 6, 1, "suffix:cells") var clearing_wall_thickness_cells := 3
 
+@export_group("Fog")
+## Banks of billowing fog lying along the foot of the clearing's wall, the wall
+## rising out of them (ClearingFog; the user, 2026-10-18: "The cleaing should
+## have billowing fog that the clearing walls rise above"). Thickest at dawn,
+## thinner by day, burnt off on a sunny day, beaten down by rain. How thick
+## they are at most (0 none, 1 thickest).
+@export_range(0.0, 1.0, 0.01, "suffix:amount") var clearing_fog_thickness := 0.8
+## How high the fog banks rise against the wall, metres (kept well under its top, which rises out of them).
+@export_range(5.0, 120.0, 0.001, "suffix:m") var clearing_fog_height := 42.0
+## How far into the clearing from its wall the fog banks lie, metres (thinning and lower towards the middle).
+@export_range(20.0, 250.0, 0.001, "suffix:m") var clearing_fog_reach := 120.0
+## How many billows of fog there are along each side of the clearing (fewer on a phone).
+@export_range(2, 40, 1, "suffix:billows a side") var clearing_fog_billows := 14
+## How fast the fog rolls and billows (1 as made; 0 still).
+@export_range(0.0, 4.0, 0.01, "suffix:speed") var clearing_fog_speed := 1.0
+
 @export_group("Ground")
 ## No trees nearer the middle than this, metres.
 @export_range(0.0, 250.0, 0.001, "suffix:m") var treeless_radius := 95.0
