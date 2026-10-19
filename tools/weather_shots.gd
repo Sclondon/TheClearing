@@ -2,9 +2,10 @@ extends SceneTree
 ## Pictures of the weather (Weather): each kind, sunny and overcast to thunderstorm (caught mid-flash), from the
 ## clearing looking up at its wall and the sky, low in the clearing looking at its wall, and down a hall of the
 ## first ring (the rain's splashes on its floor). Or only some of them: `rain` (the rainy kinds, close up), `fog`
-## (the ground fog, with a wake walked through it), `clearing` (the clearing's fog banks), `sunny`.
+## (the ground fog, with a wake walked through it), `clearing` (the clearing's fog banks), `sunny`; or `cost`,
+## what each costs to draw (printed: draw calls and the GPU's time a frame).
 ##
-##     godot --path . --resolution 1280x720 -s res://tools/weather_shots.gd -- <folder> [all|rain|fog|clearing|sunny]
+##     godot --path . --resolution 1280x720 -s res://tools/weather_shots.gd -- <folder> [all|rain|fog|clearing|sunny|cost]
 
 var main: Node
 var world
@@ -41,11 +42,13 @@ func _run() -> void:
 	var along := Vector3(gate[1].x, 0.0, gate[1].y)
 	var hall: Vector3 = world.maze.world(gate[0] + gate[1] * 3)
 	var kinds: Array = Weather.Kind.values()
-	if which == "rain":
+	if which == "cost":
+		kinds = []
+	elif which == "rain":
 		kinds = [Weather.Kind.SPRINKLE, Weather.Kind.RAIN, Weather.Kind.DOWNPOUR, Weather.Kind.THUNDERSTORM]
 	elif which == "sunny":
-		kinds = [Weather.Kind.get("SUNNY", -1), Weather.Kind.OVERCAST]
-	elif which != "all":
+		kinds = [Weather.Kind.SUNNY, Weather.Kind.OVERCAST]
+	elif which != "all" and which != "cost":
 		kinds = []
 	for kind: int in kinds:
 		_force(kind)
@@ -71,6 +74,8 @@ func _run() -> void:
 			root.get_texture().get_image().save_png("%s/%s_low_flash.png" % [folder, name])
 	if which == "all" or which == "fog":
 		await _fog(folder, spot)
+	if which == "cost":
+		await _costs(spot, hall, along)
 	if which == "all" or which == "clearing":
 		await _clearing(folder, spot)
 	quit()
@@ -83,15 +88,15 @@ func _force(kind: int) -> void:
 	weather.clouds = look[0]
 	weather.rain = look[1]
 	weather.wind = look[2]
-	weather.set(&"sunshine", 1.0 if kind == Weather.Kind.get("SUNNY", -1) else 0.0)
+	weather.sunshine = 1.0 if kind == Weather.Kind.SUNNY else 0.0
 
 
 ## The ground fog: someone walked through it, the wake behind him, from above
 ## and behind as the game's camera has it; in the clearing and in a hall.
 func _fog(folder: String, spot: Transform3D) -> void:
 	_force(Weather.Kind.OVERCAST)
-	weather.set(&"forced_ground_fog", 1)
-	weather.set(&"ground_fog", 1.0)
+	weather.forced_ground_fog = 1
+	weather.ground_fog = 1.0
 	var player: Node3D = world.player
 	player.visible = true
 	var out := spot.basis.z
@@ -113,13 +118,13 @@ func _fog(folder: String, spot: Transform3D) -> void:
 	camera.look_at(spot.origin)
 	await _shot("%s/fog_clearing.png" % folder)
 	player.visible = false
-	weather.set(&"forced_ground_fog", -1)
+	weather.forced_ground_fog = -1
 
 
 ## The clearing's fog banks, from the middle and nearer its wall, by day and at dawn.
 func _clearing(folder: String, spot: Transform3D) -> void:
 	_force(Weather.Kind.OVERCAST)
-	weather.set(&"clearing_fog", 1.0)
+	weather.clearing_fog = 1.0
 	var out := spot.basis.z
 	camera.position = Vector3(0.0, 2.0, 0.0)
 	camera.look_at(spot.origin + Vector3.UP * 45.0)
@@ -127,11 +132,12 @@ func _clearing(folder: String, spot: Transform3D) -> void:
 	camera.position = Vector3(0.0, 2.0, 0.0)
 	camera.look_at(spot.origin.rotated(Vector3.UP, 0.8) + Vector3.UP * 45.0)
 	await _shot("%s/clearing_fog_middle_side.png" % folder, 10)
-	camera.position = spot.origin - out * 150.0 + Vector3.UP * 2.0
+	camera.position = spot.origin - out * 150.0
+	camera.position.y = world.maze.ground_height(camera.position) + 2.0
 	camera.look_at(spot.origin + Vector3.UP * 50.0)
 	await _shot("%s/clearing_fog_near.png" % folder, 10)
-	_force(Weather.Kind.get("SUNNY", -1))
-	weather.set(&"clearing_fog", 0.0)
+	_force(Weather.Kind.SUNNY)
+	weather.clearing_fog = 0.0
 	camera.position = Vector3(0.0, 2.0, 0.0)
 	camera.look_at(spot.origin + Vector3.UP * 45.0)
 	await _shot("%s/clearing_fog_sunny.png" % folder, 60)
@@ -146,3 +152,30 @@ func _shot(path: String, frames := 40) -> void:
 	if path != "":
 		root.get_texture().get_image().save_png(path)
 		print("saved ", path)
+
+
+## What each part costs to draw: draw calls and the GPU's time for a frame, low
+## in the clearing looking at its wall and down a hall, with nothing on, then
+## each part on in turn.
+func _costs(spot: Transform3D, hall: Vector3, along: Vector3) -> void:
+	var viewport := root.get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(viewport, true)
+	var views := [["clearing", Vector3(0.0, 2.0, 0.0), spot.origin + Vector3.UP * 30.0], ["hall", hall + Vector3.UP * 2.4, hall + along * 9.0 + Vector3.UP * 0.6]]
+	var states := ["none", "downpour", "ground fog", "clearing fog", "sunny"]
+	for view: Array in views:
+		camera.position = view[1]
+		camera.look_at(view[2])
+		for state: String in states:
+			_force(Weather.Kind.SUNNY if state == "sunny" else (Weather.Kind.DOWNPOUR if state == "downpour" else Weather.Kind.OVERCAST))
+			weather.forced_ground_fog = 1 if state == "ground fog" else 0
+			weather.ground_fog = 1.0 if state == "ground fog" else 0.0
+			weather.clearing_fog = 1.0 if state == "clearing fog" else 0.0
+			await create_timer(3.0).timeout
+			var gpu := INF
+			var draws := 0.0
+			for i in 90:
+				await process_frame
+				# (the least of them: the rest is other work coming and going)
+				gpu = minf(gpu, RenderingServer.viewport_get_measured_render_time_gpu(viewport))
+				draws += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+			print("cost %-8s %-12s draws %4d  gpu %.2f ms  fps %d" % [view[0], state, roundi(draws / 90.0), gpu, Performance.get_monitor(Performance.TIME_FPS)])
