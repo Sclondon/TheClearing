@@ -442,6 +442,18 @@ extends Resource
 		_switch(&"wall_grass_on", value)
 ## How many wall faces have grass along their foot (a share, 0 to 1).
 @export_range(0.0, 1.0, 0.001, "suffix:of faces") var wall_grass_share := 0.25
+## Corn, after Inside's cornfield: tall dry stalks filling some rooms and stretches of hall from wall to wall, that
+## part round whoever pushes through and hide them a little from the hunters (the user, 2026-10-18: "Lets also add
+## corn like that one scene in the inside video").
+@export var corn_on: bool:
+	get:
+		return feature_on(&"corn_on")
+	set(value):
+		_switch(&"corn_on", value)
+## How many of the section's rooms are filled with corn (a share, 0 to 1; never one with a pond).
+@export_range(0.0, 1.0, 0.001, "suffix:of rooms") var corn_room_share := 0.34
+## How many of its hall cells have corn, in stretches a few cells long (a share, 0 to 1; none by the gates).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var corn_hall_share := 0.05
 
 @export_group("Water")
 ## Ponds: standing water in the halls (Ponds), the ground going down under it so he wades, and in the deepest swims.
@@ -786,6 +798,7 @@ const FEATURES := {
 	&"grapple_swings_on": [&"grapple_swing_share", &"grapple_swing_height_range"],
 	&"undergrowth_on": [&"plant_density"],
 	&"wall_grass_on": [&"wall_grass_share"],
+	&"corn_on": [&"corn_room_share", &"corn_hall_share"],
 	&"ponds_on": [&"pond_share", &"pond_depth_range"],
 	&"flooded_halls_on": [&"flooded_hall_share", &"flooded_hall_length"],
 	&"swim_ponds_on": [&"swim_pond_share", &"swim_pond_depth"],
