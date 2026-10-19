@@ -390,6 +390,11 @@ func _carve() -> void:
 		[Vector2i(low, middle), Vector2i(-1, 0)],
 	]
 	for ring in range(1, rings + 1):
+		# (each ring its own numbers, so that a change to one ring's rules leaves the
+		# rings outside it as they were but for the way into them; the first the seed's own)
+		if ring > 1:
+			rng = RandomNumberGenerator.new()
+			rng.seed = hash("carve/%d/%d" % [maze_seed, ring])
 		gates.append(ways_in)
 		_carve_ring(ring, ways_in, visited, rng)
 		_measure()

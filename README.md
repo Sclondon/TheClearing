@@ -56,11 +56,20 @@ save, and the next round played uses it; the pieces laid out in this scene only 
 Walls count where they stand: which lines between cells have a wall is read from the wall and pier pieces when the
 maze is played, so taking one away opens the way there (for the players, the things that hunt them and the way out),
 and one put down on a line (every 14 m, half a cell off the middle) closes it. The rings, gates and clearing come
-from the seed. Generate again replaces everything in the layout.
+from the seed.
+
+The maze is laid out and built in **zones**: the clearing, each square section, and outside (the desert and the
+round sections past it). Generate again lays out only the zones whose rules have changed since the last Generate (or
+whose walls or gates moved, or a neighbour's rules that reach across the wall between them changed: wall thickness,
+border wall). The other zones keep their pieces and what you did to them by hand. **Generate All** replaces everything.
+The editor's Output says which zones were laid out. A change to one section's own rules leaves the sections outside
+it alone. A change to how its passages are carved can still move its gate out, and then the sections past it change too.
 
 To find out what a setting does, turn on **Live Preview**: the maze is shown as the game builds it from the rules,
-and built again a moment after any setting changes (about 3 s for the whole maze; nothing of it is saved, and the
-pieces are hidden meanwhile). Clear the pieces to keep the scene light; Generate only when you want pieces to move by
+and built again a moment after any setting changes. Only the zones the change reaches are built again, with the
+ground under them all (nothing of it is saved, and the pieces are hidden meanwhile). `tests/zones_test.gd` checks
+that building zone by zone gives the same maze as building it whole, and `tests/zone_preview_check.tscn` opened in
+the editor changes a few rules in turn and prints what each builds again. Clear the pieces to keep the scene light; Generate only when you want pieces to move by
 hand. Hover a setting for what it does. In the editor ivy is drawn flat green (`IvyClimb.plain`): growing every patch
 leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened in the editor
 (`"$G" --headless --path . --editor tests/preview_check.tscn --quit-after 600`) builds the preview and prints its time;
