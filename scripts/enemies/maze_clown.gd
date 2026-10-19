@@ -2,7 +2,7 @@ class_name MazeClown
 extends MazeEnemy
 ## A horror clown (creatures/clown/: Clown is how he looks, moves and sounds;
 ## this is how he hunts the maze). Too tall, too thin, a painted grin, and one
-## red balloon on a long string floating over the walls, so that where he is can
+## red balloon on a string floating a little over his head, so that where he is can
 ## be seen from far off.
 ##
 ## - HE STALKS. Once he has noticed someone (MazeEnemy's senses; he is patient,
@@ -63,8 +63,9 @@ const SIZE := 1.55
 @export var watch_cone := 0.5
 @export var turn_rate := 8.0
 @export var gravity := 24.0
-## How far over the walls of his ring his balloon floats, metres.
-@export var balloon_over := 3.0
+## How high his balloon floats over his feet, metres (he is 2.35 m: just over his head;
+## over the walls, 34 m and more, it was out of sight, the user 2026-10-18).
+@export var balloon_height := 4.5
 ## Further than this from every player he is not posed (the walls hide him; his
 ## balloon is still seen).
 @export var pose_range := 70.0
@@ -121,8 +122,7 @@ func _ready() -> void:
 	rotation.y = 0.0
 	figure = Clown.new()
 	figure.scale = Vector3.ONE * SIZE
-	if maze:
-		figure.balloon_height = maze.maze_wall_height(maxi(maze.ring_of(maze.cell_at(global_position)), 1)) + balloon_over
+	figure.balloon_height = balloon_height
 	add_child(figure)
 	figure.top_level = true
 	figure.put(global_position, facing_yaw)
