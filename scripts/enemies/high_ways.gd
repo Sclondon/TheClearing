@@ -5,9 +5,10 @@ extends RefCounted
 ## should be able to climb things"): every flat top above the floor that one could
 ## stand on, a SURFACE each. The levels of ledge along the walls (the layout's PIER
 ## pieces with `ledge`: MazeStyle.mezzanines), the terraces (TERRACE pieces) and the
-## concrete bridges between ledges (PIER pieces with an `arch`). Anything else laid
-## out as a box whose top is walked on (the metal catwalks to come) is one more
-## line in `_wanted`: a surface is only a box's top, from where it stands.
+## concrete bridges between ledges (PIER pieces with an `arch`), and the metal catwalks
+## over the mezzanines (CATWALK pieces, Catwalks: each run's deck). Anything else laid
+## out as a box whose top is walked on is one more line in `_wanted`: a surface is
+## only a flat top, from where it stands.
 ##
 ## Made from the maze's plan and layout (no physics), once for each zone (`of`), and
 ## shared by everything in it. A surface is a rectangle (x and z, the walls are square
@@ -20,7 +21,7 @@ extends RefCounted
 ## Cheap to ask: the surfaces are kept by the cells they are over (`_by_cell`), and
 ## each question looks at the few in one cell.
 
-enum Kind { LEDGE, TERRACE, DECK }
+enum Kind { LEDGE, TERRACE, DECK, CATWALK }
 
 ## Higher than this over the floor under it, someone is up (a jump is not).
 const UP := 1.4
@@ -111,26 +112,43 @@ func _make(plan: Maze, zone_number: int, layout: MazeLayout) -> void:
 		for corner: Vector3 in [Vector3(-half.x, 0, -half.z), Vector3(half.x, 0, -half.z), Vector3(-half.x, 0, half.z), Vector3(half.x, 0, half.z)]:
 			var p: Vector3 = t * corner
 			area = area.expand(Vector2(p.x, p.z))
-		if area.size.x < 0.3 or area.size.y < 0.3:
+		_add(area, top, kind)
+	# The metal catwalks over the mezzanines (Catwalks): each run a deck `wide` across from
+	# one end to the other (square to the walls, as everything is).
+	for piece in layout.pieces(MazePiece.Kind.CATWALK):
+		if MazeLayout.zone_of(plan, piece) != zone:
 			continue
-		var s := tops.size()
-		rects.append(area)
-		tops.append(top)
-		kinds.append(kind)
-		var first := maze.cell_at(Vector3(area.position.x, 0.0, area.position.y))
-		var last := maze.cell_at(Vector3(area.end.x, 0.0, area.end.y))
-		for x in range(first.x, last.x + 1):
-			for y in range(first.y, last.y + 1):
-				var cell := Vector2i(x, y)
-				if not maze.inside(cell):
-					continue
-				var i := maze.index(cell)
-				var list: PackedInt32Array = _by_cell.get(i, PackedInt32Array())
-				list.append(s)
-				_by_cell[i] = list
+		var run := Catwalks.run_of(piece)
+		var a: Vector3 = run.a
+		var b: Vector3 = run.b
+		var half := float(run.wide) * 0.5
+		var area := Rect2(Vector2(minf(a.x, b.x), minf(a.z, b.z)), Vector2(absf(b.x - a.x), absf(b.z - a.z))).grow(half)
+		if a.y - maze.ground_height(a) >= UP:
+			_add(area, a.y, Kind.CATWALK)
 	fronts.resize(tops.size())
 	for s in tops.size():
 		fronts[s] = _fronts_of(s)
+
+
+## One more surface: `area` (x and z), its top `top` high, of `kind`.
+func _add(area: Rect2, top: float, kind: int) -> void:
+	if area.size.x < 0.3 or area.size.y < 0.3:
+		return
+	var s := tops.size()
+	rects.append(area)
+	tops.append(top)
+	kinds.append(kind)
+	var first := maze.cell_at(Vector3(area.position.x, 0.0, area.position.y))
+	var last := maze.cell_at(Vector3(area.end.x, 0.0, area.end.y))
+	for x in range(first.x, last.x + 1):
+		for y in range(first.y, last.y + 1):
+			var cell := Vector2i(x, y)
+			if not maze.inside(cell):
+				continue
+			var i := maze.index(cell)
+			var list: PackedInt32Array = _by_cell.get(i, PackedInt32Array())
+			list.append(s)
+			_by_cell[i] = list
 
 
 ## The sides of surface `s` that are open: neither against a wall (by the plan) nor

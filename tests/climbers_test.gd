@@ -152,14 +152,14 @@ func _run() -> void:
 
 	# --- The high ways ---
 	ways = HighWays.of(maze, 1, builder.layout)
-	var counts := [0, 0, 0]
+	var counts := [0, 0, 0, 0]
 	var with_fronts := 0
 	for s in ways.size():
 		counts[ways.kinds[s]] += 1
 		if not (ways.fronts[s] as Array).is_empty():
 			with_fronts += 1
 	check("the first section's high ways are made from its layout", ways.size() > 40 and counts[HighWays.Kind.LEDGE] > 40,
-		"(%d surfaces: %d ledges, %d terraces, %d bridges; in %.1f ms)" % [ways.size(), counts[0], counts[1], counts[2], ways.made_in])
+		"(%d surfaces: %d ledges, %d terraces, %d bridges, %d catwalks; in %.1f ms)" % [ways.size(), counts[0], counts[1], counts[2], counts[3], ways.made_in])
 	check("nearly all can be climbed to (have a front)", with_fronts > ways.size() * 0.8, "(%d of %d)" % [with_fronts, ways.size()])
 	var spot := ledge_spot()
 	check("a stretch of mezzanine over a hall to stand on", not spot.is_empty())

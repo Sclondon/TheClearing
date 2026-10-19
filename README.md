@@ -230,6 +230,7 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --audio-driver Dummy --path . -s res://tests/bodies_test.gd   # bodies as a round starts; a strung vine's planks made as he comes up to it, gone once he leaves
 "$G" --headless --path . -s res://tests/hunt_test.gd      # enemies in a round; caught, back to the clearing
 "$G" --headless --audio-driver Dummy --path . -s res://tests/runner_test.gd   # runners: a route, ivy, drawing a hunter, caught, leading to a gate, a puppet
+"$G" --headless --audio-driver Dummy --path . -s res://tests/climbers_test.gd   # hunters up after him on a ledge: a panther, a tribesman, giant ants, a puppet, the cost (-- all: every kind that climbs)
 "$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/runner_shots.gd -- <folder>   # pictures of runners
 "$G" --headless --audio-driver Dummy --path . -s res://tests/loot_test.gd     # what lies about and the camps: placed, taken, slots, torch, spear, hook (a ledge, a route of hook spots, a hanging vine), ladder, map, weapons swung and guns fired, rarity by the rules, the room's news
 "$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/loot_shots.gd -- <folder> [1|1c|2|3|4|5|6|7|8|9|w|g|l|r]   # pictures of them (9: hook spots and a vine, w: weapons swung, g: guns fired, l: weapons lying, r: a friend fighting)
@@ -296,6 +297,6 @@ On the web, add `?clearing&dev` to the page's address.
 
 ## Not done yet
 
-Rings past the first; enemies knowing about the ways up (terraces, bridges); ears;
+Rings past the first; enemies using the rope bridges, vines and ladders (they climb faces instead); ears;
 walls that move, doors that shut at night, a map, sound and music, names, and reconnecting mid-round past the
 server's 90 seconds.
