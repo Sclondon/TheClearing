@@ -523,29 +523,15 @@ func _process(delta: float) -> void:
 			looked[i] = true
 		_showing.clear()
 		for i: int in looked:
-			var c: Dictionary = _chunks[i]
-			var rect: Rect2 = c.rect
-			var near := Vector3(clampf(eye.x, rect.position.x, rect.end.x), clampf(eye.y, c.low, c.high), clampf(eye.z, rect.position.y, rect.end.y))
-			var dist := eye.distance_to(near)
-			var share := minf(_keep(dist) * 1.15, 1.0)
-			# Far squares draw each blade as one triangle.
-			if c.grass != null:
-				var wanted: Mesh = c.meshes[1 if dist > _preset.far_mesh else 0]
-				if c.grass.multimesh.mesh != wanted:
-					c.grass.multimesh.mesh = wanted
-			for mmi: MultiMeshInstance3D in c.parts:
-				var count := ceili(mmi.multimesh.instance_count * share)
-				if mmi.multimesh.visible_instance_count != count:
-					mmi.visible = count > 0
-					mmi.multimesh.visible_instance_count = count
-				if count > 0:
-					_showing[i] = true
+			_thin(i, eye)
 	if not _unfilled.is_empty():
 		var started := Time.get_ticks_usec()
 		while not _unfilled.is_empty() and Time.get_ticks_usec() - started < FILL_BUDGET:
-			_fill(_unfilled.pop_front())
-		# (thinned again, to show what was filled)
-		_thinned_for = Vector3.INF
+			var i: int = _unfilled.pop_front()
+			_fill(i)
+			# (thinned now, to show what was filled: only this square, not them all again)
+			if camera != null:
+				_thin(i, camera.global_position)
 	# (a field none of which is showing has nothing to bend or sway: the maze has
 	# several, and most are out of sight at any time)
 	if _showing.is_empty():
@@ -573,9 +559,37 @@ func _process(delta: float) -> void:
 		_trail_wait = 1.0 / 15.0
 
 
+## Thins square `i` for a camera at `eye`: fewer tufts the farther it is, a plainer
+## tuft far off, none past the fade.
+func _thin(i: int, eye: Vector3) -> void:
+	var c: Dictionary = _chunks[i]
+	var rect: Rect2 = c.rect
+	var near := Vector3(clampf(eye.x, rect.position.x, rect.end.x), clampf(eye.y, c.low, c.high), clampf(eye.z, rect.position.y, rect.end.y))
+	var dist := eye.distance_to(near)
+	var share := minf(_keep(dist) * 1.15, 1.0)
+	# Far squares draw each blade as one triangle.
+	if c.grass != null:
+		var wanted: Mesh = c.meshes[1 if dist > _preset.far_mesh else 0]
+		if c.grass.multimesh.mesh != wanted:
+			c.grass.multimesh.mesh = wanted
+	for mmi: MultiMeshInstance3D in c.parts:
+		var count := ceili(mmi.multimesh.instance_count * share)
+		if mmi.multimesh.visible_instance_count != count:
+			mmi.visible = count > 0
+			mmi.multimesh.visible_instance_count = count
+		if count > 0:
+			_showing[i] = true
+
+
 ## The pushers, nearest the camera first: found once a frame for every field.
 static var _pushers_frame := -1
 static var _pushers: Array = []
+## The few pushers nearest the camera, picked out of all of them only every
+## SHORTLIST_EVERY frames (every hunter in the maze pushes, hundreds of them, too
+## many to sort every frame); each frame only these are put in order.
+static var _shortlist: Array = []
+const SHORTLIST_EVERY := 10
+const SHORTLIST := MAX_PUSHERS * 3
 
 
 func _nearest_pushers(camera: Camera3D) -> Array:
@@ -583,12 +597,24 @@ func _nearest_pushers(camera: Camera3D) -> Array:
 	if frame == _pushers_frame:
 		return _pushers
 	_pushers_frame = frame
-	_pushers = []
-	for node in get_tree().get_nodes_in_group(PUSHERS):
-		if node is Node3D and node.is_inside_tree():
-			_pushers.append(node)
-	if camera != null and _pushers.size() > MAX_PUSHERS:
-		var eye := camera.global_position
+	if camera == null:
+		_pushers = []
+		for node in get_tree().get_nodes_in_group(PUSHERS):
+			if node is Node3D and node.is_inside_tree():
+				_pushers.append(node)
+		return _pushers
+	var eye := camera.global_position
+	if frame % SHORTLIST_EVERY == 0 or _shortlist.is_empty():
+		var near: Array = []
+		for node in get_tree().get_nodes_in_group(PUSHERS):
+			if node is Node3D and node.is_inside_tree():
+				near.append([(node as Node3D).global_position.distance_squared_to(eye), node])
+		if near.size() > SHORTLIST:
+			near.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+			near.resize(SHORTLIST)
+		_shortlist = near.map(func(one: Array) -> Node3D: return one[1])
+	_pushers = _shortlist.filter(func(node) -> bool: return is_instance_valid(node) and (node as Node3D).is_inside_tree())
+	if _pushers.size() > MAX_PUSHERS:
 		_pushers.sort_custom(func(a: Node3D, b: Node3D) -> bool: return a.global_position.distance_squared_to(eye) < b.global_position.distance_squared_to(eye))
 	return _pushers
 
