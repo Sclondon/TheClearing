@@ -144,7 +144,23 @@ func huntable(player: Node3D) -> bool:
 		return false
 	if fears_fire and FireWard.near(get_tree(), player.global_position):
 		return false
+	if _shy_of_lanterns() and MazeWoodsman.lit(get_tree(), player.global_position):
+		return false
 	return maze == null or maze.inside(maze.cell_at(player.global_position))
+
+
+## Whether a woodsman's lantern keeps it back (MazeWoodsman.lit: nobody in its light
+## can be gone after): whatever goes about the maze short of the biggest (Ecology's
+## sizes under 4), and the beast; not the woodsman himself, nor the giants, swarms
+## and flocks that take no part in Ecology. (Added with the woodsman, 2026-10-18.)
+func _shy_of_lanterns() -> bool:
+	if _lantern_shy < 0:
+		var kind := Ecology.kind_of(self)
+		_lantern_shy = 1 if kind == "MazeBeast" or (kind != "MazeWoodsman" and Ecology.KINDS.has(kind) and Ecology.bulk(self) < 4) else 0
+	return _lantern_shy == 1
+
+
+var _lantern_shy := -1
 
 
 ## Says that it has caught `player`, and lets them alone for `spare_time`.

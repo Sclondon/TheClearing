@@ -8,7 +8,7 @@ extends Node3D
 ## rest of what a ring's MazeStyle asks for (ghouls, centipedes, spiders,
 ## abominations, flesh mounds and amalgams, slime walls, bats, baboons, dogs, aliens, beetles, fish people, angels, giant toads, frog swarms, harpies, boars, chickens, gargoyles, deer, elk, imps and imp swarms, a colossus, coyotes and skinwalkers, tripods, clowns, stegosaurs, spider monkeys, lizard people, the masked tribe, deinonychus, pterodactyls, giant snails, hydras, gibbons: each kind's own
 ## script is in scripts/enemies/, its look and motion in creatures/). The same maze and seed always give the
-## same ones in the same places in the same order, so every machine in a room
+## same ones in the same places in the same order (and the woodsman and the beast, last), so every machine in a room
 ## can build the same set without it being sent; then one machine (the host)
 ## runs them and the rest are puppets (`set_puppet(true)`), fed with what
 ## `pack()` makes on the host through `unpack()`.
@@ -118,6 +118,8 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ##   (each in a marsh pool of its own across it) wait in halls; gibbons in halls
 ##   past the first section, where there are ledges and terraces.
 ## - Hunting parties of the masked tribe camp in a dead end round their totem.
+## - The woodsman is put in a hall and walks from there; the beast waits, hidden,
+##   in a hall far from the rest (MazeStyle `woodsmen`, `beasts`, each with its box).
 func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	var nav := MazeNav.new(maze)
 	var rng := RandomNumberGenerator.new()
@@ -562,6 +564,18 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var troop: Array = MazeGibbon.troop(rng.randi_range(3, 5))
 		for k in troop.size():
 			add(troop[k], middle, rng.randf_range(-PI, PI), rng.randi(), Vector3(k - 2.0, 0.0, 0.0))
+	# The woodsman walks the halls with his lantern; the beast lurks, hidden, in a hall as
+	# far from everything as can be (one at most: it is rare). Put in last, so that every
+	# kind before them is placed as it was.
+	for i in int(style.amount(&"woodsmen")):
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		var along := _straight(cell)
+		add(MazeWoodsman.new(), cell, atan2(float(along.x), float(along.y)) if along != Vector2i.ZERO else rng.randf_range(-PI, PI), rng.randi())
+	for i in mini(int(style.amount(&"beasts")), 1):
+		var cell := _far_from(taken, some_halls, rng)
+		taken.append(cell)
+		add(MazeBeast.new(), cell, rng.randf_range(-PI, PI), rng.randi())
 
 
 ## Puts in the wildlife of the clearing that is run with what hunts (so that
