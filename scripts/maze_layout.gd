@@ -603,8 +603,9 @@ func _lay_out(maze: Maze) -> void:
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, rampart[0]), {"size": rampart[1], "great": true})
 	for gatehouse: Array in _gatehouses(maze):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, gatehouse[0]), {"size": gatehouse[1], "great": true})
-	# (along the maze walls only, not the great walls round the rings; each in the zone of the ring it looks into)
-	for ledge: Array in _ledges(maze, runs.filter(func(run: Array) -> bool: return not run[2]), runs):
+	# (along the maze walls and the great walls round the rings, the user, 2026-10-18;
+	# each in the zone of the ring it looks into)
+	for ledge: Array in _ledges(maze, runs, runs):
 		var was := laying_zone
 		laying_zone = ledge[2] if laying_zone < 0 else laying_zone
 		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1], "ledge": true})
@@ -851,10 +852,11 @@ static func _ledges(maze: Maze, boxes: Array, all: Array = []) -> Array:
 		var half: float = (size.z if long_x else size.x) * 0.5
 		var long: float = size.x if long_x else size.z
 		var centre := Vector3(middle.x, 0.0, middle.z)
-		# (whether each end is a dead end: nothing else in the stone just inside it)
+		# (whether each end is a dead end: nothing else in the stone just inside it;
+		# a great wall's end is the side of a gate, where its ledge stops)
 		var dead := {}
 		for end: float in [-1.0, 1.0]:
-			dead[end] = not inside.call(centre + dir * end * (long * 0.5 - 0.3), box)
+			dead[end] = not (box.size() > 2 and box[2]) and not inside.call(centre + dir * end * (long * 0.5 - 0.3), box)
 		for way: float in [-1.0, 1.0]:
 			var face := centre + out * way * half
 			var style: MazeStyle = style_at.call(face + out * way * 1.0)

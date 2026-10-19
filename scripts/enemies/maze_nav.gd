@@ -281,14 +281,10 @@ func _wall_half(cell: Vector2i, step: Vector2i) -> float:
 # ring; however thick its style makes it, its middle line is what counts), and the
 # step of ledge along its foot (MazeStyle.mezzanine_depth) if the ring has one.
 func _half_of(cell: Vector2i, step: Vector2i) -> float:
-	if not maze.inside(cell + step) or maze.ring_wall(cell, step):
-		return MazeBuilder.RING_THICK * 0.5
-	var half := MazeBuilder.WALL_THICK * 0.5
-	var ring := maze.ring_of(cell)
-	if not maze.ring_wall(cell, step) and ring >= 1 and ring <= maze.styles.size():
-		var style: MazeStyle = maze.styles[ring - 1]
-		if style.mezzanine_height > 0.0:
-			half += style.mezzanine_depth
+	var great := not maze.inside(cell + step) or maze.ring_wall(cell, step)
+	var half := (MazeBuilder.RING_THICK if great else MazeBuilder.WALL_THICK) * 0.5
+	if maze.has_ledge(cell, step):
+		half += maze.styles[maze.ring_of(cell) - 1].mezzanine_depth
 	return half
 
 

@@ -58,6 +58,10 @@ func _run() -> void:
 		await _corners(world, folder)
 		quit()
 		return
+	if args.size() > 1 and args[1] == "border":
+		await _border(world, folder)
+		quit()
+		return
 	if args.size() > 1 and args[1] == "zone2":
 		await _zone2(world, folder)
 		quit()
@@ -292,6 +296,40 @@ func _anchors(world: Node, folder: String) -> void:
 		camera.global_position = at + away * 2.2 + away.cross(Vector3.UP) * 1.2 + Vector3.DOWN * 0.8
 		camera.look_at(at)
 		await _shot("%s/anchor_%d_%s.png" % [folder, k, spots[k][2]])
+
+
+## The ledges along the great walls between sections (the user: "the border walls
+## should have mezzanines on them"): from a hall of each of the first two
+## sections, looking along the wall round it.
+func _border(world: Node, folder: String) -> void:
+	var maze: Maze = world.maze
+	var camera := Camera3D.new()
+	camera.fov = 66.0
+	camera.far = 600.0
+	world.add_child(camera)
+	camera.make_current()
+	for ring in [1, 2]:
+		var found := false
+		for i in maze.size * maze.size:
+			var cell := Vector2i(i % maze.size, i / maze.size)
+			if found or maze.ring_of(cell) != ring:
+				continue
+			for step: Vector2i in Maze.STEPS:
+				if found or not maze.ring_wall(cell, step) or not maze.has_ledge(cell, step):
+					continue
+				var side := Vector2i(-step.y, step.x)
+				# (a run of three cells along it, open along the wall)
+				if maze.blocked(cell, side) or maze.blocked(cell, -side) or not maze.has_ledge(cell + side, step) or not maze.has_ledge(cell - side, step):
+					continue
+				found = true
+				var s := Vector3(step.x, 0.0, step.y)
+				var along := Vector3(side.x, 0.0, side.y)
+				var high: float = maze.styles[ring - 1].mezzanine_height
+				camera.global_position = maze.world(cell) - s * 3.0 - along * Maze.CELL * 1.2 + Vector3.UP * (high + 4.0)
+				camera.look_at(maze.world(cell) + s * Maze.CELL * 0.4 + along * Maze.CELL + Vector3.UP * high * 0.6)
+				await _shot("%s/border_ring%d.png" % [folder, ring])
+		if not found:
+			print("no border ledge in ring ", ring)
 
 
 func _solid(layout: MazeLayout, p: Vector3) -> bool:

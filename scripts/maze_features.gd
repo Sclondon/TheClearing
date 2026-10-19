@@ -328,8 +328,7 @@ func _levels(plan: Maze) -> void:
 		if _style.mezzanine_height <= 0.0:
 			continue
 		for step: Vector2i in Maze.STEPS:
-			var beyond := cell + step
-			if not plan.blocked(cell, step) or plan.ring_of(beyond) != ring or plan.solid.has(beyond):
+			if not plan.has_ledge(cell, step):
 				continue
 			var count := 1
 			while count < _style.mezzanine_levels and _rng.randf() < _style.mezzanine_upper_share:
@@ -564,11 +563,8 @@ func _room(cell: Vector2i, step: Vector2i, way: int) -> float:
 	if not _maze.blocked(cell, side):
 		return Maze.CELL * 0.5
 	var room := Maze.CELL * 0.5 - _maze.wall_thick(cell, side) * 0.5
-	var ring := _maze.ring_of(cell)
-	if not _maze.ring_wall(cell, side) and ring >= 1 and ring <= _maze.styles.size():
-		var style: MazeStyle = _maze.styles[ring - 1]
-		if style.mezzanine_height > 0.0:
-			room -= style.mezzanine_depth
+	if _maze.has_ledge(cell, side):
+		room -= _maze.styles[_maze.ring_of(cell) - 1].mezzanine_depth
 	return room
 
 

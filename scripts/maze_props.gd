@@ -173,7 +173,7 @@ func _dress_face(cell: Vector2i, step: Vector2i, near_gate: bool) -> void:
 	var top := _maze.wall_height(cell, step)
 	# (the step of ledge along the wall's foot, if it has one: vents stay under it)
 	var under_ledge := top
-	if _style.mezzanine_height > 0.0 and not _maze.ring_wall(cell, step):
+	if _style.mezzanine_height > 0.0:
 		under_ledge = _style.mezzanine_height
 		# (and they go on the ledge's front, standing out of it, not buried in it: the
 		# user, 2026-10-18, "sewer parts should stick out of the mezzanine rather than get clipped")
@@ -524,10 +524,9 @@ func _ledge_cables(plan: Maze) -> void:
 				_ledge_cable(cell, far, step, MazeFeatures._numbers(drawn, 12))
 
 
-## Whether the face (cell, step) has a ledge along it (a maze wall's, not a great wall's).
+## Whether the face (cell, step) has a ledge along it (Maze.has_ledge).
 func _ledged(cell: Vector2i, step: Vector2i) -> bool:
-	var beyond := cell + step
-	return _maze.blocked(cell, step) and not _maze.ring_wall(cell, step) and _maze.ring_of(beyond) == _maze.ring_of(cell) and not _maze.solid.has(beyond)
+	return _maze.has_ledge(cell, step)
 
 
 ## The two faces of a hall from the face (cell, -step) to (far, step): the foot

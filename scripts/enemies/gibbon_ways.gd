@@ -165,8 +165,7 @@ func _rail(cell: Vector2i, step: Vector2i) -> Array:
 	if not _cell_ok(cell) or not maze.blocked(cell, step):
 		return []
 	var style: MazeStyle = maze.styles[ring - 1]
-	var beyond := cell + step
-	if style.mezzanine_height > 0.0 and not maze.ring_wall(cell, step) and maze.ring_of(beyond) == ring and not maze.solid.has(beyond):
+	if maze.has_ledge(cell, step):
 		return [style.mezzanine_height, style.mezzanine_depth, false] if style.mezzanine_height <= MOST_HIGH else []
 	var high := maze.wall_height(cell, step)
 	return [high, MazeBuilder.CORNICE.x, true] if high <= MOST_HIGH else []

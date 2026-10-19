@@ -193,6 +193,17 @@ func ring_wall(cell: Vector2i, step: Vector2i) -> bool:
 	return ring_of(cell) != ring_of(cell + step)
 
 
+## Whether the face of the wall on the `step` side of `cell` has a step of ledge
+## along its foot (MazeStyle.mezzanine_height, by the style of the ring `cell` is
+## in): every wall of a ring that has them, the great walls round it included
+## (the user, 2026-10-18), but not a rampart's.
+func has_ledge(cell: Vector2i, step: Vector2i) -> bool:
+	var ring := ring_of(cell)
+	if ring < 1 or ring > styles.size() or solid.has(cell) or solid.has(cell + step) or not blocked(cell, step):
+		return false
+	return styles[ring - 1].mezzanine_height > 0.0
+
+
 ## How thick the wall on the `step` side of `cell` is: as its ring's style says
 ## (MazeStyle.maze_wall_diameter), and a wall between rings as the thicker of the two,
 ## and no thinner than MazeBuilder.RING_THICK.
