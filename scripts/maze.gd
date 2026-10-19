@@ -195,21 +195,17 @@ func ring_wall(cell: Vector2i, step: Vector2i) -> bool:
 
 ## Whether the face of the wall on the `step` side of `cell` has a step of ledge
 ## along its foot (MazeStyle.mezzanine_height, by the style of the ring `cell` is
-## in): every wall of a ring that has them, the great walls round it included
-## and the clearing's wall, inside and out, the clearing as the first ring has
-## them (the user, 2026-10-18).
+## in): every wall of a ring that has them, the great walls round it and the
+## clearing's wall included, on the ring's side only (none in the clearing: the
+## user, 2026-10-18).
 func has_ledge(cell: Vector2i, step: Vector2i) -> bool:
-	var ring := maxi(ring_of(cell), 1)
-	if not inside(cell) or ring > styles.size() or solid.has(cell) or not blocked(cell, step):
-		return false
-	# (in the clearing, only at its wall)
-	if in_clearing(cell) and not ring_wall(cell, step) and not solid.has(cell + step):
+	var ring := ring_of(cell)
+	if ring < 1 or ring > styles.size() or solid.has(cell) or not blocked(cell, step):
 		return false
 	return styles[ring - 1].mezzanine_height > 0.0
 
 
-## The style the ledges along `cell`'s walls are made by (see has_ledge): its
-## ring's, or in the clearing the first ring's.
+## The style the ledges along `cell`'s walls are made by (see has_ledge): its ring's.
 func ledge_style(cell: Vector2i) -> MazeStyle:
 	return styles[clampi(ring_of(cell), 1, styles.size()) - 1]
 
