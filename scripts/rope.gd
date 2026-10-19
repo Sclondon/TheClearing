@@ -251,6 +251,9 @@ static func anyone_near(node: Node, at: Vector3, reach: float) -> bool:
 ## comes within WAKE of (NearIndex finds them); a rope wakes when it is touched.
 static func rest(node: Node) -> void:
 	node.set_physics_process(false)
+	# (a vine at rest is drawn with the others near it: VineThicket)
+	if node.has_method(&"park"):
+		node.call(&"park")
 	if not is_instance_valid(_waker):
 		_waker = Waker.new()
 		_waker.name = "RopeWaker"

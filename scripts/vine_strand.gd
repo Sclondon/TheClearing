@@ -28,6 +28,8 @@ static var _stem_mesh: CylinderMesh
 var _stems: MultiMeshInstance3D
 var _leaves: MultiMeshInstance3D
 var _placing: Array = []
+## The roots where its ends are held (_anchor).
+var _roots: Array[MeshInstance3D] = []
 ## The leaves on the stem (_placing), then the bunches where its ends are held
 ## (_anchor), in the same MultiMesh; how many leaves each bunch, and how many more
 ## on the stem by each end.
@@ -149,6 +151,7 @@ func _anchor(end: Vector3, other: Vector3, held: int, rng: RandomNumberGenerator
 	var out := Vector3(other.x - end.x, 0.0, other.z - end.z).normalized()
 	var made := Vine.anchor(end, -out, held, _reach(held), false, rng, ANCHOR_LEAVES)
 	add_child(made[0])
+	_roots.append(made[0])
 	var multi := _leaves.multimesh
 	for i in ANCHOR_LEAVES:
 		multi.set_instance_transform(first + i, made[1][i][0])
@@ -200,7 +203,39 @@ func _length_to(place: float) -> float:
 	return length + _points[i].distance_to(_points[i + 1]) * (place - i)
 
 
+## Drawn by the VineThicket while it rests (Rope.rest), with every vine near it at
+## rest; its own stem, leaves and roots hidden meanwhile.
+var _parked := false
+
+
+func park() -> void:
+	if _parked or _leaves == null or Engine.is_editor_hint():
+		return
+	_parked = true
+	var draws := [VineThicket.draw_of(&"strand stem", _stems, Rope.SEEN),
+			VineThicket.draw_of(&"strand leaves", _leaves, _leaves.visibility_range_end)]
+	for roots in _roots:
+		draws.append(VineThicket.draw_of_mesh([&"roots", roots.mesh.get_instance_id()], roots, roots.visibility_range_end))
+	VineThicket.park(self, draws)
+	_show_own(false)
+
+
+func _unpark() -> void:
+	_parked = false
+	VineThicket.unpark(self)
+	_show_own(true)
+
+
+func _show_own(shown: bool) -> void:
+	_stems.visible = shown
+	_leaves.visible = shown
+	for roots in _roots:
+		roots.visible = shown
+
+
 func _physics_process(delta: float) -> void:
+	if _parked:
+		_unpark()
 	super(delta)
 	if Engine.is_editor_hint():
 		return

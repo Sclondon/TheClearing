@@ -132,6 +132,39 @@ func follow(top: Vector3) -> void:
 		set_physics_process(true)
 
 
+## Drawn by the VineThicket while it rests (Rope.rest), with every other vine near it
+## at rest; its own stem, knot, leaves and roots hidden meanwhile.
+var _parked := false
+
+
+func park() -> void:
+	if _parked or _leaves == null or Engine.is_editor_hint():
+		return
+	_parked = true
+	var draws := [VineThicket.draw_of([&"vine stem", thickness], _links, Rope.SEEN),
+			VineThicket.draw_of_mesh([&"vine knot", thickness], _knot, Rope.SEEN),
+			VineThicket.draw_of(&"vine leaves", _leaves, _leaves.visibility_range_end)]
+	var roots := _roots as MeshInstance3D
+	if roots:
+		draws.append(VineThicket.draw_of_mesh([&"roots", roots.mesh.get_instance_id()], roots, roots.visibility_range_end))
+	VineThicket.park(self, draws)
+	_show_own(false)
+
+
+func _unpark() -> void:
+	_parked = false
+	VineThicket.unpark(self)
+	_show_own(true)
+
+
+func _show_own(shown: bool) -> void:
+	_links.visible = shown
+	_knot.visible = shown
+	_leaves.visible = shown
+	if _roots:
+		_roots.visible = shown
+
+
 ## Hangs `vine` from this one, `distance` down it: its top goes where that point goes.
 func carry(vine: Vine, distance: float) -> void:
 	_carried.append([vine, distance])
@@ -139,6 +172,8 @@ func carry(vine: Vine, distance: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _parked:
+		_unpark()
 	super(delta)
 	for each: Array in _carried:
 		if is_instance_valid(each[0]):
