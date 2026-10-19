@@ -8,7 +8,8 @@ extends EditorPlugin
 ## a second (2026-10-18). Only a restart clears it, so this offers one at once,
 ## before anything is saved over with the stale copies.
 ##
-## Saves made in the editor itself (resource_saved) are not counted as changes.
+## Only a change to a script's own variables counts (one inside its functions
+## hot-reloads safely), and saves made in the editor itself (resource_saved) never do.
 
 ## How often the scripts are looked at, seconds (a stat of each; there are a few dozen).
 const POLL := 1.0
@@ -16,6 +17,7 @@ const POLL := 1.0
 const SETTLE := 1.5
 
 var _times := {}  # path -> modified time, of each @tool script
+var _layouts := {}  # path -> its variables, in order (see _layout)
 var _changed: PackedStringArray = []
 var _poll: Timer
 var _settle: Timer
@@ -56,11 +58,18 @@ func _scan(report: bool) -> void:
 		if _times.has(path):
 			if time != _times[path]:
 				_times[path] = time
+				# (only a change to its variables leaves the copies in open scenes
+				# stale: one inside its functions hot-reloads as it should)
+				var layout := _layout(path)
+				if layout == _layouts[path]:
+					continue
+				_layouts[path] = layout
 				if report and not _changed.has(path):
 					_changed.append(path)
 				_settle.start()
 		elif _is_tool(path):
 			_times[path] = time
+			_layouts[path] = _layout(path)
 
 
 func _collect(dir_path: String, into: PackedStringArray) -> void:
@@ -74,6 +83,22 @@ func _collect(dir_path: String, into: PackedStringArray) -> void:
 		# (not hidden folders: .godot, .claude's worktrees; not the addons, this among them)
 		if not sub.begins_with(".") and sub != "addons":
 			_collect(dir_path.path_join(sub), into)
+
+
+## The script's own variables (not in its functions), in order: what each copy of
+## it holds its values by. Comments and blank lines aside.
+func _layout(path: String) -> String:
+	var names: PackedStringArray = []
+	for line in FileAccess.get_file_as_string(path).split("\n"):
+		if line.begins_with("\t") or line.begins_with(" "):
+			continue
+		var words := line.strip_edges().split(" ", false)
+		var at := words.find("var")
+		if at >= 0 and at + 1 < words.size():
+			names.append(words[at + 1].trim_suffix(":"))
+		elif line.begins_with("extends ") or line.begins_with("class_name "):
+			names.append(line.strip_edges())
+	return ",".join(names)
 
 
 func _is_tool(path: String) -> bool:

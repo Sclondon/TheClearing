@@ -493,7 +493,7 @@ lays out the same spots from the seed; a hooked vine swings on each player's own
 ### The added hunters (2026-10-18)
 
 - **Clown**: a horror clown, too tall and too thin, stained baggy suit and ruff, a greasepaint mask with a painted
-  grin, one red balloon floating over the walls (the only colour near him). He stalks whoever he has noticed to a
+  grin, one red balloon floating just over his head (the only colour near him). He stalks whoever he has noticed to a
   music box, slower than a run, and is only ever still when someone looks at him (frozen mid-pose, the head tilting).
   Within 10 m, unwatched, he giggles (look at him then and he stops), then sprints in flailing stop-motion at 8 m/s for
   2.3 s and stands winded. Touching him catches. The reverse of the angel: watched, he is harmless.
