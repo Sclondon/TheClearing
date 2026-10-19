@@ -170,7 +170,7 @@ const HUNG_UNDER := 0.05
 ## Hangs `vine` from it, at the point of it nearest the vine's top.
 func hang(vine: Vine) -> void:
 	_hung.append([vine, _place_of(vine.global_position + Vector3.UP * HUNG_UNDER)])
-	vine.follow(_point_on(_hung[-1][1]) + Vector3.DOWN * HUNG_UNDER)
+	vine.follow(_point_on(_hung[-1][1]) + Vector3.DOWN * HUNG_UNDER, true)
 
 
 ## Where along it the point nearest `point` is: its points' index, and how far to the next.

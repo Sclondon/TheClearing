@@ -116,8 +116,10 @@ func _ready() -> void:
 
 
 ## Moves its top to `top` (where what holds it, a strung vine, has gone), its roots and
-## the leaves over them with it; it swings on from there.
-func follow(top: Vector3) -> void:
+## the leaves over them with it; it swings on from there. `settled`: it hangs straight
+## down from there at rest, as if it had always hung there (hung as the maze is made:
+## swinging from where it was made, thousands of them took seconds to come to rest).
+func follow(top: Vector3, settled := false) -> void:
 	if top.distance_squared_to(global_position) < 0.000001:
 		return
 	global_position = top
@@ -128,6 +130,14 @@ func follow(top: Vector3) -> void:
 		var on_stem := _placing.size()
 		for k in _held_leaves.size():
 			_leaves.multimesh.set_instance_transform(on_stem + k, _held_leaves[k].translated(moved))
+	if settled and not _points.is_empty():
+		var piece := length / PIECES
+		for i in PIECES + 1:
+			_points[i] = top + Vector3.DOWN * piece * i
+		_before = _points.duplicate()
+		if _links:
+			_draw()
+		return
 	if not is_physics_processing():
 		set_physics_process(true)
 
