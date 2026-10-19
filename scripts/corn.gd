@@ -853,7 +853,7 @@ static func plant_maze(maze: Maze, footprints: Array) -> Corn:
 	for ring in range(1, maze.styles.size() + 1):
 		var style: MazeStyle = maze.styles[ring - 1]
 		thick[ring] = style.maze_wall_diameter
-		step_out[ring] = style.mezzanine_depth if style.mezzanine_height > 0.0 else 0.0
+		step_out[ring] = style.level_depth(0) if style.has_mezzanine() else 0.0
 		if not style.round_section and style.corn_on and (style.corn_room_share > 0.0 or style.corn_hall_share > 0.0):
 			growing[ring] = true
 	var rings := {}

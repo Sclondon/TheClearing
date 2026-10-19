@@ -553,7 +553,7 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		if ring < 1 or ring > maze.styles.size():
 			continue
 		var here: MazeStyle = maze.styles[ring - 1]
-		if (here.mezzanine_height > 0.0 and here.mezzanine_height <= GibbonWays.MOST_HIGH) or here.amount(&"terrace_share") > 0.0 \
+		if (here.has_mezzanine() and here.level_height(0) <= GibbonWays.MOST_HIGH) or here.amount(&"terrace_share") > 0.0 \
 				or here.maze_wall_height <= GibbonWays.MOST_HIGH:
 			high_halls.append(cell)
 	for i in style.gibbon_troops:

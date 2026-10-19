@@ -165,7 +165,11 @@ static func _rules_of(rules: Resource) -> Array:
 		return values
 	for property in rules.get_property_list():
 		if property.usage & PROPERTY_USAGE_STORAGE and property.usage & PROPERTY_USAGE_SCRIPT_VARIABLE and property.name != "entrance_spots":
-			values.append(rules.get(property.name))
+			var value: Variant = rules.get(property.name)
+			# (a list of rules, as the levels of ledge are: the rules of each)
+			if value is Array:
+				value = (value as Array).map(func(each: Variant) -> Variant: return _rules_of(each) if each is Resource else each)
+			values.append(value)
 	return values
 
 
@@ -617,11 +621,14 @@ func _lay_out(maze: Maze) -> void:
 		laying_zone = ledge[2] if laying_zone < 0 else laying_zone
 		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1], "ledge": true})
 		laying_zone = was
-	MazeFeatures.lay_out(self, maze, _zones)
+	var features := MazeFeatures.lay_out(self, maze, _zones)
 	Ponds.lay_out(self, maze, _zones)
 	maze.ponds = Ponds.read(self)
-	# (after the ways up and the ponds: the props keep clear of them, and cables hang by the vines)
+	# (after the ways up and the ponds: the props keep clear of them)
 	MazeProps.lay_out(self, maze, _zones)
+	# (and the vines last, hung on whatever is on the walls)
+	features.hang_vines()
+	features.free()
 	_trees(maze)
 	if not maze.round_rings:
 		_add(MazePiece.Kind.BEACON, Transform3D(Basis.IDENTITY, maze.world(maze.exit + maze.exit_side * 2)), {})
@@ -822,7 +829,7 @@ static func _ramparts(maze: Maze) -> Array:
 	return walls
 
 
-## The ledges along the walls of rings that have one (MazeStyle.mezzanine_height), as [middle
+## The first level of ledge along the walls of rings that have one (MazeStyle.mezzanines), as [middle
 ## of the foot, size, ring]: along each long face of each of `boxes` ([middle of the
 ## foot, size]) that looks into such a ring, and round its ends (the user, 2026-10-18:
 ## "the mezzanine should go around corners not just end"): where the wall ends, a ledge
@@ -850,7 +857,7 @@ static func _ledges(maze: Maze, boxes: Array, all: Array = []) -> Array:
 		if ring < 1 or ring > maze.rings or not maze.inside(cell) or maze.solid.has(cell):
 			return null
 		var style: MazeStyle = maze.styles[ring - 1]
-		return style if style.mezzanine_height > 0.0 else null
+		return style if style.has_mezzanine() else null
 	for box: Array in boxes:
 		var middle: Vector3 = box[0]
 		var size: Vector3 = box[1]
@@ -871,7 +878,7 @@ static func _ledges(maze: Maze, boxes: Array, all: Array = []) -> Array:
 			if style == null:
 				continue
 			var ring := maze.ring_of(maze.cell_at(face + out * way * 1.0))
-			var deep := style.mezzanine_depth
+			var deep := style.level_depth(0)
 			var reach := {-1.0: 0.0, 1.0: 0.0}
 			for end: float in [-1.0, 1.0]:
 				var lip := face + out * way * deep * 0.5 + dir * end * long * 0.5
@@ -884,17 +891,17 @@ static func _ledges(maze: Maze, boxes: Array, all: Array = []) -> Array:
 					reach[end] = deep
 			var length: float = long + reach[-1.0] + reach[1.0]
 			var foot: Vector3 = face + out * way * deep * 0.5 + dir * (float(reach[1.0]) - float(reach[-1.0])) * 0.5
-			ledges.append([foot, dir * length + out * deep + Vector3.UP * style.mezzanine_height, ring])
+			ledges.append([foot, dir * length + out * deep + Vector3.UP * style.level_height(0), ring])
 		# Across each dead end's face, from one long face to the other.
 		for end: float in [-1.0, 1.0]:
 			if not dead[end]:
 				continue
 			var end_face := centre + dir * end * long * 0.5
 			var style: MazeStyle = style_at.call(end_face + dir * end * 1.0)
-			if style == null or inside.call(end_face + dir * end * style.mezzanine_depth * 0.5, box):
+			if style == null or inside.call(end_face + dir * end * style.level_depth(0) * 0.5, box):
 				continue
-			var deep := style.mezzanine_depth
-			ledges.append([end_face + dir * end * deep * 0.5, out * half * 2.0 + dir * deep + Vector3.UP * style.mezzanine_height, maze.ring_of(maze.cell_at(end_face + dir * end * 1.0))])
+			var deep := style.level_depth(0)
+			ledges.append([end_face + dir * end * deep * 0.5, out * half * 2.0 + dir * deep + Vector3.UP * style.level_height(0), maze.ring_of(maze.cell_at(end_face + dir * end * 1.0))])
 	# (one of each: the clearing's wall and the rampart behind it share a face)
 	var once := {}
 	for ledge: Array in ledges:

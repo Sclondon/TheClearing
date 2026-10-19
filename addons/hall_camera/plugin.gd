@@ -102,7 +102,7 @@ func _into_hall(camera: Camera3D, at: Vector2) -> bool:
 			continue
 		var room := Maze.CELL * 0.5 - maze.wall_thick(cell, step) * 0.5 - OFF_WALLS
 		if maze.has_ledge(cell, step):
-			room -= maze.ledge_style(cell).mezzanine_depth
+			room -= maze.ledge_style(cell).level_depth(0)
 		room = maxf(room, 0.0)
 		if step.x != 0:
 			off.x = minf(off.x, room) if step.x > 0 else maxf(off.x, -room)

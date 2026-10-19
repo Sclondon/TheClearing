@@ -8,7 +8,11 @@ extends SceneTree
 ## zone inside it and those outside it, and any other (but MazeLayout.NEIGHBOUR_RULES)
 ## must change no other zone.
 ##
-##     godot --headless --path . -s res://tests/zones_test.gd [-- section [rule...]]
+##     godot --headless --path . -s res://tests/zones_test.gd [-- section [rule...] [--levels=N]]
+##
+## The levels of ledge (MazeStyle.mezzanines) are rules too: "mezzanines" adds a level,
+## "mezzanines/1/depth" changes the second level's depth (height, depth, share);
+## --levels=N gives the section N levels first (8 m apart, stepping back).
 
 var failures := 0
 ## The rules of how a section is carved: they may move its gate out.
@@ -26,6 +30,12 @@ func _initialize() -> void:
 	var editor := (load(Mazes.RULES) as PackedScene).instantiate() as MazeLayout
 	var args: Array = Array(OS.get_cmdline_user_args()).filter(func(a: String) -> bool: return not a.begins_with("--"))
 	var section := int(args[0]) if args.size() > 0 else 2
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--levels="):
+			var levels: Array[MezzanineLevel] = []
+			for k in int(arg.trim_prefix("--levels=")):
+				levels.append(MezzanineLevel.made(8.0, maxf(2.4 - k * 0.6, 0.6), 1.0 if k == 0 else 0.55))
+			(editor.styles[section - 1] as MazeStyle).mezzanines = levels
 	var plan := _plan(editor)
 	var before := MazeLayout.new()
 	before.lay_out(plan)
@@ -40,8 +50,8 @@ func _initialize() -> void:
 	print("section %d: %d rules, %d zones" % [section, rules.size(), keys.size()])
 	var started := Time.get_ticks_msec()
 	for rule: String in rules:
-		var was: Variant = style.get(rule)
-		style.set(rule, _changed(was))
+		var was: Variant = _rule(style, rule)
+		_set_rule(style, rule, _changed(was))
 		var after := _plan(editor)
 		var now := MazeLayout.zone_keys(after)
 		var changed := MazeLayout.changed_zones(keys, now)
@@ -72,7 +82,7 @@ func _initialize() -> void:
 					check("%s: only its own zone" % rule, changed.keys() == [section], "(%s)" % _names(changed))
 			again.free()
 			whole.free()
-		style.set(rule, was)
+		_set_rule(style, rule, was)
 	print("(%.0f s)" % ((Time.get_ticks_msec() - started) / 1000.0))
 	before.free()
 	editor.free()
@@ -84,8 +94,35 @@ func _plan(editor: MazeLayout) -> Maze:
 	return Maze.generate(editor.maze_seed, editor.rings, editor.styles, editor.clearing_style, editor.desert)
 
 
-## A different value of a rule, as a setting in the Inspector would be.
+## A rule of `style` (see the top: a level of ledge's, "mezzanines/1/depth", or the list itself, a copy).
+func _rule(style: MazeStyle, rule: String) -> Variant:
+	var parts := rule.split("/")
+	if rule == "mezzanines":
+		return style.mezzanines.duplicate(true)
+	if parts.size() == 3:
+		return style.mezzanines[int(parts[1])].get(parts[2])
+	return style.get(rule)
+
+
+func _set_rule(style: MazeStyle, rule: String, value: Variant) -> void:
+	var parts := rule.split("/")
+	if rule == "mezzanines":
+		var levels: Array[MezzanineLevel] = []
+		levels.assign(value)
+		style.mezzanines = levels
+	elif parts.size() == 3:
+		style.mezzanines[int(parts[1])].set(parts[2], value)
+	else:
+		style.set(rule, value)
+
+
+## A different value of a rule, as a setting in the Inspector would be (the list of
+## levels of ledge: one more level).
 func _changed(value: Variant) -> Variant:
+	if value is Array:
+		var more: Array = (value as Array).duplicate(true)
+		more.append(MezzanineLevel.made(10.0 if more.is_empty() else 6.0, 1.2, 0.6))
+		return more
 	if value is bool:
 		return not value
 	if value is int:

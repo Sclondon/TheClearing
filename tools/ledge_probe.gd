@@ -1,5 +1,5 @@
 extends SceneTree
-## Where the ledges are laid (MazeStyle.mezzanine_height): how many of the first
+## Where the ledges are laid (MazeStyle.mezzanines): how many of the first
 ## level look into the clearing, into each ring, and stand along its great walls
 ## and ramparts; and the clearing's walls as laid. The first ring set to have a
 ## ledge 10 m up (or as the second argument says).
@@ -10,8 +10,7 @@ extends SceneTree
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var styles := MazeStyle.square_defaults()
-	styles[0].mezzanine_height = float(args[1]) if args.size() > 1 else 10.0
-	styles[0].mezzanine_depth = 1.0
+	styles[0].mezzanines = [MezzanineLevel.made(float(args[1]) if args.size() > 1 else 10.0, 1.0)]
 	var maze := Maze.generate(int(args[0]) if args.size() > 0 else 1, styles.size(), styles)
 	var layout := MazeLayout.new()
 	root.add_child(layout)

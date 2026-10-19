@@ -2,7 +2,7 @@ class_name GibbonWays
 extends RefCounted
 ## The high ways of one section of the maze, as the gibbons (MazeGibbon) go
 ## by them: along the edge of the ledge on every maze wall's face (the
-## mezzanine, MazeStyle.mezzanine_height), or where a wall has no ledge, along
+## mezzanine, MazeStyle.level_height(0)), or where a wall has no ledge, along
 ## the edge of its top if that is low enough (`MOST_HIGH`); round the corners
 ## where walls meet, round the end of a wall that is thin enough, and in leaps
 ## across gaps in a wall and across halls no wider than `LEAP` from the edge
@@ -166,7 +166,7 @@ func _rail(cell: Vector2i, step: Vector2i) -> Array:
 		return []
 	var style: MazeStyle = maze.styles[ring - 1]
 	if maze.has_ledge(cell, step):
-		return [style.mezzanine_height, style.mezzanine_depth, false] if style.mezzanine_height <= MOST_HIGH else []
+		return [style.level_height(0), style.level_depth(0), false] if style.level_height(0) <= MOST_HIGH else []
 	var high := maze.wall_height(cell, step)
 	return [high, MazeBuilder.CORNICE.x, true] if high <= MOST_HIGH else []
 

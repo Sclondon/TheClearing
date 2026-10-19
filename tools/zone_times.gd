@@ -24,7 +24,9 @@ func _initialize() -> void:
 	print("lay_out (all)        %7.0f ms" % _ms(t))
 	var fresh := MazeLayout.new()
 	t = Time.get_ticks_usec()
-	MazeFeatures.lay_out(fresh, plan)
+	var placer := MazeFeatures.lay_out(fresh, plan)
+	placer.hang_vines()
+	placer.free()
 	print("  features alone     %7.0f ms" % _ms(t))
 	t = Time.get_ticks_usec()
 	MazeProps.lay_out(layout.duplicate(), plan)
@@ -66,10 +68,10 @@ func _initialize() -> void:
 		built.add_child(round)
 	print("realize round        %7.0f ms" % _ms(t))
 	# The live preview after a change to one section's own rule: only it again.
-	print("-- section 2's tightrope vines changed")
+	print("-- section 2's vines changed")
 	var keys := MazeLayout.zone_keys(plan)
 	var style: MazeStyle = editor.styles[1]
-	style.tightrope_vine_share = style.tightrope_vine_share * 0.5 + 0.1
+	style.random_crossing_density = style.random_crossing_density * 0.5 + 0.1
 	t = Time.get_ticks_usec()
 	var after := Maze.generate(editor.maze_seed, editor.rings, editor.styles, editor.clearing_style, editor.desert)
 	print("plan                 %7.0f ms" % _ms(t))
