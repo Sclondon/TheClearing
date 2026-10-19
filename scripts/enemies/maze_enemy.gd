@@ -120,7 +120,9 @@ var threat: MazeEnemy
 var _forget := 0.0
 var _last_seen := Vector3.INF
 var _eating := 0.0
-var _ecology_in := 0.0
+## (INF: not yet looked; the first look comes at a time of its own, so that they
+## do not all look about in the same frame)
+var _ecology_in := INF
 var _alive_layers := Vector2i.ZERO
 var _look_in := 0.0
 var _spared := {}
@@ -454,6 +456,8 @@ func _ecology(delta: float) -> void:
 	if world == null or puppet or dead:
 		return
 	_eating -= delta
+	if _ecology_in == INF:
+		_ecology_in = float(absi(hash(name)) % 1000) / 1000.0 * Ecology.LOOK_EVERY
 	_ecology_in -= delta
 	if _ecology_in <= 0.0:
 		_ecology_in = Ecology.LOOK_EVERY

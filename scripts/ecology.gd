@@ -124,22 +124,37 @@ func _exit_tree() -> void:
 
 # --- What each is ---
 
-static func kind_of(one: Node) -> String:
+## Each script's [kind, how big, what it eats], worked out once (these are asked
+## of every creature by every other, hundreds of times a frame).
+static var _traits := {}
+
+
+static func _traits_of(one: Node) -> Array:
 	var script := one.get_script() as Script
-	return String(script.get_global_name()) if script else ""
+	var known: Variant = _traits.get(script)
+	if known == null:
+		var kind := String(script.get_global_name()) if script else ""
+		var entry: Array = KINDS.get(kind, [-1, Diet.NONE])
+		known = [kind, entry[0], entry[1]]
+		_traits[script] = known
+	return known
+
+
+static func kind_of(one: Node) -> String:
+	return _traits_of(one)[0]
 
 
 ## Whether it takes part at all.
 static func takes_part(one: Node) -> bool:
-	return KINDS.has(kind_of(one))
+	return _traits_of(one)[1] >= 0
 
 
 static func bulk(one: Node) -> int:
-	return KINDS.get(kind_of(one), [-1, Diet.NONE])[0]
+	return _traits_of(one)[1]
 
 
 static func diet(one: Node) -> Diet:
-	return KINDS.get(kind_of(one), [-1, Diet.NONE])[1]
+	return _traits_of(one)[2]
 
 
 ## About how far its body reaches from its middle, metres.
@@ -177,6 +192,41 @@ func _relist() -> void:
 	_list_dirty = true
 
 
+## The creatures by where they are, in squares GRID metres a side, put in their
+## squares again every GRID_EVERY physics frames (none moves far meanwhile: each
+## square is looked in GRID_SLACK metres wider than asked).
+const GRID := 32.0
+const GRID_EVERY := 6
+const GRID_SLACK := 4.0
+var _grid := {}
+var _grid_frame := -1
+
+
+## The creatures within about `radius` metres of `point` across the ground (some
+## a little farther: what is asked for measures for itself). Looking for prey and
+## threats goes over these, not every creature in the maze.
+func near(point: Vector3, radius: float) -> Array:
+	var frame := Engine.get_physics_frames()
+	if _grid_frame < 0 or frame - _grid_frame >= GRID_EVERY or _list_dirty:
+		_grid_frame = frame
+		_grid.clear()
+		for one: Node3D in creatures():
+			var at := one.global_position
+			var key := Vector2i(floori(at.x / GRID), floori(at.z / GRID))
+			if _grid.has(key):
+				(_grid[key] as Array).append(one)
+			else:
+				_grid[key] = [one]
+	var found: Array = []
+	var r := radius + GRID_SLACK
+	for y in range(floori((point.z - r) / GRID), floori((point.z + r) / GRID) + 1):
+		for x in range(floori((point.x - r) / GRID), floori((point.x + r) / GRID) + 1):
+			var here: Variant = _grid.get(Vector2i(x, y))
+			if here != null:
+				found.append_array(here)
+	return found
+
+
 ## Whether `one` could be eaten by `hunter`.
 func is_prey(one: MazeEnemy, hunter: MazeEnemy) -> bool:
 	if one == hunter or one.dead or one.puppet or diet(one) == Diet.NONE or kind_of(one) == kind_of(hunter):
@@ -193,7 +243,7 @@ func prey_for(hunter: MazeEnemy) -> MazeEnemy:
 	var eye := hunter.global_position + Vector3.UP
 	var best: MazeEnemy = null
 	var nearest := PREY_SIGHT
-	for one: MazeEnemy in creatures():
+	for one: MazeEnemy in near(hunter.global_position, PREY_SIGHT + 1.0):
 		if one.process_mode == Node.PROCESS_MODE_DISABLED or not is_prey(one, hunter):
 			continue
 		var apart := eye.distance_to(one.global_position)
@@ -209,7 +259,7 @@ func threat_to(one: MazeEnemy) -> MazeEnemy:
 		return null
 	var best: MazeEnemy = null
 	var nearest := THREAT_NEAR
-	for other: MazeEnemy in creatures():
+	for other: MazeEnemy in near(one.global_position, THREAT_NEAR):
 		if other.dead or diet(other) != Diet.MEAT or not is_prey(one, other):
 			continue
 		if other.quarry != one and not hungry(other):
