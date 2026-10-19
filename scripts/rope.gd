@@ -14,8 +14,11 @@ extends Node3D
 
 ## How many pieces it is made of.
 const PIECES := 16
-## How near (past its own length) someone must be for it to move when it is still.
-const WAKE := 12.0
+## How near someone must be to a bridge (or a strung vine) for it to be worked out
+## when it is still, metres from the line between its ends (it sags under that line,
+## and he must not step on before it wakes). A rope is woken only by being touched:
+## caught, pushed, or its top moved.
+const WAKE := 4.0
 ## Past this a rope (or a bridge, or a vine) is lost in the mist: not drawn.
 const SEEN := 130.0
 
@@ -45,6 +48,9 @@ var _rider_before := Vector3.ZERO
 var held_below := 0.0
 ## A change of length that leaves his speed alone (see `take_in`).
 var _taken_in := false
+## Laid out other than hanging (lay_to): not at rest though still, until it has
+## swung down and come to rest.
+var _stirred := false
 
 
 func _ready() -> void:
@@ -114,6 +120,9 @@ func lay_to(end: Vector3) -> void:
 	for i in PIECES + 1:
 		_points.append(global_position.lerp(end, float(i) / PIECES))
 	_before = _points.duplicate()
+	_stirred = true
+	if not Engine.is_editor_hint():
+		set_physics_process(true)
 	if _links:
 		_draw()
 
@@ -121,6 +130,9 @@ func lay_to(end: Vector3) -> void:
 func _set_load(value: float) -> void:
 	var was := load_at
 	load_at = value
+	# (taken hold of, it is worked out again)
+	if value >= 0.0 and not is_physics_processing() and not Engine.is_editor_hint():
+		set_physics_process(true)
 	if value < 0.0 or _points.is_empty():
 		return
 	if was < 0.0:
@@ -150,11 +162,15 @@ func _physics_process(delta: float) -> void:
 	# (in the editor it only hangs, as it was made)
 	if Engine.is_editor_hint():
 		return
-	# Hanging still, with nobody on it or near it, it rests. (A maze has a great
-	# many, and each is worked out point by point. It starts out hanging at rest.)
+	# Hanging still, with nobody on it, it rests. (A maze has a great many, and each
+	# is worked out point by point. It starts out hanging at rest. Someone near it
+	# does not wake it: at rest it would only hang there; catching it or pushing it
+	# does, `push` and `load_at`.)
 	# (and not if its top has been moved: Vine.follow)
-	if load_at < 0.0 and (_points[PIECES] - _before[PIECES]).length_squared() < 0.000001 and (_points[0] - global_position).length_squared() < 0.000001 \
-			and not anyone_near(self, global_position, length + WAKE):
+	var still := (_points[PIECES] - _before[PIECES]).length_squared() < 0.000001
+	if _stirred and not still:
+		_stirred = false
+	if load_at < 0.0 and still and not _stirred and (_points[0] - global_position).length_squared() < 0.000001:
 		rest(self)
 		return
 	var piece := length / PIECES
@@ -229,10 +245,10 @@ static func anyone_near(node: Node, at: Vector3, reach: float) -> bool:
 	return false
 
 
-## Resting, a rope (or a bridge) is not stepped at all: a maze has a thousand,
+## Resting, a rope (or a bridge) is not stepped at all: a maze has thousands,
 ## and even asking each every step whether anyone had come near cost several
-## milliseconds a frame. One Waker for the level starts again those anyone comes
-## within WAKE of (NearIndex finds them).
+## milliseconds a frame. One Waker for the level starts again the bridges anyone
+## comes within WAKE of (NearIndex finds them); a rope wakes when it is touched.
 static func rest(node: Node) -> void:
 	node.set_physics_process(false)
 	if not is_instance_valid(_waker):
@@ -256,10 +272,9 @@ class Waker extends Node:
 		var tree := get_tree()
 		for body: Node in tree.get_nodes_in_group(&"bridge_weights"):
 			var at := (body as Node3D).global_position
-			for group: StringName in [&"ropes", &"rope_bridges"]:
-				for thing: Node in NearIndex.near(tree, group, at, WAKE):
-					if not thing.is_physics_processing():
-						thing.set_physics_process(true)
+			for thing: Node in NearIndex.near(tree, &"rope_bridges", at, WAKE):
+				if not thing.is_physics_processing() and thing.has_method(&"reach_to") and thing.call(&"reach_to", at) < WAKE:
+					thing.set_physics_process(true)
 
 
 ## A point of the rope `away` along it from where he holds it, kept that far from him.

@@ -138,10 +138,10 @@ func _physics_process(delta: float) -> void:
 	# (in the editor it only hangs, as it was made)
 	if Engine.is_editor_hint():
 		return
-	# Hanging still with nobody near, it rests (see Rope). It starts out hanging as
-	# it settles, so a bridge nobody goes near is never worked out at all.
+	# Hanging still with nobody within Rope.WAKE of it, it rests (see Rope). It starts
+	# out hanging as it settles, so a bridge nobody goes near is never worked out at all.
 	var middle := POINTS / 2
-	if (_points[middle] - _before[middle]).length_squared() < 0.000001 and not Rope.anyone_near(self, (from + to) * 0.5, from.distance_to(to) * 0.5 + Rope.WAKE):
+	if (_points[middle] - _before[middle]).length_squared() < 0.000001 and not _anyone_by():
 		Rope.rest(self)
 		return
 	var gravity := Vector3.DOWN * 9.8
@@ -178,6 +178,15 @@ func _physics_process(delta: float) -> void:
 			if i + 1 < POINTS - 1:
 				_points[i + 1] = b - fix
 	_lay()
+
+
+## Whether anyone who weighs on it (the group `bridge_weights`) is within Rope.WAKE
+## of the line between its ends: on it, or about to step on.
+func _anyone_by() -> bool:
+	for body: Node in get_tree().get_nodes_in_group(&"bridge_weights"):
+		if reach_to((body as Node3D).global_position) < Rope.WAKE:
+			return true
+	return false
 
 
 ## The point of the deck someone at `at` is standing on, or -1.
