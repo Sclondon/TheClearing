@@ -181,6 +181,10 @@ func _physics_process(delta: float) -> void:
 		var stepping := Vector3(walker.velocity.x, 0.0, walker.velocity.z).dot(across * signf(aside))
 		if absf(aside) < 0.6 and stepping < 2.5:
 			walker.global_position -= across * aside * minf(1.0, BALANCE * delta)
+		# (and he balances on it: arms out, one foot before the other)
+		if absf(aside) < 0.6 and &"tightrope" in walker:
+			walker.set(&"tightrope", 0.2)
+			walker.set(&"tightrope_aside", aside * signf(across.dot(walker.global_basis.x)))
 
 
 ## How far a point is from the vine.

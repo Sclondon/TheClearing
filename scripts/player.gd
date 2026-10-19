@@ -318,6 +318,11 @@ var foot_points := PackedVector3Array([Vector3.ZERO, Vector3.ZERO])
 var ladder_off := 0.0
 ## Swimming: how clear the water ahead of him is, 0 (a wall at his nose) to 1.
 var swim_clear := 1.0
+## Walking a tightrope (a vine strung across a hall, a wire): seconds he still
+## counts as on it, kept up by what he walks on each step (VineStrand), and how
+## far he is off its line, metres, his right positive. The rig balances on it.
+var tightrope := 0.0
+var tightrope_aside := 0.0
 ## On a flight of stairs, 0 or 1: at least two risers running the way he is going.
 ## How high each is (negative going down), how far apart they are, a point on
 ## the edge of one of them, and which way the flight runs. The rig steps on the treads.
@@ -596,6 +601,7 @@ func _queue_jump() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	tightrope = maxf(tightrope - delta, 0.0)
 	if is_limp:
 		velocity = Vector3.ZERO
 		# (his body may have gone over the edge of the world without him)
