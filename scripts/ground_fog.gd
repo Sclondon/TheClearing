@@ -139,8 +139,9 @@ func _find_stirrers(eye: Vector3) -> void:
 	_stirrers.clear()
 	for pair: Array in near.slice(0, STIRRERS):
 		_stirrers.append(pair[1])
-	for body: Node3D in _last_at.keys():
-		if not _stirrers.has(body):
+	# (untyped: one may have been freed since)
+	for body: Variant in _last_at.keys():
+		if not is_instance_valid(body) or not _stirrers.has(body):
 			_last_at.erase(body)
 
 
