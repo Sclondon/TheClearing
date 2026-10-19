@@ -128,6 +128,10 @@ var _next := 0
 ## How many grains are spent of each kick, as a share: turned down with `Sand.quality`.
 var thrift := 1.0
 var _look := 0.0
+# The sun and the sky it is lit by, found once: looked for through the whole
+# scene only again if they go (a search a second was ~170 ms in a big maze).
+var _sun: DirectionalLight3D
+var _world: WorldEnvironment
 
 
 func _ready() -> void:
@@ -217,16 +221,21 @@ func _throw(at: Vector3, speed: Vector3, size: float, slope: Vector2, colour: Co
 # on a heap of loose grains, and the sky's.
 func _find_light() -> void:
 	var top := get_tree().current_scene if get_tree().current_scene else get_tree().root
+	if not is_instance_valid(_sun) or not _sun.is_inside_tree() or not _sun.visible:
+		_sun = null
+		for sun: DirectionalLight3D in top.find_children("*", "DirectionalLight3D", true, false):
+			if sun.visible:
+				_sun = sun
+				break
+	if not is_instance_valid(_world) or not _world.is_inside_tree():
+		var worlds := top.find_children("*", "WorldEnvironment", true, false)
+		_world = worlds[0] if worlds else null
 	var shine := Color(0.0, 0.0, 0.0)
-	for sun: DirectionalLight3D in top.find_children("*", "DirectionalLight3D", true, false):
-		if sun.visible:
-			shine += sun.light_color.srgb_to_linear() * sun.light_energy * Sand.sun_gain * 0.62
-			break
+	if _sun:
+		shine += _sun.light_color.srgb_to_linear() * _sun.light_energy * Sand.sun_gain * 0.62
 	var sky := Color(0.5, 0.5, 0.5)
-	for world: WorldEnvironment in top.find_children("*", "WorldEnvironment", true, false):
-		if world.environment and world.environment.ambient_light_source == Environment.AMBIENT_SOURCE_COLOR:
-			sky = world.environment.ambient_light_color.srgb_to_linear() * world.environment.ambient_light_energy
-		break
+	if _world and _world.environment and _world.environment.ambient_light_source == Environment.AMBIENT_SOURCE_COLOR:
+		sky = _world.environment.ambient_light_color.srgb_to_linear() * _world.environment.ambient_light_energy
 	shine += sky
 	# (the web's renderer: see `as_shown` in the shader)
 	_material.set_shader_parameter(&"as_shown", 1.0 if RenderingServer.get_current_rendering_method() == "gl_compatibility" else 0.0)

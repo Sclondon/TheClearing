@@ -86,7 +86,11 @@ var _known := {}
 ## [the dead, when it died] in the order they died.
 var _dead: Array = []
 var _carcasses: Array[Node3D] = []
-var _roam_in := ROAM_EVERY
+## Those still to go on their way this round of ROAM_EVERY, and how many are owed:
+## a few each frame, not all at once (every pathfinding step in one frame was a
+## tenth of a second's hitch every four seconds).
+var _roam_queue: Array = []
+var _roam_owed := 0.0
 var _dens_in := 10.0
 
 
@@ -198,10 +202,14 @@ func _process(delta: float) -> void:
 			one.hunger = _rng.randf_range(0.0, 0.8)
 		if diet(one) == Diet.MEAT and not one.dead and not one.puppet:
 			one.hunger = minf(one.hunger + delta / HUNGER_SECONDS, 1.0)
-	_roam_in -= delta
-	if _roam_in <= 0.0:
-		_roam_in = ROAM_EVERY
-		_out_of_sight(all)
+	if _roam_queue.is_empty():
+		_roam_queue = all.duplicate()
+	_roam_owed += all.size() * delta / ROAM_EVERY
+	if _roam_owed >= 1.0:
+		var take := mini(int(_roam_owed), _roam_queue.size())
+		_roam_owed -= take
+		_out_of_sight(all, _roam_queue.slice(0, take))
+		_roam_queue = _roam_queue.slice(take)
 	_dens_in -= delta
 	if _dens_in <= 0.0:
 		_dens_in = 10.0
@@ -227,11 +235,13 @@ func kill(prey: MazeEnemy, hunter: MazeEnemy) -> void:
 
 
 ## The sleeping go on their ways; a hungry sleeping meat-eater may kill sleeping prey it comes on.
-func _out_of_sight(all: Array) -> void:
+## Only `turn` of them (those still valid) go this time, when given; all, when not.
+func _out_of_sight(all: Array, turn: Array = []) -> void:
 	var asleep := all.filter(func(one: MazeEnemy) -> bool: return not one.dead and not one.puppet and one.process_mode == Node.PROCESS_MODE_DISABLED)
-	for one: MazeEnemy in asleep:
+	var going := asleep if turn.is_empty() else asleep.filter(func(one: MazeEnemy) -> bool: return turn.has(one))
+	for one: MazeEnemy in going:
 		one.roam_unseen(ROAM_STEP)
-	for hunter: MazeEnemy in asleep:
+	for hunter: MazeEnemy in going:
 		if hunter.dead or not hungry(hunter):
 			continue
 		for one: MazeEnemy in asleep:
