@@ -364,14 +364,41 @@ func revive(at: Vector3, facing: float, hungry := 0.3) -> void:
 
 
 ## Out of everyone's sight (asleep): goes on its way about the maze by the
-## passages, at most `step` metres at once, as it would if it were seen.
+## passages, at most `step` metres at once: from cell to open cell, on the way it
+## was going where it can, in its own section (MazeNav.in_own_ring). Only its
+## basic needs are kept up out of sight, so no way is found to anywhere (a whole
+## maze's search for each of hundreds of sleepers was most of a frame).
 func roam_unseen(step: float) -> void:
 	if maze == null or puppet or dead:
 		return
-	var to := nav.waypoint(global_position, goal(), MazeNav.clearance_for(0.5)) - global_position
+	var here := maze.cell_at(global_position)
+	if _roam_to == Vector2i(-1, -1) or here == _roam_to or not nav.allowed(_roam_to):
+		_roam_to = _next_roam_cell(here)
+	var to := maze.world(_roam_to) - global_position
 	to.y = 0.0
 	if to.length() > 0.05:
 		global_position += to.limit_length(step)
+
+
+var _roam_to := Vector2i(-1, -1)
+var _roam_way := Vector2i.ZERO
+
+
+func _next_roam_cell(here: Vector2i) -> Vector2i:
+	var open: Array[Vector2i] = []
+	for step: Vector2i in Maze.STEPS:
+		var next := here + step
+		if nav.allowed(next) and nav.in_own_ring(next) and not maze.blocked(here, step):
+			open.append(step)
+	if open.is_empty():
+		return here
+	# (straight on mostly; back the way it came only at a dead end)
+	if open.has(_roam_way) and _rng.randf() < 0.7:
+		return here + _roam_way
+	if open.size() > 1:
+		open.erase(-_roam_way)
+	_roam_way = open[_rng.randi_range(0, open.size() - 1)]
+	return here + _roam_way
 
 
 ## A little push away from others of its pack that it is right up against.

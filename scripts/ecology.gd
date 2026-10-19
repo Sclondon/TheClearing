@@ -91,6 +91,11 @@ var _carcasses: Array[Node3D] = []
 ## tenth of a second's hitch every four seconds).
 var _roam_queue: Array = []
 var _roam_owed := 0.0
+var _list: Array = []
+var _list_dirty := true
+## How often hunger is brought up to date, seconds.
+const NEEDS_EVERY := 0.5
+var _needs_owed := 0.0
 var _dens_in := 10.0
 
 
@@ -106,9 +111,11 @@ static func put(world: Node, seed_value: int, flies: Insects = null) -> Ecology:
 
 func _enter_tree() -> void:
 	current = self
+	get_tree().node_added.connect(_on_added)
 
 
 func _exit_tree() -> void:
+	get_tree().node_added.disconnect(_on_added)
 	if current == self:
 		current = null
 
@@ -142,8 +149,30 @@ func hungry(one: MazeEnemy) -> bool:
 	return diet(one) == Diet.MEAT and one.hunger >= HUNGRY
 
 
+## Every creature that takes part. Kept, not found afresh each time (looking
+## through every node in the maze for them, every frame and for every look about,
+## was most of a frame with hundreds about): found again when one comes or goes.
 func creatures() -> Array:
-	return get_tree().get_nodes_in_group(&"maze_enemies").filter(func(one: Node) -> bool: return one is MazeEnemy and takes_part(one))
+	if _list_dirty:
+		_list_dirty = false
+		_list = get_tree().get_nodes_in_group(&"maze_enemies").filter(func(one: Node) -> bool: return one is MazeEnemy and takes_part(one))
+		for one: Node in _list:
+			if not _known.has(one):
+				# (each starts somewhere between fed and hungry, and its den is where it began)
+				_known[one] = (one as Node3D).global_position
+				one.hunger = _rng.randf_range(0.0, 0.8)
+			if not one.tree_exiting.is_connected(_relist):
+				one.tree_exiting.connect(_relist, CONNECT_DEFERRED)
+	return _list
+
+
+func _on_added(node: Node) -> void:
+	if node is MazeEnemy:
+		_list_dirty = true
+
+
+func _relist() -> void:
+	_list_dirty = true
 
 
 ## Whether `one` could be eaten by `hunter`.
@@ -195,13 +224,11 @@ func threat_to(one: MazeEnemy) -> MazeEnemy:
 func _process(delta: float) -> void:
 	seconds += delta
 	var all := creatures()
-	for one: MazeEnemy in all:
-		if not _known.has(one):
-			# (each starts somewhere between fed and hungry, and its den is where it began)
-			_known[one] = one.global_position
-			one.hunger = _rng.randf_range(0.0, 0.8)
-		if diet(one) == Diet.MEAT and not one.dead and not one.puppet:
-			one.hunger = minf(one.hunger + delta / HUNGER_SECONDS, 1.0)
+	# (hunger every NEEDS_EVERY seconds, not every frame for every one)
+	_needs_owed += delta
+	if _needs_owed >= NEEDS_EVERY:
+		_tend(all, _needs_owed)
+		_needs_owed = 0.0
 	if _roam_queue.is_empty():
 		_roam_queue = all.duplicate()
 	_roam_owed += all.size() * delta / ROAM_EVERY
@@ -234,16 +261,26 @@ func kill(prey: MazeEnemy, hunter: MazeEnemy) -> void:
 	killed.emit(prey, hunter)
 
 
+## Each meat-eater's hunger grows by `delta` seconds' worth.
+func _tend(all: Array, delta: float) -> void:
+	for one: MazeEnemy in all:
+		if diet(one) == Diet.MEAT and not one.dead and not one.puppet:
+			one.hunger = minf(one.hunger + delta / HUNGER_SECONDS, 1.0)
+
+
 ## The sleeping go on their ways; a hungry sleeping meat-eater may kill sleeping prey it comes on.
 ## Only `turn` of them (those still valid) go this time, when given; all, when not.
 func _out_of_sight(all: Array, turn: Array = []) -> void:
-	var asleep := all.filter(func(one: MazeEnemy) -> bool: return not one.dead and not one.puppet and one.process_mode == Node.PROCESS_MODE_DISABLED)
-	var going := asleep if turn.is_empty() else asleep.filter(func(one: MazeEnemy) -> bool: return turn.has(one))
+	var going := (all if turn.is_empty() else turn).filter(_asleep)
 	for one: MazeEnemy in going:
 		one.roam_unseen(ROAM_STEP)
+	# (who is asleep to be eaten: found only if a hungry hunter is going)
+	var asleep: Array = []
 	for hunter: MazeEnemy in going:
 		if hunter.dead or not hungry(hunter):
 			continue
+		if asleep.is_empty():
+			asleep = all.filter(_asleep)
 		for one: MazeEnemy in asleep:
 			if not one.dead and is_prey(one, hunter) and one.global_position.distance_to(hunter.global_position) < ASLEEP_KILL_NEAR and _rng.randf() < ASLEEP_KILL_CHANCE:
 				kill(one, hunter)
@@ -269,3 +306,8 @@ func _back_from_dens() -> void:
 			continue
 		one.revive(den, _rng.randf_range(-PI, PI))
 		_dead.remove_at(i)
+
+
+# Asleep (out of everyone's sight), and alive and run here.
+func _asleep(one: Variant) -> bool:
+	return is_instance_valid(one) and not one.dead and not one.puppet and one.process_mode == Node.PROCESS_MODE_DISABLED
