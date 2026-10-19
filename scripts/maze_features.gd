@@ -427,6 +427,10 @@ func _hole(middle: Vector3, through: Vector3) -> bool:
 	for piece in _layout.pieces(MazePiece.Kind.WALL):
 		if piece.rotation != Vector3.ZERO or not piece.box_has(probe):
 			continue
+		# (a run of wall may go on into the next section, and be of its zone: not
+		# cut from this one, so that each zone is laid out the same alone or with the rest)
+		if MazeLayout.zone_of(_maze, piece) != MazeLayout.zone_at(_maze, middle):
+			continue
 		var size := piece.box_size()
 		var foot := piece.position
 		# (along the wall: x or z, whichever the pipe does not run along)
@@ -448,12 +452,17 @@ func _hole(middle: Vector3, through: Vector3) -> bool:
 		parts.append([base + along * (hole_from + hole_to) * 0.5, Vector3(gap.x, middle.y, gap.z)])
 		var over := middle.y + SewerPipe.HOLE.y
 		parts.append([base + along * (hole_from + hole_to) * 0.5 + Vector3.UP * over, Vector3(gap.x, size.y - over, gap.z)])
+		# (its parts of the zone it was of, wherever their middles are)
+		var zone := MazeLayout.zone_of(_maze, piece)
 		piece.get_parent().remove_child(piece)
 		piece.free()
+		var was := _layout.laying_zone
+		_layout.laying_zone = zone
 		for part: Array in parts:
 			var made := settings.duplicate()
 			made["size"] = part[1]
 			_layout.add_piece(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, part[0]), made)
+		_layout.laying_zone = was
 		return true
 	return false
 

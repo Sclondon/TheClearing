@@ -4,8 +4,9 @@ extends SceneTree
 ## rules builds only it again. With the editor's own rules (maze_editor.tscn):
 ## each of a section's rules changed in turn, the zones whose key changed are laid
 ## out again over the old layout, and what comes out must be what laying out the
-## whole maze afresh gives; and a rule that is only the section's own (not one of
-## MazeLayout.NEIGHBOUR_RULES) must change no other zone.
+## whole maze afresh gives; a rule of how it is carved (CARVING) may reach the
+## zone inside it and those outside it, and any other (but MazeLayout.NEIGHBOUR_RULES)
+## must change no other zone.
 ##
 ##     godot --headless --path . -s res://tests/zones_test.gd [-- section [rule...]]
 
@@ -58,11 +59,15 @@ func _initialize() -> void:
 			whole.lay_out(_plan(editor))
 			var a := _pieces(again)
 			var b := _pieces(whole)
+			if a != b:
+				a = _pieces(again, after)
+				b = _pieces(whole, after)
 			check("%s: zone by zone is the whole" % rule, a == b, "(%s; %d against %d pieces%s)" % [_names(changed), a.size(), b.size(), _first_odd(a, b)])
 			if not MazeLayout.NEIGHBOUR_RULES.has(rule):
-				# (the way it is carved may move its gate out, and so the sections past it: never those inside)
-				var others := changed.keys().filter(func(zone: Variant) -> bool: return zone is int and zone < section)
-				check("%s: no zone inside it" % rule, others.is_empty(), "(%s)" % _names(changed))
+				# (the way it is carved may move its gate out, and so the sections past it, and
+				# its cells along the wall round its inside, which the zone inside stands by too)
+				var others := changed.keys().filter(func(zone: Variant) -> bool: return zone is int and zone < section - 1)
+				check("%s: nothing further in" % rule, others.is_empty(), "(%s)" % _names(changed))
 				if not CARVING.has(rule):
 					check("%s: only its own zone" % rule, changed.keys() == [section], "(%s)" % _names(changed))
 			again.free()
@@ -89,24 +94,30 @@ func _changed(value: Variant) -> Variant:
 
 
 ## Every piece of a layout as a sorted list of what it is and where.
-func _pieces(layout: MazeLayout) -> Array:
+func _pieces(layout: MazeLayout, maze: Maze = null) -> Array:
 	var all: Array = []
 	for kind in MazePiece.Kind.values():
 		for piece in layout.pieces(kind):
 			var end := ""
 			if piece.has_node("End"):
 				end = str((piece.get_node("End") as Node3D).position.snappedf(0.01))
-			all.append("%d %s %s %s %s %.2f %.2f %s %s" % [kind, piece.position.snappedf(0.01), piece.basis.get_euler().snappedf(0.01),
-				piece.basis.get_scale().snappedf(0.01), piece.size.snappedf(0.01), piece.length, piece.width, end, [piece.ledge, piece.great, piece.style, piece.prop, piece.drips, piece.sag, piece.tails, piece.lamp, piece.anchor]])
+			all.append("%d %s %s %s %s %.2f %.2f %s %s%s" % [kind, piece.position.snappedf(0.01), piece.basis.get_euler().snappedf(0.01),
+				piece.basis.get_scale().snappedf(0.01), piece.size.snappedf(0.01), piece.length, piece.width, end, [piece.ledge, piece.great, piece.style, piece.prop, piece.drips, piece.sag, piece.tails, piece.lamp, piece.anchor], (" zone %d%s" % [MazeLayout.zone_of(maze, piece), " (tagged)" if piece.has_meta(&"zone") else ""]) if maze else ""])
 	all.sort()
 	return all
 
 
 func _first_odd(a: Array, b: Array) -> String:
-	for i in mini(a.size(), b.size()):
-		if a[i] != b[i]:
-			return "; first: %s / %s" % [a[i], b[i]]
-	return ""
+	var count := {}
+	for each in a:
+		count[each] = count.get(each, 0) + 1
+	for each in b:
+		count[each] = count.get(each, 0) - 1
+	var odd: Array = []
+	for each in count:
+		if count[each] != 0 and odd.size() < 6:
+			odd.append("%+d %s" % [count[each], each])
+	return ("; zone by zone vs whole: " + " | ".join(odd)) if not odd.is_empty() else ""
 
 
 func _names(zones: Dictionary) -> String:

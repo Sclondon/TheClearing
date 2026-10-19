@@ -62,8 +62,9 @@ The maze is laid out and built in **zones**: the clearing, each square section, 
 round sections past it). Generate again lays out only the zones whose rules have changed since the last Generate (or
 whose walls or gates moved, or a neighbour's rules that reach across the wall between them changed: wall thickness,
 border wall). The other zones keep their pieces and what you did to them by hand. **Generate All** replaces everything.
-The editor's Output says which zones were laid out. A change to one section's own rules leaves the sections outside
-it alone. A change to how its passages are carved can still move its gate out, and then the sections past it change too.
+The editor's Output says which zones were laid out. A change to one section's own rules rebuilds only that section. A change to how its passages are carved can move its
+gate out, so the sections past it change too, and it reshapes its cells along the wall round its inside, so the zone
+inside it is rebuilt as well.
 
 To find out what a setting does, turn on **Live Preview**: the maze is shown as the game builds it from the rules,
 and built again a moment after any setting changes. Only the zones the change reaches are built again, with the

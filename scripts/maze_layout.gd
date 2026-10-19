@@ -194,28 +194,27 @@ const NEIGHBOUR_RULES: Array[String] = ["maze_wall_diameter", "section_border_wa
 ## before, the zone comes out the same (tests/zones_test.gd).
 static func zone_keys(maze: Maze) -> Dictionary:
 	var common := [maze.maze_seed, maze.rings, maze.ring_sizes, maze.round_rings != null]
-	# ring -> its cells' walls, rampart and entrances, in order; and the same of the
-	# cells of other rings along its edge
+	# ring -> a hash of its cells' walls, rampart and entrances, in order; and the
+	# same of the cells of other rings next to it (corners too: a pier at a corner
+	# stands by all four cells round it)
 	var cells := {}
 	var edges := {}
 	for i in maze.size * maze.size:
 		var cell := Vector2i(i % maze.size, i / maze.size)
 		var ring := maze.ring_of(cell)
-		var what := PackedByteArray([maze.east[i], maze.south[i], int(maze.solid.has(cell)), int(maze.entrances.has(cell)),
-			int(maze.blocked(cell, Vector2i(-1, 0))), int(maze.blocked(cell, Vector2i(0, -1)))])
-		if not cells.has(ring):
-			cells[ring] = PackedByteArray()
-		(cells[ring] as PackedByteArray).append_array(what)
-		for step: Vector2i in Maze.STEPS:
+		var what := [i, maze.east[i], maze.south[i], maze.solid.has(cell), maze.entrances.has(cell),
+			maze.blocked(cell, Vector2i(-1, 0)), maze.blocked(cell, Vector2i(0, -1))]
+		cells[ring] = hash([cells.get(ring, 0), what])
+		var beside := {}
+		for step: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]:
 			var other := maze.ring_of(cell + step)
-			if other != ring:
-				if not edges.has(other):
-					edges[other] = PackedByteArray()
-				(edges[other] as PackedByteArray).append_array(what)
+			if other != ring and not beside.has(other):
+				beside[other] = true
+				edges[other] = hash([edges.get(other, 0), what])
 	var clearing := _rules_of(maze.clearing_style)
 	var keys := {}
 	for zone in maze.rings + 2:
-		var parts: Array = [common, cells.get(zone, PackedByteArray()), edges.get(zone, PackedByteArray())]
+		var parts: Array = [common, cells.get(zone, 0), edges.get(zone, 0)]
 		for ring in range(zone - 1, zone + 2):
 			var style: MazeStyle = maze.styles[ring - 1] if ring >= 1 and ring <= maze.styles.size() else null
 			if style == null:
@@ -686,12 +685,14 @@ static func _runs(maze: Maze) -> Array:
 		var start := -1
 		var kind := false
 		var thick := 0.0
+		var run_ring := -1
 		var tall := 0.0
 		for x in n + 2:
 			var wall := false
 			var great := false
 			var here := 0.0
 			var high := 0.0
+			var in_ring := -1
 			if x < n:
 				var cell := Vector2i(x, j) if j < n else Vector2i(x, n - 1)
 				var step := Vector2i(0, -1) if j < n else Vector2i(0, 1)
@@ -700,7 +701,10 @@ static func _runs(maze: Maze) -> Array:
 				great = maze.ring_wall(cell, step)
 				here = maze.wall_thick(cell, step)
 				high = maze.wall_height(cell, step)
-			if start >= 0 and (not wall or great != kind or here != thick or high != tall):
+				in_ring = maze.ring_of(cell)
+			# (a run inside a ring stops where it crosses into the next, at the wall between:
+			# each ring's walls its own, so that the editor can lay out a ring alone)
+			if start >= 0 and (not wall or great != kind or here != thick or high != tall or (not kind and in_ring != run_ring)):
 				var z := (j - 0.5 - middle) * Maze.CELL
 				var cx := ((start + x - 1) * 0.5 - middle) * Maze.CELL
 				var long := (x - start) * Maze.CELL + thick
@@ -716,17 +720,20 @@ static func _runs(maze: Maze) -> Array:
 				kind = great
 				thick = here
 				tall = high
+				run_ring = in_ring
 	# Along z, on the line west of column i.
 	for i in n + 1:
 		var start := -1
 		var kind := false
 		var thick := 0.0
+		var run_ring := -1
 		var tall := 0.0
 		for y in n + 2:
 			var wall := false
 			var great := false
 			var here := 0.0
 			var high := 0.0
+			var in_ring := -1
 			if y < n:
 				var cell := Vector2i(i, y) if i < n else Vector2i(n - 1, y)
 				var step := Vector2i(-1, 0) if i < n else Vector2i(1, 0)
@@ -734,7 +741,8 @@ static func _runs(maze: Maze) -> Array:
 				great = maze.ring_wall(cell, step)
 				here = maze.wall_thick(cell, step)
 				high = maze.wall_height(cell, step)
-			if start >= 0 and (not wall or great != kind or here != thick or high != tall):
+				in_ring = maze.ring_of(cell)
+			if start >= 0 and (not wall or great != kind or here != thick or high != tall or (not kind and in_ring != run_ring)):
 				var x := (i - 0.5 - middle) * Maze.CELL
 				var cz := ((start + y - 1) * 0.5 - middle) * Maze.CELL
 				var long := (y - start) * Maze.CELL + thick
@@ -750,6 +758,7 @@ static func _runs(maze: Maze) -> Array:
 				kind = great
 				thick = here
 				tall = high
+				run_ring = in_ring
 	return runs
 
 

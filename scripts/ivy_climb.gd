@@ -91,6 +91,9 @@ class Grower extends Node:
 ## grows them as the camera comes near.)
 static var plain := true
 static var _plain_material: StandardMaterial3D
+## The flat patches drawn (_grow_plain), by where and how big, up to PLAIN_KEPT.
+static var _plain_meshes := {}
+const PLAIN_KEPT := 20000
 
 
 ## He climbs across it as well as up: most of its width, not its ragged edges.
@@ -106,19 +109,28 @@ func _grow_plain() -> void:
 		_plain_material.albedo_color = Color(0.22, 0.32, 0.16)
 		_plain_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	# The same growth as in the game, coarser, each length of it a flat green band
-	# as wide as its leaves spread: its shape, without the leaves.
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(global_position.snappedf(0.01))
-	var tool := SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for piece: Array in _network(rng, 2.0):
-		var a: Vector3 = piece[0]
-		var b: Vector3 = piece[1]
-		var side: Vector3 = (b - a).cross(Vector3.BACK).normalized() * (0.2 + float(piece[2]) * 6.0)
-		for v: Vector3 in [a - side, b - side, b + side, a - side, b + side, a + side]:
-			tool.add_vertex(v + Vector3.BACK * 0.03)
+	# as wide as its leaves spread: its shape, without the leaves. (Kept, by where
+	# it is and how big: the maze editor builds a zone again and again, and most of
+	# its patches come out where they were.)
+	var key := hash([global_position.snappedf(0.01), height, width])
+	var mesh: Mesh = _plain_meshes.get(key)
+	if mesh == null:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash(global_position.snappedf(0.01))
+		var tool := SurfaceTool.new()
+		tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for piece: Array in _network(rng, 2.0):
+			var a: Vector3 = piece[0]
+			var b: Vector3 = piece[1]
+			var side: Vector3 = (b - a).cross(Vector3.BACK).normalized() * (0.2 + float(piece[2]) * 6.0)
+			for v: Vector3 in [a - side, b - side, b + side, a - side, b + side, a + side]:
+				tool.add_vertex(v + Vector3.BACK * 0.03)
+		mesh = tool.commit()
+		if _plain_meshes.size() >= PLAIN_KEPT:
+			_plain_meshes.clear()
+		_plain_meshes[key] = mesh
 	var patch := MeshInstance3D.new()
-	patch.mesh = tool.commit()
+	patch.mesh = mesh
 	patch.material_override = _plain_material
 	add_child(patch)
 
