@@ -119,6 +119,8 @@ func _anchor(end: Vector3, other: Vector3, rng: RandomNumberGenerator) -> void:
 	tuft.visibility_range_end = 160.0
 	add_child(tuft)
 	_tufts.append(tuft)
+	# (and a knot of roots gripping it there)
+	add_child(Vine.roots(end, -out, 1.1, rng))
 
 
 func _physics_process(delta: float) -> void:
@@ -182,6 +184,7 @@ func cut(point: Vector3) -> Array[Vine]:
 		var vine := Vine.new()
 		vine.length = length
 		vine.position = end
+		vine.hold = Vector3(end.x - at.x, 0.0, end.z - at.z).normalized()
 		get_parent().add_child(vine)
 		vine.lay_to(end + (at - end).normalized() * length)
 		made.append(vine)

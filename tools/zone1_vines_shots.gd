@@ -50,6 +50,10 @@ func _run() -> void:
 		await physics_frame
 	var world = main.world
 	world.player.visible = false
+	if args.size() > 1 and args[1] == "anchors":
+		await _anchors(world, folder)
+		quit()
+		return
 	if args.size() > 1 and args[1] == "corners":
 		await _corners(world, folder)
 		quit()
@@ -255,6 +259,39 @@ func _corners(world: Node, folder: String) -> void:
 		await _shot("%s/sewer_on_ledge_%d.png" % [folder, shots])
 		shots += 1
 	print("sewer shots: ", shots)
+
+
+## Close up where vines are held (the user: "the vines need to have a root or leaves
+## at their connection points"): the tops of vines hanging from a ledge's edge and
+## from under a bracket, and the ends of strung vines.
+func _anchors(world: Node, folder: String) -> void:
+	var features: MazeFeatures = world.maze_features()
+	var camera := Camera3D.new()
+	camera.fov = 60.0
+	world.add_child(camera)
+	camera.make_current()
+	var spots: Array = []
+	var held := 0
+	var over := 0
+	for vine: Vine in features.vines:
+		if world.maze.ring_of(world.maze.cell_at(vine.global_position)) != 1:
+			continue
+		if vine.hold != Vector3.ZERO and held < 2:
+			spots.append([vine.global_position, vine.hold, "vine_on_ledge_edge"])
+			held += 1
+		elif vine.hold == Vector3.ZERO and over < 1:
+			spots.append([vine.global_position, Vector3.UP, "vine_under_bracket"])
+			over += 1
+	for strand: VineStrand in features.strands.slice(0, 2):
+		var out := Vector3(strand.to.x - strand.from.x, 0.0, strand.to.z - strand.from.z).normalized()
+		spots.append([strand.from, -out, "strand_end"])
+	for k in spots.size():
+		var at: Vector3 = spots[k][0]
+		var hold: Vector3 = spots[k][1]
+		var away := -hold if absf(hold.y) < 0.5 else Vector3(1, 0, 0)
+		camera.global_position = at + away * 2.2 + away.cross(Vector3.UP) * 1.2 + Vector3.DOWN * 0.8
+		camera.look_at(at)
+		await _shot("%s/anchor_%d_%s.png" % [folder, k, spots[k][2]])
 
 
 func _solid(layout: MazeLayout, p: Vector3) -> bool:

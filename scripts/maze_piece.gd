@@ -66,6 +66,8 @@ enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, 
 		prop = value
 		_refresh()
 @export var drips := false
+## Which way from a vine's top what holds it is (a wall, a ledge's edge, a bridge; 0: over it), for its roots.
+@export var hold := Vector3.ZERO
 ## How far a wire sags in the middle, metres; how long the ends hanging from it
 ## are if it is snapped (from its origin, and from its End: 0 for none), and
 ## whether an old lamp hangs from its lowest point.
