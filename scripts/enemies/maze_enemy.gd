@@ -72,6 +72,10 @@ var chasing := false
 @export var pack := &"maze_enemies"
 ## Seconds a caught player is let alone.
 @export var spare_time := 3.0
+## Wanders from section to section (a special case). Otherwise it wanders only in
+## the section it was put in: it may chase someone out of it, then goes back
+## (MazeNav.keep_in_ring); and its zone sleeps while nobody is in it (World.zone_of).
+@export var crosses_zones := false
 ## Kept out of the clearing (set before `maze`).
 @export var keep_out_of_clearing := true
 ## How often it looks about, seconds.

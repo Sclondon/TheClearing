@@ -597,16 +597,18 @@ const SLEEPERS: Array[StringName] = [&"pursuers", &"maze_enemies", &"grievers", 
 var _sleep_in := 0.0
 
 
-## Which part of the maze a point is in: 0 the clearing and the square sections,
-## 1 the desert, 2 the round sections. What is in a part nobody is in sleeps,
-## however near (the user, 2026-10-18: "We dont need to simulate monsters past
-## the square zone while in it- they should be separeate").
+## Which zone of the maze a point is in: each square section its own (1, 2,
+## 3...; the clearing goes with the first), then the desert, then the round
+## sections. What is in a zone nobody is in sleeps, however near (the user,
+## 2026-10-18: "that many monsters but just in zone 1- dont simulate outside
+## there"). Asleep, they still go on their ways (Ecology), from zone to zone.
 func zone_of(point: Vector3) -> int:
-	if maze.ring_of(maze.cell_at(point)) <= maze.rings:
-		return 0
+	var ring := maze.ring_of(maze.cell_at(point))
+	if ring <= maze.rings:
+		return maxi(ring, 1)
 	if maze.round_rings and Vector2(point.x, point.z).length() >= maze.round_rings.inner_radius:
-		return 2
-	return 1
+		return maze.rings + 2
+	return maze.rings + 1
 
 
 func _sleep_far() -> void:

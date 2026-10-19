@@ -681,6 +681,9 @@ func add(enemy: MazeEnemy, cell: Vector2i, yaw: float, choices_seed := 0, offset
 	enemy.seed_choices(choices_seed)
 	enemy.position = maze.world(cell) + offset + Vector3.UP * 0.05
 	enemy.rotation.y = yaw
+	if enemy.nav and not enemy.crosses_zones and maze.ring_of(cell) <= maze.rings:
+		enemy.nav.keep_in_ring = maxi(maze.ring_of(cell), 1)
+		enemy.nav.home = cell
 	enemies.append(enemy)
 	add_child(enemy)
 	enemy.caught.connect(_on_caught.bind(enemy))

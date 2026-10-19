@@ -34,6 +34,12 @@ const KEEP := 96
 
 var maze: Maze
 var avoid_clearing := true
+## Where it wanders is kept to this ring of the square maze, its section (the
+## clearing goes with ring 1): it may chase anyone out of it, but wandering it
+## stays in, or heads back to `home` once out. Set by MazeEnemies.add for all but
+## those that cross zones (MazeEnemy.crosses_zones). -1: anywhere.
+var keep_in_ring := -1
+var home := Vector2i(-1, -1)
 
 # avoid_clearing -> {goal: field}, and the goals in the order they were worked
 # out, for the newest maze only.
@@ -341,6 +347,14 @@ func wander(from: Vector2i, rng: RandomNumberGenerator, near := 3, far := 9) -> 
 				continue
 			depth[next] = d + 1
 			queue.append(next)
+	if keep_in_ring >= 0:
+		choices = choices.filter(in_own_ring)
+		if choices.is_empty():
+			# (out of its section, after a chase: back the nearest way in, or home)
+			for cell: Vector2i in queue:
+				if in_own_ring(cell) and cell != from:
+					return cell
+			return home if maze.inside(home) else from
 	if choices.is_empty():
 		return furthest
 	return choices[rng.randi_range(0, choices.size() - 1)]
@@ -370,3 +384,8 @@ func dead_end(cell: Vector2i) -> bool:
 static func forget() -> void:
 	_shared = {true: {}, false: {}}
 	_shared_order = {true: [], false: []}
+
+
+## Whether a cell is in the section its wandering is kept to (keep_in_ring).
+func in_own_ring(cell: Vector2i) -> bool:
+	return keep_in_ring < 0 or maxi(maze.ring_of(cell), 1) == keep_in_ring
