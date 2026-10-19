@@ -1,8 +1,8 @@
 class_name LootHud
 extends Control
 ## The inventory on the screen (Loot), in the game's look (Special Elite on
-## dark stone, moss edges, as the HUD and the dev panel): a row of slots at the
-## top (two, four with a backpack), each with what is in it drawn small (a
+## dark stone, moss edges, as the HUD and the dev panel): a row of small slots in the
+## bottom left corner (two, four with a backpack), each with what is in it drawn small (a
 ## picture of its model, made once when the round starts); the one in his hand
 ## edged in moss. Tap a slot (or press its number, 1 to 4) to take a tool into
 ## his hand or put it back, or to read a map or hang a ladder; DROP (or X) puts
@@ -18,7 +18,9 @@ const FONT := preload("res://fonts/SpecialElite-Regular.ttf")
 const INK := Color(0.93, 0.9, 0.8)
 const MOSS := Color(0.45, 0.62, 0.33)
 const STONE := Color(0.13, 0.14, 0.13, 0.86)
-const SLOT := 96.0
+## How big a slot is, px (small, in the bottom left corner: the user, 2026-10-19,
+## "the invenory should be in the bottom left and smaller").
+const SLOT := 60.0
 
 var loot: Loot
 ## The slot chosen with the d-pad.
@@ -47,20 +49,23 @@ func _init(of: Loot = null) -> void:
 
 func _ready() -> void:
 	_bar = HBoxContainer.new()
-	_bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_bar.offset_top = 10
-	_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_bar.alignment = BoxContainer.ALIGNMENT_CENTER
-	_bar.add_theme_constant_override("separation", 8)
+	_bar.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_bar.offset_left = 16
+	_bar.offset_top = -SLOT - 16
+	_bar.offset_bottom = -16
+	_bar.grow_horizontal = Control.GROW_DIRECTION_END
+	_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_bar.alignment = BoxContainer.ALIGNMENT_BEGIN
+	_bar.add_theme_constant_override("separation", 6)
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_bar)
 	_drop = _button("DROP", func() -> void: loot.drop())
-	_drop.custom_minimum_size = Vector2(110, SLOT)
+	_drop.custom_minimum_size = Vector2(72, SLOT)
 	_drop.add_to_group(&"touch_blockers")
 
 	_toast = _label("", 28)
 	_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_toast.offset_top = SLOT + 20
+	_toast.offset_top = 20
 	_toast.offset_left = -300
 	_toast.offset_right = 300
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -156,8 +161,8 @@ func _show() -> void:
 		button.expand_icon = true
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-		button.add_theme_font_size_override("font_size", 19)
-		button.add_theme_constant_override("icon_max_width", 70)
+		button.add_theme_font_size_override("font_size", 14)
+		button.add_theme_constant_override("icon_max_width", 44)
 		button.add_to_group(&"touch_blockers")
 		_bar.add_child(button)
 		_buttons.append(button)
