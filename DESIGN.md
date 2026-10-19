@@ -141,15 +141,17 @@ under it only while it is on (the user, 2026-10-18: "Rather than a share slider 
 on and off each feature for the section in the editor. Vines and ivy should be their own sections not in climbing,
 same with sewers (wall decor) and tunnels."). The groups:
 - **Climbing**: the mezzanine (ledges along the walls: height, depth, levels), terraces (how many, upper terraces),
+  arched concrete bridges between ledges at the same level (how many, deck width, arch rise, vines hanging from them),
   rope bridges (between terraces, wall top to wall top, between mezzanine ledges).
 - **Ivy**: wall ivy from the ground (how many, how high), ivy on from upper terraces to the wall top, ivy between
   mezzanine levels.
 - **Vines**: hanging vines (from the top of a run of ivy), strung vines walked as tightropes (how many, how high),
-  vines over terraces.
+  vines over terraces, bracket vines, vines strung between ledges, vines swept down across, vines hanging from ledges.
 - **Wall decor**: vents, outlet pipes (and how many drip), cables looped along the walls.
 - **Tunnels** (ways through and down): sewer pipes through the walls (how many, how high), culverts, drain grates,
   manholes.
-- **Signs of life**: heaps of boxes and barrels, cables across the halls (snapped, lamps), cables beside the vines.
+- **Signs of life**: heaps of boxes and barrels, cables across the halls (snapped, lamps), cables beside the vines,
+  junction boxes with a vine-grown cable between, slanting cables, cables down from a ledge.
 - **Grappling hook spots**: routes up the walls, rings at ledge lips, hooks to swing from.
 - **Plants**: undergrowth along the wall feet, wall grass. **Water**: ponds, and within them flooded halls,
   swimming ponds and fish.
@@ -191,6 +193,35 @@ camera do nothing.
 Terraces of stone against the walls (steps for a giant: 6.5 m and 13 m), ivy to climb their faces and sometimes on
 to the wall top, vines to catch with a jump and swing on, rope bridges across halls and between wall tops. Which a
 ring has is its style's choice. The wall tops are a second level you can travel along.
+
+**The halls with ledges, as the user's concept slices draw them** (2026-10-18: "I added concept art folder for how the
+vines and wires should work in zone 1 - its a slice of the maze, not to scale"; "I also included concept art for zone
+2, how the mezzanines and vines should work, and there should be arched concrete bridges"; "Keep the ivy - I just left
+it off for simplicity"). All of it is rules, each with its box, laid out only where both walls of a hall have a ledge
+(`MazeFeatures._ledge_vines`, `MazeProps._ledge_cables`), after everything else and with numbers of their own, so a
+maze laid out before is otherwise as it was:
+
+- **Section 1** (one ledge along the walls, the hall narrow under it and full width over it). *Bracket vines*
+  (Vines): a pair of stone brackets high over the ledges across a hall (bracket height over the ledge, m). Under one,
+  ivy from the floor to the ledge's edge and from the ledge up to the bracket; from it a vine strung across to the
+  other bracket, a vine swept down to the far ledge's edge and a vine hanging down to its own ledge; ivy to the ledge
+  under the other one too. So: climb the ivy to the ledge, the ivy (or the vine) to the bracket, and walk or swing the
+  vines from there. *Vines strung between the ledges* (at each level: under the ledges here), *vines hanging from a
+  ledge's edge* to the level under it or the floor. Wires (Signs of life, props, not climbed): *junction boxes* high on
+  both walls (height over the ledge, m) with the cable between them grown over by a vine (that vine is a strung vine,
+  walked and cut as any), *slanting cables* from high on one wall down to the other (low end and high end over the
+  ledge, m), and *ledge cables* from a ledge's edge across and down to the far wall under its ledge (fixed at a share
+  of the ledge's height), hanging on from there to the floor. The undergrowth at the walls' feet is the Plants one.
+- **Section 2** (three levels of ledge, each stepping back from the one under it, so the hall is a narrow channel at
+  the floor and widens level by level). *Concrete bridges* (Climbing): arched concrete bridges across the hall
+  between the ledges at the same level, over the first (deck width, m; arch rise, m): a flat deck flush with the
+  ledges, its underside an arch of blocks of the ledges' concrete worn round as the walls are; solid, walked across;
+  ivy up to each end from the floor, level by level, so every bridge can be climbed to. *Vines hanging from the
+  bridges* past the level under them (to the one under that, or the floor). *Swept vines* (Vines) from a ledge's edge
+  down across to the far ledge a level under it. And, as in section 1, vines strung across between the ledges at each
+  level (over the top ledges, across the floor's channel) and hanging from each level's edge to the one under it.
+
+Pictures: `tools/zone1_vines_shots.gd` (pass `zone2` for the second section).
 
 **Grappling hook spots** (added 2026-10-18 at the user's request: "we should also have grappling hook spots"). Places
 made for the grappling hook to catch, in rusty iron dark against the concrete, so that a way up can be seen from below

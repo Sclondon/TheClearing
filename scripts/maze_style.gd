@@ -121,6 +121,29 @@ extends Resource
 ## How many halls with ledges level both sides have a rope bridge between them, at each level (a share, 0 to 1).
 @export_range(0.0, 1.0, 0.001, "suffix:of halls") var mezzanine_bridge_share := 0.0
 
+@export_subgroup("Concrete bridges")
+## Arched concrete bridges across the hallways between mezzanine ledges at the same level (over the first), walked
+## across, with ivy up to each end from the floor, level by level (the user's concept of the second section).
+@export var concrete_bridges_on: bool:
+	get:
+		return feature_on(&"concrete_bridges_on")
+	set(value):
+		_switch(&"concrete_bridges_on", value)
+## How many halls with ledges level both sides have a concrete bridge between them, at each level over the first (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var concrete_bridge_share := 0.3
+## How high the arch under a bridge rises from its ends to its middle, metres.
+@export_range(0.0, 8.0, 0.01, "suffix:m") var concrete_bridge_arch_rise := 2.2
+## How wide a bridge's deck is, metres.
+@export_range(1.0, 8.0, 0.01, "suffix:m") var concrete_bridge_width := 3.0
+## Vines hanging from the side of a concrete bridge, down past the level under it (to the one under that, or the floor).
+@export var bridge_hanging_vines_on: bool:
+	get:
+		return feature_on(&"bridge_hanging_vines_on")
+	set(value):
+		_switch(&"bridge_hanging_vines_on", value)
+## How many concrete bridges have a vine hanging from them (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of bridges") var bridge_hanging_vine_share := 0.6
+
 @export_group("Ivy")
 ## Climbable ivy up the walls from the ground: to the mezzanine if there is one, else part way up, never to the top.
 @export var wall_ivy_on: bool:
@@ -176,6 +199,42 @@ extends Resource
 		_switch(&"terrace_vines_on", value)
 ## How many terraces have a vine over them (a share, 0 to 1; for the lower and the upper each).
 @export_range(0.0, 1.0, 0.001, "suffix:of terraces") var terrace_vine_share := 0.5
+## Pairs of stone brackets high over the ledges, across a hall from each other: ivy up to one from the ledge (and up to
+## the ledge from the floor, both walls), and from it vines strung across to the other, swept down to the far ledge's
+## edge and hanging down to its own ledge (only along walls with a ledge; the user's concept of the first section).
+@export var bracket_vines_on: bool:
+	get:
+		return feature_on(&"bracket_vines_on")
+	set(value):
+		_switch(&"bracket_vines_on", value)
+## How many halls with a ledge along both walls have a pair of brackets (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var bracket_vine_share := 0.3
+## How high the brackets are over the ledge's top: lowest and highest, metres.
+@export_custom(PROPERTY_HINT_RANGE, "1,80,0.1,suffix:m") var bracket_height_range := Vector2(7.0, 10.0)
+## Vines strung across the hall between the edges of the ledges at the same level, both walls, walked as tightropes.
+@export var ledge_strung_vines_on: bool:
+	get:
+		return feature_on(&"ledge_strung_vines_on")
+	set(value):
+		_switch(&"ledge_strung_vines_on", value)
+## How many halls with ledges level both sides have a vine strung between them, at each level (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var ledge_strung_vine_share := 0.2
+## Vines swept down across the hall, from the edge of a ledge to the edge of the one a level under it on the far wall.
+@export var swept_vines_on: bool:
+	get:
+		return feature_on(&"swept_vines_on")
+	set(value):
+		_switch(&"swept_vines_on", value)
+## How many halls with ledges both sides have a vine swept down across, at each level over the first (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var swept_vine_share := 0.25
+## Vines hanging from the edge of each level of ledge down to the level under it, or the floor, to climb up to it.
+@export var ledge_hanging_vines_on: bool:
+	get:
+		return feature_on(&"ledge_hanging_vines_on")
+	set(value):
+		_switch(&"ledge_hanging_vines_on", value)
+## How many walls with a ledge have a vine hanging from its edge, at each level (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of faces") var ledge_hanging_vine_share := 0.1
 
 @export_group("Wall decor")
 ## Old vents high on the walls: louvred or round, rusted, some of them big (dressing, nothing to climb).
@@ -276,6 +335,37 @@ extends Resource
 		_switch(&"cables_by_vines_on", value)
 ## How many strung vines have a cable beside them (a share, 0 to 1; hanging vines 0.6 of this).
 @export_range(0.0, 1.0, 0.001, "suffix:of vines") var cable_by_vine_share := 0.0
+## Old junction boxes high on both walls of a hall over the ledges, the cable between them grown over by a vine
+## (walked as a tightrope; only along walls with a ledge).
+@export var junction_boxes_on: bool:
+	get:
+		return feature_on(&"junction_boxes_on")
+	set(value):
+		_switch(&"junction_boxes_on", value)
+## How many halls with a ledge along both walls have a pair of junction boxes (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var junction_box_share := 0.15
+## How high the junction boxes are over the ledge's top: lowest and highest, metres.
+@export_custom(PROPERTY_HINT_RANGE, "1,80,0.1,suffix:m") var junction_box_height_range := Vector2(11.0, 14.0)
+## Old cables slanting across the halls, from high on one wall down to the other (only along walls with a ledge).
+@export var slanting_cables_on: bool:
+	get:
+		return feature_on(&"slanting_cables_on")
+	set(value):
+		_switch(&"slanting_cables_on", value)
+## How many halls with a ledge along both walls have a cable slanting across (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var slanting_cable_share := 0.15
+## How high a slanting cable's ends are over the ledge's top: its low end and its high end, metres.
+@export_custom(PROPERTY_HINT_RANGE, "0,80,0.1,suffix:m") var slanting_cable_heights := Vector2(4.0, 17.0)
+## Old cables from a ledge's edge across and down to the wall under the ledge opposite, fixed there, hanging on to the floor.
+@export var ledge_cables_on: bool:
+	get:
+		return feature_on(&"ledge_cables_on")
+	set(value):
+		_switch(&"ledge_cables_on", value)
+## How many halls with a ledge along both walls have a cable down from a ledge (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var ledge_cable_share := 0.12
+## How high a ledge cable is fixed on the far wall, as a share of the ledge's height (0 to 1).
+@export_range(0.1, 0.95, 0.001, "suffix:of ledge height") var ledge_cable_fix_height := 0.6
 
 @export_group("Grappling hook spots")
 ## Routes up bare maze walls for the hook: corbels one above another, an iron ring from each, to a last at the top.
@@ -642,6 +732,12 @@ const FEATURES := {
 	&"hanging_vines_on": [&"hanging_vine_share"],
 	&"tightrope_vines_on": [&"tightrope_vine_share", &"tightrope_vine_height_range"],
 	&"terrace_vines_on": [&"terrace_vine_share"],
+	&"bracket_vines_on": [&"bracket_vine_share", &"bracket_height_range"],
+	&"ledge_strung_vines_on": [&"ledge_strung_vine_share"],
+	&"swept_vines_on": [&"swept_vine_share"],
+	&"concrete_bridges_on": [&"concrete_bridge_share", &"concrete_bridge_arch_rise", &"concrete_bridge_width"],
+	&"bridge_hanging_vines_on": [&"bridge_hanging_vine_share"],
+	&"ledge_hanging_vines_on": [&"ledge_hanging_vine_share"],
 	&"vents_on": [&"wall_vent_share"],
 	&"outlets_on": [&"outlet_share", &"outlet_drip_share"],
 	&"wall_cables_on": [&"wall_cable_share"],
@@ -652,6 +748,9 @@ const FEATURES := {
 	&"clutter_on": [&"clutter_share", &"clutter_heap_size", &"clutter_barrel_share"],
 	&"cables_on": [&"cable_share", &"cable_height_range", &"snapped_cable_share", &"cable_lamp_share"],
 	&"cables_by_vines_on": [&"cable_by_vine_share"],
+	&"junction_boxes_on": [&"junction_box_share", &"junction_box_height_range"],
+	&"slanting_cables_on": [&"slanting_cable_share", &"slanting_cable_heights"],
+	&"ledge_cables_on": [&"ledge_cable_share", &"ledge_cable_fix_height"],
 	&"grapple_routes_on": [&"grapple_route_share", &"grapple_route_rise"],
 	&"grapple_rings_on": [&"grapple_ring_share"],
 	&"grapple_swings_on": [&"grapple_swing_share", &"grapple_swing_height_range"],
@@ -666,6 +765,7 @@ const FEATURES := {
 const PART_OF := {
 	&"terrace_bridges_on": &"terraces_on", &"ivy_to_wall_top_on": &"terraces_on", &"terrace_vines_on": &"terraces_on",
 	&"flooded_halls_on": &"ponds_on", &"swim_ponds_on": &"ponds_on", &"fish_on": &"ponds_on",
+	&"bridge_hanging_vines_on": &"concrete_bridges_on",
 }
 ## How much of a feature there is when its box is turned on with its amount at 0
 ## and nothing to go back to (its own default is 0).

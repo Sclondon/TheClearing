@@ -18,7 +18,7 @@ extends Node3D
 ## fall in their shader); the boxes and barrels are solid, all their shapes in one
 ## body put together before it goes into the world.
 
-enum Prop { VENT, ROUND_VENT, CULVERT, OUTLET, DRAIN, MANHOLE, PUDDLE, STAIN, CRATE, BARREL, HOLE }
+enum Prop { VENT, ROUND_VENT, CULVERT, OUTLET, DRAIN, MANHOLE, PUDDLE, STAIN, CRATE, BARREL, HOLE, JUNCTION_BOX }
 
 ## The squares they are drawn in, metres, and how far off each is drawn (past
 ## this the mist has them).
@@ -112,11 +112,13 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 	for vine in vines:
 		if _style_at(vine.position) and _rng.randf() < _style.amount(&"cable_by_vine_share") * 0.6:
 			_cable_by_vine(vine.position, vine.length)
+	_ledge_cables(plan)
 
 
 static func _wants(style: MazeStyle) -> bool:
 	return style.amount(&"wall_vent_share") + style.amount(&"culvert_share") + style.amount(&"outlet_share") + style.amount(&"drain_share") + style.amount(&"manhole_share") \
-		+ style.amount(&"clutter_share") + style.amount(&"cable_share") + style.amount(&"cable_by_vine_share") + style.amount(&"wall_cable_share") > 0.0
+		+ style.amount(&"clutter_share") + style.amount(&"cable_share") + style.amount(&"cable_by_vine_share") + style.amount(&"wall_cable_share") \
+		+ style.amount(&"junction_box_share") + style.amount(&"slanting_cable_share") + style.amount(&"ledge_cable_share") > 0.0
 
 
 ## Whether `cell` is in a square section's halls (and its style, `_style`, set).
@@ -471,6 +473,146 @@ func _wire(a: Vector3, b: Vector3, sag: float, across: bool) -> void:
 	elif across and _rng.randf() < _style.cable_lamp_share:
 		settings["lamp"] = true
 	_layout.add_piece(MazePiece.Kind.WIRE, Transform3D(Basis.IDENTITY, a), settings)
+
+
+## ring -> its numbers for the cables of halls with ledges (their own: what was laid
+## out before them is as it was).
+var _ledge_rngs := {}
+
+
+## The cables of halls with a ledge along both walls (MazeStyle "Signs of life";
+## the user's concept of the first section, 2026-10-18): a pair of junction boxes
+## high on the walls, the cable between them grown over by a vine; cables slanting
+## across from high on one wall down to the other; and cables from a ledge's edge
+## across and down to the wall under the ledge opposite, hanging on from there to
+## the floor. With numbers of their own, after everything else.
+func _ledge_cables(plan: Maze) -> void:
+	for i in plan.size * plan.size:
+		var cell := Vector2i(i % plan.size, i / plan.size)
+		if not _in_a_section(cell) or _style.mezzanine_height <= 0.0:
+			continue
+		var ring := plan.ring_of(cell)
+		if not _ledge_rngs.has(ring):
+			var made := RandomNumberGenerator.new()
+			made.seed = hash("ledge cables/%d/%d" % [plan.maze_seed, ring])
+			_ledge_rngs[ring] = made
+		var numbers: RandomNumberGenerator = _ledge_rngs[ring]
+		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+			# (the hall's two walls, from the face (cell, -step) to (far, step), each with a ledge along it)
+			if not _ledged(cell, -step):
+				continue
+			var far := _far_side(cell, step)
+			if far == Vector2i(-1, -1) or not _ledged(far, step):
+				continue
+			# (the same numbers drawn whatever is on)
+			var rolls := [numbers.randf(), numbers.randf(), numbers.randf()]
+			var drawn := numbers.randi()
+			if rolls[0] < _style.amount(&"junction_box_share"):
+				_junction_boxes(cell, far, step, MazeFeatures._numbers(drawn, 10))
+			if rolls[1] < _style.amount(&"slanting_cable_share"):
+				_slanting_cable(cell, far, step, MazeFeatures._numbers(drawn, 11))
+			if rolls[2] < _style.amount(&"ledge_cable_share"):
+				_ledge_cable(cell, far, step, MazeFeatures._numbers(drawn, 12))
+
+
+## Whether the face (cell, step) has a ledge along it (a maze wall's, not a great wall's).
+func _ledged(cell: Vector2i, step: Vector2i) -> bool:
+	var beyond := cell + step
+	return _maze.blocked(cell, step) and not _maze.ring_wall(cell, step) and _maze.ring_of(beyond) == _maze.ring_of(cell) and not _maze.solid.has(beyond)
+
+
+## The two faces of a hall from the face (cell, -step) to (far, step): the foot
+## of each face (its middle on the ground, `along` it), and the way out of it.
+func _hall_feet(cell: Vector2i, far: Vector2i, step: Vector2i, along: float, far_along: float) -> Array:
+	var s := Vector3(step.x, 0.0, step.y)
+	var side := Vector3(-s.z, 0.0, s.x)
+	var foot_a := _maze.world(cell) - s * (Maze.CELL * 0.5 - _maze.wall_thick(cell, -step) * 0.5) + side * along
+	var foot_b := _maze.world(far) + s * (Maze.CELL * 0.5 - _maze.wall_thick(far, step) * 0.5) + side * far_along
+	return [foot_a, s, foot_b, -s]
+
+
+## How high a cable may go on the hall's walls: under their tops.
+func _hall_top(cell: Vector2i, far: Vector2i, step: Vector2i) -> float:
+	return minf(_maze.wall_height(cell, -step), _maze.wall_height(far, step)) - MazeBuilder.CORNICE.y - 2.0
+
+
+## A pair of junction boxes, one on each wall of the hall, high over the ledges,
+## and the cable between them grown over by a vine (a VineStrand, walked as a
+## tightrope as any strung vine is).
+func _junction_boxes(cell: Vector2i, far: Vector2i, step: Vector2i, numbers: RandomNumberGenerator) -> void:
+	var ledge := _style.mezzanine_height
+	var top := _hall_top(cell, far, step)
+	var range_of := _style.junction_box_height_range
+	var h_a := minf(ledge + numbers.randf_range(range_of.x, range_of.y), top)
+	var h_b := clampf(h_a + numbers.randf_range(-1.2, 1.2), ledge + 2.0, top)
+	if h_a < ledge + 2.0:
+		return
+	var along := numbers.randf_range(-0.35, 0.35) * Maze.CELL
+	var feet := _hall_feet(cell, far, step, along, along + numbers.randf_range(-2.5, 2.5))
+	var big := numbers.randf_range(1.0, 1.4)
+	var ends: Array[Vector3] = []
+	for k in 2:
+		var foot: Vector3 = feet[k * 2]
+		var out: Vector3 = feet[k * 2 + 1]
+		var high := h_a if k == 0 else h_b
+		var d := _face_out(foot, out, high)
+		if is_nan(d) or absf(_face_out(foot, out, high - JUNCTION_BOX.y * big * 0.5) - d) > 0.05:
+			return
+		var at := foot + out * d + Vector3.UP * high
+		_put(Prop.JUNCTION_BOX, at, out, Vector3.ONE * big)
+		# (the cable out of its foot)
+		ends.append(at + out * JUNCTION_BOX.z * big * 0.5 + Vector3.DOWN * (JUNCTION_BOX.y * 0.5 + 0.12) * big)
+	# The vine along it hangs as the cable does: as deep as its length makes it (as a VineStrand works it out).
+	var gap := ends[0].distance_to(ends[1])
+	var long := gap * minf(1.05, 1.0 + 8.0 / 3.0 * pow(2.2 / maxf(gap, 0.01), 2.0))
+	var sag := sqrt(3.0 / 8.0 * gap * maxf(long - gap, 0.0))
+	_layout.add_piece(MazePiece.Kind.WIRE, Transform3D(Basis.IDENTITY, ends[0]), {"to": ends[1], "sag": sag})
+	_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, ends[0] + Vector3.UP * 0.05), {"to": ends[1] + Vector3.UP * 0.05})
+
+
+## A cable slanting across the hall from high on one wall down to the other.
+func _slanting_cable(cell: Vector2i, far: Vector2i, step: Vector2i, numbers: RandomNumberGenerator) -> void:
+	var ledge := _style.mezzanine_height
+	var top := _hall_top(cell, far, step)
+	var heights := _style.slanting_cable_heights
+	var high := minf(ledge + heights.y + numbers.randf_range(-1.5, 1.5), top)
+	var low := minf(ledge + heights.x + numbers.randf_range(-1.5, 1.5), high - 2.0)
+	var along := numbers.randf_range(-0.4, 0.4) * Maze.CELL
+	var feet := _hall_feet(cell, far, step, along, along + numbers.randf_range(-4.0, 4.0))
+	# (which wall it is high on)
+	var first := 0 if numbers.randf() < 0.5 else 2
+	var ends: Array[Vector3] = []
+	for k: int in [first, 2 - first]:
+		var high_here := high if k == first else low
+		var d := _face_out(feet[k], feet[k + 1], high_here)
+		if is_nan(d):
+			return
+		ends.append(feet[k] + feet[k + 1] * d + Vector3.UP * high_here)
+	_layout.add_piece(MazePiece.Kind.WIRE, Transform3D(Basis.IDENTITY, ends[0]), {"to": ends[1], "sag": ends[0].distance_to(ends[1]) * numbers.randf_range(0.08, 0.14)})
+
+
+## A cable from the edge of the ledge along one wall across and down to the other
+## wall under its ledge, fixed there, and from there hanging down to the floor.
+func _ledge_cable(cell: Vector2i, far: Vector2i, step: Vector2i, numbers: RandomNumberGenerator) -> void:
+	var ledge := _style.mezzanine_height
+	var fixed := clampf(ledge * _style.ledge_cable_fix_height + numbers.randf_range(-0.5, 0.5), 1.5, ledge - 1.0)
+	var along := numbers.randf_range(-0.4, 0.4) * Maze.CELL
+	var feet := _hall_feet(cell, far, step, along, along + numbers.randf_range(-3.0, 3.0))
+	var first := 0 if numbers.randf() < 0.5 else 2
+	var other := 2 - first
+	# (just under the top of the ledge's front, and on the wall's face under the other)
+	var lip := ledge - 0.12
+	var d_a := _face_out(feet[first], feet[first + 1], lip)
+	var d_b := _face_out(feet[other], feet[other + 1], fixed)
+	if is_nan(d_a) or is_nan(d_b):
+		return
+	var a: Vector3 = feet[first] + feet[first + 1] * d_a + Vector3.UP * lip
+	var b: Vector3 = feet[other] + feet[other + 1] * (d_b + 0.06) + Vector3.UP * fixed
+	_layout.add_piece(MazePiece.Kind.WIRE, Transform3D(Basis.IDENTITY, a), {"to": b, "sag": a.distance_to(b) * numbers.randf_range(0.07, 0.12)})
+	# (hanging on down the wall from where it is fixed, drifting a little along it)
+	var s := Vector3(step.x, 0.0, step.y)
+	var side := Vector3(-s.z, 0.0, s.x) * (1.0 if numbers.randf() < 0.5 else -1.0)
+	_layout.add_piece(MazePiece.Kind.WIRE, Transform3D(Basis.IDENTITY, b), {"to": b + side * 0.3, "sag": 0.0, "tails": Vector2(fixed - 0.05, 0.0)})
 
 
 ## The cell on the far side of the hall from `cell`, going the `across` way (as
@@ -866,6 +1008,7 @@ static func mesh(kind: int) -> ArrayMesh:
 			Prop.CRATE: _crate(tool)
 			Prop.BARREL: _barrel(tool)
 			Prop.HOLE: _hole(tool)
+			Prop.JUNCTION_BOX: _junction_box(tool)
 		_meshes[kind] = tool.commit()
 	return _meshes[kind]
 
@@ -1050,6 +1193,31 @@ static func _barrel(tool: SurfaceTool) -> void:
 	_ring_y(tool, Vector3(0, high, 0), r - 0.03, r + 0.005, 0.02, 16, worn)
 	_disc_y(tool, Vector3(0, high - 0.015, 0), r - 0.03, 16, paint.darkened(0.25))
 	_box(tool, Vector3(r * 0.5, high, 0.0), Vector3(0.06, 0.02, 0.06), worn.darkened(0.3))
+
+
+## How big a junction box is at scale 1: wide, high, deep (out from the wall).
+const JUNCTION_BOX := Vector3(0.8, 1.0, 0.32)
+
+
+## An old junction box on a wall, round its origin, standing out along +Z: a grey
+## steel box gone dull, its lid's seam and hinges, rust streaks, a gland under it
+## that its cable comes out of.
+static func _junction_box(tool: SurfaceTool) -> void:
+	var size := JUNCTION_BOX
+	var grey := Color(0.4, 0.41, 0.4)
+	_box(tool, Vector3(0, 0, size.z * 0.5), size, grey)
+	# (the lid, a little proud of the box, and its seam)
+	_box(tool, Vector3(0, 0, size.z + 0.01), Vector3(size.x - 0.06, size.y - 0.06, 0.02), grey.lightened(0.06))
+	_box(tool, Vector3(0, 0, size.z + 0.021), Vector3(size.x - 0.1, 0.012, 0.004), grey.darkened(0.45))
+	for y: float in [size.y * 0.3, -size.y * 0.3]:
+		_box(tool, Vector3(-size.x * 0.5 + 0.02, y, size.z + 0.01), Vector3(0.05, 0.1, 0.05), IRON)
+	_box(tool, Vector3(size.x * 0.5 - 0.06, 0, size.z + 0.03), Vector3(0.05, 0.12, 0.04), IRON)
+	# (rust run down from its corners)
+	for x: float in [-size.x * 0.32, size.x * 0.18]:
+		_box(tool, Vector3(x, -size.y * 0.22, size.z + 0.023), Vector3(0.05, size.y * 0.5, 0.004), RUST.lightened(0.1))
+	# (the gland at its foot, and a stub of conduit)
+	_box(tool, Vector3(0, -size.y * 0.5 - 0.05, size.z * 0.5), Vector3(0.12, 0.1, 0.12), IRON)
+	_box(tool, Vector3(0, -size.y * 0.5 - 0.12, size.z * 0.5), Vector3(0.07, 0.06, 0.07), BLACK)
 
 
 ## An old lamp hanging from a cable: a short cord, a cap, an enamelled shade and
