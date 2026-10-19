@@ -170,7 +170,7 @@ func _physics_process(delta: float) -> void:
 	# Whoever stands on it is drawn back over it, unless he is stepping off.
 	for body: Node in get_tree().get_nodes_in_group(&"maze_players"):
 		var walker := body as CharacterBody3D
-		if walker == null or not walker.is_on_floor() or _nearest(walker.global_position) < 0:
+		if walker == null or not walker.is_on_floor() or not _carries(walker.global_position):
 			continue
 		var off := walker.global_position - _closest(walker.global_position)
 		off.y = 0.0
@@ -185,6 +185,7 @@ func _physics_process(delta: float) -> void:
 		if absf(aside) < 0.6 and &"tightrope" in walker:
 			walker.set(&"tightrope", 0.2)
 			walker.set(&"tightrope_aside", aside * signf(across.dot(walker.global_basis.x)))
+			walker.set(&"tightrope_on", self)
 
 
 ## How far a point is from the vine.
@@ -265,3 +266,45 @@ func _lay() -> void:
 		var y := out * cos(DROOP) - face * sin(DROOP)
 		var z := face * cos(DROOP) + out * sin(DROOP)
 		multi.set_instance_transform(i, Transform3D(Basis(y.cross(z), y, z).scaled(Vector3.ONE * place[3]), leaf_at))
+
+
+# --- For hanging under it (Player._hold_strand) ---
+
+## Which way it runs across the ground, from `from` to `to` (level, unit length).
+func line() -> Vector3:
+	var along := to - from
+	along.y = 0.0
+	return along.normalized()
+
+
+## How far it runs across the ground, metres.
+func span() -> float:
+	return Vector2(to.x - from.x, to.z - from.z).length()
+
+
+## How far along it, across the ground from `from`, a point is.
+func distance_along(point: Vector3) -> float:
+	return clampf((point - from).dot(line()), 0.0, span())
+
+
+## The point of it (as it hangs now) `distance` metres along it across the ground.
+func point_at_distance(distance: float) -> Vector3:
+	var span_now := maxf(span(), 0.001)
+	var t := clampf(distance / span_now, 0.0, 1.0) * (POINTS - 1)
+	var i := mini(int(t), POINTS - 2)
+	var level := from + line() * distance
+	var y := lerpf(_points[i].y, _points[i + 1].y, t - i)
+	return Vector3(level.x, y, level.z)
+
+
+## The point of it nearest `point`.
+func point_near(point: Vector3) -> Vector3:
+	return _closest(point)
+
+
+# Whether someone whose feet are at `feet` is stood on it: over its line (from any
+# point along it, not only its joints), and on it, not under it or well over it.
+func _carries(feet: Vector3) -> bool:
+	var on := _closest(feet)
+	var level := Vector2(feet.x - on.x, feet.z - on.z).length()
+	return level < 0.6 and feet.y > on.y - 0.3 and feet.y < on.y + 0.8
