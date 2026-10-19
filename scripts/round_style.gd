@@ -40,23 +40,22 @@ const TUNNEL_SHOWN: Array[StringName] = [&"tunnel_width", &"tunnel_height", &"tu
 		notify_property_list_changed()
 
 @export_group("Rotating doors")
-## How many circles of doors there are across the section, one behind another
-## (halls round between them).
-@export_range(1, 6) var door_circles := 3
+## How many circles of doors there are across the section, one behind another (halls round between them).
+@export_range(1, 6, 1, "suffix:circles") var door_circles := 3
 ## How many doorways each circle has, spread round it (each with its door).
-@export_range(4, 96) var door_count := 30
+@export_range(4, 96, 1, "suffix:per circle") var door_count := 30
 ## How long a door takes to turn half round, seconds: from one opening to the next.
-@export_range(2.0, 60.0) var door_turn_seconds := 9.0
+@export_range(2.0, 60.0, 0.001, "suffix:s") var door_turn_seconds := 9.0
 ## How wide the gap is either side of a door when it stands open (edge on), metres.
-@export_range(1.5, 20.0) var door_gap_width := 4.5
+@export_range(1.5, 20.0, 0.001, "suffix:m") var door_gap_width := 4.5
 
 @export_group("Tunnel")
 ## How wide the tunnel is inside, wall to wall, metres.
-@export_range(10.0, 80.0) var tunnel_width := 26.0
+@export_range(10.0, 80.0, 0.001, "suffix:m") var tunnel_width := 26.0
 ## How high its roof is, metres.
-@export_range(6.0, 60.0) var tunnel_height := 18.0
+@export_range(6.0, 60.0, 0.001, "suffix:m") var tunnel_height := 18.0
 ## How far apart the openings in its roof are, round it, metres.
-@export_range(10.0, 200.0) var tunnel_skylight_spacing := 34.0
+@export_range(10.0, 200.0, 0.001, "suffix:m") var tunnel_skylight_spacing := 34.0
 
 
 func _init() -> void:
@@ -76,6 +75,8 @@ static func from(style: MazeStyle) -> RoundStyle:
 
 
 func _validate_property(property: Dictionary) -> void:
+	# (MazeStyle's first: its feature boxes are not saved as themselves)
+	super(property)
 	var name := StringName(property.name)
 	if name == &"round_section":
 		# (it is always round: not saved either)

@@ -99,24 +99,24 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 	# Cables across the halls, from the cell at one side of a hall to the one at the other.
 	for i in plan.size * plan.size:
 		var cell := Vector2i(i % plan.size, i / plan.size)
-		if not _in_a_section(cell) or _style.cable_share <= 0.0:
+		if not _in_a_section(cell) or _style.amount(&"cable_share") <= 0.0:
 			continue
 		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
-			if plan.blocked(cell, -step) and _rng.randf() < _style.cable_share:
+			if plan.blocked(cell, -step) and _rng.randf() < _style.amount(&"cable_share"):
 				_cable_across(cell, step)
 	# Cables in among the vines strung across the halls, and hanging beside the
 	# vines hanging from the walls.
 	for strand in strands:
-		if _style_at(strand.position) and _rng.randf() < _style.cable_by_vine_share:
+		if _style_at(strand.position) and _rng.randf() < _style.amount(&"cable_by_vine_share"):
 			_cable_by_strand(strand.position, strand.bridge_end())
 	for vine in vines:
-		if _style_at(vine.position) and _rng.randf() < _style.cable_by_vine_share * 0.6:
+		if _style_at(vine.position) and _rng.randf() < _style.amount(&"cable_by_vine_share") * 0.6:
 			_cable_by_vine(vine.position, vine.length)
 
 
 static func _wants(style: MazeStyle) -> bool:
-	return style.wall_vent_share + style.culvert_share + style.outlet_share + style.drain_share + style.manhole_share \
-		+ style.clutter_share + style.cable_share + style.cable_by_vine_share + style.wall_cable_share > 0.0
+	return style.amount(&"wall_vent_share") + style.amount(&"culvert_share") + style.amount(&"outlet_share") + style.amount(&"drain_share") + style.amount(&"manhole_share") \
+		+ style.amount(&"clutter_share") + style.amount(&"cable_share") + style.amount(&"cable_by_vine_share") + style.amount(&"wall_cable_share") > 0.0
 
 
 ## Whether `cell` is in a square section's halls (and its style, `_style`, set).
@@ -161,7 +161,7 @@ func _dress_face(cell: Vector2i, step: Vector2i, near_gate: bool) -> void:
 	if _style.mezzanine_height > 0.0 and not _maze.ring_wall(cell, step):
 		under_ledge = _style.mezzanine_height
 	var room := Maze.CELL * 0.5 - 1.0
-	if _rng.randf() < _style.wall_vent_share:
+	if _rng.randf() < _style.amount(&"wall_vent_share"):
 		var is_round := _rng.randf() < 0.35
 		# (made for the walls' giant scale: most a couple of metres across, now and then a great duct)
 		var big := _rng.randf_range(3.2, 5.0) if _rng.randf() < 0.2 else _rng.randf_range(1.3, 2.4)
@@ -172,14 +172,14 @@ func _dress_face(cell: Vector2i, step: Vector2i, near_gate: bool) -> void:
 		var at := _on_face(foot, out, side, along, high - tall, high + tall, half)
 		if at.is_finite():
 			_put(Prop.ROUND_VENT if is_round else Prop.VENT, at + Vector3.UP * tall, out, Vector3.ONE * big)
-	if _rng.randf() < _style.culvert_share and not near_gate:
+	if _rng.randf() < _style.amount(&"culvert_share") and not near_gate:
 		var big := _rng.randf_range(1.2, 2.0)
 		var along := _rng.randf_range(-room, room)
 		var at := _on_face(foot, out, side, along, 0.0, 1.4 * big, 1.1 * big, 3.0)
 		if at.is_finite():
 			_put(Prop.CULVERT, at, out, Vector3.ONE * big)
 			_puddle(at + out * _rng.randf_range(1.2, 1.8) * big, _rng.randf_range(1.4, 2.4) * big)
-	if _rng.randf() < _style.outlet_share:
+	if _rng.randf() < _style.amount(&"outlet_share"):
 		var big := _rng.randf_range(0.7, 1.4)
 		var high := _rng.randf_range(1.2, minf(4.5, under_ledge - 1.0))
 		var along := _rng.randf_range(-room, room)
@@ -192,9 +192,9 @@ func _dress_face(cell: Vector2i, step: Vector2i, near_gate: bool) -> void:
 			var long := high - 0.1
 			_put(Prop.STAIN, at - Vector3.UP * 0.12 * big + out * 0.015, out, Vector3(_rng.randf_range(0.45, 0.8) * big, long, 1.0))
 			_puddle(Vector3(at.x, _maze.ground_height(at), at.z) + out * _rng.randf_range(0.5, 0.9), _rng.randf_range(0.8, 1.6))
-	if _rng.randf() < _style.wall_cable_share:
+	if _rng.randf() < _style.amount(&"wall_cable_share"):
 		_cable_along(foot, out, side, under_ledge)
-	if _rng.randf() < _style.clutter_share and not near_gate:
+	if _rng.randf() < _style.amount(&"clutter_share") and not near_gate:
 		_heap(foot, out, side, room)
 
 
@@ -265,7 +265,7 @@ func _puddle(at: Vector3, wide: float) -> void:
 
 ## A drain grate by the foot of a wall, and a manhole cover out in the hall.
 func _dress_floor(cell: Vector2i, near_gate: bool) -> void:
-	if _rng.randf() < _style.drain_share:
+	if _rng.randf() < _style.amount(&"drain_share"):
 		var steps: Array[Vector2i] = []
 		for step: Vector2i in Maze.STEPS:
 			if _maze.blocked(cell, step):
@@ -283,7 +283,7 @@ func _dress_floor(cell: Vector2i, near_gate: bool) -> void:
 					_put(Prop.DRAIN, at, -s, Vector3.ONE * _rng.randf_range(0.9, 1.2))
 					if _rng.randf() < 0.5:
 						_puddle(at + side * _rng.randf_range(-0.4, 0.4), _rng.randf_range(1.0, 2.0))
-	if _rng.randf() < _style.manhole_share and not near_gate:
+	if _rng.randf() < _style.amount(&"manhole_share") and not near_gate:
 		var at := _maze.world(cell) + Vector3(_rng.randf_range(-4.0, 4.0), 0.0, _rng.randf_range(-4.0, 4.0))
 		at.y = _maze.ground_height(at)
 		# (out in the hall: clear of the walls all round)

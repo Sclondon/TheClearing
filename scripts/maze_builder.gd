@@ -713,8 +713,8 @@ func _undergrowth(pieces: MazeLayout) -> void:
 		var ring := maze.ring_of(cell)
 		if ring < 1 or ring > maze.rings or maze.solid.has(cell) or maze.entrances.has(cell):
 			continue
-		var thick: float = maze.styles[ring - 1].plant_density
-		var grassy: float = maze.styles[ring - 1].wall_grass_share
+		var thick: float = maze.styles[ring - 1].amount(&"plant_density")
+		var grassy: float = maze.styles[ring - 1].amount(&"wall_grass_share")
 		if thick <= 0.0 and grassy <= 0.0:
 			continue
 		for step: Vector2i in Maze.STEPS:

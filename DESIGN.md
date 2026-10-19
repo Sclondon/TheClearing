@@ -134,8 +134,32 @@ rocks are bumped into; the swamp's and plains' ground is walked on (Maze.ground_
 
 What a style can set: depth (cells), hall width (cells), wall thickness, its border wall (the wall round its outside: how high, and extra cells of solid wall
 thickening it on the far side), how often passages go straight, how often they branch, how many loops, narrow entrances (a passage of
-some length from each gate) and doorways (a slot through a gatehouse), and the share of walls with terraces, upper
-terraces, rope bridges, ivy to the top, vines on terraces, wall-top bridges and wall-top vines.
+some length from each gate) and doorways (a slot through a gatehouse), and what is on and about its walls.
+
+Each feature of a section has its own on/off box in the maze editor's Inspector, its amount and size settings shown
+under it only while it is on (the user, 2026-10-18: "Rather than a share slider - there should be check boxes to turn
+on and off each feature for the section in the editor. Vines and ivy should be their own sections not in climbing,
+same with sewers (wall decor) and tunnels."). The groups:
+- **Climbing**: the mezzanine (ledges along the walls: height, depth, levels), terraces (how many, upper terraces),
+  rope bridges (between terraces, wall top to wall top, between mezzanine ledges).
+- **Ivy**: wall ivy from the ground (how many, how high), ivy on from upper terraces to the wall top, ivy between
+  mezzanine levels.
+- **Vines**: hanging vines (from the top of a run of ivy), strung vines walked as tightropes (how many, how high),
+  vines over terraces.
+- **Wall decor**: vents, outlet pipes (and how many drip), cables looped along the walls.
+- **Tunnels** (ways through and down): sewer pipes through the walls (how many, how high), culverts, drain grates,
+  manholes.
+- **Signs of life**: heaps of boxes and barrels, cables across the halls (snapped, lamps), cables beside the vines.
+- **Grappling hook spots**: routes up the walls, rings at ledge lips, hooks to swing from.
+- **Plants**: undergrowth along the wall feet, wall grass. **Water**: ponds, and within them flooded halls,
+  swimming ponds and fish.
+
+Boxes that only matter with another on (bridges, vines and ivy-to-top of terraces; flooded halls, swimming ponds and
+fish of ponds) are hidden while it is off. A box is saved in the style's `features_switched`; a section saved before
+the boxes (or a preset) has each feature on when its amount is more than 0, so it looks as it did. Off reads as an
+amount of 0 (`MazeStyle.amount`), so the same random numbers are drawn and a maze with nothing changed is the same.
+Every setting shows its unit in the Inspector (m, cells, s, "of faces", "of halls", per hectare...; shares are 0 to
+1) and has a one-line tooltip (the user, 2026-10-18: "the editor also needs units - its hard to tell what im changing").
 
 Because walls are thick, any opening one cell long through a wall is itself a slot (cell minus wall thickness):
 that is how the gates become slots.
@@ -746,10 +770,10 @@ abandoned life: camps, boxes and barrels, wires hanging above in the vines"). `M
 lays them out from the seed as PROP and WIRE pieces (editable in the maze editor, in Props and Wires), by each
 section's MazeStyle:
 
-- **Sewers** (every square section, fewest further out): old vents high on the walls (louvred or round, some great
-  ducts), barred culverts at their feet with a puddle in front, small pipes with a rust stain down the wall and a
-  puddle under them (some dripping), drain grates by the walls and manhole covers out in the halls (now and then
-  pushed half off the black shaft).
+- **Sewers** (every square section, fewest further out; in the Inspector's "Wall decor" and "Tunnels" groups): old
+  vents high on the walls (louvred or round, some great ducts), barred culverts at their feet with a puddle in front,
+  small pipes with a rust stain down the wall and a puddle under them (some dripping), drain grates by the walls and
+  manhole covers out in the halls (now and then pushed half off the black shaft).
 - **Signs of life** (the Avenues): three camps left; heaps of boxes and barrels against the walls (solid, some
   stacked, a barrel fallen over); old black cables strung high across the halls, in among the strung vines and
   hanging beside the hanging ones, some snapped with their ends hanging, now and then a dead lamp; cables looped
