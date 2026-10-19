@@ -14,6 +14,10 @@ extends SceneTree
 ##
 ##     godot --audio-driver Dummy --path . --resolution 1280x720 -s res://tests/climbers_test.gd -- <folder>
 ##
+## `-- all` puts every other kind that climbs after him too (the deinonychus, the
+## clown, a lizard person, an imp, a mantis, a mushroom zombie, the psychic child
+## following him, a swarm of rats).
+##
 ## Ends with PASSED or FAILED (and exits 0 or 1).
 
 var stage: Node3D
@@ -25,6 +29,8 @@ var ways: HighWays
 var failures := 0
 var caught_by: Array = []
 var folder := ""
+## The rest that climb too (`-- all`).
+var every := false
 var camera: Camera3D
 
 
@@ -49,6 +55,8 @@ func wait(seconds: float, until := Callable()) -> bool:
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
+	every = args.has("all")
+	args.erase("all")
 	if args.size() > 0:
 		folder = args[0]
 		DirAccess.make_dir_recursive_absolute(folder)
@@ -130,7 +138,7 @@ func shot(name: String, at: Vector3, out: Vector3) -> void:
 	if folder == "":
 		return
 	var side := out.cross(Vector3.UP).normalized()
-	camera.global_position = Vector3(at.x, maze.ground_height(at) + 2.0, at.z) + out * 9.0 + side * 4.0
+	camera.global_position = Vector3(at.x, maxf(at.y - 1.0, maze.ground_height(at) + 1.6), at.z) + out * 6.0 + side * 3.0
 	camera.look_at(at + Vector3.UP * 0.4)
 	for i in 3:
 		await process_frame
@@ -176,6 +184,16 @@ func _run() -> void:
 	var ants := MazeAnts.new()
 	ants.sound = false
 	await _after_him("a colony of giant ants", ants, floor_at, on, out, 40.0)
+	if every:
+		# (the rest that climb, with `-- all`)
+		await _after_him("a deinonychus", MazeDeinonychus.new(), floor_at, on, out, 30.0)
+		await _after_him("a clown", MazeClown.new(), floor_at, on, out, 30.0)
+		await _after_him("a lizard person", MazeLizardPerson.new(), floor_at, on, out, 40.0)
+		await _after_him("an imp", MazeImp.new(), floor_at, on, out, 40.0)
+		await _after_him("a mantis", MazeMantis.new(), on + out * 3.0 + Vector3.DOWN * (on.y - maze.ground_height(on)), on, out, 40.0)
+		await _after_him("a mushroom zombie", MazeMushroomZombie.new(), floor_at, on, out, 90.0)
+		await _after_him("a psychic child", MazePsychicChild.new(), floor_at, on, out, 60.0)
+		await _after_him("a swarm of rats", MazeRatSwarm.new(), floor_at, on, out, 40.0)
 
 	# --- A puppet panther follows its host up ---
 	clear()
@@ -230,17 +248,29 @@ func _run() -> void:
 
 
 ## Puts `one` in the hall at `from`, sets it after the boy up on the ledge at `on`,
-## and checks it gets up to him within `seconds`.
+## and checks it gets up to him within `seconds`. (He looks at the wall, not at it:
+## the clown and the gnomes come only unwatched.)
 func _after_him(what: String, one: MazeEnemy, from: Vector3, on: Vector3, out: Vector3, seconds: float) -> void:
 	clear()
-	put_boy(on, -out)
+	put_boy(on, out)
 	await wait(0.3)
 	spawn(one, from)
 	await frames(3)
 	var colony := one as MazeAnts
+	var rats := one as MazeRatSwarm
+	var child := one as MazePsychicChild
 	if colony:
 		await wait(1.0, func() -> bool: return colony.ready_to_go())
 		colony._raise(boy)
+	elif rats:
+		await wait(1.0, func() -> bool: return rats.swarm != null)
+		rats.notice(boy)
+	elif child:
+		child.followed = boy
+		child.mode = MazePsychicChild.Mode.FOLLOW
+	elif one is MazeMushroomZombie:
+		# (blind: it hears him, below)
+		(one as MazeMushroomZombie)._hear(boy, boy.global_position)
 	else:
 		one.notice(boy)
 	var highest := 0.0
@@ -253,18 +283,30 @@ func _after_him(what: String, one: MazeEnemy, from: Vector3, on: Vector3, out: V
 	for i in int(seconds * 60.0):
 		ticks = i
 		await physics_frame
+		if one is MazeMushroomZombie and i % 20 == 0:
+			# (blind: he is heard moving about up there)
+			(one as MazeMushroomZombie)._hear(boy, boy.global_position)
+		if child:
+			child.mode = MazePsychicChild.Mode.FOLLOW if not child.climbing_now() else child.mode
 		var body := one.global_position
-		if colony:
+		if rats:
+			body = rats.swarm.front
+			highest = maxf(highest, body.y - maze.ground_height(on))
+		elif colony:
 			# (the ants: the one nearest him, and the highest)
 			body = colony.colony.front
 			for k in colony.colony.ants.size():
 				highest = maxf(highest, colony.colony.ant_position(k).y - maze.ground_height(on))
-			if not shots.has("climb") and colony.colony.counted(AntColony.State.CLIMB) >= 3:
+			var up_ant := -1
+			for k in colony.colony.ants.size():
+				if colony.colony.ant_state(k) == AntColony.State.CLIMB and colony.colony.ant_position(k).y - maze.ground_height(on) > 5.0:
+					up_ant = k
+			if not shots.has("climb") and up_ant >= 0:
 				shots["climb"] = true
-				await shot("ants_climbing", on + out * 1.0 + Vector3.DOWN * 4.0, out)
+				await shot("ants_climbing", colony.colony.ant_position(up_ant), out)
 		else:
 			highest = maxf(highest, body.y - maze.ground_height(on))
-			if not shots.has("up") and (one.aloft == HighClimb.Aloft.LEAP or (one.aloft == HighClimb.Aloft.CLIMB and body.y - maze.ground_height(body) > 4.0)):
+			if not shots.has("up") and (one.aloft == HighClimb.Aloft.LEAP or one.aloft == HighClimb.Aloft.CLIMB) and body.y - maze.ground_height(body) > 4.0:
 				shots["up"] = true
 				await shot(what.get_slice(" ", 1) + "_mid_climb", body, out)
 				# (and he moves off along the ledge: it must come along it to him)
@@ -274,11 +316,12 @@ func _after_him(what: String, one: MazeEnemy, from: Vector3, on: Vector3, out: V
 		var d := Vector2(body.x - boy.global_position.x, body.z - boy.global_position.z).length()
 		if absf(body.y - boy.global_position.y) < 1.5:
 			nearest = minf(nearest, d)
-		if not caught_by.is_empty() or (colony and colony.colony.on_target > 0):
+		if not caught_by.is_empty() or (colony and colony.colony.on_target > 0) or (rats and rats.swarm.on_target > 0) \
+				or (child and walked and nearest < 1.8):
 			got = true
 			break
 	var took := float(ticks) / 60.0
-	check("%s gets up to him (%.1f m up)" % [what, high], got and (walked or colony != null),
+	check("%s gets up to him (%.1f m up)" % [what, high], got and (walked or colony != null or rats != null),
 		"(highest %.1f m, nearest at his height %.1f m, %s%s; %.1f s of the game)" % [highest, nearest, "caught him" if not caught_by.is_empty() else ("on him" if got else "not there"), ", along the ledge after him" if walked else "", took])
 
 

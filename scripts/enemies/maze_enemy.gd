@@ -104,6 +104,8 @@ enum Climbs { NO, SCRAMBLE, CLAMBER, LEAP, FLOAT }
 @export var climb_speed := 2.0
 ## The highest it leaps in one bound, m (LEAP).
 @export var leap_most := 6.0
+## How often it loses its hold going up a face and slides back a way, times a second (0: never).
+@export var climb_clumsy := 0.0
 @export_group("")
 ## What it is doing up off the floor (HighClimb.Aloft: 0, on the floor as its own kind has it).
 var aloft := 0
@@ -338,7 +340,7 @@ func _ways_up(delta: float, radius: float, speed: float) -> bool:
 	if climbs == Climbs.NO or maze == null or puppet or dead:
 		return false
 	if _high == null:
-		if not hunting():
+		if _climb_after() == null:
 			return false
 		_high = HighClimb.new(self)
 	var busy := _high.step(delta, radius, speed)
@@ -369,6 +371,20 @@ func climbing_now() -> bool:
 	return _high != null and _high.busy()
 
 
+## Its own kind takes over again where it is (on a ledge, say, to do what it does
+## there): no longer going up after anyone, nor placed.
+func _let_go_climb() -> void:
+	if _high:
+		_high.release()
+	aloft = 0
+
+
+## Its own kind gives up going up after someone (too far from home): back down.
+func _give_up_climb(radius: float) -> void:
+	if _high:
+		_high.give_up(radius)
+
+
 ## Which way it faces while `_ways_up` has it (radians about Y).
 func aloft_yaw() -> float:
 	return _high.facing if _high else yaw()
@@ -385,6 +401,15 @@ func aloft_out() -> Vector3:
 ## Up off the floor (going up, on a ledge, leaping, coming down): not on the floor as its own kind has it.
 func is_aloft() -> bool:
 	return aloft != HighClimb.Aloft.NONE
+
+
+## Whom it goes up after when they get up off the floor: a player it is hunting (not
+## a creature: the world's own hunting stays on the floor). Each kind may say
+## otherwise (the psychic child: whom she follows).
+func _climb_after() -> Node3D:
+	if hunting() and is_instance_valid(quarry) and not (quarry is MazeEnemy):
+		return quarry
+	return null
 
 
 ## Up there, within reach of who it is after: each kind may strike as it does; a catch.

@@ -60,6 +60,7 @@ var _top := 0.0
 var _stuck := 0.0
 var _wait := 0.0
 var _target := -1
+var _slip := 0.0
 
 
 func _init(hunter: MazeEnemy) -> void:
@@ -98,11 +99,10 @@ func step(delta: float, radius: float, speed: float) -> bool:
 	return false
 
 
-## Who it is after, if it is a player it still knows of.
+## Who it goes up after (MazeEnemy._climb_after), if they are still there.
 func _quarry() -> Node3D:
-	if who.hunting() and who.quarry and not (who.quarry is MazeEnemy) and is_instance_valid(who.quarry):
-		return who.quarry
-	return null
+	var after := who._climb_after()
+	return after if is_instance_valid(after) and after.is_inside_tree() else null
 
 
 func ways_at(p: Vector3) -> HighWays:
@@ -153,8 +153,15 @@ func _go(q: Node3D, delta: float, radius: float, speed: float) -> bool:
 	var want := wish.normalized() * speed
 	who.velocity.x = want.x
 	who.velocity.z = want.z
-	who.velocity.y = 0.0 if who.is_on_floor() else who.velocity.y - 24.0 * delta
-	who.move_and_slide()
+	if who.collision_mask == 0:
+		# (a body nothing stops (an imp): placed on the ground)
+		var next := here + Vector3(want.x, 0.0, want.z) * delta
+		next.y = who.maze.ground_height(next)
+		who.global_position = next
+		who.velocity.y = 0.0
+	else:
+		who.velocity.y = 0.0 if who.is_on_floor() else who.velocity.y - 24.0 * delta
+		who.move_and_slide()
 	if want.length() > 0.1:
 		facing = lerp_angle(facing, atan2(want.x, want.z), 1.0 - exp(-10.0 * delta))
 	aloft = Aloft.NONE
@@ -219,6 +226,11 @@ func _plan_down(s: int, radius: float) -> void:
 	var here := who.global_position
 	_moves.append([Move.WALK, here, out])
 	if s < 0:
+		# (on a face, or nowhere it knows: straight down where it is, and out from the wall)
+		var floor := who.maze.ground_height(here)
+		if here.y - floor > 0.3:
+			_moves.append([Move.FALL if who.climbs == MazeEnemy.Climbs.LEAP else Move.CLIMB, Vector3(here.x, floor, here.z), out])
+		_moves.append([Move.WALK, Vector3(here.x, floor, here.z) + out * (radius + 0.35), out])
 		return
 	var stages := _ways.way_up(s, here)
 	if stages.is_empty():
@@ -286,6 +298,14 @@ func _path(delta: float, radius: float, speed: float) -> void:
 			var pace := speed * 0.7
 			if kind == Move.CLIMB:
 				pace = who.climb_speed * (1.5 if _down else 1.0)
+				# (a clumsy one loses its hold now and then, and slides back a way before it catches on)
+				if not _down and who.climb_clumsy > 0.0:
+					if _slip <= 0.0 and randf() < who.climb_clumsy * delta:
+						_slip = 0.45
+					if _slip > 0.0:
+						_slip -= delta
+						to = Vector3(to.x, maxf(before.y - 3.0, _from.y), to.z)
+						pace = who.climb_speed * 3.0
 			var next := before.move_toward(to, pace * delta)
 			who.global_position = next
 			if kind == Move.CLIMB:
@@ -293,11 +313,11 @@ func _path(delta: float, radius: float, speed: float) -> void:
 				facing = atan2(-out.x, -out.z)
 			else:
 				var high := next.y - who.maze.ground_height(next) > 0.6
-				aloft = Aloft.ON if high else Aloft.CLIMB
+				aloft = Aloft.ON if high else Aloft.NONE
 				var flat := Vector3(to.x - before.x, 0.0, to.z - before.z)
 				if flat.length() > 0.05:
 					facing = lerp_angle(facing, atan2(flat.x, flat.z), 1.0 - exp(-12.0 * delta))
-			if next.distance_to(to) < 0.01:
+			if _slip <= 0.0 and next.distance_to(move[1]) < 0.01:
 				_start_move(_move + 1)
 		Move.CROUCH:
 			_t += delta
@@ -427,6 +447,24 @@ func _walk(to: Vector3, speed: float, delta: float, radius: float) -> bool:
 		return true
 	who.velocity = Vector3.ZERO
 	return false
+
+
+## Lets it go where it is, to its own ways (its kind takes over: a gnome's snatch).
+func release() -> void:
+	_stop()
+
+
+## Gives it up (its own kind says: too far from home): back to its own ways on the
+## floor, or down from wherever it is.
+func give_up(radius: float) -> void:
+	match phase:
+		Phase.GO:
+			_stop()
+		Phase.ON:
+			_come_down(ways_at(who.global_position).level_at(who.global_position, _top, 0.6, -0.3), radius)
+		Phase.PATH:
+			if not _down:
+				_come_down(ways_at(who.global_position).level_at(who.global_position, who.global_position.y, 0.6, -0.3), radius)
 
 
 func _come_down(s: int, radius: float) -> void:

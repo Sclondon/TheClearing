@@ -15,7 +15,11 @@ extends MazeEnemy
 ##   wall, it skitters along the face to keep level with them, a few metres up,
 ##   in dashes and dead stops. Climbing does not save you: if they are up a
 ##   wall (the ivy, a terrace, a vine) it goes straight up the face at them, or
-##   runs to the foot of their wall and up it, and over the top after them.
+##   runs to the foot of their wall and up it, and over the top after them; up
+##   on a ledge, a terrace or a concrete bridge, to the foot of its front, up it,
+##   over the lip and along the top to them (MazeEnemy's CLIMBING: the user,
+##   2026-10-18, "more creatures should be able to climb things"; its own crawl
+##   up a face loses sight of them behind the lip).
 ## - IT HISSES first (the warning, `LizardPerson.hiss`: reared off the face, arms
 ##   spread, mouth gaping, the dewlap fanned out), for `HISS_TIME`, and then
 ##   LEAPS at where they were when it sprang, from as far as `POUNCE_RANGE` out
@@ -117,6 +121,8 @@ var _stopped := false
 var _shift_in := 8.0
 var _wall_look_in := 0.0
 var _placed := false
+# (going up after someone by HighClimb last step)
+var _climbed := false
 var _stuck := 0.0
 var _far := false
 var _far_check := 0.0
@@ -142,6 +148,8 @@ func _init() -> void:
 	memory = 6.0
 	alert_range = 32.0
 	pack = &"lizard_people"
+	climbs = Climbs.SCRAMBLE
+	climb_speed = 3.0
 
 
 func _ready() -> void:
@@ -188,6 +196,22 @@ func _physics_process(delta: float) -> void:
 		_warm_in = 1.0
 		_warm_up()
 	_sense(delta)
+	# Up after someone on a ledge, a terrace or a bridge (HighWays: its own crawl up a
+	# face loses them behind the lip): to the foot, up the front, over, and along the top.
+	if (climbing_now() or (mode == Mode.HUNT and is_on_floor())) and _ways_up(delta, RADIUS, _run_speed()):
+		_climbed = true
+		var on_face := aloft == HighClimb.Aloft.CLIMB or aloft == HighClimb.Aloft.DOWN
+		wall = aloft_out() if on_face else Vector3.ZERO
+		var facing := aloft_yaw()
+		_heading = (Vector3.UP if aloft == HighClimb.Aloft.CLIMB else Vector3.DOWN) if on_face else Vector3(sin(facing), 0.0, cos(facing))
+		chasing = true
+		_pose()
+		return
+	if _climbed:
+		# (down again: on the ground, as its own)
+		_climbed = false
+		wall = Vector3.ZERO
+		_enter(Mode.HUNT)
 	var before := global_position
 	match mode:
 		Mode.CLING:

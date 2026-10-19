@@ -31,6 +31,12 @@ extends MazeEnemy
 ##   height between them, giggling. Run into it and you go sprawling (a trip,
 ##   not a catch: the rest of the band may be on you while you are down); jump
 ##   it, or walk, and you step over it. They hold it `rope_time` and go home.
+## - UP AFTER YOU. Up on a ledge, a terrace or a concrete bridge with something in
+##   your pockets is not safe: unwatched they clamber up the bare face after you,
+##   hand over hand like little men, and come up behind you along the top; turn
+##   and they are statues on the wall. One that snatches up there runs for home
+##   off the edge (MazeEnemy's CLIMBING; the user, 2026-10-18: "more creatures
+##   should be able to climb things").
 ## - A lit torch near (FireWard) keeps them off. Anything bigger that would eat
 ##   them (Ecology: they are small prey) sends them running into the hollow.
 ##
@@ -143,6 +149,8 @@ func _init() -> void:
 	alert_range = 30.0
 	pack = &"gnomes"
 	spare_time = 6.0
+	climbs = Climbs.CLAMBER
+	climb_speed = 2.0
 	fears_fire = true
 
 
@@ -360,6 +368,19 @@ func _physics_process(delta: float) -> void:
 	frozen = still_ok and _watched
 	var after := _target()
 	chasing = mode in [Mode.STALK, Mode.SNATCH]
+	# Up after them onto a ledge, unwatched (seen, stock still where it is, even on the wall).
+	if climbing_now() or (mode == Mode.STALK and after):
+		if climbing_now() and _watched:
+			frozen = true
+			velocity = Vector3.ZERO
+			_prev_pos = _curr_pos
+			_curr_pos = global_position
+			return
+		if not _watched and _ways_up(delta, 0.2, stalk_speed):
+			_yaw = aloft_yaw()
+			_prev_pos = _curr_pos
+			_curr_pos = global_position
+			return
 	var wish := Vector3.ZERO
 	var speed := 0.0
 	if threat and mode not in [Mode.HIDE, Mode.FLEE]:
@@ -468,6 +489,18 @@ func _physics_process(delta: float) -> void:
 	_trip_local()
 	_prev_pos = _curr_pos
 	_curr_pos = global_position
+
+
+## Whom it climbs up after: whom it stalks (see `_target`).
+func _climb_after() -> Node3D:
+	return _target() if mode == Mode.STALK else null
+
+
+## Up there behind them: the snatch, as on the floor (it is its own again, on the
+## ledge: running home with it, it drops off the edge).
+func _strike_aloft(player: Node3D) -> void:
+	_let_go_climb()
+	_begin_snatch(player)
 
 
 ## Whom it goes after: the one it noticed, if they have something in their
@@ -956,7 +989,7 @@ func _process(delta: float) -> void:
 		body.look_at_point = _partner().global_position + Vector3.UP * 0.3
 	else:
 		body.look_at_point = Vector3.INF
-	var lean := Basis.IDENTITY
+	var lean := aloft_tilt(true)
 	if mode == Mode.CAUGHT:
 		lean = Basis(Vector3.RIGHT, -1.3 * smoothstep(0.0, 0.25, _mode_time) * (1.0 - smoothstep(0.65, 0.9, _mode_time)))
 	body.global_transform = Transform3D(Basis(Vector3.UP, _yaw) * lean, at)

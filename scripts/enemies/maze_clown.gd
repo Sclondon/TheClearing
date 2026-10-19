@@ -22,6 +22,11 @@ extends MazeEnemy
 ##   does not stop; but it tires him quickly (`sprint_time`), and then he stands
 ##   winded (`winded_time`), and cannot burst again for `burst_rest`.
 ## - TOUCHING HIM CATCHES (`catch_radius`), whatever he is doing but standing winded.
+## - UP IS NO ESCAPE. Get up on a ledge, a terrace or a concrete bridge and,
+##   while nobody looks, he scrambles straight up the bare face after you, too
+##   fast, hand over hand, and along the top (MazeEnemy's CLIMBING; the user,
+##   2026-10-18: "more creatures should be able to climb things", "the clown (an
+##   unsettling scramble)"). Look and he stops dead where he is, on the wall.
 ##
 ## Unlike the angel (whose gaze takes whoever stays in it), the clown is held by
 ## yours: watched he is harmless, and it is when you look away that he comes.
@@ -103,6 +108,8 @@ func _init() -> void:
 	look_every = 0.25
 	spare_time = 4.0
 	pack = &"clowns"
+	climbs = Climbs.CLAMBER
+	climb_speed = 3.4
 
 
 func _ready() -> void:
@@ -142,6 +149,21 @@ func _physics_process(delta: float) -> void:
 	if _watch_in <= 0.0:
 		_watch_in = 0.1
 		watched = _watched()
+	# Up after them: only while nobody looks (looked at, he stops dead where he is, on the wall or up there).
+	if climbing_now() or (hunting() and mode in [Mode.STALKING, Mode.STILL, Mode.SPRINTING]):
+		if climbing_now() and watched:
+			mode = Mode.STILL
+			velocity = Vector3.ZERO
+			_prev_pos = _curr_pos
+			_curr_pos = global_position
+			return
+		if not watched and _ways_up(delta, _radius, sprint_speed * 0.6):
+			mode = Mode.STALKING
+			chasing = true
+			facing_yaw = aloft_yaw()
+			_prev_pos = _curr_pos
+			_curr_pos = global_position
+			return
 	var wish := Vector3.ZERO
 	var speed := 0.0
 	match mode:
@@ -337,6 +359,8 @@ func _process(delta: float) -> void:
 			aim = _heard_extra
 		if not held:
 			facing_yaw = lerp_angle(facing_yaw, _heard_yaw, 1.0 - exp(-10.0 * delta))
+	elif is_aloft():
+		facing_yaw = aloft_yaw()
 	elif not held:
 		if quarry and chasing:
 			aim = quarry.global_position + Vector3.UP * 1.0
@@ -350,10 +374,12 @@ func _process(delta: float) -> void:
 		figure.aim = aim
 	figure.frozen = held
 	figure.winded = mode == Mode.WINDED
-	figure.velocity = Vector3.ZERO if held else velocity
-	figure.grounded = is_on_floor() or puppet
+	var on_face := aloft == HighClimb.Aloft.CLIMB or aloft == HighClimb.Aloft.DOWN
+	figure.velocity = Vector3.ZERO if held else (Vector3(0.0, velocity.y, 0.0) if on_face else velocity)
+	figure.grounded = is_on_floor() or puppet or is_aloft()
 	figure.global_position = at
-	figure.rotation.y = facing_yaw
+	figure.global_basis = (Basis(Vector3.UP, facing_yaw) * aloft_tilt(true)).scaled(Vector3.ONE * SIZE)
+	HighClimb.hold_wall(figure, on_face, at, aloft_out(), SIZE)
 
 
 # --- Being run by someone else ---

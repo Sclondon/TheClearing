@@ -77,6 +77,10 @@ enum Mode { DORMANT, WARN, OUT, HOME }
 ## How far up a wall's face they run (m), and the share of those that meet a wall that do.
 @export var wall_climb := 1.6
 @export_range(0.0, 1.0) var wall_share := 0.5
+## How far up a wall's face they run after a target over them, close above them (m; the
+## user, 2026-10-18: "more creatures should be able to climb things"): a river of rats
+## up the front of a ledge to whoever stands at its edge. 0: no further than `wall_climb`.
+@export var climb_after := 0.0
 ## How wide they spread going along a hall far from the target (m).
 @export var flood_width := 5.0
 ## How deep they pile up where they crowd (rats on rats).
@@ -917,11 +921,15 @@ func _on_wall(i: int, delta: float, want_x: float, want_z: float, him: Vector3, 
 	var side_z := out_x
 	var along := _b[i]
 	var big := _size[i]
+	# (it is kept a hair off the wall, below: where it is on the wall is without that,
+	# or it creeps out from the wall a hair a frame, which shows on a long climb)
+	x -= out_x * big * 0.04
+	z -= out_z * big * 0.04
 	var seed := _seed[i]
 	var top := _c[i]
 	var away := want_x * out_x + want_z * out_z
 	var climbing := _wait[i] <= 0.0 and up < top and (away < 0.85 or up < top * 0.5) and not homing
-	if hunting and him.y > ground + up + 0.2 and Vector2(him.x - x, him.z - z).length() < 1.5 and up < wall_climb:
+	if hunting and him.y > ground + up + 0.2 and Vector2(him.x - x, him.z - z).length() < 1.5 and up < maxf(wall_climb, climb_after):
 		climbing = true
 	if not climbing:
 		_wait[i] = 1.0

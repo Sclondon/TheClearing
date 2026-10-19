@@ -26,8 +26,13 @@ extends MazeEnemy
 ##   jump or two shakes them off), and fast while he slides or spins; a roll or
 ##   a dive flings every one off at once. Thrown off (FLUNG) an imp tumbles,
 ##   lands, and throws a TANTRUM before it comes on again.
-## - When it forgets them (`memory`) or they get up out of its reach, it throws
-##   a tantrum and goes HOME: back to the foot of its wall and up to its perch.
+## - Up on a ledge, a terrace or a concrete bridge is not out of its reach: it
+##   scurries up the face after them as it goes up to its perch, and along the
+##   top (MazeEnemy's CLIMBING; the user, 2026-10-18: "more creatures should be
+##   able to climb things").
+## - When it forgets them (`memory`) or they get up out of its reach (a vine, a
+##   rope bridge, a wall top), it throws a tantrum and goes HOME: back to the foot
+##   of its wall and up to its perch.
 ##
 ## Online, as every MazeEnemy: the host's copy thinks; a puppet follows what it
 ## hears (its mode, the wall it is on or the player it rides, and counts of its
@@ -117,6 +122,7 @@ func _init() -> void:
 	alert_range = 25.0
 	pack = &"imps"
 	spare_time = 4.0
+	climbs = Climbs.SCRAMBLE
 	climb_speed = 2.4
 
 
@@ -237,7 +243,14 @@ func _physics_process(delta: float) -> void:
 			if after:
 				mode = Mode.DOWN
 		Mode.HUNT:
-			_hunt(after, delta)
+			# (up the wall after them, out of reach on a ledge: as it goes up to its perch)
+			global_position = _pos
+			if _ways_up(delta, 0.2, run_speed):
+				_pos = global_position
+				_vel = velocity
+				_yaw = aloft_yaw()
+			else:
+				_hunt(after, delta)
 		Mode.LEAP:
 			_leaping(delta)
 		Mode.RIDING:
@@ -542,7 +555,8 @@ func _process(delta: float) -> void:
 			body.process_mode = Node.PROCESS_MODE_DISABLED if far else Node.PROCESS_MODE_INHERIT
 	if _far:
 		return
-	body.clinging = mode in [Mode.PERCH, Mode.DOWN, Mode.CLIMB]
+	var on_face := aloft == HighClimb.Aloft.CLIMB or aloft == HighClimb.Aloft.DOWN
+	body.clinging = mode in [Mode.PERCH, Mode.DOWN, Mode.CLIMB] or on_face
 	body.riding = mode == Mode.RIDING
 	body.tumbling = mode == Mode.FLUNG
 	body.on_all_fours = mode in [Mode.HUNT, Mode.LEAP, Mode.HOME, Mode.DOWN]
@@ -551,9 +565,15 @@ func _process(delta: float) -> void:
 		after = nearest_player(global_position) if chasing else null
 	body.look_at_point = after.global_position + Vector3.UP * 1.0 if after and mode != Mode.FLUNG else Vector3.INF
 	var want: Transform3D
-	match mode:
+	match (mode if not on_face else Mode.CLIMB):
 		Mode.PERCH, Mode.DOWN, Mode.CLIMB:
-			want = _on_wall(_surface, _heading)
+			if on_face:
+				# (up a face after someone: clinging to it head up, or head down coming down)
+				var out := aloft_out()
+				var ahead := Vector3.UP if aloft == HighClimb.Aloft.CLIMB else Vector3.DOWN
+				want = Transform3D(Basis(out.cross(ahead), out, ahead), global_position + out * 0.01)
+			else:
+				want = _on_wall(_surface, _heading)
 		Mode.RIDING:
 			if ridden and is_instance_valid(ridden):
 				want = ImpRide.slot(_skeleton_of(ridden), ridden, slot)
