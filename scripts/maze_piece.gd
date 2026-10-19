@@ -26,9 +26,12 @@ extends Node3D
 ## corners as round as `length`, with `width` fish in it; it is never turned.
 ## A grappling hook spot (an anchor: an iron ring,
 ## hook or pipe, GrappleSpots) is where the hook bites, its +Z out of the
-## wall it is on.
+## wall it is on. A catwalk (Catwalks) runs level from its origin, the middle of
+## the top of its deck at one end, to its child `End`, `width` wide; `catwalk` says
+## what is along its sides and at its ends. A steel ladder (Catwalks) stands up
+## `length` from its origin, climbed from its +Z side.
 
-enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, PROP, WIRE, POND, ANCHOR }
+enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, PROP, WIRE, POND, ANCHOR, CATWALK, LADDER }
 
 @export var kind := Kind.WALL:
 	set(value):
@@ -101,6 +104,14 @@ enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, 
 	set(value):
 		anchor = value
 		_refresh()
+## A catwalk's sides and ends (Catwalks.Side): a railing along its left or right (looking
+## from its origin to its End), a wall along its left or right (it stands on brackets
+## from it), a railing across its start or its end, a wall at its start or end (struts
+## from it under the deck), hung from a beam overhead (`length` over its deck).
+@export_flags("Rail left", "Rail right", "Wall left", "Wall right", "Shut start", "Shut end", "Wall at start", "Wall at end", "Hung") var catwalk := 0:
+	set(value):
+		catwalk = value
+		_refresh()
 
 var _shown: Node3D
 var _drawn_end := Vector3.INF
@@ -147,7 +158,7 @@ func bridge_end() -> Vector3:
 
 func _process(_delta: float) -> void:
 	# (in the editor, a bridge redraws when its far end is moved)
-	if Engine.is_editor_hint() and kind in [Kind.BRIDGE, Kind.STRAND, Kind.WIRE] and _shown and bridge_end() != _drawn_end:
+	if Engine.is_editor_hint() and kind in [Kind.BRIDGE, Kind.STRAND, Kind.WIRE, Kind.CATWALK] and _shown and bridge_end() != _drawn_end:
 		_refresh()
 
 
@@ -158,7 +169,7 @@ func _refresh() -> void:
 	if _shown:
 		_shown.queue_free()
 		_shown = null
-	set_process(kind in [Kind.BRIDGE, Kind.STRAND, Kind.WIRE])
+	set_process(kind in [Kind.BRIDGE, Kind.STRAND, Kind.WIRE, Kind.CATWALK])
 	match kind:
 		Kind.WALL, Kind.PIER, Kind.TERRACE:
 			var tool := SurfaceTool.new()
@@ -234,6 +245,12 @@ func _refresh() -> void:
 			# (as big as it is: undo the node's scale)
 			spot.scale = Vector3.ONE / scale.abs().max(Vector3.ONE * 0.001)
 			_shown = spot
+		Kind.CATWALK, Kind.LADDER:
+			# (drawn where it is in the world, as a bridge is)
+			if kind == Kind.CATWALK and not has_node(^"End"):
+				return
+			_drawn_end = bridge_end()
+			_shown = Catwalks.shown(self)
 	if _shown:
 		# (shown, but not part of the scene: it is made again whenever it is opened)
 		add_child(_shown, false, Node.INTERNAL_MODE_BACK)
@@ -241,7 +258,7 @@ func _refresh() -> void:
 
 func _notification(what: int) -> void:
 	# (a vine's rope and a bridge's planks are laid where they hang in the world: moved, they are laid again)
-	if what == NOTIFICATION_TRANSFORM_CHANGED and Engine.is_editor_hint() and kind in [Kind.VINE, Kind.BRIDGE, Kind.STRAND, Kind.WIRE]:
+	if what == NOTIFICATION_TRANSFORM_CHANGED and Engine.is_editor_hint() and kind in [Kind.VINE, Kind.BRIDGE, Kind.STRAND, Kind.WIRE, Kind.CATWALK, Kind.LADDER]:
 		_refresh()
 
 

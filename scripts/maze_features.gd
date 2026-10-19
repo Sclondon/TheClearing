@@ -55,6 +55,8 @@ var vines: Array[Vine] = []
 var bridges: Array[RopeBridge] = []
 var strands: Array[VineStrand] = []
 var pipes: Array[SewerPipe] = []
+## The metal catwalks and their ladders (Catwalks; null if there are none).
+var catwalks: Catwalks
 ## The grappling hook spots, a GrappleSpots for each square of SPOT_SQUARE metres that has any.
 var spots: Array[GrappleSpots] = []
 ## Where the terraces stand, in the world's x and z (for keeping grass off them).
@@ -162,6 +164,14 @@ func realize(layout: MazeLayout) -> void:
 	for key: Vector2i in squares:
 		add_child(squares[key])
 		spots.append(squares[key])
+	# The catwalks and their ladders, drawn and bumped into all together.
+	var walks := layout.pieces(MazePiece.Kind.CATWALK)
+	var ladders := layout.pieces(MazePiece.Kind.LADDER)
+	if not walks.is_empty() or not ladders.is_empty():
+		catwalks = Catwalks.new()
+		catwalks.name = "Catwalks"
+		add_child(catwalks)
+		catwalks.build(walks, ladders)
 
 
 ## Starts on ring `ring`: its style and its numbers. Whether it is being laid out.
@@ -273,6 +283,7 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 	_brackets(plan)
 	_spots(plan)
 	_concrete_bridges(plan)
+	_catwalks(plan)
 	_furnish_rooms(plan)
 	# (the vines are hung after the props are laid out: see hang_vines)
 
@@ -823,6 +834,407 @@ func _concrete_bridge(one: Array, other: Array, level: int, numbers: RandomNumbe
 	_decks.append([middle, across, side, long, wide, high, level, one])
 
 
+# --- Catwalks ---
+# (the user, 2026-10-18: "we need to add a metal cat walk option that will add pathways
+# above the mezzanines, rarely in zone 2 and then lots in zone 3")
+
+## How far short of a free end of its stretch of wall a catwalk along it stops, metres
+## (its ladder stands there, and whoever climbs it, on the ledge or the floor of that face).
+const WALK_END_GAP := 1.0
+## How far off the wall's face a catwalk along it stands, metres (not flush: its steel would flicker in the concrete).
+const WALK_OFF_WALL := 0.03
+## Of the share of halls with catwalks (MazeStyle.catwalk_share), what share of that
+## have one across them; and how long one across is before it is hung from a beam
+## overhead too, metres.
+const WALK_ACROSS := 0.6
+const WALK_HUNG := 9.0
+## The chance a free end of a catwalk along a wall has a ladder up to it, and a walled
+## end of one across a hall (every way over the maze has one at least).
+const WALK_LADDER := 0.3
+const WALK_SIDE_LADDER := 0.25
+## How far along a catwalk across a hall from the wall its ladder beside it is, metres.
+const WALK_LADDER_IN := 0.8
+
+## The catwalks laid out, as dictionaries: their ends ("a", "b": the middle of the top
+## of the deck), "wide", "flags" (Catwalks.Side), "beam" (how high the beam it hangs from
+## is over it), the section ("ring"), the faces it runs along or between ("faces":
+## [cell, step] each), whether it runs along a wall ("along"), which ends are in the air
+## ("free") or at a wall ("walled"), the catwalks it meets ("links") and its ladders
+## ("ladders": [where, how high] each; "laddered": which ends have one).
+var _walks: Array = []
+## [cell, step] -> [the catwalk along that face, from, to] (how far along the face from its middle it runs).
+var _walk_faces := {}
+## The piers where walls meet (MazeLayout._piers), by where they stand -> half their width:
+## they stand out from the walls' faces at the corners, and catwalks keep clear of them.
+var _piers_at := {}
+
+
+## The catwalks (MazeStyle "Climbing": catwalks), at each section's MazeStyle.catwalk_level:
+## along straight stretches of wall, on brackets from it, into the corners (meeting one
+## along the wall there); across the halls, from wall to wall or from one along a wall;
+## and ladders up to each way they make over the maze, from the ledge or the floor under
+## them. Every stretch, hall and catwalk has numbers of its own (so turning them on or
+## off moves nothing else, but the vines that would hang on the wall where they run).
+func _catwalks(plan: Maze) -> void:
+	for great: bool in [false, true]:
+		for pier: Array in MazeLayout._piers(plan, great):
+			_piers_at[Vector2(pier[0].x, pier[0].z).snappedf(0.5)] = float(pier[1].x) * 0.5
+	var walled: Array = []
+	for i in plan.size * plan.size:
+		var cell := Vector2i(i % plan.size, i / plan.size)
+		var ring := plan.ring_of(cell)
+		if ring < 1 or ring > plan.rings or not _enter(ring) or _style.amount(&"catwalk_share") <= 0.0:
+			continue
+		var high := _style.catwalk_level()
+		if high < 0.0:
+			continue
+		# Along each straight stretch of wall face (from its first face), all of it or a part.
+		for step: Vector2i in Maze.STEPS:
+			if not _walk_face(cell, step, high) or _walk_goes_on(cell, step, -1, high):
+				continue
+			var side := Vector2i(-step.y, step.x)
+			var cells: Array[Vector2i] = [cell]
+			while _walk_goes_on(cells[-1], step, 1, high):
+				cells.append(cells[-1] + side)
+			var numbers := _numbers(hash([plan.maze_seed, cell, step]), 60)
+			if numbers.randf() >= _style.amount(&"catwalk_share"):
+				continue
+			var first := 0
+			var last := cells.size() - 1
+			if cells.size() > 2 and numbers.randf() < 0.5:
+				first = numbers.randi_range(0, cells.size() - 2)
+				last = numbers.randi_range(first + 1, cells.size() - 1)
+			var faces := cells.slice(first, last + 1)
+			if _walk_along(ring, faces, step, high):
+				for face: Vector2i in faces:
+					walled.append([face, step])
+	# (nothing else is put on those faces: the vines out of bare wall)
+	for face: Array in walled:
+		_taken[face] = true
+	# Across the halls, from wall to wall (or from one along a wall).
+	for i in plan.size * plan.size:
+		var cell := Vector2i(i % plan.size, i / plan.size)
+		var ring := plan.ring_of(cell)
+		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell) or not _enter(ring):
+			continue
+		var high := _style.catwalk_level()
+		if high < 0.0 or _style.amount(&"catwalk_share") <= 0.0:
+			continue
+		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+			if not plan.blocked(cell, -step):
+				continue
+			var far := _far_side(cell, step)
+			if far == NOWHERE:
+				continue
+			var numbers := _numbers(hash([plan.maze_seed, cell, step]), 61)
+			if numbers.randf() < _style.amount(&"catwalk_share") * WALK_ACROSS:
+				_walk_across(ring, [cell, -step], [far, step], high, numbers)
+	_walk_ladders()
+	# The pieces: each catwalk, railed across an end in the air with no ladder, and its ladders.
+	for walk: Dictionary in _walks:
+		var flags: int = walk.flags
+		if walk.free[0] and not walk.laddered[0]:
+			flags |= Catwalks.Side.SHUT_START
+		if walk.free[1] and not walk.laddered[1]:
+			flags |= Catwalks.Side.SHUT_END
+		_layout.laying_zone = walk.ring
+		_layout.add_piece(MazePiece.Kind.CATWALK, Transform3D(Basis.IDENTITY, walk.a), {"to": walk.b, "width": walk.wide, "catwalk": flags, "length": walk.beam})
+		for ladder: Array in walk.ladders:
+			_layout.add_piece(MazePiece.Kind.LADDER, ladder[0], {"length": ladder[1]})
+		_layout.laying_zone = -1
+
+
+## Whether a catwalk at `high` may run along the face (cell, step): a wall nothing
+## else is on, in a section's hall (not a room), high enough.
+func _walk_face(cell: Vector2i, step: Vector2i, high: float) -> bool:
+	var ring := _maze.ring_of(cell)
+	if ring < 1 or ring > _maze.rings or not _maze.blocked(cell, step) or _taken.has([cell, step]) \
+			or _maze.entrances.has(cell) or _maze.solid.has(cell) or _maze.in_room(cell):
+		return false
+	return _face_top(cell, step) - MazeBuilder.CORNICE.y - MazeStyle.CATWALK_UNDER_TOP >= high - 0.01
+
+
+## Whether the stretch of wall along the face (cell, step) goes on straight the `way`
+## way (1 or -1, along the face's side) into a face a catwalk may run along too.
+func _walk_goes_on(cell: Vector2i, step: Vector2i, way: int, high: float) -> bool:
+	var across := Vector2i(-step.y, step.x) * way
+	var next := cell + across
+	return _maze.ring_of(next) == _maze.ring_of(cell) and not _maze.blocked(cell, across) and _pier_at(cell, step, way) <= 0.0 \
+			and _walk_face(next, step, high)
+
+
+## How far a pier standing at the `way` end of the face (cell, step) reaches from the
+## corner it stands on (half its width; 0: there is none).
+func _pier_at(cell: Vector2i, step: Vector2i, way: int) -> float:
+	var s := Vector3(step.x, 0.0, step.y)
+	var corner := _maze.world(cell) + s * Maze.CELL * 0.5 + Vector3(-s.z, 0.0, s.x) * way * Maze.CELL * 0.5
+	return _piers_at.get(Vector2(corner.x, corner.z).snappedf(0.5), 0.0)
+
+
+## The rectangle a catwalk from `a` to `b`, `wide`, covers on the ground (they run along x or z).
+static func _walk_rect(a: Vector3, b: Vector3, wide: float) -> Rect2:
+	var rect := Rect2(Vector2(a.x, a.z), Vector2.ZERO).expand(Vector2(b.x, b.z))
+	var across := Vector2(0.0, wide * 0.5) if absf(b.x - a.x) > absf(b.z - a.z) else Vector2(wide * 0.5, 0.0)
+	return Rect2(rect.position - across, rect.size + across * 2.0)
+
+
+## Whether a catwalk from `a` to `b`, `wide`, in section `ring`, would lie over one there
+## already (meeting one, end to side, is not).
+func _walk_clear(a: Vector3, b: Vector3, wide: float, ring: int) -> bool:
+	var rect := _walk_rect(a, b, wide).grow(-0.05)
+	for walk: Dictionary in _walks:
+		if walk.ring == ring and rect.intersects(_walk_rect(walk.a, walk.b, walk.wide)):
+			return false
+	return true
+
+
+## The catwalk running along the wall face `face` ([cell, step]) into its corner with
+## the wall the `toward` way, if there is one (-1 if not).
+func _walk_into_corner(face: Array, toward: Vector2i) -> int:
+	var entry: Array = _walk_faces.get(face, [])
+	if entry.is_empty():
+		return -1
+	var step: Vector2i = face[1]
+	var way := 1 if Vector2i(-step.y, step.x) == toward else -1
+	var corner := way * (Maze.CELL * 0.5 - _thick(face[0], toward) * 0.5)
+	if (way > 0 and float(entry[2]) >= corner - 0.05) or (way < 0 and float(entry[1]) <= corner + 0.05):
+		return entry[0]
+	return -1
+
+
+## A catwalk along the faces `cells` (one after another along the wall) on their `step`
+## side, at `high`: on brackets from the wall, its railing on the hall's side; into a
+## corner at an end where the wall turns across it (to the side of a catwalk along that
+## wall if one runs into the corner), or stopping short of the stretch's end. Whether
+## there was room for it.
+func _walk_along(ring: int, cells: Array, step: Vector2i, high: float) -> bool:
+	var wide := _style.catwalk_width
+	var side := Vector2i(-step.y, step.x)
+	var reach := {}
+	var free := {}
+	var links: Array = []
+	for way: int in [-1, 1]:
+		var end: Vector2i = cells[0] if way < 0 else cells[-1]
+		var across := side * way
+		var pier := _pier_at(end, step, way)
+		if pier > 0.0:
+			# (short of a pier standing out of the corner there)
+			reach[way] = Maze.CELL * 0.5 - pier - WALK_END_GAP
+			free[way] = true
+		elif _maze.blocked(end, across):
+			reach[way] = Maze.CELL * 0.5 - _thick(end, across) * 0.5 - WALK_OFF_WALL
+			free[way] = false
+			var met := _walk_into_corner([end, across], step)
+			if met >= 0:
+				reach[way] -= float(_walks[met].wide) + WALK_OFF_WALL
+				links.append(met)
+		else:
+			reach[way] = Maze.CELL * 0.5 - WALK_END_GAP
+			free[way] = true
+	var from: float = -reach[-1]
+	var to: float = (cells.size() - 1) * Maze.CELL + reach[1]
+	if to - from < 2.0:
+		return false
+	var a := _edge(cells[0], step, wide * 0.5 + WALK_OFF_WALL, from) + Vector3.UP * high
+	var b := _edge(cells[0], step, wide * 0.5 + WALK_OFF_WALL, to) + Vector3.UP * high
+	if not _walk_clear(a, b, wide, ring):
+		return false
+	var s := Vector3(step.x, 0.0, step.y)
+	var right := Vector3(side.x, 0.0, side.y).cross(Vector3.UP)
+	var flags: int = (Catwalks.Side.WALL_RIGHT | Catwalks.Side.RAIL_LEFT) if right.dot(s) > 0.0 else (Catwalks.Side.WALL_LEFT | Catwalks.Side.RAIL_RIGHT)
+	var index := _walks.size()
+	_walks.append({"a": a, "b": b, "wide": wide, "flags": flags, "beam": 0.0, "ring": ring, "faces": cells.map(func(cell: Vector2i) -> Array: return [cell, step]),
+		"along": true, "free": [free[-1], free[1]], "walled": [false, false], "links": links, "ladders": [], "laddered": [false, false]})
+	for met: int in links:
+		_walks[met].links.append(index)
+	for k in cells.size():
+		_walk_faces[[cells[k], step]] = [index, from - k * Maze.CELL, to - k * Maze.CELL]
+	return true
+
+
+## A catwalk across the hall at `high` from the wall face `one` to the face `other` across
+## from it ([cell, step] each), as `numbers` say: from a catwalk along either wall if one
+## runs there (meeting its side), else from the wall itself on struts; hung from a beam
+## under the walls' tops too if it is long; railed on one side or both.
+func _walk_across(ring: int, one: Array, other: Array, high: float, numbers: RandomNumberGenerator) -> void:
+	var wide := _style.catwalk_width
+	for face: Array in [one, other]:
+		if not _walk_faces.has(face) and not _walk_face(face[0], face[1], high):
+			return
+	var room := Vector2(_room(one[0], one[1], -1), _room(one[0], one[1], 1)) - Vector2.ONE * (wide * 0.5 + 0.6)
+	var far_room := Vector2(_room(other[0], other[1], -1), _room(other[0], other[1], 1)) - Vector2.ONE * (wide * 0.5 + 0.6)
+	# (clear of the piers at the faces' ends)
+	for way: int in [-1, 1]:
+		var k := 0 if way < 0 else 1
+		if _pier_at(one[0], one[1], way) > 0.0:
+			room[k] = minf(room[k], Maze.CELL * 0.5 - _pier_at(one[0], one[1], way) - wide * 0.5 - 0.6)
+		if _pier_at(other[0], other[1], way) > 0.0:
+			far_room[k] = minf(far_room[k], Maze.CELL * 0.5 - _pier_at(other[0], other[1], way) - wide * 0.5 - 0.6)
+	# (straight across: along the far wall, which runs the other way, it is at -along)
+	var lowest := maxf(-room.x, -far_room.y)
+	var highest := minf(room.y, far_room.x)
+	if lowest > highest:
+		return
+	var along := numbers.randf_range(lowest, highest)
+	var pick := numbers.randf()
+	# (from somewhere along a catwalk along either wall, to meet it)
+	for k in 2:
+		var entry: Array = _walk_faces.get([one, other][k], [])
+		if entry.is_empty():
+			continue
+		var turn := 1.0 if k == 0 else -1.0
+		var lo := maxf(lowest, minf(float(entry[1]) * turn, float(entry[2]) * turn) + wide * 0.5)
+		var hi := minf(highest, maxf(float(entry[1]) * turn, float(entry[2]) * turn) - wide * 0.5)
+		if lo <= hi:
+			along = lerpf(lo, hi, pick)
+			break
+	# Its ends: meeting a catwalk along the wall, or at the wall itself (well clear of one
+	# along it elsewhere, which its ladder would come up through).
+	var links: Array = []
+	var outs: Array[float] = []
+	for k in 2:
+		var x := along if k == 0 else -along
+		var entry: Array = _walk_faces.get([one, other][k], [])
+		if not entry.is_empty() and x - wide * 0.5 >= float(entry[1]) - 0.01 and x + wide * 0.5 <= float(entry[2]) + 0.01:
+			links.append(entry[0])
+			outs.append(float(_walks[entry[0]].wide) + WALK_OFF_WALL)
+		elif not entry.is_empty() and x + wide * 0.5 + 1.6 > float(entry[1]) and x - wide * 0.5 - 1.6 < float(entry[2]):
+			return
+		else:
+			links.append(-1)
+			outs.append(0.02)
+	var a := _edge(one[0], one[1], outs[0], along) + Vector3.UP * high
+	var b := _edge(other[0], other[1], outs[1], -along) + Vector3.UP * high
+	var long := a.distance_to(b)
+	if long < 2.0 or not _walk_clear(a, b, wide, ring):
+		return
+	var flags := 0
+	if _style.catwalk_railings == 1:
+		flags = Catwalks.Side.RAIL_LEFT | Catwalks.Side.RAIL_RIGHT
+	else:
+		flags = Catwalks.Side.RAIL_LEFT if numbers.randf() < 0.5 else Catwalks.Side.RAIL_RIGHT
+	if links[0] < 0:
+		flags |= Catwalks.Side.WALL_START
+	if links[1] < 0:
+		flags |= Catwalks.Side.WALL_END
+	var beam := 0.0
+	if long > WALK_HUNG:
+		var top := minf(_face_top(one[0], one[1]), _face_top(other[0], other[1])) - MazeBuilder.CORNICE.y - 0.4
+		if top - high > 1.5:
+			beam = top - high
+			flags |= Catwalks.Side.HUNG
+	var index := _walks.size()
+	var met := links.filter(func(link: int) -> bool: return link >= 0)
+	_walks.append({"a": a, "b": b, "wide": wide, "flags": flags, "beam": beam, "ring": ring, "faces": [one, other],
+		"along": false, "free": [false, false], "walled": [links[0] < 0, links[1] < 0], "links": met, "ladders": [], "laddered": [false, false]})
+	for link: int in met:
+		_walks[link].links.append(index)
+
+
+## Ladders up to the catwalks: at a free end of one along a wall now and then, beside
+## one across a hall near a wall now and then; and one at least up to every way they
+## make over the maze (catwalks meeting each other), each catwalk with numbers of its own.
+func _walk_ladders() -> void:
+	var group := range(_walks.size())
+	var find := func(i: int) -> int:
+		while group[i] != i:
+			i = group[i]
+		return i
+	for i in _walks.size():
+		for j: int in _walks[i].links:
+			group[find.call(i)] = find.call(j)
+	var reached := {}
+	for i in _walks.size():
+		var walk: Dictionary = _walks[i]
+		_enter(walk.ring)
+		var numbers := _numbers(hash([_maze.maze_seed, (walk.a as Vector3).snappedf(0.01)]), 62)
+		for end in 2:
+			var roll := numbers.randf()
+			if walk.free[end] and roll < WALK_LADDER:
+				_end_ladder(walk, end)
+			elif walk.walled[end] and roll < WALK_SIDE_LADDER:
+				_side_ladder(walk, end, numbers.randf() < 0.5)
+		if not walk.ladders.is_empty():
+			reached[find.call(i)] = true
+	for i in _walks.size():
+		var walk: Dictionary = _walks[i]
+		if reached.has(find.call(i)):
+			continue
+		_enter(walk.ring)
+		var done := false
+		for end in 2:
+			if not done and walk.free[end]:
+				done = _end_ladder(walk, end)
+		for end in 2:
+			if not done and walk.walled[end]:
+				done = _side_ladder(walk, end, true)
+		if not done and walk.along:
+			done = _hall_ladder(walk)
+		if done:
+			reached[find.call(i)] = true
+
+
+## A ladder of `walk` standing at `p` (on the ground, its +Z `out` from the catwalk) up
+## to it from what is under it along the face (cell, step), `x` out from the wall: the
+## top of the highest ledge there, or the floor. Whether there was height for one.
+func _walk_ladder(walk: Dictionary, p: Vector3, out: Vector3, cell: Vector2i, step: Vector2i, x: float) -> bool:
+	var high: float = walk.a.y
+	var foot := _foot_under(cell, step, x, high)
+	if high - foot < 2.0:
+		return false
+	walk.ladders.append([Transform3D(Basis(Vector3.UP.cross(out), Vector3.UP, out), Vector3(p.x, foot, p.z)), high - foot])
+	return true
+
+
+## A ladder at end `end` (0 its start, 1 its end) of a catwalk along a wall, up from the ledge or floor there.
+func _end_ladder(walk: Dictionary, end: int) -> bool:
+	var a: Vector3 = walk.a
+	var b: Vector3 = walk.b
+	var out := (a - b).normalized() if end == 0 else (b - a).normalized()
+	out.y = 0.0
+	var p: Vector3 = (a if end == 0 else b) + out * Catwalks.LADDER_OUT
+	var step: Vector2i = walk.faces[0][1]
+	if not _walk_ladder(walk, p, out, _maze.cell_at(p), step, float(walk.wide) * 0.5):
+		return false
+	walk.laddered[end] = true
+	return true
+
+
+## A ladder beside a catwalk across a hall, WALK_LADDER_IN from the wall at end `end`, on
+## its right side (or left), up from the ledge or floor along that wall.
+func _side_ladder(walk: Dictionary, end: int, on_right: bool) -> bool:
+	var a: Vector3 = walk.a
+	var b: Vector3 = walk.b
+	var along := Vector3(b.x - a.x, 0.0, b.z - a.z).normalized()
+	var out := along.cross(Vector3.UP) * (1.0 if on_right else -1.0)
+	var at: Vector3 = (a + along * WALK_LADDER_IN) if end == 0 else (b - along * WALK_LADDER_IN)
+	var p := at + out * (float(walk.wide) * 0.5 + Catwalks.LADDER_OUT)
+	var face: Array = walk.faces[end]
+	return _walk_ladder(walk, p, out, face[0], face[1], WALK_LADDER_IN + 0.15)
+
+
+## A ladder beside a catwalk along a wall, on the hall's side, where nothing meets it
+## (a catwalk across): up from the ledge under it or the floor.
+func _hall_ladder(walk: Dictionary) -> bool:
+	var a: Vector3 = walk.a
+	var b: Vector3 = walk.b
+	var step: Vector2i = walk.faces[0][1]
+	var out := -Vector3(step.x, 0.0, step.y)
+	var long := a.distance_to(b)
+	for t: float in [0.5, 0.25, 0.75, 0.1, 0.9]:
+		var at := a.lerp(b, t)
+		var clear := true
+		for link: int in walk.links:
+			for end: Vector3 in [_walks[link].a, _walks[link].b]:
+				if Vector2(end.x - at.x, end.z - at.z).length() < float(_walks[link].wide) * 0.5 + float(walk.wide) * 0.5 + 1.0:
+					clear = false
+		if not clear or long * minf(t, 1.0 - t) < 1.0:
+			continue
+		var p := at + out * (float(walk.wide) * 0.5 + Catwalks.LADDER_OUT)
+		return _walk_ladder(walk, p, out, _maze.cell_at(p), step, float(walk.wide) + Catwalks.LADDER_OUT)
+	return false
+
+
 # --- The vines ---
 # (the user, 2026-10-18: "the vines are hung on whats there. There should be 3 sliders-
 # one for mezzanine crossing density, one for hanging straight down vine desnity, a
@@ -831,12 +1243,13 @@ func _concrete_bridge(one: Array, other: Array, level: int, numbers: RandomNumbe
 
 ## What a vine is hung on: the edge of a ledge, bare wall, or a thing on the wall (a
 ## terrace, a bracket, a sewer pipe's platform, a concrete bridge's side, a vent, an
-## outlet, a culvert, a junction box).
-enum Anchor { LEDGE, WALL, THING }
+## outlet, a culvert, a junction box), or the side of a catwalk.
+enum Anchor { LEDGE, WALL, THING, CATWALK }
 ## How strongly each pulls vines to it, hanging and strung across: the hanging and
 ## random crossing densities are the chance for each ledge edge (at each level); bare
-## wall faces have this much of it, things on the walls this much (at most every one).
-const PULL := {Anchor.LEDGE: Vector2(1.0, 1.0), Anchor.WALL: Vector2(0.3, 0.3), Anchor.THING: Vector2(4.0, 1.5)}
+## wall faces have this much of it, things on the walls this much (at most every one),
+## the sides of catwalks this much.
+const PULL := {Anchor.LEDGE: Vector2(1.0, 1.0), Anchor.WALL: Vector2(0.3, 0.3), Anchor.THING: Vector2(4.0, 1.5), Anchor.CATWALK: Vector2(1.5, 1.0)}
 ## How high up its band of wall a vine out of bare wall comes out: lowest and highest,
 ## metres over the floor (or the top ledge under it).
 const WALL_VINE_HEIGHTS := Vector2(4.0, 14.0)
@@ -872,6 +1285,10 @@ func hang_vines() -> void:
 	for piece in _layout.pieces(MazePiece.Kind.PROP):
 		if piece.prop in HUNG_ON:
 			_note(near, piece.position, piece.basis.get_scale().x * 0.6)
+	# (and the catwalks' ladders, to climb clear of vines)
+	for walk: Dictionary in _walks:
+		for ladder: Array in walk.ladders:
+			_note(near, (ladder[0] as Transform3D).origin, 0.6)
 	_mezzanine_crossings(near)
 	for anchor: Dictionary in _anchors():
 		_hang_on(anchor, near)
@@ -1040,6 +1457,44 @@ func _anchors() -> Array:
 				_level_height(level - 2) if level >= 2 else 0.0, true, seed_of.call(Anchor.THING, at))
 			anchor["out"] = deck[2] * way
 			anchor["side"] = deck[1]
+			anchor["crosses"] = false
+			anchors.append(anchor)
+	# The catwalks: over the hall's side of one along a wall (strung across from it too, and
+	# tied to from across the hall), both sides of one across a hall (its middle, over the floor).
+	for walk: Dictionary in _walks:
+		var ring: int = walk.ring
+		if not _enter(ring):
+			continue
+		var a: Vector3 = walk.a
+		var b: Vector3 = walk.b
+		var along := Vector3(b.x - a.x, 0.0, b.z - a.z).normalized()
+		var long := a.distance_to(b)
+		var wide: float = walk.wide
+		if walk.along:
+			# (a place on each face it runs along: that face's far side and floor are its vines')
+			for face: Array in walk.faces:
+				var cell: Vector2i = face[0]
+				var step: Vector2i = face[1]
+				var entry: Array = _walk_faces[face]
+				var lo := maxf(float(entry[1]), -Maze.CELL * 0.5)
+				var hi := minf(float(entry[2]), Maze.CELL * 0.5)
+				var at := _edge(cell, step, wide + WALK_OFF_WALL, (lo + hi) * 0.5) + Vector3.UP * (a.y - 0.05)
+				var anchor := _anchor(ring, cell, step, Anchor.CATWALK, at, (hi - lo) * 0.5 - 1.0, Vine.Held.LIP, 0.15,
+					_foot_under(cell, step, wide + 0.15, at.y), true, seed_of.call(Anchor.CATWALK, at))
+				anchor["side"] = along
+				anchors.append(anchor)
+				_target(cell, step, at)
+			continue
+		# (one across a hall: over the floor, clear of the ledges either side; none strung from it)
+		var face: Array = walk.faces[0]
+		var span := long * 0.5 - 1.0
+		for level in mini(int(_level_counts.get(face, 0)), _style.mezzanine_count()):
+			span = minf(span, long * 0.5 - _level_depth(level) - 0.8)
+		for out: Vector3 in [along.cross(Vector3.UP), -along.cross(Vector3.UP)]:
+			var at := (a + b) * 0.5 + out * wide * 0.5 + Vector3.DOWN * 0.05
+			var anchor := _anchor(ring, face[0], face[1], Anchor.CATWALK, at, span, Vine.Held.LIP, 0.15, 0.0, true, seed_of.call(Anchor.CATWALK, at))
+			anchor["out"] = out
+			anchor["side"] = along
 			anchor["crosses"] = false
 			anchors.append(anchor)
 	# Vents, outlets, culverts and junction boxes (MazeProps): over the top of each.
