@@ -251,6 +251,7 @@ for t in ghoul centipede spider abomination flesh_mound slime_wall bats baboon d
 "$G" --path . --resolution 1280x720 -s res://tools/climb_shots.gd -- <folder>   # pictures of the ways up
 "$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/catwalk_shots.gd -- <folder> [galleries]   # the catwalks: from the floor, on one, from above (`climb`, headless: up a ladder onto one and along it)
 "$G" --headless --audio-driver Dummy --path . -s res://tools/body_count.gd [-- defaults [nocatwalks]]   # bodies a solo round makes, by kind
+"$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/strand_vines_shots.gd -- <folder>   # vines hanging from strung vines: a picture, and their tops following it walked on and cut
 "$G" --headless --path . -s res://tools/bake_preview.gd -- [seed] [rings]   # a maze to look round in the editor: preview/maze_preview.scn
 "$G" --path . --resolution 900x900 -s res://tools/head_sheet.gd -- <file.png>    # every head shape
 "$G" --path . --resolution 900x900 -s res://tools/legs_sheet.gd -- <file.png>    # every trouser cut and boot

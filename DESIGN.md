@@ -302,6 +302,14 @@ vines' settings change only the vines:
   to hang and 1.5 times it to be strung across (`MazeFeatures.PULL`).
 - *Overall vine density* (x) multiplies all three. *Height limit* (% of the wall's height, each wall's own): nothing
   higher holds a vine, and ledges over it have none.
+- *Vines hanging from the vines strung across* (the user, 2026-10-19: "hanging vines should be able to hang from
+  crossing vines"): laid after all of those, the hanging density times 0.8 for each strung vine (`MazeFeatures.
+  STRAND_PULL`; none from one swept to the floor), from points along it clear of its ends, down towards the floor (or
+  the ledge or catwalk under them), ending 2.4 m clear of it at least, under the height limit; roots and leaves where
+  each is held under the stem (`Vine.Held.STRAND`). Their tops go where those points go (`VineStrand.hang`, `Vine.
+  follow`): as it sags, sways and dips under someone walking it (only while it is awake, near someone), and cut, each
+  goes with its half as that swings down (`Vine.carry`), or falls with a half too short to hang. Check and picture:
+  `tools/strand_vines_shots.gd`.
 
 Vines out of bare wall have their roots and a bunch of leaves where they come out, under the first ledge or over the
 top one. They are Vines and VineStrands as any: swung on, climbed, walked and cut. Mazes saved with the old vine

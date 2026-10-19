@@ -145,6 +145,7 @@ func realize(layout: MazeLayout) -> void:
 		strand.to_held = piece.strand_held(true)
 		add_child(strand)
 		strands.append(strand)
+	_hang_from_strands()
 	for piece in layout.pieces(MazePiece.Kind.PIPE):
 		var pipe := SewerPipe.new()
 		pipe.length = piece.length
@@ -172,6 +173,36 @@ func realize(layout: MazeLayout) -> void:
 		catwalks.name = "Catwalks"
 		add_child(catwalks)
 		catwalks.build(walks, ladders)
+
+
+## Each vine held from a strung vine (Vine.Held.STRAND) is hung from the strung vine
+## nearest its top (VineStrand.hang), so that it goes where that goes.
+func _hang_from_strands() -> void:
+	var by_square := {}
+	for strand in strands:
+		var middle := (strand.from + strand.to) * 0.5
+		var key := Vector2i(floori(middle.x / SPOT_SQUARE), floori(middle.z / SPOT_SQUARE))
+		if not by_square.has(key):
+			by_square[key] = []
+		by_square[key].append(strand)
+	for vine in vines:
+		if vine.held != Vine.Held.STRAND:
+			continue
+		var top := vine.global_position + Vector3.UP * VineStrand.HUNG_UNDER
+		var key := Vector2i(floori(top.x / SPOT_SQUARE), floori(top.z / SPOT_SQUARE))
+		var best: VineStrand = null
+		var least := 0.6
+		for dx in range(-1, 2):
+			for dz in range(-1, 2):
+				for strand: VineStrand in by_square.get(key + Vector2i(dx, dz), []):
+					if not strand.is_inside_tree():
+						continue
+					var apart := strand.distance_to(top)
+					if apart < least:
+						least = apart
+						best = strand
+		if best:
+			best.hang(vine)
 
 
 ## Starts on ring `ring`: its style and its numbers. Whether it is being laid out.
@@ -1292,6 +1323,77 @@ func hang_vines() -> void:
 	_mezzanine_crossings(near)
 	for anchor: Dictionary in _anchors():
 		_hang_on(anchor, near)
+	# (and from the vines strung across, now they are all there)
+	_strand_vines()
+
+
+## How strongly a vine strung across pulls vines to hang from it, against a ledge's edge
+## (MazeStyle.hanging_vine_density times this, for each); how far from its ends they hang
+## at least (a share of it); how far apart along it, at least, metres; and how high over
+## what is under them they end at least, metres.
+const STRAND_PULL := 0.8
+const STRAND_ENDS := 0.18
+const STRAND_APART := 1.6
+const STRAND_VINE_CLEAR := 2.4
+
+
+## Vines hanging from the vines strung across the halls (the user, 2026-10-19: "hanging
+## vines should be able to hang from crossing vines"): for each strung vine of the sections
+## being laid out, as its section's hanging and overall densities say, each with numbers of
+## its own (from where it is strung), so no other vine moves. From points along it (as it
+## hangs at rest), clear of its ends, under the height limit, down towards the floor (or
+## the ledge or catwalk under them) and ending well clear of it. In the game their tops go
+## where those points go (VineStrand.hang): as it sags, sways, is walked and is cut.
+func _strand_vines() -> void:
+	for piece in _layout.pieces(MazePiece.Kind.STRAND):
+		var ring := MazeLayout.zone_of(_maze, piece)
+		if ring < 1 or ring > _maze.rings or not _enter(ring):
+			continue
+		var a := piece.position
+		var b := piece.bridge_end()
+		var grounded := piece.strand_held(false) == Vine.Held.GROUND or piece.strand_held(true) == Vine.Held.GROUND
+		var gap := a.distance_to(b)
+		if grounded or gap < 3.0:
+			continue
+		var numbers := _numbers(hash([_maze.maze_seed, a.snappedf(0.01), b.snappedf(0.01)]), 70)
+		var chance := _style.hanging_vine_density * _style.amount(&"vine_density") * STRAND_PULL
+		var count := _count(chance, numbers, gap > 6.0)
+		if count <= 0:
+			continue
+		# (as it hangs at rest: RopeBridge's sag for a strand of its length)
+		var most := VineStrand.MOST_SAG
+		var sag := sqrt(3.0 / 8.0 * gap * maxf(gap * minf(VineStrand.SLACK, 1.0 + 8.0 / 3.0 * pow(most / gap, 2.0)) - gap, 0.0))
+		var limit := _maze.maze_wall_height(ring) * _style.vine_height_limit / 100.0
+		var taken: Array[float] = []
+		_layout.laying_zone = ring
+		for k in count:
+			var t := numbers.randf_range(STRAND_ENDS, 1.0 - STRAND_ENDS)
+			var pick := numbers.randf()
+			if taken.any(func(other: float) -> bool: return absf(other - t) * gap < STRAND_APART):
+				continue
+			var top := a.lerp(b, t) + Vector3.DOWN * (4.0 * t * (1.0 - t) * sag + VineStrand.HUNG_UNDER)
+			var longest := top.y - _floor_under(top, ring) - STRAND_VINE_CLEAR
+			if top.y > limit or longest < 1.5:
+				continue
+			taken.append(t)
+			var length := lerpf(minf(2.0, longest), longest, pick)
+			_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, top), {"length": length, "hold": Vector3.ZERO, "held": Vine.Held.STRAND, "reach": 0.0})
+		_layout.laying_zone = -1
+
+
+## How high what is under `point` (in section `ring`) is: the floor, the top of a ledge
+## along a wall of its cell that reaches out under it, or a catwalk under it.
+func _floor_under(point: Vector3, ring: int) -> float:
+	var cell := _maze.cell_at(point)
+	var foot := 0.0
+	for step: Vector2i in Maze.STEPS:
+		if _maze.blocked(cell, step):
+			var x := (point - _edge(cell, step, 0.0, 0.0)).dot(-Vector3(step.x, 0.0, step.y))
+			foot = maxf(foot, _foot_under(cell, step, x, point.y))
+	for walk: Dictionary in _walks:
+		if walk.ring == ring and float(walk.a.y) < point.y and _walk_rect(walk.a, walk.b, walk.wide).grow(0.4).has_point(Vector2(point.x, point.z)):
+			foot = maxf(foot, float(walk.a.y))
+	return foot
 
 
 ## How many vines there are of a density `chance` at one place, as `numbers` say (its
