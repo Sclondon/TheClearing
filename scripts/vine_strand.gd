@@ -201,14 +201,16 @@ func _lay() -> void:
 		var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
 		_stems[i].global_transform = Transform3D(Basis(x, y * along.length(), x.cross(y)), (a + b) * 0.5)
 	var multi := _leaves.multimesh
+	# (round the stem as it lies strung straight from end to end: see Vine.round_stem)
+	var rest := (to - from).normalized() if from.distance_squared_to(to) > 0.000001 else Vector3.RIGHT
+	var rest_out := rest.cross(Vector3.UP)
+	rest_out = rest_out.normalized() if rest_out.length_squared() > 0.001 else Vector3.RIGHT
 	for i in _placing.size():
 		var place: Array = _placing[i]
 		var a := _points[place[0]]
 		var b := _points[place[0] + 1]
-		var along := (b - a).normalized() if a.distance_squared_to(b) > 0.000001 else Vector3.RIGHT
-		var out := along.cross(Vector3.UP)
-		out = out.normalized() if out.length_squared() > 0.001 else Vector3.RIGHT
-		out = out.rotated(along, place[2])
+		var along := (b - a).normalized() if a.distance_squared_to(b) > 0.000001 else rest
+		var out := Vine.round_stem(along, rest, rest_out, place[2])
 		var leaf_at := a.lerp(b, place[1]) + out * 0.045
 		var basis := Basis(out.cross(along).normalized(), out, along).rotated(out.cross(along).normalized(), 0.6)
 		multi.set_instance_transform(i, Transform3D(basis.scaled(Vector3.ONE * place[3]), leaf_at))

@@ -69,13 +69,24 @@ func _draw() -> void:
 		var a := _points[place[0]]
 		var b := _points[place[0] + 1]
 		var along := (b - a).normalized() if a.distance_squared_to(b) > 0.000001 else Vector3.DOWN
-		var out := along.cross(Vector3.UP)
-		out = out.normalized() if out.length_squared() > 0.001 else Vector3.RIGHT
-		out = out.rotated(along, place[2])
+		var out := round_stem(along, Vector3.DOWN, Vector3.RIGHT, place[2])
 		var at := a.lerp(b, place[1]) + out * thickness
 		# (a leaf stands out from the stem and droops along it)
 		var basis := Basis(out.cross(along).normalized(), out, along).rotated(out.cross(along).normalized(), 0.6)
 		multi.set_instance_transform(i, Transform3D(basis.scaled(Vector3.ONE * place[3]), at))
+
+
+## Which way out from a stem running `along` a leaf stands, `angle` round it: the
+## way it stands round the stem lying `rest` (`rest_out` at angle 0), turned the
+## least way that takes `rest` to `along`. So a leaf goes round with the stem as it
+## swings, smoothly. (Taken from the world's up, as they were, the leaves of a
+## vine hanging nearly straight jumped round it whenever it swung past straight:
+## the user, 2026-10-18, "the leaves seem to teleport when they move".)
+static func round_stem(along: Vector3, rest: Vector3, rest_out: Vector3, angle: float) -> Vector3:
+	var out := rest_out.rotated(rest, angle)
+	if along.dot(rest) < -0.999:
+		return out
+	return Quaternion(rest, along) * out
 
 
 ## A leaf, pointed at both ends, `size` long, lying in the XY plane along +Y.
