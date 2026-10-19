@@ -30,7 +30,7 @@ window/handheld/orientation=6
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/tool_script_watch/plugin.cfg")
+enabled=PackedStringArray("res://addons/hall_camera/plugin.cfg", "res://addons/tool_script_watch/plugin.cfg")
 
 [input_devices]
 
