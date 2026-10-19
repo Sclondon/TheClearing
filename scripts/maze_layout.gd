@@ -69,6 +69,15 @@ var styles: Array[MazeStyle]:
 		live_preview = value
 		_preview_key = ""
 		_show_in_editor()
+## Hall view: a plan of the halls, to look down into from above. Every wall is
+## cut off this many metres up, its inside dark where it is cut, and what is on
+## the walls and over the halls (ivy, vines, bridges, cables, props) is hidden. 0:
+## off, the maze whole. In the editor only (the user, 2026-10-18: "theres also not
+## an easy way to view the hallways in the editor").
+@export_range(0.0, 60.0, 0.5, "suffix:m") var hall_view := 0.0:
+	set(value):
+		hall_view = value
+		_show_hall_view()
 @export_tool_button("Generate", "Reload") var generate_button := generate
 @export_tool_button("Generate All", "Reload") var generate_all_button := generate_all
 @export_tool_button("Clear", "Remove") var clear_button := clear
@@ -318,10 +327,11 @@ func _show_in_editor() -> void:
 	var open := get_tree().edited_scene_root
 	if open == null or not (open == self or open.is_ancestor_of(self)):
 		return
-	for group: String in GROUPS.values():
-		var holder := get_node_or_null(NodePath(group)) as Node3D
+	_show_hall_view()
+	for kind: MazePiece.Kind in GROUPS:
+		var holder := get_node_or_null(NodePath(GROUPS[kind])) as Node3D
 		if holder:
-			holder.visible = not live_preview
+			holder.visible = not live_preview and not (hall_view > 0.0 and HALL_VIEW_HIDES.has(kind))
 	if live_preview:
 		_show_preview()
 		_light()
@@ -409,6 +419,7 @@ func _show_preview() -> void:
 		built.preview = true
 		_put_preview(zone, built)
 		built.realize_zone(views[zone], plan, walls)
+		_hide_for_hall_view(built)
 		_preview_stone[zone] = stone
 		if is_instance_valid(_preview_views.get(zone)):
 			(_preview_views[zone] as MazeLayout).free()
@@ -439,6 +450,34 @@ func _show_preview() -> void:
 	_preview_keys = keys
 	print("Maze preview: %s built in %.1f s%s" % ["every zone" if whole else _zone_names(plan, changed), (Time.get_ticks_msec() - started) / 1000.0,
 		" (walls and ground kept)" if kept > zones.size() else (" (some walls kept)" if kept > 0 else "")])
+
+
+## The pieces the hall view hides (of the live preview, all of a zone's Features and Props).
+const HALL_VIEW_HIDES: Array[MazePiece.Kind] = [MazePiece.Kind.IVY, MazePiece.Kind.VINE, MazePiece.Kind.BRIDGE,
+	MazePiece.Kind.STRAND, MazePiece.Kind.PIPE, MazePiece.Kind.PROP, MazePiece.Kind.WIRE, MazePiece.Kind.ANCHOR, MazePiece.Kind.BEACON]
+
+
+## Shows the hall view (hall_view) as it is now set: the walls cut off by their
+## shader (Wall.shader, in the editor), and what is on them hidden.
+func _show_hall_view() -> void:
+	if not Engine.is_editor_hint() or not is_inside_tree():
+		return
+	Wall.shader()
+	RenderingServer.global_shader_parameter_set(&"maze_cut", hall_view)
+	for kind: MazePiece.Kind in HALL_VIEW_HIDES:
+		var holder := get_node_or_null(NodePath(GROUPS[kind])) as Node3D
+		if holder:
+			holder.visible = not live_preview and hall_view <= 0.0
+	for built: Variant in _preview_built.values():
+		if is_instance_valid(built):
+			_hide_for_hall_view(built)
+
+
+func _hide_for_hall_view(built: Node) -> void:
+	for part: String in ["Features", "Props"]:
+		var node := built.get_node_or_null(part) as Node3D
+		if node:
+			node.visible = hall_view <= 0.0
 
 
 ## Puts `node` (or nothing) in the live preview as what is built of `part`, in

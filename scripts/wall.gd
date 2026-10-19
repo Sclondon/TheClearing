@@ -77,6 +77,14 @@ uniform float edge_weathering = 0.0;
 
 varying vec3 at;
 varying vec3 facing;
+#ifdef HALL_VIEW
+// (in the editor only, MazeLayout.hall_view: the stone squashed down to this high,
+// metres, its tops flat and dark as a plan shows walls, and what stands up off the
+// ground, `afloat`, hidden; 0: whole)
+global uniform float maze_cut;
+uniform bool afloat = false;
+varying float cut_top;
+#endif
 
 float hash(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -92,11 +100,25 @@ float noise(vec2 p) {
 }
 
 void vertex() {
+#ifdef HALL_VIEW
+	vec3 placed = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	cut_top = 0.0;
+	if (maze_cut > 0.0 && placed.y > maze_cut) {
+		placed.y = maze_cut;
+		VERTEX = (inverse(MODEL_MATRIX) * vec4(placed, 1.0)).xyz;
+		cut_top = 1.0;
+	}
+#endif
 	at = world_space ? (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz : VERTEX;
 	facing = world_space ? mat3(MODEL_MATRIX) * NORMAL : NORMAL;
 }
 
 void fragment() {
+#ifdef HALL_VIEW
+	if (afloat && maze_cut > 0.0) {
+		discard;
+	}
+#endif
 	vec3 n = normalize(facing);
 	// The face's own across and up: up the wall on its sides, and away on its top and bottom.
 	vec3 v_axis = abs(n.y) > 0.5 ? vec3(0.0, 0.0, -1.0) : vec3(0.0, 1.0, 0.0);
@@ -232,6 +254,13 @@ void fragment() {
 		bent = normalize(mix(bent, normalize(n + (u_axis * lean + v_axis * tip) * 1.2), moss));
 	}
 	NORMAL = normalize((VIEW_MATRIX * (world_space ? vec4(bent, 0.0) : MODEL_MATRIX * vec4(bent, 0.0))).xyz);
+#ifdef HALL_VIEW
+	if (cut_top > 0.99) {
+		ALBEDO = vec3(0.07, 0.07, 0.08);
+		ROUGHNESS = 1.0;
+		SPECULAR = 0.0;
+	}
+#endif
 }
 """
 
@@ -324,6 +353,9 @@ void fragment() {
 		_build()
 
 static var _shader: Shader
+## Whether the shader is made as the editor has it, to be cut off by MazeLayout.hall_view
+## (for tools that show it outside the editor: set before any wall is made).
+static var cut_away := false
 
 var _mesh: MeshInstance3D
 var _shape: CollisionShape3D
@@ -353,11 +385,17 @@ static func material_for(chosen: Look, world_space := false, tint := Color.WHITE
 	return material
 
 
-## The wall's shader, made once.
+## The wall's shader, made once. (In the editor, made so that
+## MazeLayout.hall_view can squash the walls down to show the halls.)
 static func shader() -> Shader:
 	if _shader == null:
 		_shader = Shader.new()
-		_shader.code = SHADER
+		if Engine.is_editor_hint() or cut_away:
+			if not Engine.is_editor_hint() or not RenderingServer.global_shader_parameter_get_list().has(&"maze_cut"):
+				RenderingServer.global_shader_parameter_add(&"maze_cut", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
+			_shader.code = SHADER.replace("shader_type spatial;", "shader_type spatial;\n#define HALL_VIEW")
+		else:
+			_shader.code = SHADER
 	return _shader
 
 

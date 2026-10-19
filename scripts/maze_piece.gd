@@ -156,6 +156,8 @@ func _refresh() -> void:
 			var mesh := MeshInstance3D.new()
 			mesh.mesh = tool.commit()
 			mesh.material_override = Wall.material_for(MazeBuilder.surface_of(self), true)
+			# (hidden by the hall view if it stands up off the ground: MazeLayout.hall_view)
+			mesh.material_override.set_shader_parameter(&"afloat", position.y > 0.5)
 			# (drawn at the box's own size: undo the node's scale, which is in `size` already)
 			mesh.scale = Vector3.ONE / scale.abs().max(Vector3.ONE * 0.001)
 			_shown = mesh
