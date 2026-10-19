@@ -111,6 +111,8 @@ func _run() -> void:
 	player.state = player.State.FREE
 	player.global_position = middle + across * 0.12 + Vector3.UP * 0.4
 	player.velocity = Vector3.ZERO
+	# (put straight down on it: its bodies made now, as World.put_player does, not in their turn)
+	RopeBridge.bodies_now(self)
 	await frames(90)
 	var off: float = absf((player.global_position - strand._closest(player.global_position)).dot(across))
 	check("stands on it", player.is_on_floor() and absf(player.global_position.y - strand._points[RopeBridge.POINTS / 2].y) < 0.6, "(at %.2f, the vine %.2f)" % [player.global_position.y, strand._points[RopeBridge.POINTS / 2].y])

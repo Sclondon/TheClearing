@@ -123,7 +123,8 @@ leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened i
   it), with climbable ivy up their faces (`scripts/ivy_climb.gd`, `IvyClimb`, a `Ladder`) and sometimes on up to the
   wall top, where he can walk to the next pier; vines to swing on (`scripts/vine.gd`, `Vine`, a `Rope`, its end
   2.6 m up so it takes a jump); and rope bridges (`scripts/rope_bridge.gd`, `RopeBridge`: a chain of points that
-  sags, dips under anyone in the group `bridge_weights` and sways, its planks moving bodies) between terraces
+  sags, dips under anyone in the group `bridge_weights` and sways, its planks moving bodies, but only within
+  36 m of someone in `bridge_weights`: `RopeBridge.Bodies`) between terraces
   across a hall and between wall tops. And grappling hook spots (`scripts/grapple_spots.gd`, `GrappleSpots`, pieces
   of kind ANCHOR: rings on corbels up the walls and at ledges' lips, hooks and pipes; one MultiMesh per look per 48 m
   square, found by the hook through `NearIndex`), by MazeStyle "Grappling hook spots".
@@ -223,6 +224,7 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/smoke_test.gd     # alone: walk, walls, out, next maze, touch
 "$G" --headless --path . -s res://tests/climb_test.gd     # ivy onto a terrace, a vine, a rope bridge
 "$G" --headless --path . -s res://tests/strand_test.gd    # a strung vine: walked as a tightrope, cut into two vines
+"$G" --headless --audio-driver Dummy --path . -s res://tests/bodies_test.gd   # bodies as a round starts; a strung vine's planks made as he comes up to it, gone once he leaves
 "$G" --headless --path . -s res://tests/hunt_test.gd      # enemies in a round; caught, back to the clearing
 "$G" --headless --audio-driver Dummy --path . -s res://tests/runner_test.gd   # runners: a route, ivy, drawing a hunter, caught, leading to a gate, a puppet
 "$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/runner_shots.gd -- <folder>   # pictures of runners

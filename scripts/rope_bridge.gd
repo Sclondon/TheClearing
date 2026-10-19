@@ -8,6 +8,12 @@ extends Node3D
 ## `bridge_weights`), and sways and settles after. Each plank is a moving body,
 ## so whoever stands on it rides it. The hand ropes are drawn along the deck,
 ## a little sideways and up; there is nothing to stop a fall but care.
+##
+## Its planks are bodies only while someone who weighs on it (`bridge_weights`: the
+## players, the friends' figures, the runners) is within BODIES_NEAR of it, and stop
+## being bodies once nobody is within BODIES_GONE (see Bodies). Further off it is
+## only drawn. (A maze has thousands of bridges and strung vines, a body a plank,
+## and past Jolt's limit no more bodies are made at all, not even the boy's.)
 
 const POINTS := 15
 ## How much of its stretch each pass of the solver takes back.
@@ -90,19 +96,11 @@ func _ready() -> void:
 	_rails = _many(_rail_mesh, _hemp, 4 * (POINTS - 1))
 	_posts = _many(_post_mesh, _wood, 4)
 	for i in POINTS - 1:
-		var plank := AnimatableBody3D.new()
-		plank.top_level = true
-		plank.sync_to_physics = true
-		var shape := CollisionShape3D.new()
-		var box := BoxShape3D.new()
-		box.size = Vector3(width, 0.12, _piece * 1.02)
-		shape.shape = box
-		plank.add_child(shape)
 		# (planks a little apart, each a little different)
 		var plank_size := Vector3(width * rng.randf_range(0.92, 1.0), 0.07, _piece * 0.82)
 		_plank_looks.append(Transform3D(Basis(Vector3.UP, rng.randf_range(-0.04, 0.04)) * Basis.from_scale(plank_size), Vector3.ZERO))
-		add_child(plank)
-		_planks.append(plank)
+	if not Engine.is_editor_hint():
+		Bodies.watch(self)
 	# A post at each corner, set into the ledge, that the hand rope and the rope
 	# under the planks are tied to (its ends do not move, so neither do they).
 	var side := (to - from).cross(Vector3.UP).normalized()
@@ -199,15 +197,10 @@ func _lay() -> void:
 	var span := (to - from)
 	var side := span.cross(Vector3.UP).normalized()
 	for i in POINTS - 1:
-		var a := _points[i]
-		var b := _points[i + 1]
-		var along := (b - a).normalized()
-		var up := side.cross(along).normalized() * -1.0
-		if up.y < 0.0:
-			up = -up
-		var basis := Basis(side, up, along).orthonormalized()
-		_planks[i].global_transform = Transform3D(basis, (a + b) * 0.5)
-		var plank := _planks[i].global_transform * _plank_looks[i]
+		var at := _plank_at(i, side)
+		if not _planks.is_empty():
+			_planks[i].global_transform = at
+		var plank := at * _plank_looks[i]
 		# (a mirrored one would be drawn inside out, as a MultiMesh's are not turned
 		# round as a mesh's own are: a plank is the same box turned the other way)
 		if plank.basis.determinant() < 0.0:
@@ -225,3 +218,151 @@ func _lay() -> void:
 			var y: Vector3 = along.normalized()
 			var x: Vector3 = y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
 			_rails.multimesh.set_instance_transform(s * (POINTS - 1) + i, Transform3D(Basis(x, y * along.length(), x.cross(y)), (a + b) * 0.5))
+
+
+## Where plank `i` lies on the deck as it is now (`side` the way across it).
+func _plank_at(i: int, side: Vector3) -> Transform3D:
+	var a := _points[i]
+	var b := _points[i + 1]
+	var along := (b - a).normalized()
+	var up := side.cross(along).normalized() * -1.0
+	if up.y < 0.0:
+		up = -up
+	return Transform3D(Basis(side, up, along).orthonormalized(), (a + b) * 0.5)
+
+
+# --- Its bodies, only near someone ---
+# (a solo round made over 40,000 bodies, nearly all of them planks and the pieces of strung
+# vines, and Jolt makes none past 40,960: the loot and the boy himself were left without)
+
+## Within this of someone who weighs on it, its planks are bodies; once nobody is within
+## BODIES_GONE, they are not (further, so that they are not made and unmade over and over
+## by someone walking to and fro at the edge). Metres, from the line between its ends.
+const BODIES_NEAR := 36.0
+const BODIES_GONE := 48.0
+
+
+## Whether its planks are bodies now.
+func has_bodies() -> bool:
+	return not _planks.is_empty()
+
+
+## How far `point` is from the straight line between its ends (it sags a little under that).
+func reach_to(point: Vector3) -> float:
+	var span := to - from
+	var t := clampf((point - from).dot(span) / maxf(span.length_squared(), 0.0001), 0.0, 1.0)
+	return (from + span * t).distance_to(point)
+
+
+## Makes its planks bodies, where the deck is now. (One box shape for them all: they are the same size.)
+func _make_bodies() -> void:
+	if has_bodies() or not is_inside_tree():
+		return
+	var box := BoxShape3D.new()
+	box.size = Vector3(width, 0.12, _piece * 1.02)
+	var side := (to - from).cross(Vector3.UP).normalized()
+	for i in POINTS - 1:
+		var plank := AnimatableBody3D.new()
+		plank.top_level = true
+		plank.sync_to_physics = true
+		var shape := CollisionShape3D.new()
+		shape.shape = box
+		plank.add_child(shape)
+		# (put where it lies before it is in the world, so it does not sweep there from the origin)
+		plank.transform = _plank_at(i, side)
+		add_child(plank)
+		_planks.append(plank)
+
+
+## Its planks are bodies no more: it is only drawn.
+func _drop_bodies() -> void:
+	for plank in _planks:
+		plank.queue_free()
+	_planks.clear()
+
+
+## Makes the bodies of every bridge and strung vine near anyone that should have them,
+## and drops those nobody is near, at once (not a few a frame): for a test, or after
+## putting someone straight down somewhere new.
+static func bodies_now(tree: SceneTree) -> void:
+	if is_instance_valid(_bodies):
+		_bodies.look(tree)
+		_bodies.work(1 << 30)
+
+
+static var _bodies: Bodies
+
+
+## One for the level, like Rope's Waker: every EVERY seconds it asks NearIndex which
+## bridges (and strung vines, which are bridges) are near each of `bridge_weights`, a
+## cheap look whatever the maze's size; those within BODIES_NEAR without bodies, and
+## those with bodies that nobody is within BODIES_GONE of, wait their turn, and a few
+## are given or lose their bodies each step, nearest first, so that coming up on a
+## stretch of them does not hitch. Every copy of a room does this for whoever is in it
+## (its own player, the friends' figures, the runners); where a strung vine is cut is
+## sent by its number, which has nothing to do with its bodies.
+class Bodies extends Node:
+	const EVERY := 0.5
+	## How many are given (or lose) their bodies a physics step, at most.
+	const EACH_STEP := 2
+	var _in := 0.0
+	## Instance id -> the bridge, for those with bodies.
+	var _solid := {}
+	## What is to be done: [how far, instance id, make (or drop)], nearest first.
+	var _jobs: Array = []
+
+	static func watch(bridge: RopeBridge) -> void:
+		if not is_instance_valid(RopeBridge._bodies):
+			RopeBridge._bodies = Bodies.new()
+			RopeBridge._bodies.name = "BridgeBodies"
+			bridge.get_tree().root.add_child.call_deferred(RopeBridge._bodies)
+
+	func _physics_process(delta: float) -> void:
+		work(EACH_STEP)
+		_in -= delta
+		if _in > 0.0:
+			return
+		_in = EVERY
+		look(get_tree())
+
+	## Works out what is to be done, from where everyone is now.
+	func look(tree: SceneTree) -> void:
+		var near := {}
+		var keep := {}
+		for body: Node in tree.get_nodes_in_group(&"bridge_weights"):
+			var at := (body as Node3D).global_position
+			for thing: Node in NearIndex.near(tree, &"rope_bridges", at, BODIES_GONE):
+				var bridge := thing as RopeBridge
+				if bridge == null or bridge.is_queued_for_deletion():
+					continue
+				var id := bridge.get_instance_id()
+				var away := bridge.reach_to(at)
+				if away < BODIES_GONE:
+					keep[id] = true
+				if away < BODIES_NEAR and not bridge.has_bodies():
+					near[id] = minf(near.get(id, INF), away)
+		_jobs.clear()
+		for id: int in near:
+			_jobs.append([near[id], id, true])
+		for id: int in _solid.keys():
+			if not is_instance_valid(instance_from_id(id)):
+				_solid.erase(id)
+			elif not keep.has(id):
+				_jobs.append([INF, id, false])
+		_jobs.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+
+	## Does up to `count` of what is to be done.
+	func work(count: int) -> void:
+		while count > 0 and not _jobs.is_empty():
+			var job: Array = _jobs.pop_front()
+			var bridge := instance_from_id(job[1]) as RopeBridge
+			if bridge == null or bridge.is_queued_for_deletion():
+				_solid.erase(job[1])
+				continue
+			if job[2]:
+				bridge._make_bodies()
+				_solid[job[1]] = bridge
+			else:
+				bridge._drop_bodies()
+				_solid.erase(job[1])
+			count -= 1
