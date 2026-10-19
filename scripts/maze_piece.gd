@@ -68,6 +68,12 @@ enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, 
 @export var drips := false
 ## Which way from a vine's top what holds it is (a wall, a ledge's edge, a bridge; 0: over it), for its roots.
 @export var hold := Vector3.ZERO
+## How a vine is held at its top, or a strung vine at its start (Vine.Held; -1: as `hold`
+## says, as layouts before were: over a lip if it has a way, else under what is over it),
+## how far its top is from what holds it, metres, and how a strung vine is held at its end.
+@export var held := -1
+@export var reach := 0.0
+@export var held_end := -1
 ## How far a wire sags in the middle, metres; how long the ends hanging from it
 ## are if it is snapped (from its origin, and from its End: 0 for none), and
 ## whether an old lamp hangs from its lowest point.
@@ -167,6 +173,9 @@ func _refresh() -> void:
 		Kind.VINE:
 			var vine := Vine.new()
 			vine.length = length
+			vine.hold = hold
+			vine.held = vine_held()
+			vine.reach = reach
 			_shown = vine
 		Kind.BRIDGE:
 			if not has_node(^"End"):
@@ -182,6 +191,8 @@ func _refresh() -> void:
 			var strand := VineStrand.new()
 			strand.from = global_position
 			strand.to = get_parent().to_global(bridge_end()) if get_parent() is Node3D else bridge_end()
+			strand.from_held = strand_held(false)
+			strand.to_held = strand_held(true)
 			_drawn_end = bridge_end()
 			_shown = strand
 		Kind.TREE:
@@ -220,3 +231,16 @@ func _notification(what: int) -> void:
 	# (a vine's rope and a bridge's planks are laid where they hang in the world: moved, they are laid again)
 	if what == NOTIFICATION_TRANSFORM_CHANGED and Engine.is_editor_hint() and kind in [Kind.VINE, Kind.BRIDGE, Kind.STRAND, Kind.WIRE]:
 		_refresh()
+
+
+## How the vine of this piece is held at its top (Vine.Held: see `held`).
+func vine_held() -> int:
+	if held >= 0:
+		return held
+	return Vine.Held.LIP if hold.length_squared() > 0.0001 else Vine.Held.OVER
+
+
+## How the strung vine of this piece is held at its start, or (`at_end`) its end (Vine.Held).
+func strand_held(at_end: bool) -> int:
+	var how := held_end if at_end else held
+	return how if how >= 0 else Vine.Held.LIP

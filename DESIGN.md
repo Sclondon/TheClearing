@@ -146,7 +146,8 @@ same with sewers (wall decor) and tunnels."). The groups:
 - **Ivy**: wall ivy from the ground (how many, how high), ivy on from upper terraces to the wall top, ivy between
   mezzanine levels.
 - **Vines**: hanging vines (from the top of a run of ivy), strung vines walked as tightropes (how many, how high),
-  vines over terraces, bracket vines, vines strung between ledges, vines swept down across, vines hanging from ledges.
+  vines over terraces, bracket vines, vines strung between ledges, vines swept down across, vines hanging from ledges,
+  vines out of the walls (how many, how high, how many sweep across).
 - **Wall decor**: vents, outlet pipes (and how many drip), cables looped along the walls.
 - **Tunnels** (ways through and down): sewer pipes through the walls (how many, how high), culverts, drain grates,
   manholes.
@@ -224,13 +225,35 @@ maze laid out before is otherwise as it was:
 The ledges go round the ends of walls and outside corners, every level (the user: "the mezzanine should go around
 corners not just end"); vents, outlets, culverts and wall cables stand out of a ledge's front instead of being buried
 in it, and sewer pipes go through over the highest ledge there may be, their ivy up from the highest ledge under them
-("sewer parts should stick out of the mezzanine rather than get clipped"). Every vine has a knot of roots and a
-clump of leaves where it is held ("the vines need to have a root or leaves at their connection points"), and its
+("sewer parts should stick out of the mezzanine rather than get clipped"). Every vine has roots and a bunch of
+leaves where it is held ("the vines need to have a root or leaves at their connection points"), and its
 leaves go round with the stem as it swings (they jumped round it as a hanging vine swung past upright: "the leaves
-seem to teleport when they move").
+seem to teleport when they move"). The roots are young and green, small tendrils and rootlets lying over what holds
+it, and the leaves are bunched thick on them and on the stem there ("The roots should be smaller and green, and
+more leaves should be bunched around the connection"): over the lip of a ledge, a corbel or a bridge the stem comes
+up over the edge and its roots spread over the top, a few rootlets gripping the edge (they stuck out into the air
+before); out of a wall the stem comes out of the face and bends down, its roots over the face; under a beam or a
+bracket they spread over its underside (which is drawn now: no box standing off the ground was drawn from below).
+`Vine.Held` says which; `MazePiece.held`, `reach` and `held_end` carry it.
+
+**The leaves** (2026-10-18: "the vine leaves and ivy leaves need some love, lets make a real leaf shape and try to
+make sure they arent just floating"): a vine's are pointed ovals on short stalks, folded along the midrib, their tips
+curling back, ten triangles (`Vine.leaf_mesh`), each stalk's foot on the stem; ivy's are five-lobed on long stalks,
+twelve triangles (`IvyClimb.leaf_mesh`), each on its stalk off one of the stems, which lie on the wall's face, the
+leaf lying over the wall with its tip just off it.
+
+**Vines out of the walls** (Vines, 2026-10-18: "Vines should be able to connect directly to the wall and hang a
+random amount down across the hall as well as the designated anchor points"): as well as from the corbels, brackets,
+ledges' edges and bridges, vines grow straight out of a wall's face, their roots and a bunch of leaves where they come
+out (`MazeFeatures._wall_vines`, after everything else, on faces nothing else has taken, each face with numbers of its
+own). Where a wall has ledges they come out under the first or over the top one. Some hang a random way down (no
+lower than a hop over what is under them); the rest sweep down across the hall, to the far wall lower down or, from
+under the ledges or a wall without, to the floor part way across, rooted there (sagging little, so as not to dip into
+it), clear of the ledges both sides. They are Vines and VineStrands as any: swung on, climbed, walked and cut.
 
 Pictures: `tools/zone1_vines_shots.gd` (pass `zone2` for the second section, `corners` for ledges round wall ends and
-sewer props on ledges, `anchors` for where vines are held).
+sewer props on ledges, `anchors` for where vines are held, `leaves` for the leaves close up,
+`wallvines` for the vines out of the walls).
 
 **Grappling hook spots** (added 2026-10-18 at the user's request: "we should also have grappling hook spots"). Places
 made for the grappling hook to catch, in rusty iron dark against the concrete, so that a way up can be seen from below

@@ -9,6 +9,8 @@ extends SceneTree
 ## Looks along the hall from the floor and from a ledge, and across it.
 ##
 ##     godot --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/zone1_vines_shots.gd -- <folder> [ledge m]
+## (or, for the second argument, a mode: anchors, leaves (close up), wallvines (vines out of the walls),
+## zone2, corners, border, clearing)
 
 var main: Node
 
@@ -52,6 +54,14 @@ func _run() -> void:
 	world.player.visible = false
 	if args.size() > 1 and args[1] == "anchors":
 		await _anchors(world, folder)
+		quit()
+		return
+	if args.size() > 1 and args[1] == "leaves":
+		await _leaves(world, folder)
+		quit()
+		return
+	if args.size() > 1 and args[1] == "wallvines":
+		await _wall_vines(world, folder)
 		quit()
 		return
 	if args.size() > 1 and args[1] == "corners":
@@ -302,6 +312,155 @@ func _anchors(world: Node, folder: String) -> void:
 		await _shot("%s/anchor_%d_%s.png" % [folder, k, spots[k][2]])
 
 
+## Close up the leaves (the user, 2026-10-18: "lets make a real leaf shape and try to
+## make sure they arent just floating"): along a vine's stem; where vines are held,
+## each way they are (Vine.Held), from above and from the side; a patch of ivy on a
+## wall, face on and from along the wall (how near the wall its leaves lie); and
+## the ends of strung vines.
+func _leaves(world: Node, folder: String) -> void:
+	var maze: Maze = world.maze
+	var features: MazeFeatures = world.maze_features()
+	var camera := Camera3D.new()
+	camera.fov = 50.0
+	camera.near = 0.02
+	world.add_child(camera)
+	camera.make_current()
+	var in_first := func(at: Vector3) -> bool: return maze.ring_of(maze.cell_at(at)) == 1
+	# Along a vine's stem, half way down.
+	for vine: Vine in features.vines:
+		if in_first.call(vine.global_position) and vine.length > 4.0:
+			var p := vine.point_at(vine.length * 0.5)
+			var side := Vector3.UP.cross(vine.hold if vine.hold.length_squared() > 0.01 else Vector3.BACK).normalized()
+			camera.global_position = p + side * 2.4 + Vector3.UP * 0.3
+			camera.look_at(p)
+			await _shot("%s/leaves_1_stem.png" % folder)
+			break
+	# Where vines are held, each way.
+	var names := {Vine.Held.OVER: "over", Vine.Held.LIP: "lip", Vine.Held.FACE: "face", Vine.Held.GROUND: "ground"}
+	for how: int in names:
+		for vine: Vine in features.vines:
+			if vine.held != how or not in_first.call(vine.global_position):
+				continue
+			var at := vine.global_position
+			var into := vine.hold if vine.hold.length_squared() > 0.01 else Vector3.BACK
+			var side := Vector3.UP.cross(into).normalized()
+			camera.global_position = at - into * 1.1 + side * 0.7 + Vector3.UP * 0.8
+			camera.look_at(at + into * 0.15)
+			await _shot("%s/leaves_2_held_%s_above.png" % [folder, names[how]])
+			# (from under it, if it is under what holds it)
+			camera.global_position = at + side * 1.4 - into * 0.2 + Vector3.UP * (-0.6 if how == Vine.Held.OVER else 0.15)
+			camera.look_at(at + into * 0.1)
+			await _shot("%s/leaves_3_held_%s_side.png" % [folder, names[how]])
+			break
+	# A patch of ivy on a wall: face on, and from along the wall.
+	for ivy: IvyClimb in features.climbs:
+		if not in_first.call(ivy.global_position) or ivy.width < 2.5 or ivy.height < 4.0:
+			continue
+		var basis := ivy.global_transform.basis.orthonormalized()
+		# (on a wall, not a curtain hung from a ledge's edge: stone just behind it)
+		var layout: MazeLayout = world.get_node("Maze").layout
+		if not _solid(layout, ivy.global_position - basis.z * 0.3 + Vector3.UP * 2.0) or _solid(layout, ivy.global_position + basis.z * 1.0 + Vector3.UP * 2.0):
+			continue
+		if not ivy.grown:
+			ivy._grow()
+		var middle := ivy.global_position + Vector3.UP * minf(ivy.height * 0.4, 3.0)
+		camera.global_position = middle + basis.z * 1.6
+		camera.look_at(middle)
+		await _shot("%s/leaves_4_ivy_face_on.png" % folder)
+		camera.global_position = middle + basis.x * (ivy.width * 0.5 + 0.8) + basis.z * 0.3 + Vector3.UP * 0.2
+		camera.look_at(middle + basis.z * 0.05)
+		await _shot("%s/leaves_5_ivy_along_the_wall.png" % folder)
+		break
+	# The ends of strung vines, each way they are held.
+	var shot_ends := {}
+	for strand: VineStrand in features.strands:
+		if not in_first.call(strand.from):
+			continue
+		for end: Array in [[strand.from, strand.to, strand.from_held], [strand.to, strand.from, strand.to_held]]:
+			var how: int = end[2]
+			if shot_ends.has(how):
+				continue
+			shot_ends[how] = true
+			var at: Vector3 = end[0]
+			var out := Vector3(end[1].x - at.x, 0.0, end[1].z - at.z).normalized()
+			var side := Vector3.UP.cross(out).normalized()
+			camera.global_position = at + out * 1.3 + side * 0.8 + Vector3.UP * 0.7
+			camera.look_at(at)
+			await _shot("%s/leaves_6_strand_end_%s.png" % [folder, names[how]])
+
+
+## The vines grown straight out of the walls (the user, 2026-10-18: "Vines should be
+## able to connect directly to the wall and hang a random amount down across the hall"):
+## in the first section, one hanging, one swept across to the far wall and one swept
+## down to the floor, each from across or along the hall and close up where it
+## comes out of the wall.
+func _wall_vines(world: Node, folder: String) -> void:
+	var maze: Maze = world.maze
+	var features: MazeFeatures = world.maze_features()
+	var camera := Camera3D.new()
+	camera.fov = 62.0
+	camera.far = 600.0
+	world.add_child(camera)
+	camera.make_current()
+	var in_first := func(at: Vector3) -> bool: return maze.ring_of(maze.cell_at(at)) == 1
+	var hanging := 0
+	for vine: Vine in features.vines:
+		if vine.held == Vine.Held.FACE and is_equal_approx(vine.reach, MazeFeatures.WALL_GROWN_OUT) and in_first.call(vine.global_position):
+			hanging += 1
+	var swept := 0
+	var grounded := 0
+	for strand: VineStrand in features.strands:
+		if strand.from_held == Vine.Held.FACE and in_first.call(strand.from):
+			if strand.to_held == Vine.Held.GROUND:
+				grounded += 1
+			else:
+				swept += 1
+	print("vines out of the walls in the first section: %d hanging, %d swept across, %d swept to the floor" % [hanging, swept, grounded])
+	var shots := 0
+	for vine: Vine in features.vines:
+		if shots >= 2 or vine.held != Vine.Held.FACE or not is_equal_approx(vine.reach, MazeFeatures.WALL_GROWN_OUT) or not in_first.call(vine.global_position):
+			continue
+		var at := vine.global_position
+		var out := -vine.hold
+		var along := Vector3.UP.cross(out)
+		# (across the hall from it, as far as there is room, and a little along)
+		var layout: MazeLayout = world.get_node("Maze").layout
+		var eye := at + Vector3.DOWN * minf(vine.length * 0.5, 2.0)
+		var room := _room_out(layout, eye, out, 9.0)
+		if room < 3.0:
+			continue
+		camera.global_position = eye + out * room * 0.85 + along * _room_out(layout, eye, along, 3.0) * 0.8
+		camera.look_at(at + Vector3.DOWN * vine.length * 0.5)
+		await _shot("%s/wall_vine_hanging_%d.png" % [folder, shots])
+		camera.global_position = at + out * 1.3 + along * 0.8 + Vector3.UP * 0.3
+		camera.look_at(at + vine.hold * 0.2)
+		await _shot("%s/wall_vine_hanging_%d_close.png" % [folder, shots])
+		shots += 1
+	for grounded_end: bool in [false, true]:
+		shots = 0
+		var tag := "floor" if grounded_end else "far_wall"
+		for strand: VineStrand in features.strands:
+			if shots >= 2 or strand.from_held != Vine.Held.FACE or (strand.to_held == Vine.Held.GROUND) != grounded_end or not in_first.call(strand.from):
+				continue
+			var out := Vector3(strand.to.x - strand.from.x, 0.0, strand.to.z - strand.from.z).normalized()
+			var along := Vector3.UP.cross(out)
+			var middle := (strand.from + strand.to) * 0.5
+			# (from along the hall, low, so that it is seen across it against the far wall)
+			var layout: MazeLayout = world.get_node("Maze").layout
+			var eye := Vector3(middle.x, maxf(middle.y - 2.0, 1.7), middle.z)
+			camera.global_position = eye + along * _room_out(layout, eye, along, 13.0) * 0.85
+			camera.look_at(middle)
+			await _shot("%s/wall_vine_swept_%s_%d.png" % [folder, tag, shots])
+			camera.global_position = strand.from + out * 1.3 + along * 0.8 + Vector3.DOWN * 0.3
+			camera.look_at(strand.from)
+			await _shot("%s/wall_vine_swept_%s_%d_close.png" % [folder, tag, shots])
+			if grounded_end:
+				camera.global_position = strand.to - out * 1.2 + along * 1.0 + Vector3.UP * 0.9
+				camera.look_at(strand.to)
+				await _shot("%s/wall_vine_swept_%s_%d_root.png" % [folder, tag, shots])
+			shots += 1
+
+
 ## The ledges along the great walls between sections (the user: "the border walls
 ## should have mezzanines on them"): from a hall of each of the first two
 ## sections, looking along the wall round it.
@@ -395,3 +554,13 @@ func _shot(path: String) -> void:
 		await process_frame
 	root.get_texture().get_image().save_png(path)
 	print("saved ", path)
+
+
+## How far from `from` the `way` way is clear of stone, up to `most` metres.
+func _room_out(layout: MazeLayout, from: Vector3, way: Vector3, most: float) -> float:
+	var far := 0.0
+	while far < most:
+		if _solid(layout, from + way * (far + 0.3)):
+			break
+		far += 0.3
+	return far

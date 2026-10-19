@@ -212,7 +212,11 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 		# (a wall in its style; piers and terraces always plain)
 		var chosen: Wall.Style = piece.style if piece.kind == MazePiece.Kind.WALL else Wall.Style.BASIC
 		for part: Array in Wall.style_boxes(chosen, size):
-			(chunks[key] as WallMesh).add_box(where, part[0], part[1], rounding, true, true, edge_spacing(piece.great))
+			# (its underside drawn if it stands up off the ground: a ledge, a bracket, a beam,
+			# a bridge's deck, seen from under it; without it they were not there from below,
+			# and the roots of the vines held under them hung in the air)
+			var raised: bool = (where * (part[0] as Vector3)).y - (part[1] as Vector3).y * 0.5 > 0.3
+			(chunks[key] as WallMesh).add_box(where, part[0], part[1], rounding, true, true, edge_spacing(piece.great), raised)
 			_collide(body, where, part[0], part[1])
 	var materials := {}
 	for key: Array in chunks:
