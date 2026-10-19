@@ -29,6 +29,9 @@ const STIFF := 0.7
 @export var most_sag := 1.5
 ## How heavy someone is, against the deck's own weight per point.
 @export var weight := 9.0
+## Whether its planks, hand ropes and posts are drawn (not for a strung vine, VineStrand,
+## which draws itself: they are not even made).
+var drawn := true
 
 var _points := PackedVector3Array()
 var _before := PackedVector3Array()
@@ -92,9 +95,10 @@ func _ready() -> void:
 	# (the planks, the ropes and the posts each one thing to draw, a MultiMesh: a
 	# thing each, the bridges of a maze were tens of thousands, which the renderer
 	# took seconds to take in as a round began)
-	_deck = _many(_plank_mesh, _wood, POINTS - 1)
-	_rails = _many(_rail_mesh, _hemp, 4 * (POINTS - 1))
-	_posts = _many(_post_mesh, _wood, 4)
+	if drawn:
+		_deck = _many(_plank_mesh, _wood, POINTS - 1)
+		_rails = _many(_rail_mesh, _hemp, 4 * (POINTS - 1))
+		_posts = _many(_post_mesh, _wood, 4)
 	for i in POINTS - 1:
 		# (planks a little apart, each a little different)
 		var plank_size := Vector3(width * rng.randf_range(0.92, 1.0), 0.07, _piece * 0.82)
@@ -105,7 +109,7 @@ func _ready() -> void:
 	# under the planks are tied to (its ends do not move, so neither do they).
 	var side := (to - from).cross(Vector3.UP).normalized()
 	var post := 0
-	for end: Vector3 in [from, to]:
+	for end: Vector3 in [from, to] if drawn else []:
 		for out: float in [0.5, -0.5]:
 			_posts.multimesh.set_instance_transform(post, Transform3D(Basis.IDENTITY, end + side * width * out + Vector3.UP * (POST_HIGH - POST_SUNK) * 0.5))
 			post += 1
@@ -209,6 +213,8 @@ func _lay() -> void:
 		var at := _plank_at(i, side)
 		if not _planks.is_empty():
 			_planks[i].global_transform = at
+		if _deck == null:
+			continue
 		var plank := at * _plank_looks[i]
 		# (a mirrored one would be drawn inside out, as a MultiMesh's are not turned
 		# round as a mesh's own are: a plank is the same box turned the other way)
@@ -216,6 +222,8 @@ func _lay() -> void:
 			plank.basis = plank.basis * Basis.from_scale(Vector3(-1.0, 1.0, 1.0))
 		_deck.multimesh.set_instance_transform(i, plank)
 	# Hand ropes (high, each side) and the ropes under the plank ends.
+	if _rails == null:
+		return
 	var heights := [[0.5, 0.95], [-0.5, 0.95], [0.5, 0.0], [-0.5, 0.0]]
 	for s in 4:
 		for i in POINTS - 1:

@@ -23,12 +23,14 @@ static var _leaf: StandardMaterial3D
 static var _leaf_mesh: ArrayMesh
 static var _stem_mesh: CylinderMesh
 
-var _stems: Array[MeshInstance3D] = []
+## The stem, a piece between each two points, all one thing to draw (a MultiMesh: a
+## MeshInstance3D each, a maze thick with strung vines had a hundred thousand).
+var _stems: MultiMeshInstance3D
 var _leaves: MultiMeshInstance3D
 var _placing: Array = []
-## The bunches of leaves where its ends are held (_anchor), and how many leaves each;
-## and how many more on the stem by each end.
-var _tufts: Array[MultiMeshInstance3D] = []
+## The leaves on the stem (_placing), then the bunches where its ends are held
+## (_anchor), in the same MultiMesh; how many leaves each bunch, and how many more
+## on the stem by each end.
 const ANCHOR_LEAVES := 40
 const END_LEAVES := 10
 ## How each end is held (Vine.Held: over a lip, the corbel's, a bracket's or a ledge's, by
@@ -54,6 +56,7 @@ const GROUND_SAG := 0.6
 
 func _init() -> void:
 	width = FOOTING * 2.0
+	drawn = false
 	slack = SLACK
 	most_sag = MOST_SAG
 
@@ -63,10 +66,7 @@ func _ready() -> void:
 		most_sag = GROUND_SAG
 	super()
 	add_to_group(&"vine_strands")
-	# (no planks, hand ropes or posts to be seen: only the vine, where the deck is)
-	_deck.visible = false
-	_rails.visible = false
-	_posts.visible = false
+	# (no planks, hand ropes or posts: only the vine, where the deck is: RopeBridge.drawn)
 	if _stem == null:
 		_stem = StandardMaterial3D.new()
 		_stem.albedo_color = Color(0.2, 0.24, 0.12)
@@ -80,14 +80,17 @@ func _ready() -> void:
 		_stem_mesh.height = 1.0
 		_stem_mesh.radial_segments = 6
 		_stem_mesh.rings = 1
-	for i in POINTS - 1:
-		var stem := MeshInstance3D.new()
-		stem.mesh = _stem_mesh
-		stem.material_override = _stem
-		stem.top_level = true
-		stem.visibility_range_end = Rope.SEEN
-		add_child(stem)
-		_stems.append(stem)
+	var stems := MultiMesh.new()
+	stems.transform_format = MultiMesh.TRANSFORM_3D
+	stems.mesh = _stem_mesh
+	stems.instance_count = POINTS - 1
+	_stems = MultiMeshInstance3D.new()
+	_stems.multimesh = stems
+	_stems.material_override = _stem
+	_stems.top_level = true
+	_stems.visibility_range_end = Rope.SEEN
+	add_child(_stems)
+	_stems.global_transform = Transform3D.IDENTITY
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(from.snappedf(0.01))
 	var multi := MultiMesh.new()
@@ -95,11 +98,12 @@ func _ready() -> void:
 	multi.use_colors = true
 	multi.mesh = _leaf_mesh
 	var each := maxi(Vine.LEAVES, roundi(_piece / Vine.LEAF_REACH))
-	multi.instance_count = (POINTS - 1) * each + END_LEAVES * 2
+	var on_stem := (POINTS - 1) * each + END_LEAVES * 2
+	multi.instance_count = on_stem + ANCHOR_LEAVES * 2
 	var rest := (to - from).normalized() if from.distance_squared_to(to) > 0.000001 else Vector3.RIGHT
 	var rest_out := _rest_out(rest)
 	var end_share := minf(1.0, Vine.TOP_REACH / maxf(_piece, 0.01))
-	for i in multi.instance_count:
+	for i in on_stem:
 		var piece := i / each
 		var t := rng.randf()
 		if i >= (POINTS - 1) * each:
@@ -121,8 +125,8 @@ func _ready() -> void:
 	_leaves.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_leaves.visibility_range_end = 160.0
 	add_child(_leaves)
-	_anchor(from, to, from_held, rng)
-	_anchor(to, from, to_held, rng)
+	_anchor(from, to, from_held, rng, on_stem)
+	_anchor(to, from, to_held, rng, on_stem + ANCHOR_LEAVES)
 	_lay()
 
 
@@ -140,27 +144,15 @@ static func _reach(held: int) -> float:
 ## Where it is held at `end` (the way `other`, its far end, is away from it), held
 ## as `held` says: its roots over what holds it, and a bunch of leaves over them
 ## (Vine.anchor), so that it grows out of what holds it rather than stopping in the
-## air. They do not move.
-func _anchor(end: Vector3, other: Vector3, held: int, rng: RandomNumberGenerator) -> void:
+## air. They do not move. Its leaves are the stem leaves' MultiMesh's from `first` on.
+func _anchor(end: Vector3, other: Vector3, held: int, rng: RandomNumberGenerator, first: int) -> void:
 	var out := Vector3(other.x - end.x, 0.0, other.z - end.z).normalized()
 	var made := Vine.anchor(end, -out, held, _reach(held), false, rng, ANCHOR_LEAVES)
 	add_child(made[0])
-	var multi := MultiMesh.new()
-	multi.transform_format = MultiMesh.TRANSFORM_3D
-	multi.use_colors = true
-	multi.mesh = _leaf_mesh
-	multi.instance_count = ANCHOR_LEAVES
+	var multi := _leaves.multimesh
 	for i in ANCHOR_LEAVES:
-		multi.set_instance_transform(i, made[1][i][0])
-		multi.set_instance_color(i, made[1][i][1])
-	var tuft := MultiMeshInstance3D.new()
-	tuft.multimesh = multi
-	tuft.material_override = _leaf
-	tuft.top_level = true
-	tuft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	tuft.visibility_range_end = 160.0
-	add_child(tuft)
-	_tufts.append(tuft)
+		multi.set_instance_transform(first + i, made[1][i][0])
+		multi.set_instance_color(first + i, made[1][i][1])
 
 
 ## The vines hanging from it (the user, 2026-10-19: "hanging vines should be able to hang
@@ -315,7 +307,7 @@ func _lay() -> void:
 		var along := b - a
 		var y := along.normalized()
 		var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
-		_stems[i].global_transform = Transform3D(Basis(x, y * along.length(), x.cross(y)), (a + b) * 0.5)
+		_stems.multimesh.set_instance_transform(i, Transform3D(Basis(x, y * along.length(), x.cross(y)), (a + b) * 0.5))
 	var multi := _leaves.multimesh
 	# (round the stem as it lies strung straight from end to end: see Vine.round_stem)
 	var rest := (to - from).normalized() if from.distance_squared_to(to) > 0.000001 else Vector3.RIGHT
