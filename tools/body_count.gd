@@ -1,10 +1,19 @@
 extends SceneTree
 ## How many physics bodies a solo round makes, by kind (Jolt stops making them
 ## past jolt_physics_3d/limits/max_bodies, and what comes after has none).
+## `defaults`: with the game's own section styles, not the maze editor's (catwalks
+## in the second and third); `nocatwalks` too: those without their catwalks.
 ##
-##     godot --headless --path . --audio-driver Dummy -s res://tools/body_count.gd
+##     godot --headless --path . --audio-driver Dummy -s res://tools/body_count.gd [-- defaults [nocatwalks]]
 var main: Node
 func _initialize() -> void:
+	var args := OS.get_cmdline_user_args()
+	if args.has("defaults"):
+		var styles := MazeStyle.defaults()
+		if args.has("nocatwalks"):
+			for style in styles:
+				style.catwalk_share = 0.0
+		MazeStyle.chosen = styles
 	main = load("res://main.tscn").instantiate()
 	main.testing = true
 	root.add_child(main)

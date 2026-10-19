@@ -139,7 +139,7 @@ func _pieces(layout: MazeLayout, maze: Maze = null) -> Array:
 			if piece.has_node("End"):
 				end = str((piece.get_node("End") as Node3D).position.snappedf(0.01))
 			all.append("%d %s %s %s %s %.2f %.2f %s %s%s" % [kind, piece.position.snappedf(0.01), piece.basis.get_euler().snappedf(0.01),
-				piece.basis.get_scale().snappedf(0.01), piece.size.snappedf(0.01), piece.length, piece.width, end, [piece.ledge, piece.great, piece.style, piece.prop, piece.drips, piece.sag, piece.tails, piece.lamp, piece.anchor], (" zone %d%s" % [MazeLayout.zone_of(maze, piece), " (tagged)" if piece.has_meta(&"zone") else ""]) if maze else ""])
+				piece.basis.get_scale().snappedf(0.01), piece.size.snappedf(0.01), piece.length, piece.width, end, [piece.ledge, piece.great, piece.style, piece.prop, piece.drips, piece.sag, piece.tails, piece.lamp, piece.anchor, piece.catwalk], (" zone %d%s" % [MazeLayout.zone_of(maze, piece), " (tagged)" if piece.has_meta(&"zone") else ""]) if maze else ""])
 	all.sort()
 	return all
 

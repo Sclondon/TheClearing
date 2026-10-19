@@ -653,6 +653,10 @@ var _whirl_phase := 0.0
 var _whirl_way := 1.0
 var _giddy := 0.0
 var _reel := 0.0
+## On a tightrope (Player.tightrope): how far into balancing on it, and how far he
+## sways over to his right (negative, his left) as he keeps his balance.
+var _tight := 0.0
+var _teeter := 0.0
 ## Resting (see Player.sit_progress and the rest): how far sat down, how far
 ## lain down from there, the yawn and the rub of his eyes (1: not doing it),
 ## startled awake, and whether he was getting down or up when last seen.
@@ -761,6 +765,12 @@ func _process(delta: float) -> void:
 		_climb = 0.0
 	_rope = _approach(_rope, 1.0 if doing == Player.State.ROPE else 0.0, 14.0, delta)
 	_ladder = _approach(_ladder, 1.0 if doing == Player.State.LADDER else 0.0, 12.0, delta)
+	# On a tightrope he sways, slowly and never quite the same, the more the further
+	# he is off its line; and the arms and hips go against it.
+	var tight_now: bool = &"tightrope" in _player and _player.tightrope > 0.0 and doing == Player.State.FREE
+	_tight = _approach(_tight, 1.0 if tight_now else 0.0, 6.0, delta)
+	var off_line: float = clampf(_player.tightrope_aside / 0.2, -1.0, 1.0) if tight_now else 0.0
+	_teeter = _approach(_teeter, (sin(_time * 1.3) * 0.55 + sin(_time * 2.7 + 1.0) * 0.3) * (0.5 + 0.5 * absf(off_line)) + off_line * 0.6, 4.0, delta)
 	_swim = _approach(_swim, 1.0 if doing == Player.State.SWIM else 0.0, 7.0, delta)
 	_under = _approach(_under, 1.0 if doing == Player.State.SWIM and _player.is_underwater else 0.0, 5.0, delta)
 	# (coming up to a wall he stops swimming at it and comes upright)
@@ -1262,7 +1272,10 @@ func _pose_body(speed: float, vertical_speed: float, stance: float, gait: float)
 	# How far his hips are listed to one side; how far they are tipped forward
 	# beyond their share of his lean, the rest of his back making up for it; how
 	# far his head is turned, his left positive, and tilted over, his right positive.
-	var listing := 0.0
+	# (on a tightrope his hips go over with his sway and his back makes up for it;
+	# he looks down at the line ahead of his feet)
+	var listing := _teeter * 0.09 * _tight
+	chin += 0.25 * _tight
 	var tuck := 0.0
 	var head_turn := 0.0
 	var cant := 0.0
@@ -1717,6 +1730,8 @@ func _pose_legs(stride: float, stance: float, gait: float) -> void:
 		# out, less so at a run, when the heel also flicks out behind him.
 		# Sneaking, they are set down wide.
 		var track := _hip_width * (1.0 - (0.15 + 0.15 * _run) * loose) + (vary.x * 0.012 + sin(PI * swing) * 0.014) * loose + 0.02 * _duck
+		# (on a tightrope, one foot set down in front of the other, on its line)
+		track = lerpf(track, 0.012, _tight)
 		var target := Vector3(side * track, cycle.y * gait, cycle.z * gait - 0.34 * _push)
 		var yaw := side * (lerpf(0.14, 0.05, _run) + vary.y * 0.05 + sin(PI * swing) * 0.1 * _run) * loose
 		# And they are not flat boards: a foot lands on the outer edge of its heel
@@ -2325,6 +2340,14 @@ func _pose_arms(vertical_speed: float, gait: float) -> void:
 		roll = lerpf(roll, side * (0.9 + sin(_time * 6.3 + i * PI) * 0.35), _reel)
 		elbow = lerpf(elbow, -0.45, _reel)
 		splay = lerpf(splay, 1.1, _reel)
+		# On a tightrope: held out level to the sides and a little forward, see-sawing
+		# against his sway (the arm on the side he leans to goes up), the hands
+		# open, feeling the air.
+		pitch = lerpf(pitch, -0.3 + sin(_time * 2.1 + i * 1.9) * 0.07, _tight)
+		roll = lerpf(roll, side * 1.32 + _teeter * 0.45, _tight)
+		elbow = lerpf(elbow, -0.3 + sin(_time * 1.7 + i) * 0.1, _tight)
+		curl = lerpf(curl, 0.12, _tight)
+		splay = lerpf(splay, 1.05, _tight)
 		# A yawn and a stretch: one fist up by his ear and then pushed up as far
 		# as it will go; the other hand to his mouth, and then out to the side.
 		if _stretch > 0.0:

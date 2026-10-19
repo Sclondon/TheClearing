@@ -131,6 +131,9 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	day.dawn.connect(_shut_gates.bind(false))
 	day.sunset.connect(_shut_gates.bind(true))
 	weather = Weather.put(self, seed_value, day, builder.ground_material)
+	# (footprints in the mud of the maze floor, splashes in its puddles)
+	if not clearing_only:
+		MudSteps.put(self, maze, builder.ground_material)
 	_put_gates()
 	_lap("day, weather, gates")
 

@@ -140,6 +140,27 @@ extends Resource
 ## How wide a bridge's deck is, metres.
 @export_range(1.0, 8.0, 0.01, "suffix:m") var concrete_bridge_width := 3.0
 
+@export_subgroup("Catwalks")
+## Metal catwalks over the mezzanines: grated steel walkways, rusted, along the walls on brackets and across the
+## halls (the long ones hung from a beam under the wall tops), linked into ways over the maze, with steel ladders up
+## to them from the top ledge, or the floor where there is none (the user, 2026-10-18: "we need to add a metal cat
+## walk option that will add pathways above the mezzanines, rarely in zone 2 and then lots in zone 3").
+@export var catwalks_on: bool:
+	get:
+		return feature_on(&"catwalks_on")
+	set(value):
+		_switch(&"catwalks_on", value)
+## How many stretches of wall have a catwalk along them, and how many halls one across them (a share, 0 to 1;
+## those across are 0.6 of it).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var catwalk_share := 0.0
+## How high a catwalk's deck is over the top level of ledge (over the floor where there are no ledges), metres
+## (never nearer the walls' tops than 2.5 m under their cornice).
+@export_range(2.6, 40.0, 0.01, "or_greater", "suffix:m") var catwalk_height := 6.0
+## How wide a catwalk's deck is, metres.
+@export_range(1.0, 1.5, 0.01, "suffix:m") var catwalk_width := 1.2
+## The railings of a catwalk across a hall: on one side or both (one along a wall has one, on the hall's side).
+@export_enum("One side", "Both sides") var catwalk_railings := 1
+
 @export_group("Ivy")
 ## Climbable ivy up the walls from the ground: to the mezzanine if there is one, else part way up, never to the top.
 @export var wall_ivy_on: bool:
@@ -729,6 +750,7 @@ const FEATURES := {
 	&"ivy_to_wall_top_on": [&"ivy_to_wall_top_share"],
 	&"mezzanine_ivy_on": [&"mezzanine_ivy_share"],
 	&"concrete_bridges_on": [&"concrete_bridge_share", &"concrete_bridge_arch_rise", &"concrete_bridge_width"],
+	&"catwalks_on": [&"catwalk_share", &"catwalk_height", &"catwalk_width", &"catwalk_railings"],
 	&"vines_on": [&"vine_density", &"mezzanine_crossing_density", &"hanging_vine_density", &"random_crossing_density", &"vine_height_limit"],
 	&"brackets_on": [&"bracket_share", &"bracket_height_range"],
 	&"vents_on": [&"wall_vent_share"],
@@ -764,6 +786,9 @@ const PART_OF := {
 ## How much of a feature there is when its box is turned on with its amount at 0
 ## and nothing to go back to (its own default is 0).
 const AMOUNT_WHEN_TURNED_ON := 0.05
+## The same for features with an amount of their own to start from (their default is 0,
+## so that sections saved before them have none).
+const AMOUNTS_WHEN_TURNED_ON := {&"catwalk_share": 0.2}
 
 ## Each feature's amount setting -> its box.
 static var _box_of := {}
@@ -824,7 +849,7 @@ func _switch(box: StringName, on: bool) -> void:
 	if on and float(get(setting)) <= 0.0:
 		# (turned on with none of it: back to its default, or a little)
 		var default := float(get_script().get_property_default_value(setting))
-		set(setting, default if default > 0.0 else AMOUNT_WHEN_TURNED_ON)
+		set(setting, default if default > 0.0 else AMOUNTS_WHEN_TURNED_ON.get(setting, AMOUNT_WHEN_TURNED_ON))
 	notify_property_list_changed()
 
 
@@ -951,6 +976,21 @@ func level_share(level: int) -> float:
 	return mezzanines[level].share if level < mezzanine_count() else 0.0
 
 
+## How near the tops of its walls a catwalk's deck may come, metres under the cornice;
+## and how much room there is over the top level of ledge under it at least (none lower).
+const CATWALK_UNDER_TOP := 2.5
+const CATWALK_HEADROOM := 2.6
+
+
+## How high the decks of its catwalks are: `catwalk_height` over the top level of ledge
+## (or the floor), and CATWALK_UNDER_TOP under the maze walls' cornice at most; -1 if
+## that leaves less than CATWALK_HEADROOM over the ledge (no catwalks).
+func catwalk_level() -> float:
+	var under := level_height(mezzanine_count() - 1) if has_mezzanine() else 0.0
+	var high := minf(under + catwalk_height, maze_wall_height - MazeBuilder.CORNICE.y - CATWALK_UNDER_TOP)
+	return high if high >= under + CATWALK_HEADROOM else -1.0
+
+
 ## The groups `bare` empties: every count in them goes to none.
 const PEOPLED := ["What hunts it", "Who else is in it", "Wildlife"]
 
@@ -1057,7 +1097,7 @@ static func sewers(style: MazeStyle, amount: float) -> void:
 ## Galleries: the second section. Hallways and walls like the Avenues', but up
 ## the walls levels of ledges step back one over another, the higher ones only
 ## here and there (platforms), with ivy from each up to the next and rope bridges
-## across the hallways between them.
+## across the hallways between them; now and then a metal catwalk over the top ledges.
 static func galleries() -> MazeStyle:
 	var style := made(6, 2, 0.5, 0.0, 0.0)
 	style.maze_wall_diameter = 12.0
@@ -1077,16 +1117,23 @@ static func galleries() -> MazeStyle:
 	style.plant_density = 0.6
 	style.colossi = 1
 	sewers(style, 0.8)
+	# (now and then a catwalk over the top ledges: "rarely in zone 2", the user, 2026-10-18)
+	style.catwalk_share = 0.08
+	style.catwalk_height = 5.0
 	return style
 
 
 ## Narrows: a close maze of single hallways that wind and fork, with terraces, ivy,
-## vines and rope bridges to climb.
+## vines and rope bridges to climb, and metal catwalks over many of its halls with
+## ladders up to them.
 static func narrows() -> MazeStyle:
 	var style := made(4, 1, 0.0, 0.0, 0.06)
 	# (three ways in from the Galleries)
 	style.entrance_count = 3
 	sewers(style, 0.7)
+	# (catwalks over many of its halls, along the walls and across: "lots in zone 3", the user, 2026-10-18)
+	style.catwalk_share = 0.45
+	style.catwalk_height = 9.0
 	return style
 
 

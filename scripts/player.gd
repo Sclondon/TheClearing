@@ -318,6 +318,17 @@ var foot_points := PackedVector3Array([Vector3.ZERO, Vector3.ZERO])
 var ladder_off := 0.0
 ## Swimming: how clear the water ahead of him is, 0 (a wall at his nose) to 1.
 var swim_clear := 1.0
+## Walking a tightrope (a vine strung across a hall, a wire): seconds he still
+## counts as on it, kept up by what he walks on each step (VineStrand), and how
+## far he is off its line, metres, his right positive. The rig balances on it.
+var tightrope := 0.0
+var tightrope_aside := 0.0
+## The strung vine he stands on (set with `tightrope`), or hangs under in HANG
+## (`_strand`): it is his ledge then, its line his edge, and he goes hand over
+## hand along it.
+var tightrope_on: VineStrand
+var _strand: VineStrand
+var _strand_left: VineStrand
 ## On a flight of stairs, 0 or 1: at least two risers running the way he is going.
 ## How high each is (negative going down), how far apart they are, a point on
 ## the edge of one of them, and which way the flight runs. The rig steps on the treads.
@@ -596,6 +607,7 @@ func _queue_jump() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	tightrope = maxf(tightrope - delta, 0.0)
 	if is_limp:
 		velocity = Vector3.ZERO
 		# (his body may have gone over the edge of the world without him)
@@ -629,6 +641,12 @@ func _physics_process(delta: float) -> void:
 	_jump_buffer -= delta
 	_grab_cooldown -= delta
 	_state_time += delta
+	# Ducking on a tightrope he lets himself down off it and hangs under it by his hands.
+	if _duck_pressed and state == State.FREE and tightrope > 0.0 and is_instance_valid(tightrope_on) and carried == null:
+		_hold_strand(tightrope_on, tightrope_on.distance_along(global_position), global_basis.z)
+	# (whatever took him off a strung vine, he holds it no longer)
+	if _strand != null and state != State.HANG:
+		_strand = null
 
 	match state:
 		State.HANG:
@@ -713,7 +731,7 @@ func _move(strength: float, delta: float) -> void:
 	# Hands are free and he is in the air: catch a rope, or a ledge he is falling past.
 	_rope_rest -= delta
 	if not now_grounded and state == State.FREE and carried == null and _grab_cooldown <= 0.0:
-		if not _try_catch_rope() and velocity.y < 1.5:
+		if not _try_catch_rope() and not _try_catch_strand() and velocity.y < 1.5:
 			_try_catch_ledge()
 
 
@@ -1628,6 +1646,9 @@ func _engage() -> void:
 ## him. Left and right work him along the ledge, hand over hand.
 func _hang(delta: float) -> void:
 	velocity = Vector3.ZERO
+	if _strand != null:
+		_hang_strand(delta)
+		return
 	var toward := _wish.dot(_ledge_direction)
 	var sideways := _wish.dot(_ledge_left())
 	if _jump_buffer > 0.0:
@@ -1651,6 +1672,104 @@ func _hang(delta: float) -> void:
 
 func _ledge_left() -> Vector3:
 	return Vector3(_ledge_direction.z, 0.0, -_ledge_direction.x)
+
+
+# --- Strung vines (VineStrand) ---
+
+## How near his hands a strung vine must be for him to catch it in the air:
+## across, how far over them, and how far under them (down at his chest).
+const STRAND_REACH := Vector3(0.55, 0.45, -0.5)
+## How near either end of a strung vine he can go hand over hand, metres.
+const STRAND_END := 0.8
+
+
+## In the air, catches a strung vine his hands come to (jumping up to one
+## overhead, or falling or leaping onto one going across his way).
+func _try_catch_strand() -> bool:
+	var hands := global_position + Vector3.UP * hang_height
+	for found: Node in NearIndex.near(get_tree(), &"vine_strands", hands, 3.0):
+		var strand := found as VineStrand
+		if strand == null or not is_instance_valid(strand) or (strand == _strand_left and _rope_rest > 0.0):
+			continue
+		var at := strand.point_near(hands)
+		var away := at - hands
+		var across := Vector3(away.x, 0.0, away.z).length()
+		if across > STRAND_REACH.x or away.y > STRAND_REACH.y or away.y < STRAND_REACH.z:
+			continue
+		var along := strand.distance_along(at)
+		if along < STRAND_END or along > strand.span() - STRAND_END:
+			continue
+		var facing := Vector3(velocity.x, 0.0, velocity.z)
+		_hold_strand(strand, along, facing if facing.length() > 0.5 else global_basis.z)
+		return true
+	return false
+
+
+## Hangs him under `strand` by his hands, `along` metres from its start, facing
+## across it the way nearest `facing`.
+func _hold_strand(strand: VineStrand, along: float, facing: Vector3) -> void:
+	_strand = strand
+	var across := strand.line().cross(Vector3.UP).normalized()
+	_ledge_direction = across if across.dot(facing) >= 0.0 else -across
+	ledge_point = strand.point_at_distance(clampf(along, STRAND_END, strand.span() - STRAND_END))
+	_ledge_top = ledge_point + Vector3.UP * 0.05
+	_put(ledge_point + Vector3.DOWN * hang_height)
+	velocity = Vector3.ZERO
+	ledge_wall = false
+	shimmy_travel = 0.0
+	_grips[0] = _grip_home(0)
+	_grips[1] = _grip_home(1)
+	_engage()
+	tightrope = 0.0
+	state = State.HANG
+	_state_time = 0.0
+
+
+## Hanging under a strung vine: it sways and dips, and he goes with it; left and
+## right take him hand over hand along it; jump pulls him up to stand on it;
+## duck, or pulling away, lets go.
+func _hang_strand(delta: float) -> void:
+	if not is_instance_valid(_strand):
+		_let_go_strand()
+		return
+	var line := _strand.line()
+	var along := _strand.distance_along(ledge_point)
+	var sideways := _wish.dot(_ledge_left())
+	var toward := _wish.dot(_ledge_direction)
+	if _jump_buffer > 0.0:
+		_jump_buffer = 0.0
+		# (onto its top, over the line of it, and let down onto it)
+		_ledge_top = _strand.point_at_distance(along) + Vector3.UP * 0.2
+		_climb_from = global_position
+		climb_progress = 0.0
+		_strand_left = _strand
+		_strand = null
+		state = State.CLIMB
+		_state_time = 0.0
+		return
+	if (_duck_pressed and _state_time > 0.25) or (toward < -0.6 and _state_time > 0.3):
+		_let_go_strand()
+		return
+	if absf(sideways) > 0.4:
+		var step := signf(sideways) * signf(_ledge_left().dot(line)) * shimmy_speed * delta
+		var moved := clampf(along + step, STRAND_END, _strand.span() - STRAND_END)
+		shimmy_travel += absf(moved - along) * signf(sideways)
+		along = moved
+	var before := global_position
+	ledge_point = _strand.point_at_distance(along)
+	_ledge_top = ledge_point + Vector3.UP * 0.05
+	global_position = ledge_point + Vector3.DOWN * hang_height
+	# (he is not moved by it, but the rig reads how fast he is going from it)
+	velocity = (global_position - before) / maxf(delta, 0.001)
+	_step_grips(delta)
+
+
+func _let_go_strand() -> void:
+	_strand_left = _strand
+	_rope_rest = 0.6
+	_strand = null
+	state = State.FREE
+	_grab_cooldown = 0.4
 
 
 ## Moves him a little way along the ledge, `direction` being 1 for his left, if

@@ -152,7 +152,9 @@ func _physics_process(delta: float) -> void:
 		return
 	# Hanging still, with nobody on it or near it, it rests. (A maze has a great
 	# many, and each is worked out point by point. It starts out hanging at rest.)
-	if load_at < 0.0 and (_points[PIECES] - _before[PIECES]).length_squared() < 0.000001 and not anyone_near(self, global_position, length + WAKE):
+	# (and not if its top has been moved: Vine.follow)
+	if load_at < 0.0 and (_points[PIECES] - _before[PIECES]).length_squared() < 0.000001 and (_points[0] - global_position).length_squared() < 0.000001 \
+			and not anyone_near(self, global_position, length + WAKE):
 		rest(self)
 		return
 	var piece := length / PIECES

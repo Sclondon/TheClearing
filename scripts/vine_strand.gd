@@ -163,14 +163,62 @@ func _anchor(end: Vector3, other: Vector3, held: int, rng: RandomNumberGenerator
 	_tufts.append(tuft)
 
 
+## The vines hanging from it (the user, 2026-10-19: "hanging vines should be able to hang
+## from crossing vines"), each [vine, where along it (its points' index and the share of
+## the way to the next)]: each step it moves (only near someone, as it rests otherwise)
+## their tops go where those points have gone. Cut, each goes with its half.
+var _hung: Array = []
+## How far under the stem's middle a vine hanging from it is held, metres.
+const HUNG_UNDER := 0.05
+
+
+## Hangs `vine` from it, at the point of it nearest the vine's top.
+func hang(vine: Vine) -> void:
+	_hung.append([vine, _place_of(vine.global_position + Vector3.UP * HUNG_UNDER)])
+	vine.follow(_point_on(_hung[-1][1]) + Vector3.DOWN * HUNG_UNDER)
+
+
+## Where along it the point nearest `point` is: its points' index, and how far to the next.
+func _place_of(point: Vector3) -> float:
+	var best := 0.0
+	var least := INF
+	for i in POINTS - 1:
+		var a := _points[i]
+		var ab := _points[i + 1] - a
+		var t := clampf((point - a).dot(ab) / maxf(ab.length_squared(), 0.0001), 0.0, 1.0)
+		var apart := (a + ab * t).distance_squared_to(point)
+		if apart < least:
+			least = apart
+			best = i + t
+	return best
+
+
+## The point of it `place` along (see _place_of), as it hangs now.
+func _point_on(place: float) -> Vector3:
+	var i := clampi(int(place), 0, POINTS - 2)
+	return _points[i].lerp(_points[i + 1], place - i)
+
+
+## How far along it from its start `place` is, as it hangs now, metres.
+func _length_to(place: float) -> float:
+	var length := 0.0
+	var i := clampi(int(place), 0, POINTS - 2)
+	for k in i:
+		length += _points[k].distance_to(_points[k + 1])
+	return length + _points[i].distance_to(_points[i + 1]) * (place - i)
+
+
 func _physics_process(delta: float) -> void:
 	super(delta)
 	if Engine.is_editor_hint():
 		return
+	for each: Array in _hung:
+		if is_instance_valid(each[0]):
+			(each[0] as Vine).follow(_point_on(each[1]) + Vector3.DOWN * HUNG_UNDER)
 	# Whoever stands on it is drawn back over it, unless he is stepping off.
 	for body: Node in get_tree().get_nodes_in_group(&"maze_players"):
 		var walker := body as CharacterBody3D
-		if walker == null or not walker.is_on_floor() or _nearest(walker.global_position) < 0:
+		if walker == null or not walker.is_on_floor() or not _carries(walker.global_position):
 			continue
 		var off := walker.global_position - _closest(walker.global_position)
 		off.y = 0.0
@@ -181,6 +229,11 @@ func _physics_process(delta: float) -> void:
 		var stepping := Vector3(walker.velocity.x, 0.0, walker.velocity.z).dot(across * signf(aside))
 		if absf(aside) < 0.6 and stepping < 2.5:
 			walker.global_position -= across * aside * minf(1.0, BALANCE * delta)
+		# (and he balances on it: arms out, one foot before the other)
+		if absf(aside) < 0.6 and &"tightrope" in walker:
+			walker.set(&"tightrope", 0.2)
+			walker.set(&"tightrope_aside", aside * signf(across.dot(walker.global_basis.x)))
+			walker.set(&"tightrope_on", self)
 
 
 ## How far a point is from the vine.
@@ -208,6 +261,8 @@ func _closest(point: Vector3) -> Vector3:
 func cut(point: Vector3) -> Array[Vine]:
 	var at := _closest(point)
 	var made: Array[Vine] = []
+	var cut_place := _place_of(at)
+	var whole := _length_to(POINTS - 1.0)
 	for from_start: bool in [true, false]:
 		var end := from if from_start else to
 		var length := 0.0
@@ -230,6 +285,22 @@ func cut(point: Vector3) -> Array[Vine]:
 		get_parent().add_child(vine)
 		vine.lay_to(end + (at - end).normalized() * length)
 		made.append(vine)
+		# (the vines hanging from this half go with it, as far down it as they were along it)
+		for each: Array in _hung:
+			var place: float = each[1]
+			if not is_instance_valid(each[0]) or (place < cut_place) != from_start:
+				continue
+			var down := _length_to(place) if from_start else whole - _length_to(place)
+			if down < length - 0.1:
+				vine.carry(each[0], down)
+				each[0] = null
+	# (any left, on a half too short to hang, fall with it)
+	for each: Array in _hung:
+		if is_instance_valid(each[0]):
+			(each[0] as Vine).queue_free()
+	_hung.clear()
+	# (where the vines are is looked up afresh once they have swung down: NearIndex)
+	NearIndex.moved(get_tree(), &"ropes")
 	queue_free()
 	return made
 
@@ -261,3 +332,45 @@ func _lay() -> void:
 		var y := out * cos(DROOP) - face * sin(DROOP)
 		var z := face * cos(DROOP) + out * sin(DROOP)
 		multi.set_instance_transform(i, Transform3D(Basis(y.cross(z), y, z).scaled(Vector3.ONE * place[3]), leaf_at))
+
+
+# --- For hanging under it (Player._hold_strand) ---
+
+## Which way it runs across the ground, from `from` to `to` (level, unit length).
+func line() -> Vector3:
+	var along := to - from
+	along.y = 0.0
+	return along.normalized()
+
+
+## How far it runs across the ground, metres.
+func span() -> float:
+	return Vector2(to.x - from.x, to.z - from.z).length()
+
+
+## How far along it, across the ground from `from`, a point is.
+func distance_along(point: Vector3) -> float:
+	return clampf((point - from).dot(line()), 0.0, span())
+
+
+## The point of it (as it hangs now) `distance` metres along it across the ground.
+func point_at_distance(distance: float) -> Vector3:
+	var span_now := maxf(span(), 0.001)
+	var t := clampf(distance / span_now, 0.0, 1.0) * (POINTS - 1)
+	var i := mini(int(t), POINTS - 2)
+	var level := from + line() * distance
+	var y := lerpf(_points[i].y, _points[i + 1].y, t - i)
+	return Vector3(level.x, y, level.z)
+
+
+## The point of it nearest `point`.
+func point_near(point: Vector3) -> Vector3:
+	return _closest(point)
+
+
+# Whether someone whose feet are at `feet` is stood on it: over its line (from any
+# point along it, not only its joints), and on it, not under it or well over it.
+func _carries(feet: Vector3) -> bool:
+	var on := _closest(feet)
+	var level := Vector2(feet.x - on.x, feet.z - on.z).length()
+	return level < 0.6 and feet.y > on.y - 0.3 and feet.y < on.y + 0.8
