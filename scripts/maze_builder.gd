@@ -215,6 +215,22 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 		if not chunks.has(key):
 			chunks[key] = WallMesh.new()
 		var rounding := edge_rounding(_style_of(section), piece.great, look == LEDGE_LOOK)
+		# (an arched span, a concrete bridge: drawn smooth, and bumped into as its deck and
+		# a few blocks under it each way)
+		if piece.arch > 0.0:
+			(chunks[key] as WallMesh).add_arch(where, Vector3.UP * size.y * 0.5, size, piece.arch)
+			var along_x := size.x >= size.z
+			var long := (size.x if along_x else size.z)
+			var axis := Vector3(1, 0, 0) if along_x else Vector3(0, 0, 1)
+			var flat := size - axis * long
+			_collide(body, where, Vector3.UP * (size.y - piece.arch * 0.5), flat + axis * long + Vector3.UP * (piece.arch - size.y))
+			for k in 8:
+				var u := (k + 0.5) / 8.0 * 2.0 - 1.0
+				var tall := (size.y - piece.arch) * u * u
+				if tall < 0.05:
+					continue
+				_collide(body, where, axis * u * long * 0.5 + Vector3.UP * (size.y - piece.arch - tall * 0.5), flat + axis * long / 8.0 + Vector3.UP * (tall - size.y))
+			continue
 		# (a wall in its style; piers and terraces always plain)
 		var chosen: Wall.Style = piece.style if piece.kind == MazePiece.Kind.WALL else Wall.Style.BASIC
 		for part: Array in Wall.style_boxes(chosen, size):

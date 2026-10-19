@@ -186,7 +186,7 @@ func _zone2(world: Node, folder: String) -> void:
 	var decks: Array = []
 	for piece in layout.pieces(MazePiece.Kind.PIER):
 		var size := piece.box_size()
-		if is_equal_approx(size.y, MazeFeatures.BRIDGE_DECK) and maxf(size.x, size.z) > style.concrete_bridge_width + 1.0 and maze.ring_of(maze.cell_at(piece.position)) == 2:
+		if piece.arch > 0.0 and maxf(size.x, size.z) > style.concrete_bridge_width + 1.0 and maze.ring_of(maze.cell_at(piece.position)) == 2:
 			decks.append(piece)
 	print("concrete bridges in the second section: ", decks.size())
 	var best: MazePiece = null
@@ -210,7 +210,7 @@ func _zone2(world: Node, folder: String) -> void:
 	var across := Vector3(1, 0, 0) if size.x > size.z else Vector3(0, 0, 1)
 	var along := Vector3.UP.cross(across)
 	var hall := Vector3(best.position.x, 0.0, best.position.z)
-	var top := best.position.y + MazeFeatures.BRIDGE_DECK
+	var top := best.position.y + best.box_size().y
 	print("bridge at %s, %.1f m up, %.1f m long, %d things near" % [best.position, top, maxf(size.x, size.z), best_count])
 	var camera := Camera3D.new()
 	camera.fov = 66.0

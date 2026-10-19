@@ -80,6 +80,55 @@ func add_box(where: Transform3D, at: Vector3, size: Vector3, radius: float, roun
 			func(q: Vector3) -> Vector2: return Vector2(q.x, q.y - h.y + FAR), Vector2(ex, FAR))
 
 
+## An arched span `size` with its middle at `at`, in the space of `where`: flat on
+## top, full height at its two ends (along the longer of x and z), and its
+## underside curving smoothly up to `deck` thick in the middle (a concrete bridge's
+## arch, the user, 2026-10-18: "the concrete arch should be smooth"). Its edges are
+## not worn (they are drawn far off).
+func add_arch(where: Transform3D, at: Vector3, size: Vector3, deck: float, steps := 24) -> void:
+	var along_x := size.x >= size.z
+	var long := (size.x if along_x else size.z) * 0.5
+	var wide := (size.z if along_x else size.x) * 0.5
+	var top := size.y * 0.5
+	var rise := maxf(size.y - deck, 0.0)
+	# (a point at `a` along, `b` across and `y` up, in the span's own frame, and a direction likewise)
+	var put := func(a: float, b: float, y: float) -> Vector3:
+		return where * (at + (Vector3(a, y, b) if along_x else Vector3(b, y, a)))
+	var turn := func(v: Vector3) -> Vector3:
+		return (where.basis * (v if along_x else Vector3(v.z, v.y, v.x))).normalized()
+	var under := func(a: float) -> float:
+		var u := a / long
+		return top - deck - rise * u * u
+	var far := Vector2(FAR, FAR)
+	var quad := func(p: Array, n: Vector3) -> void:
+		var first := points.size()
+		for q: Vector3 in p:
+			points.append(q)
+			normals.append(n)
+			uvs.append(Vector2(0.0, FAR))
+			uv2s.append(far)
+		# (wound so that it faces `n`)
+		if (p[1] - p[0]).cross(p[2] - p[0]).dot(n) > 0.0:
+			indices.append_array([first, first + 2, first + 1, first, first + 3, first + 2])
+		else:
+			indices.append_array([first, first + 1, first + 2, first, first + 2, first + 3])
+	for k in steps:
+		var a0 := -long + 2.0 * long * k / steps
+		var a1 := -long + 2.0 * long * (k + 1) / steps
+		var y0: float = under.call(a0)
+		var y1: float = under.call(a1)
+		# The top, the curved underside (its normal down and out along the curve), and the two sides.
+		quad.call([put.call(a0, -wide, top), put.call(a1, -wide, top), put.call(a1, wide, top), put.call(a0, wide, top)], turn.call(Vector3.UP))
+		var slope := (y1 - y0) / (a1 - a0)
+		quad.call([put.call(a0, -wide, y0), put.call(a1, -wide, y1), put.call(a1, wide, y1), put.call(a0, wide, y0)], turn.call(Vector3(slope, -1.0, 0.0)))
+		for s: float in [-1.0, 1.0]:
+			quad.call([put.call(a0, wide * s, y0), put.call(a1, wide * s, y1), put.call(a1, wide * s, top), put.call(a0, wide * s, top)], turn.call(Vector3(0.0, 0.0, s)))
+	# Its two ends, full height, where it meets the ledges.
+	for s: float in [-1.0, 1.0]:
+		var y: float = under.call(long * s)
+		quad.call([put.call(long * s, -wide, y), put.call(long * s, wide, y), put.call(long * s, wide, top), put.call(long * s, -wide, top)], turn.call(Vector3(s, 0.0, 0.0)))
+
+
 ## Where the vertices go across a face `half` each way of its middle: at its
 ## edges, where their rounding starts (`r` in; none if 0), and every `spacing`
 ## or so between.

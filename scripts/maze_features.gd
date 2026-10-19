@@ -934,19 +934,16 @@ func _swept_vine(from: Array, to: Array, level: int, numbers: RandomNumberGenera
 	_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b})
 
 
-## How thick a concrete bridge's deck is over its arch, metres, and how long at most
-## each block of its arch is along it (it is built of blocks, each as deep as the arch
-## is there and overlapping the next by half, so that it steps down smoothly).
+## How thick a concrete bridge's deck is over its arch, metres (MazePiece.arch).
 const BRIDGE_DECK := 0.6
-const ARCH_BLOCK := 0.45
 ## How far along a concrete bridge from its end the ivy up to it is, past its side.
 const BRIDGE_IVY := 2.0
 
 
 ## An arched concrete bridge across the hall between the ledges at `level` (over the
 ## first) along the faces `one` and `other` ([cell, step] each): a flat deck flush
-## with the ledges, its underside arched (blocks of the ledges' concrete, each as
-## deep as the arch is there, their edges worn round as the walls' are), with ivy up
+## with the ledges, its underside arched smoothly (one span of the ledges'
+## concrete, MazePiece.arch), with ivy up
 ## to it at each end from the floor, level by level, and now and then a vine hanging
 ## from its side. Solid, walked across.
 func _concrete_bridge(one: Array, other: Array, level: int, numbers: RandomNumberGenerator, ivied: Dictionary) -> void:
@@ -976,19 +973,12 @@ func _concrete_bridge(one: Array, other: Array, level: int, numbers: RandomNumbe
 	var side := across.cross(Vector3.UP)
 	var size_of := func(length: float, tall: float) -> Vector3:
 		return across.abs() * length + side.abs() * wide + Vector3.UP * tall
-	# The deck, a little into the ledges at each end.
+	# The deck and the arch under it, one smooth span (the user, 2026-10-18: "the
+	# concrete arch should be smooth"): from the ledges' fronts, `rise` under the
+	# deck, curving up to the deck in the middle; a little into the ledges at each end.
 	var under := high - BRIDGE_DECK
-	_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, Vector3(middle.x, under, middle.z)), {"size": size_of.call(long + 0.6, BRIDGE_DECK)})
-	# The arch under it: from the ledges' fronts, `rise` under the deck, up to the deck in the middle.
-	var rise := minf(_style.concrete_bridge_arch_rise, high - _level_height(level - 1) - 2.5)
-	var blocks := maxi(ceili(long / ARCH_BLOCK), 4)
-	for k in blocks:
-		var x := -long * 0.5 + (k + 0.5) * long / blocks
-		var u := 2.0 * x / long
-		var tall := rise * u * u
-		if tall < 0.08:
-			continue
-		_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, Vector3(middle.x, under - tall, middle.z) + across * x), {"size": size_of.call(long / blocks * 2.0, tall + 0.02)})
+	var rise := maxf(minf(_style.concrete_bridge_arch_rise, high - _level_height(level - 1) - 2.5), 0.0)
+	_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, Vector3(middle.x, under - rise, middle.z)), {"size": size_of.call(long + 0.6, BRIDGE_DECK + rise), "arch": BRIDGE_DECK})
 	# Ivy up to it at each end, from the floor to the first level and on from each level to the next.
 	for end: Array in [[one, along], [other, -along]]:
 		var face: Array = end[0]

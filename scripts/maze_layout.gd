@@ -256,7 +256,7 @@ static func _stone_key(view: MazeLayout, maze: Maze, zone: int) -> int:
 	var parts: Array = []
 	for kind: MazePiece.Kind in [MazePiece.Kind.WALL, MazePiece.Kind.PIER, MazePiece.Kind.TERRACE, MazePiece.Kind.POND]:
 		for piece in view.pieces(kind):
-			parts.append(var_to_str([kind, piece.transform, piece.size, piece.style, piece.great, piece.ledge, piece.length, piece.width]))
+			parts.append(var_to_str([kind, piece.transform, piece.size, piece.style, piece.great, piece.ledge, piece.length, piece.width, piece.arch]))
 	parts.sort()
 	# (a zone's walls are drawn as its section's: the clearing's as the first, outside as the last)
 	var style: MazeStyle = maze.styles[clampi(zone, 1, maxi(maze.rings, 1)) - 1] if not maze.styles.is_empty() else null

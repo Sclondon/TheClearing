@@ -46,6 +46,13 @@ enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, 
 		_refresh()
 ## A wall between rings (only a note: thicker and higher walls are just bigger boxes).
 @export var great := false
+## An arched span (a concrete bridge): this thick, metres, flat on top, its
+## underside curving smoothly down to the full height of the box at its two ends
+## (along the longer of x and z). 0: a plain box.
+@export_range(0.0, 4.0, 0.01, "suffix:m") var arch := 0.0:
+	set(value):
+		arch = value
+		_refresh()
 ## A ledge along a wall (MazeStyle.mezzanine_height): a step of it, standing from
 ## the ground or the level under it (only a note: the plan of the maze ignores it).
 @export var ledge := false
@@ -157,10 +164,15 @@ func _refresh() -> void:
 			var tool := SurfaceTool.new()
 			tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 			var s := box_size()
-			for part: Array in Wall.style_boxes(style if kind == Kind.WALL else Wall.Style.BASIC, s):
-				MazeBuilder.box(tool, part[0], part[1])
 			var mesh := MeshInstance3D.new()
-			mesh.mesh = tool.commit()
+			if arch > 0.0:
+				var arched := WallMesh.new()
+				arched.add_arch(Transform3D.IDENTITY, Vector3.UP * s.y * 0.5, s, arch)
+				mesh.mesh = arched.mesh()
+			else:
+				for part: Array in Wall.style_boxes(style if kind == Kind.WALL else Wall.Style.BASIC, s):
+					MazeBuilder.box(tool, part[0], part[1])
+				mesh.mesh = tool.commit()
 			mesh.material_override = Wall.material_for(MazeBuilder.surface_of(self), true)
 			# (drawn at the box's own size: undo the node's scale, which is in `size` already)
 			mesh.scale = Vector3.ONE / scale.abs().max(Vector3.ONE * 0.001)
