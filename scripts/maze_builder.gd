@@ -205,9 +205,7 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 		var where := piece.box_transform()
 		var look := _look_of(piece)
 		var section := clampi(maze.ring_of(maze.cell_at(where.origin)), 1, maxi(maze.rings, 1))
-		# (what stands up off the ground, an upper ledge, a bridge, a corbel, its own:
-		# the editor's hall view hides it, Wall.shader's `afloat`)
-		var key := [look, Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK)), section, where.origin.y > 0.5]
+		var key := [look, Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK)), section]
 		if not chunks.has(key):
 			chunks[key] = WallMesh.new()
 		var rounding := edge_rounding(_style_of(section), piece.great, look == LEDGE_LOOK)
@@ -218,12 +216,11 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 			_collide(body, where, part[0], part[1])
 	var materials := {}
 	for key: Array in chunks:
-		var kind := [key[0], key[2], key[3]]
+		var kind := [key[0], key[2]]
 		var style := _style_of(key[2])
 		if not materials.has(kind):
 			# (laid on in the world's space, so that the pieces meet without seams)
 			materials[kind] = Wall.material_for(key[0], true, LEDGE_TINT if key[0] == LEDGE_LOOK else Color.WHITE)
-			materials[kind].set_shader_parameter(&"afloat", key[3])
 			if key[0] == GREAT_LOOK:
 				# (the great walls are so big that their concrete is drawn bigger too)
 				materials[kind].set_shader_parameter(&"tile_size", Wall.LOOKS[GREAT_LOOK][1] * GREAT_TILE_SCALE)
