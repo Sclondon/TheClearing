@@ -50,6 +50,10 @@ func _run() -> void:
 		await physics_frame
 	var world = main.world
 	world.player.visible = false
+	if args.size() > 1 and args[1] == "corners":
+		await _corners(world, folder)
+		quit()
+		return
 	if args.size() > 1 and args[1] == "zone2":
 		await _zone2(world, folder)
 		quit()
@@ -211,6 +215,46 @@ func _zone2(world: Node, folder: String) -> void:
 	camera.global_position = hall - across * (maxf(size.x, size.z) * 0.5 - 1.0) + along * 9.0 + Vector3.UP * (top + 1.6)
 	camera.look_at(hall + Vector3.UP * (top - 3.0))
 	await _shot("%s/z2_4_from_the_ledge.png" % folder)
+
+
+## The ledges going round the end of a wall (the user: "the mezzanine should go
+## around corners not just end"), and vents and outlets on a ledge's front (the
+## user: "sewer parts should stick out of the mezzanine rather than get clipped"),
+## in the second section, whose ledges are deepest.
+func _corners(world: Node, folder: String) -> void:
+	var maze: Maze = world.maze
+	var style: MazeStyle = maze.styles[1]
+	var layout: MazeLayout = world.get_node("Maze").layout
+	var camera := Camera3D.new()
+	camera.fov = 66.0
+	world.add_child(camera)
+	camera.make_current()
+	var shots := 0
+	for piece in layout.pieces(MazePiece.Kind.PIER):
+		var size := piece.box_size()
+		if shots >= 2 or not piece.ledge or maze.ring_of(maze.cell_at(piece.position)) != 2 or piece.position.y > 0.1:
+			continue
+		# (across a wall's end: as long as the wall is thick, as deep as the ledge)
+		if is_equal_approx(maxf(size.x, size.z), style.maze_wall_diameter) and is_equal_approx(minf(size.x, size.z), style.mezzanine_depth):
+			var thin := Vector3(1, 0, 0) if size.x < size.z else Vector3(0, 0, 1)
+			# (out from the end face: away from the wall, which is the side with stone)
+			var way := 1.0 if not _solid(layout, piece.position + thin * (size.dot(thin) * 0.5 + 1.0) + Vector3.UP * 2.0) else -1.0
+			var across := Vector3.UP.cross(thin)
+			camera.global_position = piece.position + thin * way * 12.0 + across * 9.0 + Vector3.UP * (style.mezzanine_height + 6.0)
+			camera.look_at(piece.position + Vector3.UP * style.mezzanine_height * 0.7)
+			await _shot("%s/corner_%d.png" % [folder, shots])
+			shots += 1
+	print("corner shots: ", shots)
+	shots = 0
+	for piece in layout.pieces(MazePiece.Kind.PROP):
+		if shots >= 2 or not (piece.prop in [MazeProps.Prop.VENT, MazeProps.Prop.ROUND_VENT, MazeProps.Prop.OUTLET]) or maze.ring_of(maze.cell_at(piece.position)) != 2:
+			continue
+		var out := piece.transform.basis.orthonormalized().z
+		camera.global_position = piece.position + out * 4.5 + out.cross(Vector3.UP) * 2.5 + Vector3.UP * 0.5
+		camera.look_at(piece.position)
+		await _shot("%s/sewer_on_ledge_%d.png" % [folder, shots])
+		shots += 1
+	print("sewer shots: ", shots)
 
 
 func _solid(layout: MazeLayout, p: Vector3) -> bool:

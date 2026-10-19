@@ -175,6 +175,10 @@ func _dress_face(cell: Vector2i, step: Vector2i, near_gate: bool) -> void:
 	var under_ledge := top
 	if _style.mezzanine_height > 0.0 and not _maze.ring_wall(cell, step):
 		under_ledge = _style.mezzanine_height
+		# (and they go on the ledge's front, standing out of it, not buried in it: the
+		# user, 2026-10-18, "sewer parts should stick out of the mezzanine rather than get clipped")
+		if _ledged(cell, step):
+			foot += out * _style.mezzanine_depth
 	var room := Maze.CELL * 0.5 - 1.0
 	if _rng.randf() < _style.amount(&"wall_vent_share"):
 		var is_round := _rng.randf() < 0.35
@@ -488,28 +492,20 @@ func _wire(a: Vector3, b: Vector3, sag: float, across: bool) -> void:
 	_layout.add_piece(MazePiece.Kind.WIRE, Transform3D(Basis.IDENTITY, a), settings)
 
 
-## ring -> its numbers for the cables of halls with ledges (their own: what was laid
-## out before them is as it was).
-var _ledge_rngs := {}
-
 
 ## The cables of halls with a ledge along both walls (MazeStyle "Signs of life";
 ## the user's concept of the first section, 2026-10-18): a pair of junction boxes
 ## high on the walls, the cable between them grown over by a vine; cables slanting
 ## across from high on one wall down to the other; and cables from a ledge's edge
 ## across and down to the wall under the ledge opposite, hanging on from there to
-## the floor. With numbers of their own, after everything else.
+## the floor. After everything else, so what was laid out before is as it was.
 func _ledge_cables(plan: Maze) -> void:
 	for i in plan.size * plan.size:
 		var cell := Vector2i(i % plan.size, i / plan.size)
 		if not _in_a_section(cell) or _style.mezzanine_height <= 0.0:
 			continue
-		var ring := plan.ring_of(cell)
-		if not _ledge_rngs.has(ring):
-			var made := RandomNumberGenerator.new()
-			made.seed = hash("ledge cables/%d/%d" % [plan.maze_seed, ring])
-			_ledge_rngs[ring] = made
-		var numbers: RandomNumberGenerator = _ledge_rngs[ring]
+		# (its section's numbers, after all else drawn from them)
+		var numbers := _rng
 		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
 			# (the hall's two walls, from the face (cell, -step) to (far, step), each with a ledge along it)
 			if not _ledged(cell, -step):

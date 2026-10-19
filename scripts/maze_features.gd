@@ -305,6 +305,7 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 				_pipe(cell, step)
 
 	_levels(plan)
+	_pipe_ivy()
 	_spots(plan)
 	_ledge_vines(plan)
 
@@ -341,14 +342,41 @@ func _levels(plan: Maze) -> void:
 			for level in range(1, count):
 				var high := _level_height(level)
 				var deep := _level_depth(level)
-				# (a step of the wall standing on the level under it)
+				# (a step of the wall standing on the level under it; round the corner where
+				# the wall ends or turns away, as the first level goes: see MazeLayout._ledges)
 				var under := _level_height(level - 1)
-				var size := flat_side.abs() * length + s.abs() * deep + Vector3.UP * (high - under)
-				_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(cell, step, deep * 0.5, middle) + Vector3.UP * under), {"size": size, "ledge": true})
+				var past := {-1: _past_end(cell, step, -1, deep), 1: _past_end(cell, step, 1, deep)}
+				var size: Vector3 = flat_side.abs() * (length + float(past[-1]) + float(past[1])) + s.abs() * deep + Vector3.UP * (high - under)
+				_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(cell, step, deep * 0.5, middle + (float(past[1]) - float(past[-1])) * 0.5) + Vector3.UP * under), {"size": size, "ledge": true})
 				# (ivy from its edge down onto the level under it, somewhere along it)
 				if _rng.randf() < _style.amount(&"mezzanine_ivy_share"):
 					var along := middle + _rng.randf_range(-0.3, 0.3) * length
 					_climb(_edge(cell, step, deep, along) + Vector3.UP * under, step, high - under, WALL_IVY * 0.6)
+	# Across the end face of each wall that ends, the levels over the first go round
+	# it too (from this face, or from the face behind if that has the level as well
+	# and is the one going +x or +z: one each).
+	for key: Array in levels:
+		var cell: Vector2i = key[0]
+		var step: Vector2i = key[1]
+		var ring := plan.ring_of(cell)
+		if not _enter(ring):
+			continue
+		var behind := [cell + step, -step]
+		var thick := _thick(cell, step)
+		var s := Vector3(step.x, 0.0, step.y)
+		var flat_side := Vector3(-s.z, 0.0, s.x)
+		for way: int in [-1, 1]:
+			if _corner(cell, step, way) != FaceEnd.END:
+				continue
+			for level in range(1, int(levels[key])):
+				if int(levels.get(behind, 0)) > level and step.x + step.y < 0:
+					continue
+				var deep := _level_depth(level)
+				var under := _level_height(level - 1)
+				var size := s.abs() * thick + flat_side.abs() * deep + Vector3.UP * (_level_height(level) - under)
+				_layout.laying_zone = ring
+				_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(cell, step, -thick * 0.5, way * (Maze.CELL * 0.5 + thick * 0.5 + deep * 0.5)) + Vector3.UP * under), {"size": size, "ledge": true})
+				_layout.laying_zone = -1
 	# Rope bridges across the halls between ledges at the same level.
 	for key: Array in levels:
 		var cell: Vector2i = key[0]
@@ -366,6 +394,38 @@ func _levels(plan: Maze) -> void:
 			var deep := _level_depth(level)
 			var high := _level_height(level)
 			_bridge(_edge(cell, step, deep, along) + Vector3.UP * high, _edge(far, -step, deep, -along) + Vector3.UP * high)
+
+
+## What is at the `way` end (1 or -1, along the face's side, as _edge has it) of
+## the face (cell, step): another wall across it (an inside corner), the wall going
+## on, the wall turning away from the face, or the wall's end.
+enum FaceEnd { INSIDE, ON, TURN, END }
+
+
+func _corner(cell: Vector2i, step: Vector2i, way: int) -> FaceEnd:
+	var side := Vector2i(-step.y, step.x) * way
+	if _maze.blocked(cell, side):
+		return FaceEnd.INSIDE
+	if _maze.blocked(cell + side, step):
+		return FaceEnd.ON
+	return FaceEnd.TURN if _maze.blocked(cell + step, side) else FaceEnd.END
+
+
+## How far past the `way` end of the face (cell, step) a level of ledge `deep`
+## goes on, past the cell, round the corner: where the wall ends, on to its end and
+## a ledge's depth more (to meet the one across its end face); where it turns away,
+## on to the corner, and a ledge's depth more if the wall runs along x (the one
+## along the wall it turns into, along z, stops at the corner: one in the corner's
+## stone, not two whose tops would flicker); not into another ring.
+func _past_end(cell: Vector2i, step: Vector2i, way: int, deep: float) -> float:
+	var corner := _corner(cell, step, way)
+	if corner == FaceEnd.INSIDE or corner == FaceEnd.ON:
+		return 0.0
+	var next := cell + Vector2i(-step.y, step.x) * way
+	if _maze.ring_of(next) != _maze.ring_of(cell) or _maze.solid.has(next):
+		return 0.0
+	var end := _thick(cell, step) * 0.5
+	return end + (deep if corner == FaceEnd.END or step.y != 0 else 0.0)
 
 
 ## How high the top of level `level` is (0 the first), and how deep it is, by the
@@ -404,6 +464,9 @@ func _pipe(cell: Vector2i, step: Vector2i) -> void:
 		return
 	var along := _rng.randf_range(-room[-1], room[1])
 	var high := _maze.wall_height(cell, step) * _style.sewer_pipe_height
+	# (over the highest level of ledge there may be, not buried in it)
+	if _style.mezzanine_height > 0.0:
+		high = maxf(high, minf(_level_height(_style.mezzanine_levels - 1) + PLATFORM_THICK + 1.5, _maze.wall_height(cell, step) - MazeBuilder.CORNICE.y - SewerPipe.HOLE.y - 1.0))
 	var middle := _edge(cell, step, -thick * 0.5, along) + Vector3.UP * high
 	if not _hole(middle, s):
 		return
@@ -415,8 +478,31 @@ func _pipe(cell: Vector2i, step: Vector2i) -> void:
 	for end: Array in [[cell, step, along], [other, -step, -along]]:
 		var size := flat_side.abs() * PLATFORM.y + s.abs() * PLATFORM.x + Vector3.UP * PLATFORM_THICK
 		_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(end[0], end[1], PLATFORM.x * 0.5, end[2]) + Vector3.UP * (high - PLATFORM_THICK)), {"size": size})
-		_climb(_edge(end[0], end[1], PLATFORM.x, end[2]), end[1], high, PLATFORM.y * 0.7)
+		# (ivy up to it from the floor in front of the face: laid once the levels of ledge are, see _pipe_ivy)
+		_pipe_climbs.append([end[0], end[1], end[2], high, _maze.ring_of(end[0])])
 		_lip(end[0], end[1], PLATFORM.x, end[2], high, PLATFORM.y)
+
+
+## The ivy up to the pipes' platforms: [cell, step, along, how high, ring] each.
+var _pipe_climbs: Array = []
+
+
+## Ivy up to each pipe's platform from the floor in front of its face: the top of
+## the highest level of ledge along it that reaches out under the platform's edge,
+## or the ground (in front of the ledges, if none does), so that none of it is
+## buried in a ledge.
+func _pipe_ivy() -> void:
+	for climb: Array in _pipe_climbs:
+		if not _enter(int(climb[4])):
+			continue
+		var cell: Vector2i = climb[0]
+		var step: Vector2i = climb[1]
+		var high: float = climb[3]
+		var foot := 0.0
+		for level in int(_level_counts.get([cell, step], 0)):
+			if _level_depth(level) >= PLATFORM.x and _level_height(level) < high - 2.0:
+				foot = _level_height(level)
+		_climb(_edge(cell, step, PLATFORM.x, climb[2]) + Vector3.UP * foot, step, high - foot, PLATFORM.y * 0.7)
 
 
 ## Cuts the hole for a pipe through the wall at `middle` (the middle of its floor,
@@ -616,22 +702,6 @@ const LOW_VINE_CLEAR := 1.2
 ## How far out past a ledge's edge a vine hanging from it is.
 const LIP_VINE_OUT := 0.3
 
-## ring -> its numbers for these (their own: what was laid out before them is as it was).
-var _ledge_rngs := {}
-var _ledge_rng := RandomNumberGenerator.new()
-
-
-## Starts on ring `ring` for the vines of halls with ledges: its style and its
-## numbers for them. Whether it is being laid out.
-func _enter_ledges(ring: int) -> bool:
-	_style = _maze.styles[ring - 1]
-	if not _ledge_rngs.has(ring):
-		var made := RandomNumberGenerator.new()
-		made.seed = hash("ledge vines/%d/%d" % [_maze.maze_seed, ring])
-		_ledge_rngs[ring] = made
-	_ledge_rng = _ledge_rngs[ring]
-	return true
-
 
 ## Numbers of their own for one feature at one place: so that turning one feature
 ## off leaves the others where they were.
@@ -653,7 +723,7 @@ func _ledge_vines(plan: Maze) -> void:
 		var ring := plan.ring_of(cell)
 		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
 			continue
-		if not _enter_ledges(ring) or _style.mezzanine_height <= 0.0:
+		if not _enter(ring) or _style.mezzanine_height <= 0.0:
 			continue
 		# Across the hall, from the face (cell, -step) to the far side's (far, step).
 		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
@@ -663,7 +733,7 @@ func _ledge_vines(plan: Maze) -> void:
 			if far == NOWHERE or not _level_counts.has([far, step]):
 				continue
 			# (one number drawn for the hall whatever is on, each feature's own numbers from it)
-			var drawn := _ledge_rng.randi()
+			var drawn := _rng.randi()
 			var one := [cell, -step]
 			var other := [far, step]
 			var common := mini(int(_level_counts[one]), int(_level_counts[other]))
@@ -690,12 +760,12 @@ func _ledge_vines(plan: Maze) -> void:
 		var ring := plan.ring_of(cell)
 		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
 			continue
-		if not _enter_ledges(ring) or _style.mezzanine_height <= 0.0:
+		if not _enter(ring) or _style.mezzanine_height <= 0.0:
 			continue
 		for step: Vector2i in Maze.STEPS:
 			if not _level_counts.has([cell, step]):
 				continue
-			var drawn := _ledge_rng.randi()
+			var drawn := _rng.randi()
 			for level in int(_level_counts[[cell, step]]):
 				var numbers := _numbers(drawn, level)
 				if numbers.randf() >= _style.amount(&"ledge_hanging_vine_share") or _taken.has([cell, step]) or (level == 0 and ivied.has([cell, step])):

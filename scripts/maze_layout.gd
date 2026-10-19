@@ -603,9 +603,12 @@ func _lay_out(maze: Maze) -> void:
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, rampart[0]), {"size": rampart[1], "great": true})
 	for gatehouse: Array in _gatehouses(maze):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, gatehouse[0]), {"size": gatehouse[1], "great": true})
-	# (along the maze walls only, not the great walls round the rings)
-	for ledge: Array in _ledges(maze, runs.filter(func(run: Array) -> bool: return not run[2])):
+	# (along the maze walls only, not the great walls round the rings; each in the zone of the ring it looks into)
+	for ledge: Array in _ledges(maze, runs.filter(func(run: Array) -> bool: return not run[2]), runs):
+		var was := laying_zone
+		laying_zone = ledge[2] if laying_zone < 0 else laying_zone
 		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1], "ledge": true})
+		laying_zone = was
 	MazeFeatures.lay_out(self, maze, _zones)
 	Ponds.lay_out(self, maze, _zones)
 	maze.ponds = Ponds.read(self)
@@ -812,31 +815,76 @@ static func _ramparts(maze: Maze) -> Array:
 
 
 ## The ledges along the walls of rings that have one (MazeStyle.mezzanine_height), as [middle
-## of the foot, size]: along each long face of each of `boxes` ([middle of the
-## foot, size]) that looks into such a ring, as long as the box.
-static func _ledges(maze: Maze, boxes: Array) -> Array:
+## of the foot, size, ring]: along each long face of each of `boxes` ([middle of the
+## foot, size]) that looks into such a ring, and round its ends (the user, 2026-10-18:
+## "the mezzanine should go around corners not just end"): where the wall ends, a ledge
+## across its end face too and those along its faces on past it to meet it; where it
+## turns away from the face, the one along the run along x on past the corner (the one
+## along z stops at it: so that no two meet in the same stone, whose tops would
+## flicker). Not past the end of a face buried in another wall, nor into another ring.
+## `all` is every run of wall, `boxes` among them, for what each meets.
+static func _ledges(maze: Maze, boxes: Array, all: Array = []) -> Array:
 	var ledges: Array = []
+	var others: Array = all if not all.is_empty() else boxes
+	var inside := func(p: Vector3, besides: Array) -> bool:
+		for other: Array in others:
+			if other == besides:
+				continue
+			var half: Vector3 = other[1] * 0.5
+			var c: Vector3 = other[0]
+			if absf(p.x - c.x) < half.x and absf(p.z - c.z) < half.z:
+				return true
+		return false
+	var style_at := func(p: Vector3) -> MazeStyle:
+		var cell := maze.cell_at(p)
+		var ring := maze.ring_of(cell)
+		if ring < 1 or ring > maze.rings or not maze.inside(cell) or maze.solid.has(cell):
+			return null
+		var style: MazeStyle = maze.styles[ring - 1]
+		return style if style.mezzanine_height > 0.0 else null
 	for box: Array in boxes:
 		var middle: Vector3 = box[0]
 		var size: Vector3 = box[1]
 		var long_x := size.x >= size.z
 		var out := Vector3(0.0, 0.0, 1.0) if long_x else Vector3(1.0, 0.0, 0.0)
+		var dir := Vector3(1.0, 0.0, 0.0) if long_x else Vector3(0.0, 0.0, 1.0)
 		var half: float = (size.z if long_x else size.x) * 0.5
+		var long: float = size.x if long_x else size.z
+		var centre := Vector3(middle.x, 0.0, middle.z)
+		# (whether each end is a dead end: nothing else in the stone just inside it)
+		var dead := {}
+		for end: float in [-1.0, 1.0]:
+			dead[end] = not inside.call(centre + dir * end * (long * 0.5 - 0.3), box)
 		for way: float in [-1.0, 1.0]:
-			var face := Vector3(middle.x, 0.0, middle.z) + out * way * half
-			var cell := maze.cell_at(face + out * way * 1.0)
-			var ring := maze.ring_of(cell)
-			if ring < 1 or ring > maze.rings or not maze.inside(cell) or maze.solid.has(cell):
+			var face := centre + out * way * half
+			var style: MazeStyle = style_at.call(face + out * way * 1.0)
+			if style == null:
 				continue
-			var style: MazeStyle = maze.styles[ring - 1]
-			if style.mezzanine_height <= 0.0:
+			var ring := maze.ring_of(maze.cell_at(face + out * way * 1.0))
+			var deep := style.mezzanine_depth
+			var reach := {-1.0: 0.0, 1.0: 0.0}
+			for end: float in [-1.0, 1.0]:
+				var lip := face + out * way * deep * 0.5 + dir * end * long * 0.5
+				# (buried in a wall meeting it there, or open; on past it if it ends or
+				# turns away, and it is along x or the wall ends; not into another ring)
+				if inside.call(lip - dir * end * 0.3, box) or not (dead[end] or long_x):
+					continue
+				var past: MazeStyle = style_at.call(lip + dir * end * deep * 0.5)
+				if past == style and maze.ring_of(maze.cell_at(lip + dir * end * deep * 0.5)) == ring and not inside.call(lip + dir * end * deep * 0.5, box):
+					reach[end] = deep
+			var length: float = long + reach[-1.0] + reach[1.0]
+			var foot: Vector3 = face + out * way * deep * 0.5 + dir * (float(reach[1.0]) - float(reach[-1.0])) * 0.5
+			ledges.append([foot, dir * length + out * deep + Vector3.UP * style.mezzanine_height, ring])
+		# Across each dead end's face, from one long face to the other.
+		for end: float in [-1.0, 1.0]:
+			if not dead[end]:
 				continue
-			var high := style.mezzanine_height
-			var long: float = size.x if long_x else size.z
-			var along := Vector3(long, 0.0, 0.0) if long_x else Vector3(0.0, 0.0, long)
-			# (a step of the wall, from the ground up: nothing under it to see through)
-			var foot := face + out * way * style.mezzanine_depth * 0.5
-			ledges.append([foot, along + out * style.mezzanine_depth + Vector3.UP * high])
+			var end_face := centre + dir * end * long * 0.5
+			var style: MazeStyle = style_at.call(end_face + dir * end * 1.0)
+			if style == null or inside.call(end_face + dir * end * style.mezzanine_depth * 0.5, box):
+				continue
+			var deep := style.mezzanine_depth
+			ledges.append([end_face + dir * end * deep * 0.5, out * half * 2.0 + dir * deep + Vector3.UP * style.mezzanine_height, maze.ring_of(maze.cell_at(end_face + dir * end * 1.0))])
 	return ledges
 
 
