@@ -2,7 +2,7 @@ extends SceneTree
 ## How long each step of building a maze takes, for `rings` rings (and how many
 ## pieces there are), to see what makes a round slow to start.
 ##
-##     godot --headless --path . -s res://tools/build_times.gd -- [rings]
+##     godot --headless --path . -s res://tools/build_times.gd -- [rings] [vines=<x>]
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -11,7 +11,12 @@ func _initialize() -> void:
 	var lap := func(what: String) -> void:
 		print("%-22s %7.0f ms" % [what, (Time.get_ticks_usec() - t[0]) / 1000.0])
 		t[0] = Time.get_ticks_usec()
-	var maze := Maze.generate(1234, rings)
+	var heavy := 0.0
+	for a in args:
+		if a.begins_with("vines="):
+			heavy = float(a.substr(6))
+	HeavyVines.apply(heavy)
+	var maze := Maze.generate(1234, rings, MazeStyle.defaults())
 	lap.call("generate (%d cells)" % (maze.size * maze.size))
 	var builder := MazeBuilder.new()
 	root.add_child(builder)
