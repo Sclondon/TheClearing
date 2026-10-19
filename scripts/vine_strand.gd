@@ -26,18 +26,41 @@ static var _stem_mesh: CylinderMesh
 var _stems: Array[MeshInstance3D] = []
 var _leaves: MultiMeshInstance3D
 var _placing: Array = []
-## The tufts of leaves where its ends are tied to the walls (_anchor), and how many leaves each.
+## The bunches of leaves where its ends are held (_anchor), and how many leaves each;
+## and how many more on the stem by each end.
 var _tufts: Array[MultiMeshInstance3D] = []
-const ANCHOR_LEAVES := 28
+const ANCHOR_LEAVES := 40
+const END_LEAVES := 10
+## How each end is held (Vine.Held: over a lip, the corbel's, a bracket's or a ledge's, by
+## default; on a wall's face; in the ground). An end on a face is tied TIED_OUT from it.
+var from_held: int = Vine.Held.LIP
+var to_held: int = Vine.Held.LIP
+const TIED_OUT := 0.05
+## How far a leaf on it droops from standing straight out of it, radians; and how
+## far round from level either side its leaves stand out of it at most, so that
+## they turn their faces up (not straight up or down from it, where which way
+## is up would flip as it swayed).
+const DROOP := 0.3
+const LEVEL := 0.9
+
+
+## How much longer than the gap it is strung across (at most), and how far it sags at
+## most; one rooted in the ground sags no more than GROUND_SAG, so that it does not
+## dip into the floor by its foot.
+const SLACK := 1.05
+const MOST_SAG := 2.2
+const GROUND_SAG := 0.6
 
 
 func _init() -> void:
 	width = FOOTING * 2.0
-	slack = 1.05
-	most_sag = 2.2
+	slack = SLACK
+	most_sag = MOST_SAG
 
 
 func _ready() -> void:
+	if from_held == Vine.Held.GROUND or to_held == Vine.Held.GROUND:
+		most_sag = GROUND_SAG
 	super()
 	add_to_group(&"vine_strands")
 	# (no planks, hand ropes or posts to be seen: only the vine, where the deck is)
@@ -49,12 +72,8 @@ func _ready() -> void:
 		_stem.albedo_color = Color(0.2, 0.24, 0.12)
 		_stem.roughness = 1.0
 		_stem.metallic_specular = 0.0
-		_leaf = StandardMaterial3D.new()
-		_leaf.vertex_color_use_as_albedo = true
-		_leaf.cull_mode = BaseMaterial3D.CULL_DISABLED
-		_leaf.roughness = 1.0
-		_leaf.metallic_specular = 0.0
-		_leaf_mesh = Vine.leaf_mesh(0.16)
+		_leaf = Vine.leaf_material()
+		_leaf_mesh = Vine.leaf_mesh(0.2)
 		_stem_mesh = CylinderMesh.new()
 		_stem_mesh.top_radius = 0.045
 		_stem_mesh.bottom_radius = 0.045
@@ -76,10 +95,25 @@ func _ready() -> void:
 	multi.use_colors = true
 	multi.mesh = _leaf_mesh
 	var each := maxi(Vine.LEAVES, roundi(_piece / Vine.LEAF_REACH))
-	multi.instance_count = (POINTS - 1) * each
+	multi.instance_count = (POINTS - 1) * each + END_LEAVES * 2
+	var rest := (to - from).normalized() if from.distance_squared_to(to) > 0.000001 else Vector3.RIGHT
+	var rest_out := _rest_out(rest)
+	var end_share := minf(1.0, Vine.TOP_REACH / maxf(_piece, 0.01))
 	for i in multi.instance_count:
-		_placing.append([i / each, rng.randf(), rng.randf() * TAU, rng.randf_range(0.7, 1.3)])
-		multi.set_instance_color(i, Color(0.16, 0.27, 0.12).lightened(rng.randf_range(-0.1, 0.25)))
+		var piece := i / each
+		var t := rng.randf()
+		if i >= (POINTS - 1) * each:
+			# (bunched on the stem by its ends, thickest nearest them)
+			var at_start := i < (POINTS - 1) * each + END_LEAVES
+			piece = 0 if at_start else POINTS - 2
+			t = pow(rng.randf(), 1.6) * end_share
+			if not at_start:
+				t = 1.0 - t
+		# (out of it to one side or the other, near level, its face up as it lies at rest)
+		var angle := rng.randf_range(-LEVEL, LEVEL) + (PI if rng.randf() < 0.5 else 0.0)
+		var face := rest.cross(rest_out.rotated(rest, angle))
+		_placing.append([piece, t, angle, rng.randf_range(0.7, 1.2), 1.0 if face.y >= 0.0 else -1.0])
+		multi.set_instance_color(i, Vine.leaf_colour(rng))
 	_leaves = MultiMeshInstance3D.new()
 	_leaves.multimesh = multi
 	_leaves.material_override = _leaf
@@ -87,30 +121,38 @@ func _ready() -> void:
 	_leaves.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_leaves.visibility_range_end = 160.0
 	add_child(_leaves)
-	_anchor(from, to, rng)
-	_anchor(to, from, rng)
+	_anchor(from, to, from_held, rng)
+	_anchor(to, from, to_held, rng)
 	_lay()
 
 
-## Where it is tied to the wall at `end`: a tuft of leaves spread over the face
-## behind it (the face looks towards `other`, the far end), so that it grows out
-## of the wall rather than stopping in the air. It does not move.
-func _anchor(end: Vector3, other: Vector3, rng: RandomNumberGenerator) -> void:
+## The way round it, at angle 0, that its leaves stand out of it lying `rest`: level, to one side.
+static func _rest_out(rest: Vector3) -> Vector3:
+	var out := rest.cross(Vector3.UP)
+	return out.normalized() if out.length_squared() > 0.001 else Vector3.RIGHT
+
+
+## How far out from what holds it an end held `held` way is.
+static func _reach(held: int) -> float:
+	return TIED_OUT if held == Vine.Held.FACE else 0.0
+
+
+## Where it is held at `end` (the way `other`, its far end, is away from it), held
+## as `held` says: its roots over what holds it, and a bunch of leaves over them
+## (Vine.anchor), so that it grows out of what holds it rather than stopping in the
+## air. They do not move.
+func _anchor(end: Vector3, other: Vector3, held: int, rng: RandomNumberGenerator) -> void:
 	var out := Vector3(other.x - end.x, 0.0, other.z - end.z).normalized()
-	var across := out.cross(Vector3.UP)
+	var made := Vine.anchor(end, -out, held, _reach(held), false, rng, ANCHOR_LEAVES)
+	add_child(made[0])
 	var multi := MultiMesh.new()
 	multi.transform_format = MultiMesh.TRANSFORM_3D
 	multi.use_colors = true
 	multi.mesh = _leaf_mesh
 	multi.instance_count = ANCHOR_LEAVES
 	for i in ANCHOR_LEAVES:
-		# (thickest round the end, thinning out over the face, more of it below)
-		var spot := Vector2.from_angle(rng.randf() * TAU) * pow(rng.randf(), 0.7) * 0.75
-		spot.y = spot.y * 1.3 - 0.15
-		var at := end + across * spot.x + Vector3.UP * spot.y + out * rng.randf_range(0.0, 0.08)
-		var basis := Basis.looking_at(-out, Vector3.UP).rotated(out, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.3))
-		multi.set_instance_transform(i, Transform3D(basis, at))
-		multi.set_instance_color(i, Color(0.16, 0.27, 0.12).lightened(rng.randf_range(-0.12, 0.2)))
+		multi.set_instance_transform(i, made[1][i][0])
+		multi.set_instance_color(i, made[1][i][1])
 	var tuft := MultiMeshInstance3D.new()
 	tuft.multimesh = multi
 	tuft.material_override = _leaf
@@ -119,8 +161,6 @@ func _anchor(end: Vector3, other: Vector3, rng: RandomNumberGenerator) -> void:
 	tuft.visibility_range_end = 160.0
 	add_child(tuft)
 	_tufts.append(tuft)
-	# (and a knot of roots gripping it there)
-	add_child(Vine.roots(end, -out, 1.1, rng))
 
 
 func _physics_process(delta: float) -> void:
@@ -185,6 +225,8 @@ func cut(point: Vector3) -> Array[Vine]:
 		vine.length = length
 		vine.position = end
 		vine.hold = Vector3(end.x - at.x, 0.0, end.z - at.z).normalized()
+		vine.held = from_held if from_start else to_held
+		vine.reach = _reach(vine.held)
 		get_parent().add_child(vine)
 		vine.lay_to(end + (at - end).normalized() * length)
 		made.append(vine)
@@ -206,14 +248,16 @@ func _lay() -> void:
 	var multi := _leaves.multimesh
 	# (round the stem as it lies strung straight from end to end: see Vine.round_stem)
 	var rest := (to - from).normalized() if from.distance_squared_to(to) > 0.000001 else Vector3.RIGHT
-	var rest_out := rest.cross(Vector3.UP)
-	rest_out = rest_out.normalized() if rest_out.length_squared() > 0.001 else Vector3.RIGHT
+	var rest_out := _rest_out(rest)
 	for i in _placing.size():
 		var place: Array = _placing[i]
 		var a := _points[place[0]]
 		var b := _points[place[0] + 1]
 		var along := (b - a).normalized() if a.distance_squared_to(b) > 0.000001 else rest
 		var out := Vine.round_stem(along, rest, rest_out, place[2])
-		var leaf_at := a.lerp(b, place[1]) + out * 0.045
-		var basis := Basis(out.cross(along).normalized(), out, along).rotated(out.cross(along).normalized(), 0.6)
-		multi.set_instance_transform(i, Transform3D(basis.scaled(Vector3.ONE * place[3]), leaf_at))
+		# (its stalk's foot on the stem; its face up, the way it was at rest, and drooping a little)
+		var leaf_at := a.lerp(b, place[1]) + out * 0.045 * 0.8
+		var face := along.cross(out) * float(place[4])
+		var y := out * cos(DROOP) - face * sin(DROOP)
+		var z := face * cos(DROOP) + out * sin(DROOP)
+		multi.set_instance_transform(i, Transform3D(Basis(y.cross(z), y, z).scaled(Vector3.ONE * place[3]), leaf_at))

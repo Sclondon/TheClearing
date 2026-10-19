@@ -224,13 +224,25 @@ maze laid out before is otherwise as it was:
 The ledges go round the ends of walls and outside corners, every level (the user: "the mezzanine should go around
 corners not just end"); vents, outlets, culverts and wall cables stand out of a ledge's front instead of being buried
 in it, and sewer pipes go through over the highest ledge there may be, their ivy up from the highest ledge under them
-("sewer parts should stick out of the mezzanine rather than get clipped"). Every vine has a knot of roots and a
-clump of leaves where it is held ("the vines need to have a root or leaves at their connection points"), and its
+("sewer parts should stick out of the mezzanine rather than get clipped"). Every vine has roots and a bunch of
+leaves where it is held ("the vines need to have a root or leaves at their connection points"), and its
 leaves go round with the stem as it swings (they jumped round it as a hanging vine swung past upright: "the leaves
-seem to teleport when they move").
+seem to teleport when they move"). The roots are young and green, small tendrils and rootlets lying over what holds
+it, and the leaves are bunched thick on them and on the stem there ("The roots should be smaller and green, and
+more leaves should be bunched around the connection"): over the lip of a ledge, a corbel or a bridge the stem comes
+up over the edge and its roots spread over the top, a few rootlets gripping the edge (they stuck out into the air
+before); out of a wall the stem comes out of the face and bends down, its roots over the face; under a beam or a
+bracket they spread over its underside (which is drawn now: no box standing off the ground was drawn from below).
+`Vine.Held` says which; `MazePiece.held`, `reach` and `held_end` carry it.
+
+**The leaves** (2026-10-18: "the vine leaves and ivy leaves need some love, lets make a real leaf shape and try to
+make sure they arent just floating"): a vine's are pointed ovals on short stalks, folded along the midrib, their tips
+curling back, ten triangles (`Vine.leaf_mesh`), each stalk's foot on the stem; ivy's are five-lobed on long stalks,
+twelve triangles (`IvyClimb.leaf_mesh`), each on its stalk off one of the stems, which lie on the wall's face, the
+leaf lying over the wall with its tip just off it.
 
 Pictures: `tools/zone1_vines_shots.gd` (pass `zone2` for the second section, `corners` for ledges round wall ends and
-sewer props on ledges, `anchors` for where vines are held).
+sewer props on ledges, `anchors` for where vines are held, `leaves` for the leaves close up).
 
 **Grappling hook spots** (added 2026-10-18 at the user's request: "we should also have grappling hook spots"). Places
 made for the grappling hook to catch, in rusty iron dark against the concrete, so that a way up can be seen from below

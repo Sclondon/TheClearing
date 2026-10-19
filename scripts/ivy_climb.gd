@@ -31,12 +31,8 @@ func _ready() -> void:
 		_stem.albedo_color = Color(0.24, 0.2, 0.14)
 		_stem.roughness = 1.0
 		_stem.metallic_specular = 0.0
-		_leaf = StandardMaterial3D.new()
-		_leaf.vertex_color_use_as_albedo = true
-		_leaf.cull_mode = BaseMaterial3D.CULL_DISABLED
-		_leaf.roughness = 1.0
-		_leaf.metallic_specular = 0.0
-		_leaf_mesh = Vine.leaf_mesh(0.18)
+		_leaf = Vine.leaf_material()
+		_leaf_mesh = leaf_mesh(0.2)
 	# (drawn only once the camera first comes near enough to see it: a maze has
 	# hundreds of patches, too many leaves to lay all at once; the editor draws all)
 	if Engine.is_editor_hint() and plain:
@@ -171,7 +167,8 @@ func _network(rng: RandomNumberGenerator, coarse := 1.0) -> Array:
 		next.x = clampf(next.x, -width * 0.65, width * 0.65)
 		if next.y > top or next.y < 0.0:
 			continue
-		pieces.append([Vector3(at.x, at.y, -0.08), Vector3(next.x, next.y, -0.08), thick])
+		# (lying on the wall: as far out from it as the stem is thick)
+		pieces.append([Vector3(at.x, at.y, thick), Vector3(next.x, next.y, thick), thick])
 		tips.append([next, way, maxf(thick * 0.985, 0.012), left - 1 if left > 0 else -1, deep, top])
 		# A side shoot: out to one side and a little down, short, now and then forking.
 		if deep < 2 and rng.randf() < (0.36 if deep == 0 else 0.18) * coarse:
@@ -197,8 +194,10 @@ func _grow() -> void:
 	stems.mesh = tool.commit()
 	stems.material_override = _stem
 	add_child(stems)
-	# Leaves, along the stems: as many as covered the patch before, shared out by
-	# each length's share of all the stem, spread either side of it.
+	# Leaves, on the stems: shared out by each length's share of all the stem, each
+	# on its stalk from the stem, to one side or the other, lying over the wall (the
+	# user, 2026-10-18: "try to make sure they arent just floating"; scattered either
+	# side of the stems, they stood off the wall with nothing under them).
 	var multi := MultiMesh.new()
 	multi.transform_format = MultiMesh.TRANSFORM_3D
 	multi.use_colors = true
@@ -206,8 +205,8 @@ func _grow() -> void:
 	# (a wide patch, up a bare wall, has bigger leaves, so that it reads from across
 	# a hall, and more than cover it, so that it is a mat and not a scatter)
 	var leaf_scale := clampf(width / 1.8, 1.0, 2.4)
-	# (as many as covered a square of it: along the stems, bigger, they make a mat)
-	var count := int(width * height * 70.0 * 1.3 / leaf_scale)
+	# (as many as made a mat of the old diamond leaves, less a third: these are broader)
+	var count := int(width * height * 70.0 * 1.3 * LEAF_SHARE / leaf_scale)
 	multi.instance_count = count
 	# (all at once, as the multimesh's buffer: a transform, then a colour, for each)
 	var buffer := PackedFloat32Array()
@@ -219,18 +218,30 @@ func _grow() -> void:
 		var a: Vector3 = piece[0]
 		var b: Vector3 = piece[1]
 		var along := b - a
-		var side := along.cross(Vector3.BACK).normalized()
+		var up := along.normalized()
+		var thick: float = piece[2]
 		owed += along.length() * per_metre
-		# (a thick stem carries a broad fan of leaves, a thin shoot a narrow one)
-		var spread := (0.22 + float(piece[2]) * 7.0) * leaf_scale
+		# (a thick stem carries big old leaves, a thin shoot small young ones)
+		var big := lerpf(0.75, 1.25, clampf((thick - 0.012) / 0.033, 0.0, 1.0)) * leaf_scale
 		while owed >= 1.0 and i < count:
 			owed -= 1.0
-			var off := rng.randfn(0.0, 0.5) * spread
-			var at := a + along * rng.randf() + side * off + Vector3.BACK * rng.randf_range(0.0, 0.16)
-			var basis := Basis(Vector3.BACK, rng.randf_range(-1.2, 1.2) + PI).rotated(Vector3.RIGHT, rng.randf_range(-0.9, -0.2))
-			basis = basis.scaled(Vector3.ONE * rng.randf_range(0.7, 1.4) * leaf_scale)
-			# (paler and younger out at the tips and edges, darker in the thick of it)
-			var colour := Color(0.09, 0.17, 0.07).lightened(rng.randf_range(-0.05, 0.1) + clampf(absf(off) / spread, 0.0, 1.0) * 0.06)
+			# (its stalk's foot on the stem, to one side, its blade out and somewhat down
+			# that side, lying over the wall: tilted from the stem's front back towards
+			# it, its tip just off it)
+			var way := 1.0 if rng.randf() < 0.5 else -1.0
+			var out := (up.rotated(Vector3.BACK, way * rng.randf_range(0.6, 2.2)) + Vector3.DOWN * 0.3).normalized()
+			out = Vector3(out.x, out.y, 0.0).normalized()
+			var size := rng.randf_range(0.7, 1.3) * big
+			var long := LEAF_LONG * size
+			var foot := a + along * rng.randf() + out * thick * 0.5 + Vector3.BACK * thick * rng.randf_range(0.6, 1.5)
+			var tip := rng.randf_range(0.012, 0.07)
+			var lean := asin(clampf((tip - foot.z) / long, -0.6, 0.6))
+			var y := out * cos(lean) + Vector3.BACK * sin(lean)
+			var z := Vector3.BACK * cos(lean) - out * sin(lean)
+			var basis := Basis(y.cross(z), y, z).rotated(y, rng.randf_range(-0.25, 0.25)).scaled(Vector3.ONE * size)
+			var at := foot
+			# (paler and younger on the thin shoots, darker on the old stems)
+			var colour := Color(0.11, 0.2, 0.08).lightened(rng.randf_range(-0.05, 0.1) + (1.0 - clampf((thick - 0.012) / 0.033, 0.0, 1.0)) * 0.07)
 			var o := i * 16
 			for row in 3:
 				buffer[o + row * 4] = basis[0][row]
@@ -251,6 +262,50 @@ func _grow() -> void:
 	# (lost in the mist further off than this anyway)
 	leaves.visibility_range_end = 160.0
 	add_child(leaves)
+
+
+## How long a leaf is, stalk and all, metres (before its patch's and its own size),
+## and how many leaves there are for as many as made a mat of the old diamonds.
+const LEAF_LONG := 0.2
+const LEAF_SHARE := 0.65
+
+
+## An ivy leaf `size` long from the foot of its stalk to its tip, along +Y, its face
+## to +Z (the user, 2026-10-18: "lets make a real leaf shape"): a long stalk, then
+## five lobes, the middle one the longest, the two at its foot small, the blade
+## dished a little and its lobes' tips curling back. Twelve triangles, a fan from
+## its middle, paler in the middle where its veins meet (the colours multiply each
+## leaf's own).
+static func leaf_mesh(size: float) -> ArrayMesh:
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var stalk := size * 0.24
+	var blade := size - stalk
+	# (round the blade's right half from the notch the stalk goes into to the tip:
+	# [across, along, how far it curls back], as shares of the blade; the left as its mirror)
+	var half := [[0.0, 0.08, 0.02], [0.36, 0.0, -0.05], [0.29, 0.28, 0.02], [0.52, 0.5, -0.07], [0.17, 0.62, 0.02], [0.0, 1.0, -0.09]]
+	var outline: Array[Vector3] = []
+	for k in half.size():
+		outline.append(Vector3(half[k][0], half[k][1], half[k][2]) * blade + Vector3.UP * stalk)
+	for k in range(half.size() - 2, 0, -1):
+		outline.append(Vector3(-half[k][0], half[k][1], half[k][2]) * blade + Vector3.UP * stalk)
+	var middle := Vector3(0.0, stalk + blade * 0.38, 0.0)
+	var pale := Color(1.0, 1.0, 0.82)
+	var tip := Color(0.72, 0.76, 0.68)
+	var notch := Color(0.86, 0.9, 0.8)
+	for k in outline.size():
+		var p := outline[k]
+		var q := outline[(k + 1) % outline.size()]
+		for v: Vector3 in [middle, p, q]:
+			tool.set_color(pale if v == middle else (tip if v.z < 0.0 else notch))
+			tool.add_vertex(v)
+	var s := size * 0.02
+	var foot := Color(0.85, 0.75, 0.6)
+	for v: Vector3 in [Vector3(-s, 0, 0), Vector3(s, 0, 0), Vector3(s, stalk + blade * 0.1, 0), Vector3(-s, 0, 0), Vector3(s, stalk + blade * 0.1, 0), Vector3(-s, stalk + blade * 0.1, 0)]:
+		tool.set_color(foot if v.y == 0.0 else pale)
+		tool.add_vertex(v)
+	tool.generate_normals()
+	return tool.commit()
 
 
 ## A square-sectioned length of stem from `a` to `b`.

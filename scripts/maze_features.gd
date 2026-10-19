@@ -122,6 +122,8 @@ func realize(layout: MazeLayout) -> void:
 		var vine := Vine.new()
 		vine.length = piece.length
 		vine.hold = piece.hold
+		vine.held = piece.vine_held()
+		vine.reach = piece.reach
 		vine.position = piece.position
 		add_child(vine)
 		vines.append(vine)
@@ -135,6 +137,8 @@ func realize(layout: MazeLayout) -> void:
 		var strand := VineStrand.new()
 		strand.from = piece.position
 		strand.to = piece.bridge_end()
+		strand.from_held = piece.strand_held(false)
+		strand.to_held = piece.strand_held(true)
 		add_child(strand)
 		strands.append(strand)
 	for piece in layout.pieces(MazePiece.Kind.PIPE):
@@ -216,7 +220,7 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 						# (on the wall, well clear of its ends: not tucked into a corner as if hung on a pier)
 						beside = clampf(beside, low, high_along)
 						var out := WALL_VINE_OUT + off_wall
-						_vine(cell, step, out, beside, high, VINE_CLEAR, false)
+						_vine(cell, step, out, beside, high, VINE_CLEAR, false, Vine.Held.LIP if off_wall > 0.0 else Vine.Held.FACE, WALL_VINE_OUT)
 				continue
 			var upper := _rng.randf() < _style.upper_terrace_share
 			var along := _rng.randf_range(-0.2, 0.2) * Maze.CELL
@@ -284,8 +288,8 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 			# (along that wall runs the other way)
 			# (on its own length of that wall, not past it where the next cell may be open:
 			# tied to the wall, not to the air)
-			var b := _edge(far, step, 0.05, clampf(-along + _rng.randf_range(-3.0, 3.0), -Maze.CELL * 0.5 + 1.5, Maze.CELL * 0.5 - 1.5)) + Vector3.UP * (high + _rng.randf_range(-1.5, 1.5))
-			_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b})
+			var b := _edge(far, step, VineStrand.TIED_OUT, clampf(-along + _rng.randf_range(-3.0, 3.0), -Maze.CELL * 0.5 + 1.5, Maze.CELL * 0.5 - 1.5)) + Vector3.UP * (high + _rng.randf_range(-1.5, 1.5))
+			_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b, "held_end": Vine.Held.FACE})
 
 	# Sewer pipes through the maze walls, high up, between halls on both sides.
 	for i in plan.size * plan.size:
@@ -645,10 +649,11 @@ func _climb(at: Vector3, step: Vector2i, high: float, wide := 1.8) -> void:
 
 ## A vine `out` from the face (cell, step) and `along` it, down to `end` over the
 ## ground: hanging from a beam of stone out of the wall whose top is `top` high,
-## or (`beam` false) from the top of the wall itself, `top` high.
-func _vine(cell: Vector2i, step: Vector2i, out: float, along: float, top: float, end: float, beam := true) -> void:
+## or (`beam` false) from the top of the wall itself, `top` high, held as `held` says
+## (Vine.Held) `from_face` out from what holds it.
+func _vine(cell: Vector2i, step: Vector2i, out: float, along: float, top: float, end: float, beam := true, held: int = Vine.Held.FACE, from_face := 0.0) -> void:
 	if not beam:
-		_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, _edge(cell, step, out, along) + Vector3.UP * top), {"length": top - end, "hold": Vector3(step.x, 0.0, step.y)})
+		_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, _edge(cell, step, out, along) + Vector3.UP * top), {"length": top - end, "hold": Vector3(step.x, 0.0, step.y), "held": held, "reach": from_face})
 		return
 	var s := Vector3(step.x, 0.0, step.y)
 	var side := Vector3(-s.z, 0.0, s.x)
@@ -774,7 +779,7 @@ func _ledge_vines(plan: Maze) -> void:
 				var under := _level_height(level - 1) if level > 0 else 0.0
 				var along := numbers.randf_range(-room, room)
 				_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, _edge(cell, step, _level_depth(level) + LIP_VINE_OUT, along) + Vector3.UP * top),
-					{"length": top - under - LOW_VINE_CLEAR, "hold": Vector3(step.x, 0.0, step.y)})
+					{"length": top - under - LOW_VINE_CLEAR, "hold": Vector3(step.x, 0.0, step.y), "held": Vine.Held.LIP, "reach": LIP_VINE_OUT})
 
 
 ## A pair of brackets across a hall, on the faces `one` and `other` ([cell, step]
@@ -958,7 +963,7 @@ func _concrete_bridge(one: Array, other: Array, level: int, numbers: RandomNumbe
 		var way := 1.0 if numbers.randf() < 0.5 else -1.0
 		var top := middle + across * long * numbers.randf_range(-0.2, 0.2) + side * way * (wide * 0.5 + 0.25)
 		var end := _level_height(level - 2) if level >= 2 else 0.0
-		_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, top), {"length": high - end - LOW_VINE_CLEAR, "hold": -side * way})
+		_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, top), {"length": high - end - LOW_VINE_CLEAR, "hold": -side * way, "held": Vine.Held.LIP, "reach": 0.25})
 
 
 # --- Grappling hook spots ---
