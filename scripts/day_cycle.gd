@@ -37,6 +37,8 @@ var daylight := 1.0
 var gloom := 0.0
 ## Lightning now (Weather), 0 to 1: the mist and the shade lit up white for a moment.
 var flash := 0.0
+## The colour of the mist now (for the rain and the fog Weather draws to match it).
+var mist := Color(0.66, 0.7, 0.69)
 var _fog_base := Color.WHITE
 var _ambient_base := 1.0
 var _flashed := false
@@ -163,4 +165,5 @@ func _apply() -> void:
 		_environment.ambient_light_energy = lerpf(0.55, _day["ambient"], light) * (1.0 - gloom * 0.25)
 		_environment.fog_density = _day["fog_density"] * (1.0 + gloom * 0.9)
 		_fog_base = _environment.fog_light_color
+		mist = _fog_base
 		_ambient_base = _environment.ambient_light_energy

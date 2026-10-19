@@ -4,7 +4,8 @@ extends Node3D
 ## of rain (a light sprinkle, steady rain, a downpour, or a thunderstorm), one
 ## after another, each a few minutes long, changing over slowly. Clouds drift
 ## over high above the walls (a layer of them, drawn in the shader), thicker
-## and darker as it clouds over; rain falls round the camera, more and faster
+## and darker as it clouds over; rain falls round the camera (Rain: streaks,
+## droplets, distant sheets of it and splashes where it lands), more and faster
 ## and blown slantwise the harder it rains; the day is darker with it
 ## (DayCycle.gloom) and the ground wetter. In a thunderstorm lightning flashes
 ## over the maze (lighting it from above and the clouds from inside) and the
@@ -39,10 +40,6 @@ const FLASH := 0.45
 ## How high the clouds are, and how far they reach each way.
 const CLOUD_HEIGHT := 420.0
 const CLOUD_REACH := 5000.0
-## How many raindrops are falling round the camera at most, and over how wide
-## and high a box.
-const DROPS := 6500
-const RAIN_BOX := Vector3(46.0, 26.0, 46.0)
 
 ## Seconds since the round began.
 var seconds := 0.0
@@ -57,13 +54,13 @@ var forced := -1
 
 var day: DayCycle
 var ground: ShaderMaterial
+## The maze it is over (for where its ground is, under the rain).
+var maze: Maze
 var _seed := 0
 # [start second, kind] for each spell.
 var _spells: Array = []
 var _cloud_material: ShaderMaterial
-var _rain: GPUParticles3D
-var _rain_process: ParticleProcessMaterial
-var _rain_look: StandardMaterial3D
+var _rain: Rain
 var _lightning: DirectionalLight3D
 var _thunder: AudioStreamPlayer
 ## The strike now under way: when it began (INF: none), and its thunder still to come.
@@ -79,6 +76,7 @@ static func put(world: Node3D, seed_value: int, day_cycle: DayCycle, ground_mate
 	weather.name = "Weather"
 	weather.day = day_cycle
 	weather.ground = ground_material
+	weather.maze = world.get(&"maze") as Maze
 	weather._plan(seed_value)
 	world.add_child(weather)
 	return weather
@@ -114,7 +112,7 @@ func kind_at(at: float) -> Kind:
 
 func _ready() -> void:
 	_cloud_layer()
-	_rain_fall()
+	_rain = Rain.put(self, maze)
 	_storm()
 
 
@@ -138,23 +136,13 @@ func _process(delta: float) -> void:
 	_cloud_material.set_shader_parameter(&"flash", flash)
 	_cloud_material.set_shader_parameter(&"wind", Vector2(4.0, 1.5) * (1.0 + wind * 4.0))
 	var camera := get_viewport().get_camera_3d()
-	if camera:
-		_rain.global_position = camera.global_position + Vector3.UP * RAIN_BOX.y * 0.45
-	# (not there at all unless it is raining: idle, it still costs a lot to draw)
-	var raining := rain > 0.02
-	_rain.emitting = raining
-	_rain.visible = raining
-	_rain.process_mode = Node.PROCESS_MODE_INHERIT if raining else Node.PROCESS_MODE_DISABLED
-	if raining:
-		# A sprinkle is a few slow fine drops falling nearly straight; a
-		# downpour sheets of them, fast, and a storm's driven slantwise.
-		_rain.amount_ratio = clampf(rain, 0.04, 1.0)
-		_rain_process.direction = Vector3(0.15 + wind * 0.55, -1.0, 0.05 + wind * 0.2)
-		_rain_process.initial_velocity_min = lerpf(11.0, 22.0, rain) + wind * 4.0
-		_rain_process.initial_velocity_max = _rain_process.initial_velocity_min + 4.0
-		_rain_process.scale_min = lerpf(0.55, 1.3, rain)
-		_rain_process.scale_max = _rain_process.scale_min + 0.3
-		_rain_look.albedo_color.a = lerpf(0.22, 0.4, rain) + flash * 0.4
+	var eye := camera.global_position if camera else Vector3.ZERO
+	# (where he stands, if he is standing on something: the splashes on it too)
+	var feet := NAN
+	var player := get_parent().get(&"player") as CharacterBody3D if get_parent() else null
+	if player and player.is_on_floor():
+		feet = player.global_position.y
+	_rain.show_rain(rain, wind, flash, light, day.mist if day else Color(0.66, 0.7, 0.69), eye, -camera.global_basis.z if camera else Vector3.FORWARD, feet, delta)
 
 
 ## The kind of weather now (as the spells have it, or as DevTools forces it).
@@ -256,43 +244,6 @@ func _cloud_layer() -> void:
 	layer.position.y = CLOUD_HEIGHT
 	layer.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(layer)
-
-
-func _rain_fall() -> void:
-	_rain = GPUParticles3D.new()
-	_rain.name = "Rain"
-	_rain.amount = DROPS
-	_rain.lifetime = RAIN_BOX.y / 22.0
-	_rain.preprocess = _rain.lifetime
-	_rain.local_coords = false
-	_rain.visibility_aabb = AABB(-RAIN_BOX, RAIN_BOX * 2.0)
-	_rain.emitting = false
-	_rain.visible = false
-	var process := ParticleProcessMaterial.new()
-	_rain_process = process
-	process.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	process.emission_box_extents = Vector3(RAIN_BOX.x * 0.5, 0.5, RAIN_BOX.z * 0.5)
-	process.direction = Vector3(0.15, -1.0, 0.05)
-	process.spread = 2.0
-	process.initial_velocity_min = 20.0
-	process.initial_velocity_max = 24.0
-	process.gravity = Vector3.ZERO
-	_rain.process_material = process
-	var streak := QuadMesh.new()
-	streak.size = Vector2(0.025, 0.75)
-	var look := StandardMaterial3D.new()
-	_rain_look = look
-	look.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	look.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	look.albedo_color = Color(0.72, 0.76, 0.78, 0.35)
-	# (turned to face the camera about the upright, as they fall nearly straight down)
-	look.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
-	look.billboard_keep_scale = true
-	look.cull_mode = BaseMaterial3D.CULL_DISABLED
-	streak.material = look
-	_rain.draw_pass_1 = streak
-	_rain.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(_rain)
 
 
 const CLOUD_SHADER := """
