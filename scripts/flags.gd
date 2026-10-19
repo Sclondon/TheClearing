@@ -6,7 +6,9 @@ extends RefCounted
 ##   scale3d=<0-1>  draw the 3D view at this share of the window's resolution
 ##   dev            god mode and the rest (DevTools); on anyway when run from the editor
 ##   start=middle   with dev, start in the middle of the clearing, not at a gate
-##   rings=<n>      build this many rings round the clearing, the desert one (World.RINGS otherwise)
+##   rings=<n>      build this many rings round the clearing, the desert one (World.RINGS otherwise; 0: only the clearing)
+##   clearing       only the clearing, to test in: straight into a round of it alone (World.clearing_only)
+##   times          print how long each stage of making a round takes (World._lap, tools/start_times.gd)
 
 static var _flags := {}
 static var _read := false

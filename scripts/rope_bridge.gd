@@ -27,8 +27,12 @@ const STIFF := 0.7
 var _points := PackedVector3Array()
 var _before := PackedVector3Array()
 var _planks: Array[AnimatableBody3D] = []
-var _rails: Array[MeshInstance3D] = []
-var _posts: Array[MeshInstance3D] = []
+## The planks, the hand ropes and the ropes under them, and the posts, as drawn (see _many),
+## and how each plank is drawn on its body (a little turned, and its size).
+var _deck: MultiMeshInstance3D
+var _rails: MultiMeshInstance3D
+var _posts: MultiMeshInstance3D
+var _plank_looks: Array[Transform3D] = []
 ## How far the posts at its corners stand over the deck's ends (a little past the hand
 ## ropes, which are tied to their tops) and are sunk into the ledge, metres.
 const POST_HIGH := 1.1
@@ -37,6 +41,9 @@ var _piece := 0.0
 
 static var _wood: StandardMaterial3D
 static var _hemp: StandardMaterial3D
+static var _plank_mesh: BoxMesh
+static var _rail_mesh: CylinderMesh
+static var _post_mesh: CylinderMesh
 
 
 func _ready() -> void:
@@ -51,6 +58,20 @@ func _ready() -> void:
 		_hemp.albedo_color = Color(0.42, 0.37, 0.27)
 		_hemp.roughness = 1.0
 		_hemp.metallic_specular = 0.0
+		# (one plank, length of rope and post for every bridge, each drawn as big as it is)
+		_plank_mesh = BoxMesh.new()
+		_rail_mesh = CylinderMesh.new()
+		_rail_mesh.top_radius = 0.025
+		_rail_mesh.bottom_radius = 0.025
+		_rail_mesh.height = 1.0
+		_rail_mesh.radial_segments = 5
+		_rail_mesh.rings = 1
+		_post_mesh = CylinderMesh.new()
+		_post_mesh.top_radius = 0.055
+		_post_mesh.bottom_radius = 0.07
+		_post_mesh.height = POST_HIGH + POST_SUNK
+		_post_mesh.radial_segments = 6
+		_post_mesh.rings = 1
 	# (a shallow curve sags by about sqrt(3 / 8 * gap * extra length))
 	var gap := from.distance_to(to)
 	_piece = gap * minf(slack, 1.0 + 8.0 / 3.0 * pow(most_sag / maxf(gap, 0.01), 2.0)) / (POINTS - 1)
@@ -62,6 +83,12 @@ func _ready() -> void:
 	_before = _points.duplicate()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(from.snappedf(0.01))
+	# (the planks, the ropes and the posts each one thing to draw, a MultiMesh: a
+	# thing each, the bridges of a maze were tens of thousands, which the renderer
+	# took seconds to take in as a round began)
+	_deck = _many(_plank_mesh, _wood, POINTS - 1)
+	_rails = _many(_rail_mesh, _hemp, 4 * (POINTS - 1))
+	_posts = _many(_post_mesh, _wood, 4)
 	for i in POINTS - 1:
 		var plank := AnimatableBody3D.new()
 		plank.top_level = true
@@ -71,52 +98,36 @@ func _ready() -> void:
 		box.size = Vector3(width, 0.12, _piece * 1.02)
 		shape.shape = box
 		plank.add_child(shape)
-		var look := MeshInstance3D.new()
-		var mesh := BoxMesh.new()
 		# (planks a little apart, each a little different)
-		mesh.size = Vector3(width * rng.randf_range(0.92, 1.0), 0.07, _piece * 0.82)
-		look.mesh = mesh
-		look.material_override = _wood
-		look.visibility_range_end = Rope.SEEN
-		look.rotation.y = rng.randf_range(-0.04, 0.04)
-		plank.add_child(look)
+		var plank_size := Vector3(width * rng.randf_range(0.92, 1.0), 0.07, _piece * 0.82)
+		_plank_looks.append(Transform3D(Basis(Vector3.UP, rng.randf_range(-0.04, 0.04)) * Basis.from_scale(plank_size), Vector3.ZERO))
 		add_child(plank)
 		_planks.append(plank)
-	for side in 4:
-		for i in POINTS - 1:
-			var rail := MeshInstance3D.new()
-			var line := CylinderMesh.new()
-			line.top_radius = 0.025
-			line.bottom_radius = 0.025
-			line.height = 1.0
-			line.radial_segments = 5
-			line.rings = 1
-			rail.mesh = line
-			rail.material_override = _hemp
-			rail.top_level = true
-			rail.visibility_range_end = Rope.SEEN
-			add_child(rail)
-			_rails.append(rail)
 	# A post at each corner, set into the ledge, that the hand rope and the rope
 	# under the planks are tied to (its ends do not move, so neither do they).
 	var side := (to - from).cross(Vector3.UP).normalized()
+	var post := 0
 	for end: Vector3 in [from, to]:
 		for out: float in [0.5, -0.5]:
-			var post := MeshInstance3D.new()
-			var pole := CylinderMesh.new()
-			pole.top_radius = 0.055
-			pole.bottom_radius = 0.07
-			pole.height = POST_HIGH + POST_SUNK
-			pole.radial_segments = 6
-			pole.rings = 1
-			post.mesh = pole
-			post.material_override = _wood
-			post.top_level = true
-			post.visibility_range_end = Rope.SEEN
-			add_child(post)
-			post.global_position = end + side * width * out + Vector3.UP * (POST_HIGH - POST_SUNK) * 0.5
-			_posts.append(post)
+			_posts.multimesh.set_instance_transform(post, Transform3D(Basis.IDENTITY, end + side * width * out + Vector3.UP * (POST_HIGH - POST_SUNK) * 0.5))
+			post += 1
 	_lay()
+
+
+## A MultiMesh of `count` of `mesh`, in the world's space, drawn as far off as a rope is.
+func _many(mesh: Mesh, material: Material, count: int) -> MultiMeshInstance3D:
+	var many := MultiMesh.new()
+	many.transform_format = MultiMesh.TRANSFORM_3D
+	many.mesh = mesh
+	many.instance_count = count
+	var shown := MultiMeshInstance3D.new()
+	shown.multimesh = many
+	shown.material_override = material
+	shown.top_level = true
+	shown.visibility_range_end = Rope.SEEN
+	add_child(shown)
+	shown.global_transform = Transform3D.IDENTITY
+	return shown
 
 
 ## Where it is across the ground for NearIndex: its middle, and how far it reaches from there.
@@ -196,6 +207,12 @@ func _lay() -> void:
 			up = -up
 		var basis := Basis(side, up, along).orthonormalized()
 		_planks[i].global_transform = Transform3D(basis, (a + b) * 0.5)
+		var plank := _planks[i].global_transform * _plank_looks[i]
+		# (a mirrored one would be drawn inside out, as a MultiMesh's are not turned
+		# round as a mesh's own are: a plank is the same box turned the other way)
+		if plank.basis.determinant() < 0.0:
+			plank.basis = plank.basis * Basis.from_scale(Vector3(-1.0, 1.0, 1.0))
+		_deck.multimesh.set_instance_transform(i, plank)
 	# Hand ropes (high, each side) and the ropes under the plank ends.
 	var heights := [[0.5, 0.95], [-0.5, 0.95], [0.5, 0.0], [-0.5, 0.0]]
 	for s in 4:
@@ -205,7 +222,6 @@ func _lay() -> void:
 			var a: Vector3 = _points[i] + side * width * out + Vector3.UP * lift
 			var b: Vector3 = _points[i + 1] + side * width * out + Vector3.UP * lift
 			var along: Vector3 = b - a
-			var rail := _rails[s * (POINTS - 1) + i]
 			var y: Vector3 = along.normalized()
 			var x: Vector3 = y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
-			rail.global_transform = Transform3D(Basis(x, y * along.length(), x.cross(y)), (a + b) * 0.5)
+			_rails.multimesh.set_instance_transform(s * (POINTS - 1) + i, Transform3D(Basis(x, y * along.length(), x.cross(y)), (a + b) * 0.5))
