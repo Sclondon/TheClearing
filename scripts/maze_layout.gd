@@ -74,6 +74,15 @@ const MONSTER_MULTIPLIER := 3.0
 		live_preview = value
 		_preview_key = ""
 		_show_in_editor()
+## Hall view: a plan of the halls, to look down into from above. Every wall is
+## cut off this many metres up, its inside dark where it is cut, and what is on
+## the walls and over the halls (ivy, vines, bridges, cables, props) is hidden. 0:
+## off, the maze whole. In the editor only (the user, 2026-10-18: "theres also not
+## an easy way to view the hallways in the editor").
+@export_range(0.0, 60.0, 0.5, "suffix:m") var hall_view := 0.0:
+	set(value):
+		hall_view = value
+		_show_hall_view()
 @export_tool_button("Generate", "Reload") var generate_button := generate
 @export_tool_button("Generate All", "Reload") var generate_all_button := generate_all
 @export_tool_button("Clear", "Remove") var clear_button := clear
@@ -315,10 +324,11 @@ func _show_in_editor() -> void:
 	var open := get_tree().edited_scene_root
 	if open == null or not (open == self or open.is_ancestor_of(self)):
 		return
-	for group: String in GROUPS.values():
-		var holder := get_node_or_null(NodePath(group)) as Node3D
+	_show_hall_view()
+	for kind: MazePiece.Kind in GROUPS:
+		var holder := get_node_or_null(NodePath(GROUPS[kind])) as Node3D
 		if holder:
-			holder.visible = not live_preview
+			holder.visible = not live_preview and not (hall_view > 0.0 and HALL_VIEW_HIDES.has(kind))
 	if live_preview:
 		_show_preview()
 		_light()
@@ -406,6 +416,7 @@ func _show_preview() -> void:
 		built.preview = true
 		_put_preview(zone, built)
 		built.realize_zone(views[zone], plan, walls)
+		_hide_for_hall_view(built)
 		_preview_stone[zone] = stone
 		if is_instance_valid(_preview_views.get(zone)):
 			(_preview_views[zone] as MazeLayout).free()
@@ -436,6 +447,34 @@ func _show_preview() -> void:
 	_preview_keys = keys
 	print("Maze preview: %s built in %.1f s%s" % ["every zone" if whole else _zone_names(plan, changed), (Time.get_ticks_msec() - started) / 1000.0,
 		" (walls and ground kept)" if kept > zones.size() else (" (some walls kept)" if kept > 0 else "")])
+
+
+## The pieces the hall view hides (of the live preview, all of a zone's Features and Props).
+const HALL_VIEW_HIDES: Array[MazePiece.Kind] = [MazePiece.Kind.IVY, MazePiece.Kind.VINE, MazePiece.Kind.BRIDGE,
+	MazePiece.Kind.STRAND, MazePiece.Kind.PIPE, MazePiece.Kind.PROP, MazePiece.Kind.WIRE, MazePiece.Kind.ANCHOR, MazePiece.Kind.BEACON]
+
+
+## Shows the hall view (hall_view) as it is now set: the walls cut off by their
+## shader (Wall.shader, in the editor), and what is on them hidden.
+func _show_hall_view() -> void:
+	if not Engine.is_editor_hint() or not is_inside_tree():
+		return
+	Wall.shader()
+	RenderingServer.global_shader_parameter_set(&"maze_cut", hall_view)
+	for kind: MazePiece.Kind in HALL_VIEW_HIDES:
+		var holder := get_node_or_null(NodePath(GROUPS[kind])) as Node3D
+		if holder:
+			holder.visible = not live_preview and hall_view <= 0.0
+	for built: Variant in _preview_built.values():
+		if is_instance_valid(built):
+			_hide_for_hall_view(built)
+
+
+func _hide_for_hall_view(built: Node) -> void:
+	for part: String in ["Features", "Props"]:
+		var node := built.get_node_or_null(part) as Node3D
+		if node:
+			node.visible = hall_view <= 0.0
 
 
 ## Puts `node` (or nothing) in the live preview as what is built of `part`, in
@@ -610,7 +649,9 @@ func _lay_out(maze: Maze) -> void:
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, gatehouse[0]), {"size": gatehouse[1], "great": true})
 	# (along the maze walls and the great walls round the rings, the user, 2026-10-18;
 	# each in the zone of the ring it looks into)
-	for ledge: Array in _ledges(maze, runs, runs):
+	# (and the ramparts, the clearing's thick wall, on the first section's side: as great walls, stopping at their gates)
+	var ramparts := _ramparts(maze).map(func(rampart: Array) -> Array: return [rampart[0], rampart[1], true])
+	for ledge: Array in _ledges(maze, runs + ramparts, runs + ramparts):
 		var was := laying_zone
 		laying_zone = ledge[2] if laying_zone < 0 else laying_zone
 		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1], "ledge": true})
@@ -843,6 +884,7 @@ static func _ledges(maze: Maze, boxes: Array, all: Array = []) -> Array:
 		return false
 	var style_at := func(p: Vector3) -> MazeStyle:
 		var cell := maze.cell_at(p)
+		# (none in the clearing: the user, 2026-10-18)
 		var ring := maze.ring_of(cell)
 		if ring < 1 or ring > maze.rings or not maze.inside(cell) or maze.solid.has(cell):
 			return null
@@ -892,7 +934,11 @@ static func _ledges(maze: Maze, boxes: Array, all: Array = []) -> Array:
 				continue
 			var deep := style.mezzanine_depth
 			ledges.append([end_face + dir * end * deep * 0.5, out * half * 2.0 + dir * deep + Vector3.UP * style.mezzanine_height, maze.ring_of(maze.cell_at(end_face + dir * end * 1.0))])
-	return ledges
+	# (one of each: the clearing's wall and the rampart behind it share a face)
+	var once := {}
+	for ledge: Array in ledges:
+		once[[(ledge[0] as Vector3).snappedf(0.05), (ledge[1] as Vector3).snappedf(0.05)]] = ledge
+	return once.values()
 
 
 ## The walls either side of each narrow entrance (MazeStyle.entrance_doorway_width), as
