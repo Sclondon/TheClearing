@@ -1,6 +1,8 @@
 class_name Weather
 extends Node3D
-## The weather over the maze: spells of the usual overcast, of heavy cloud, and
+## The weather over the maze: spells of the usual overcast, of heavy cloud, of
+## clear sunny days (the user, 2026-10-18: "There should also be sunny days with
+## blue sky": a blue sky, a bright sun and little mist, DayCycle.sunshine), and
 ## of rain (a light sprinkle, steady rain, a downpour, or a thunderstorm), one
 ## after another, each a few minutes long, changing over slowly. Clouds drift
 ## over high above the walls (a layer of them, drawn in the shader), thicker
@@ -15,7 +17,7 @@ extends Node3D
 ## long the round has gone, so it rains, and lightens, for everyone in a room
 ## at once.
 
-enum Kind { OVERCAST, CLOUDY, SPRINKLE, RAIN, DOWNPOUR, THUNDERSTORM }
+enum Kind { OVERCAST, CLOUDY, SPRINKLE, RAIN, DOWNPOUR, THUNDERSTORM, SUNNY }
 
 ## How long a spell lasts, seconds (from, to), and how long one takes to turn
 ## into the next.
@@ -26,10 +28,11 @@ const CHANGE_SECONDS := 25.0
 const LOOKS := {
 	Kind.OVERCAST: [0.35, 0.0, 0.1], Kind.CLOUDY: [0.85, 0.0, 0.2], Kind.SPRINKLE: [0.82, 0.18, 0.1],
 	Kind.RAIN: [1.0, 0.5, 0.25], Kind.DOWNPOUR: [1.0, 1.0, 0.45], Kind.THUNDERSTORM: [1.0, 0.85, 1.0],
+	Kind.SUNNY: [0.12, 0.0, 0.12],
 }
 const CHANCES := {
-	Kind.OVERCAST: 0.38, Kind.CLOUDY: 0.24, Kind.SPRINKLE: 0.12,
-	Kind.RAIN: 0.12, Kind.DOWNPOUR: 0.08, Kind.THUNDERSTORM: 0.06,
+	Kind.OVERCAST: 0.32, Kind.CLOUDY: 0.2, Kind.SPRINKLE: 0.11, Kind.SUNNY: 0.14,
+	Kind.RAIN: 0.11, Kind.DOWNPOUR: 0.07, Kind.THUNDERSTORM: 0.05,
 }
 ## Lightning in a thunderstorm: time is cut into slots this long, and in each
 ## there is a strike this often (at a point in it the seed picks); a flash
@@ -49,6 +52,8 @@ var clouds := 0.35
 var rain := 0.0
 var wind := 0.1
 var flash := 0.0
+## How sunny it is (0 to 1): a clear blue day (DayCycle.sunshine).
+var sunshine := 0.0
 ## For DevTools: a kind to have instead of the spells (-1: the spells).
 var forced := -1
 
@@ -125,15 +130,19 @@ func _process(delta: float) -> void:
 	# (the rain comes once it has clouded over, and stops before it clears)
 	rain = move_toward(rain, look[1] if clouds > 0.75 else 0.0, delta / (CHANGE_SECONDS * 0.6))
 	_lightening(delta, kind == Kind.THUNDERSTORM and clouds > 0.9)
+	# (the sun comes out as the cloud thins, and goes in before it thickens)
+	sunshine = move_toward(sunshine, 1.0 if kind == Kind.SUNNY and clouds < 0.4 else 0.0, delta / CHANGE_SECONDS)
 	var light := day.daylight if day else 1.0
 	if day:
 		day.gloom = clampf((clouds - 0.35) / 0.65, 0.0, 1.0) * 0.45 + rain * 0.55
 		day.flash = flash
+		day.sunshine = sunshine
 	if ground:
-		ground.set_shader_parameter(&"wetness", 0.45 + sqrt(rain) * 0.5)
+		ground.set_shader_parameter(&"wetness", 0.45 - sunshine * 0.25 + sqrt(rain) * 0.5)
 	_cloud_material.set_shader_parameter(&"cover", clouds)
 	_cloud_material.set_shader_parameter(&"light", lerpf(0.12, 1.0, light) * (1.0 - rain * 0.45))
 	_cloud_material.set_shader_parameter(&"flash", flash)
+	_cloud_material.set_shader_parameter(&"sunshine", sunshine * light)
 	_cloud_material.set_shader_parameter(&"wind", Vector2(4.0, 1.5) * (1.0 + wind * 4.0))
 	var camera := get_viewport().get_camera_3d()
 	var eye := camera.global_position if camera else Vector3.ZERO
@@ -255,6 +264,8 @@ uniform float cover = 0.35;
 uniform float light = 1.0;
 // Lightning inside the clouds now (0 to 1).
 uniform float flash = 0.0;
+// How sunny (0 to 1): the few clouds there are white and bright in the sun.
+uniform float sunshine = 0.0;
 uniform vec2 wind = vec2(4.0, 1.5);
 uniform float scale = 0.0022;
 
@@ -295,7 +306,8 @@ void fragment() {
 	float under = mix(0.82, 0.42, cover * thick);
 	// (thinning out far off, where the sky's own haze takes over)
 	float far = 1.0 - smoothstep(1200.0, 4500.0, length(place.xz - CAMERA_POSITION_WORLD.xz));
-	ALBEDO = vec3(0.78, 0.8, 0.8) * under * light + vec3(0.75, 0.8, 0.95) * flash * (0.4 + 0.6 * thick);
+	under = mix(under, 1.0, sunshine * 0.75);
+	ALBEDO = mix(vec3(0.78, 0.8, 0.8), vec3(1.0, 0.99, 0.97), sunshine) * under * light + vec3(0.75, 0.8, 0.95) * flash * (0.4 + 0.6 * thick);
 	ALPHA = thick * mix(0.55, 0.95, cover) * far;
 }
 """
