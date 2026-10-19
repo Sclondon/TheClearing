@@ -89,6 +89,7 @@ func show_fog(amount: float, height: float, wind: float, light: float, mist: Col
 	var top := minf(ground + height, eye.y - 0.35)
 	_sheet.global_position = Vector3(eye.x, top, eye.z)
 	_look.set_shader_parameter(&"top", top)
+	_look.set_shader_parameter(&"ground", ground)
 	_look.set_shader_parameter(&"amount", amount * smoothstep(ground + 0.1, ground + 0.4, top))
 	_look.set_shader_parameter(&"colour", mist.lightened(0.12) * lerpf(0.6, 1.0, light))
 	_look.set_shader_parameter(&"wind", Vector2(0.35, 0.12) * (1.0 + wind * 4.0))
@@ -157,6 +158,8 @@ render_mode unshaded, blend_mix, depth_draw_never, cull_back, shadows_disabled;
 // The top of the fog (world y), how far its top rolls below that, metres, and
 // how thick it is (1 - its share of the light that gets through each metre).
 uniform float top = 1.0;
+// The ground under the camera (world y): the wake pushes the fog most of the way down to it.
+uniform float ground = 0.0;
 uniform float roll = 0.6;
 uniform float density = 0.5;
 uniform float amount = 1.0;
@@ -224,7 +227,7 @@ void fragment() {
 #ifndef LOW
 	n = n * 0.8 + vnoise(p * 0.9 + vec2(clock * 0.07, -clock * 0.05)) * 0.2;
 #endif
-	float surface = top - roll * (1.0 - n) - cleared * 0.7;
+	float surface = top - roll * (1.0 - n) - cleared * max(top - ground, 0.3) * 0.8;
 	// How far the line of sight runs under that before it meets what is behind.
 	float fall = max(top - under.y, 0.001);
 	float inside = through * clamp((surface - under.y) / fall, 0.0, 1.0);

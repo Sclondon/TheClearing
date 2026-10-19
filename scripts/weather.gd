@@ -47,7 +47,7 @@ const DAWN_FOG_CHANCE := 0.5
 const DAWN_FOG_UNTIL := 8.5
 ## How high the ground fog's top is over the ground, metres: it rises and sinks
 ## slowly between these, over minutes.
-const FOG_HEIGHT := Vector2(0.35, 1.9)
+const FOG_HEIGHT := Vector2(0.5, 1.4)
 ## Lightning in a thunderstorm: time is cut into slots this long, and in each
 ## there is a strike this often (at a point in it the seed picks); a flash
 ## lasts FLASH s (flickering), and thunder comes 0.4 to 4 s after (far or near).

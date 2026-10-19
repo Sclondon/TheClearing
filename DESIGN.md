@@ -39,6 +39,12 @@ own), seen and lit like *Inside*. A secret cart in the Scareathon arcade (code *
 - **Light.** Inside's: overcast, misty, nearly colourless but for the red shirt; soft light from above, soft
   shadows. Mist thick enough to lose the far walls, but not so thick the maze is grey mush (lighter on the title and
   in the editor).
+- **Weather** (`Weather`, from the room's seed, the same for everyone): spells of overcast, heavy cloud, rain (a
+  sprinkle, steady rain, a downpour, a thunderstorm) and, now and then, a clear sunny day with a blue sky (2026-10-18:
+  "There should also be sunny days with blue sky"). Rain thin, never thick white bars: fine streaks, droplets close
+  by, distant sheets of it, and splashes where it lands ("should slapsh when it hits the ground. Theyre too thick").
+  Some spells and some dawns a low ground fog that rises and sinks and that you leave a wake in; the clearing's wall
+  always rising out of banks of billowing fog at its foot ("billowing fog that the clearing walls rise above").
 - **Walls.** Brutalist concrete: cast concrete inside the rings, precast slabs between them; photographed textures
   without visible tiling, rain stains running down from ledges. Plain boxes by default (no crowning or footing);
   decorated styles are for particular places. Solid, never planes. "Maze walls should be very slightly weathered

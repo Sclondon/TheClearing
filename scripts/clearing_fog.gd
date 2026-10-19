@@ -56,7 +56,7 @@ func _build(plan: Maze) -> void:
 		var along := Vector2(1.0, 0.0).rotated(side * PI * 0.5)
 		var inward := along.orthogonal()
 		for row: Array in rows:
-			var height: float = style.clearing_fog_height * row[1]
+			var height: float = bank_height() * row[1]
 			var spacing := side_length / billows
 			for i in billows:
 				var t := (i + 0.5 + rng.randf_range(-0.3, 0.3)) / billows - 0.5
@@ -102,13 +102,19 @@ func show_fog(amount: float, light: float, mist: Color, wind: float, delta: floa
 	_look.set_shader_parameter(&"mist", mist)
 
 
+## How high the banks rise at the wall, metres: as the style says, but never
+## more than two thirds of the way up the wall, which always rises out of them.
+func bank_height() -> float:
+	return minf(style.clearing_fog_height, style.clearing_wall_height * 0.66)
+
+
 ## How deep in a bank a point is (0 out of it, 1 deep in its thickest part).
 func in_bank(point: Vector3, ground: float) -> float:
 	var from_wall := half - maxf(absf(point.x), absf(point.z))
 	if from_wall < 0.0:
 		return 0.0
 	var reach := style.clearing_fog_reach
-	var height := style.clearing_fog_height * lerpf(1.0, 0.42, clampf(from_wall / reach, 0.0, 1.0))
+	var height := bank_height() * lerpf(1.0, 0.42, clampf(from_wall / reach, 0.0, 1.0))
 	return (1.0 - smoothstep(reach * 0.2, reach * 0.75, from_wall)) * (1.0 - smoothstep(height * 0.5, height, point.y - ground))
 
 

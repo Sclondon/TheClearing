@@ -5,7 +5,7 @@ extends SceneTree
 ## (the ground fog, with a wake walked through it), `clearing` (the clearing's fog banks), `sunny`; or `cost`,
 ## what each costs to draw (printed: draw calls and the GPU's time a frame).
 ##
-##     godot --path . --resolution 1280x720 -s res://tools/weather_shots.gd -- <folder> [all|rain|fog|clearing|sunny|cost]
+##     godot --path . --resolution 1280x720 -s res://tools/weather_shots.gd -- <folder> [all|rain|fog|clearing|sunny|cost] [low]
 
 var main: Node
 var world
@@ -24,6 +24,8 @@ func _run() -> void:
 	var args := OS.get_cmdline_user_args()
 	var folder: String = args[0] if args.size() > 0 else "user://weather_shots"
 	var which: String = args[1] if args.size() > 1 else "all"
+	# (`low` after it: as on a phone, Settings.low_poly)
+	Settings.low_poly = args.has("low")
 	DirAccess.make_dir_recursive_absolute(folder)
 	for i in 5:
 		await process_frame
