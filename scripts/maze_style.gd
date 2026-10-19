@@ -319,6 +319,11 @@ extends Resource
 ## Pterodactyls, soaring high over the maze and roosting on its high wall tops;
 ## they dive at anyone out in the open.
 @export_range(0, 6) var pterodactyls := 2
+## Wyverns (MazeWyvern): two-legged dragons, a pair nesting on a high wall top in the
+## outer rings, soaring over their territory. They hunt anyone in the open (a diving grab
+## that carries you off, or landing to stalk you and lash with the barbed tail) part of the
+## time, and go at once for anyone who climbs near the nest.
+@export_range(0, 2) var wyvern_pairs := 1
 ## Giant snails, each crawling a straight hall (it climbs the walls after anyone up high).
 @export_range(0, 3) var snails := 1
 ## Hydras (MazeHydra): each lies in a marsh pool of its own in a hall and strikes

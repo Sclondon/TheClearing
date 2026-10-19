@@ -348,6 +348,16 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var cell := _far_from(taken, some_halls, rng)
 		taken.append(cell)
 		add(MazePterodactyl.new(), cell, rng.randf_range(-PI, PI), rng.randi())
+	for i in style.wyvern_pairs:
+		# (a pair in one hall of the outer rings: the first builds its nest on the highest wall top near it, its mate shares it)
+		var outer_halls: Array[Vector2i] = []
+		for c in some_halls:
+			if maze.ring_of(c) >= maze.rings - 1:
+				outer_halls.append(c)
+		var cell := _far_from(taken, outer_halls if not outer_halls.is_empty() else some_halls, rng)
+		taken.append(cell)
+		for k in 2:
+			add(MazeWyvern.new(), cell, rng.randf_range(-PI, PI), rng.randi())
 	for i in style.snails:
 		# (a snail crawls a straight hall, where its slime lies across the way people pass)
 		var cell := _far_from(taken, some_halls, rng)

@@ -63,6 +63,7 @@ const HUNTERS := [
 	["RATS", "rats", AHEAD], ["RAT SWARM", "rat_swarm", AHEAD], ["RAT KING", "rat_king", AHEAD],
 	["LUCK DRAGON", "luck_dragon", COLOSSUS_AHEAD],
 	["HORSE", "horse", AHEAD],
+	["WYVERNS", "wyverns", AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -438,6 +439,9 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 			horse.coat = randi() % 3
 			horse.haltered = randf() < 0.5
 			made = [horse]
+		"wyverns":
+			# (a pair: they nest on the nearest high wall top ahead and hunt from there)
+			made = [MazeWyvern.new(), MazeWyvern.new()]
 		"ravens":
 			# (wildlife: on the walls round where they are put, not among the hunters)
 			world.birds.add_ravens_at(at)

@@ -50,7 +50,7 @@ const KINDS := {
 	"MazeMoose": [3, Diet.PLANTS], "MazeMooseCalf": [2, Diet.PLANTS],
 	"MazeMammoth": [4, Diet.PLANTS], "MazeMammothCalf": [2, Diet.PLANTS],
 	"MazeMushroomZombie": [2, Diet.NONE], "MazeGnome": [1, Diet.PLANTS], "MazeMantis": [3, Diet.MEAT],
-	"MazeHorse": [3, Diet.PLANTS],
+	"MazeHorse": [3, Diet.PLANTS], "MazeWyvern": [4, Diet.MEAT],
 	"MazeRat": [0, Diet.MEAT],
 }
 

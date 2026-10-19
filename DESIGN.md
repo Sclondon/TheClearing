@@ -458,6 +458,7 @@ lays out the same spots from the seed; a hooked vine swings on each player's own
   anyone in the open: a low pass with its shadow and a croak, then a dive with the roar of the wind, feet forward; its
   line is set the last half second (step aside). Caught, you are carried off. Not into a passage under 9 m wide, or
   under anything.
+- **Wyverns** (the user: "wyverns"): two-legged dragons, 9 m across, in pairs nesting on a high wall top in the  outer rings (a nest of sticks and bones), soaring over their territory. Anyone who climbs near the nest is gone for  at once; otherwise they hunt part of the time, anyone in the open. Warnings: the scream and the shadow. Then a dive  (feet forward, its line set the last half second: step aside; caught, you are carried off) or it lands in the hall  and stalks you on wrists and feet, slower than a run, and lashes with its barbed tail after a plain coil-back with a  hiss (run out of reach). Not into passages under 10 m wide, or under anything. Hungry, they carry prey to the nest.
 - **Giant snail**: a land snail as big as a car, slower than a walk but relentless; it climbs walls and over the tops
   after anyone up high, and its slime trail lies two minutes and holds you back to less than its speed. Touching it
   catches; it pulls into its shell when bumped or when it loses you.
