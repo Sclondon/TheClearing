@@ -1,6 +1,6 @@
 extends SceneTree
-## Strung vines (VineStrand), headless: each has a buttress with ivy up it at one
-## end; the boy stands on one as a tightrope, set down a little to one side he is
+## Strung vines (VineStrand), headless: one held on stone at one end (a ledge, a bracket),
+## up ivy to it; the boy stands on one as a tightrope, set down a little to one side he is
 ## drawn back over it, it dips under him; he cuts it with the act button and it is
 ## two hanging vines, and he is on one of them or falling clear.
 ##
@@ -96,13 +96,20 @@ func _run() -> void:
 		await frames(30)
 		check("climbs onto the ledge and stands on it", player.is_on_floor() and absf(player.global_position.y - ledge_top) < 0.3, "(at %.2f, the ledge %.2f, state %d)" % [player.global_position.y, ledge_top, player.state])
 
-	var strand = features.strands[0]
-	# (the buttress under its first end, as high as it is held)
-	var buttress := false
-	for piece in world.get_node("Maze").layout.pieces(MazePiece.Kind.TERRACE):
-		if piece.box_has(strand.from - Vector3.UP * 0.5, 0.2):
-			buttress = true
-	check("held on a buttress", buttress)
+	# (one held at its first end on stone: a ledge's edge, a bracket, a terrace; as high as it is held)
+	var layout: MazeLayout = world.get_node("Maze").layout
+	var stone: Array = layout.pieces(MazePiece.Kind.TERRACE) + layout.pieces(MazePiece.Kind.PIER)
+	var strand = null
+	for each in features.strands:
+		# (about level, across a hall: a tightrope)
+		if absf(each.from.y - each.to.y) > 1.0 or each.from.distance_to(each.to) < 6.0:
+			continue
+		for piece in stone:
+			if strand == null and piece.box_has(each.from - Vector3.UP * 0.5, 0.2):
+				strand = each
+	check("held on stone", strand != null)
+	if strand == null:
+		strand = features.strands[0]
 
 	var middle: Vector3 = strand._points[RopeBridge.POINTS / 2]
 	var across: Vector3 = (strand.to - strand.from).normalized().cross(Vector3.UP)

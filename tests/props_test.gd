@@ -102,7 +102,7 @@ func _run() -> void:
 	# --- As the settings say ---
 	# (made fresh: MazeStyle.defaults() is the chosen ones themselves)
 	var bare: Array[MazeStyle] = MazeStyle.square_defaults() + MazeStyle.round_defaults()
-	for setting: StringName in [&"wall_vent_share", &"culvert_share", &"outlet_share", &"drain_share", &"manhole_share", &"clutter_share", &"cable_share", &"cable_by_vine_share", &"wall_cable_share"]:
+	for setting: StringName in [&"wall_vent_share", &"culvert_share", &"outlet_share", &"drain_share", &"manhole_share", &"clutter_share", &"cable_share", &"wall_cable_share"]:
 		bare[0].set(setting, 0.0)
 	var none := laid_out(4242, bare)
 	var none_count := tally(none[0], none[1], 1)

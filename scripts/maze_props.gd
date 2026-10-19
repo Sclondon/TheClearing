@@ -5,14 +5,15 @@ extends Node3D
 ## vents high on the walls, barred culverts at their feet, small pipes coming out
 ## of them with rust stains under (some dripping into a puddle), drain grates and
 ## manhole covers in the floor; heaps of boxes and barrels against the walls, and
-## old electric cables strung high across the halls among the vines, sagging,
+## old electric cables strung high across the halls, sagging,
 ## some snapped and hanging, now and then a dead lamp hanging from one. All
 ## weathered and dull, to sit in the grey (DESIGN.md, "Signs of life").
 ##
 ## `lay_out` chooses them from the maze's seed by each section's MazeStyle
 ## ("Sewers", "Signs of life"), as PROP and WIRE pieces of a MazeLayout, after the
 ## ways up (MazeFeatures), which they keep clear of; `realize` makes them from a
-## layout's pieces, as laid out or as moved by hand. They are drawn as one
+## layout's pieces, as laid out or as moved by hand. The vines are hung after them, on
+## them (MazeFeatures.hang_vines): nothing here depends on the vines. They are drawn as one
 ## MultiMesh for each kind in each square of SQUARE metres (the cables merged into
 ## one mesh a square), lost past the mist; nothing of them processes (the drips
 ## fall in their shader); the boxes and barrels are solid, all their shapes in one
@@ -90,8 +91,6 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 		return
 	_hash_boxes(layout)
 	_keep_clear_of_ways_up(layout)
-	var strands := layout.pieces(MazePiece.Kind.STRAND)
-	var vines := layout.pieces(MazePiece.Kind.VINE)
 	for i in plan.size * plan.size:
 		var cell := Vector2i(i % plan.size, i / plan.size)
 		if not _in_a_section(cell):
@@ -109,20 +108,12 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
 			if plan.blocked(cell, -step) and _rng.randf() < _style.amount(&"cable_share"):
 				_cable_across(cell, step)
-	# Cables in among the vines strung across the halls, and hanging beside the
-	# vines hanging from the walls.
-	for strand in strands:
-		if _style_at(strand.position) and _rng.randf() < _style.amount(&"cable_by_vine_share"):
-			_cable_by_strand(strand.position, strand.bridge_end())
-	for vine in vines:
-		if _style_at(vine.position) and _rng.randf() < _style.amount(&"cable_by_vine_share") * 0.6:
-			_cable_by_vine(vine.position, vine.length)
 	_ledge_cables(plan)
 
 
 static func _wants(style: MazeStyle) -> bool:
 	return style.amount(&"wall_vent_share") + style.amount(&"culvert_share") + style.amount(&"outlet_share") + style.amount(&"drain_share") + style.amount(&"manhole_share") \
-		+ style.amount(&"clutter_share") + style.amount(&"cable_share") + style.amount(&"cable_by_vine_share") + style.amount(&"wall_cable_share") \
+		+ style.amount(&"clutter_share") + style.amount(&"cable_share") + style.amount(&"wall_cable_share") \
 		+ style.amount(&"junction_box_share") + style.amount(&"slanting_cable_share") + style.amount(&"ledge_cable_share") > 0.0
 
 
@@ -405,58 +396,6 @@ func _cable_across(cell: Vector2i, step: Vector2i) -> void:
 	_wire(a, b, a.distance_to(b) * _rng.randf_range(0.05, 0.13), true)
 
 
-## A cable beside a vine strung from `a` to `b` (its corbel end first), in
-## among it: from the wall a little along from each of its ends, now and then
-## crossing it in the middle.
-func _cable_by_strand(a: Vector3, b: Vector3) -> void:
-	var across := Vector3(b.x - a.x, 0.0, b.z - a.z).normalized()
-	var side := across.cross(Vector3.UP)
-	var way := 1.0 if _rng.randf() < 0.5 else -1.0
-	var off_a := way * _rng.randf_range(1.8, 3.0)
-	var off_b := off_a if _rng.randf() < 0.6 else -off_a * _rng.randf_range(0.5, 1.0)
-	var h_a := a.y + _rng.randf_range(-1.5, 1.0)
-	var h_b := b.y + _rng.randf_range(-1.0, 1.5)
-	# (the walls behind its ends, found from about where they are: its corbel
-	# end stands out from its wall, its far end is held on the wall itself)
-	var from_a := Vector3(a.x, 0.0, a.z) - across * MazeFeatures.VINE_CORBEL.z + side * off_a
-	var from_b := Vector3(b.x, 0.0, b.z) + side * off_b
-	var d_a := _face_out(from_a, across, h_a)
-	var d_b := _face_out(from_b, -across, h_b)
-	if is_nan(d_a) or is_nan(d_b):
-		return
-	var p := from_a + across * d_a + Vector3.UP * h_a
-	var q := from_b - across * d_b + Vector3.UP * h_b
-	_wire(p, q, p.distance_to(q) * _rng.randf_range(0.08, 0.16), false)
-
-
-## A cable's end hanging beside a vine hung from `top`, `long` metres: from the
-## wall the vine hangs by, a little along it.
-func _cable_by_vine(top: Vector3, long: float) -> void:
-	# (which way the wall is: the nearest stone level with the vine's top)
-	var best := INF
-	var wall := Vector3.ZERO
-	for way: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]:
-		for k in 16:
-			if _solid(top + way * (0.2 * (k + 1)) + Vector3.DOWN * 0.3):
-				if 0.2 * (k + 1) < best:
-					best = 0.2 * (k + 1)
-					wall = way
-				break
-	if wall == Vector3.ZERO:
-		return
-	var side := wall.cross(Vector3.UP) * (1.0 if _rng.randf() < 0.5 else -1.0)
-	var high := top.y - _rng.randf_range(0.3, 2.0)
-	var from := Vector3(top.x, 0.0, top.z) + side * _rng.randf_range(0.6, 1.4)
-	var d := _face_out(from, -wall, high)
-	if is_nan(d):
-		return
-	var at := from - wall * d + Vector3.UP * high
-	var hang := minf(long * _rng.randf_range(0.35, 0.8), high - 2.8)
-	if hang < 1.0:
-		return
-	_layout.add_piece(MazePiece.Kind.WIRE, Transform3D(Basis.IDENTITY, at), {"to": at - wall + side * 0.3, "sag": 0.0, "tails": Vector2(hang, 0.0)})
-
-
 ## A cable looped along the face on brackets, a few spans of it, sagging between.
 func _cable_along(foot: Vector3, out: Vector3, side: Vector3, under_ledge: float) -> void:
 	var high := under_ledge - _rng.randf_range(1.2, 2.2) if under_ledge < 20.0 else _rng.randf_range(5.0, 10.0)
@@ -495,7 +434,7 @@ func _wire(a: Vector3, b: Vector3, sag: float, across: bool) -> void:
 
 ## The cables of halls with a ledge along both walls (MazeStyle "Signs of life";
 ## the user's concept of the first section, 2026-10-18): a pair of junction boxes
-## high on the walls, the cable between them grown over by a vine; cables slanting
+## high on the walls, a cable between them; cables slanting
 ## across from high on one wall down to the other; and cables from a ledge's edge
 ## across and down to the wall under the ledge opposite, hanging on from there to
 ## the floor. After everything else, so what was laid out before is as it was.
@@ -545,8 +484,8 @@ func _hall_top(cell: Vector2i, far: Vector2i, step: Vector2i) -> float:
 
 
 ## A pair of junction boxes, one on each wall of the hall, high over the ledges,
-## and the cable between them grown over by a vine (a VineStrand, walked as a
-## tightrope as any strung vine is).
+## and the cable between them (a vine is now and then strung between them as well,
+## by MazeFeatures.hang_vines, as from anything on the walls).
 func _junction_boxes(cell: Vector2i, far: Vector2i, step: Vector2i, numbers: RandomNumberGenerator) -> void:
 	var ledge := _style.mezzanine_height
 	var top := _hall_top(cell, far, step)
@@ -570,12 +509,11 @@ func _junction_boxes(cell: Vector2i, far: Vector2i, step: Vector2i, numbers: Ran
 		_put(Prop.JUNCTION_BOX, at, out, Vector3.ONE * big)
 		# (the cable out of its foot)
 		ends.append(at + out * JUNCTION_BOX.z * big * 0.5 + Vector3.DOWN * (JUNCTION_BOX.y * 0.5 + 0.12) * big)
-	# The vine along it hangs as the cable does: as deep as its length makes it (as a VineStrand works it out).
+	# (it hangs as deep as a vine strung there would: MazeFeatures may string one between them)
 	var gap := ends[0].distance_to(ends[1])
 	var long := gap * minf(1.05, 1.0 + 8.0 / 3.0 * pow(2.2 / maxf(gap, 0.01), 2.0))
 	var sag := sqrt(3.0 / 8.0 * gap * maxf(long - gap, 0.0))
 	_layout.add_piece(MazePiece.Kind.WIRE, Transform3D(Basis.IDENTITY, ends[0]), {"to": ends[1], "sag": sag})
-	_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, ends[0] + Vector3.UP * 0.05), {"to": ends[1] + Vector3.UP * 0.05})
 
 
 ## A cable slanting across the hall from high on one wall down to the other.
@@ -679,8 +617,8 @@ func _solid(p: Vector3) -> bool:
 	return false
 
 
-## The ways up are kept clear: ivy, the terraces and the vines' corbels, the pipes and
-## their platforms, the beams the vines hang from.
+## The ways up are kept clear: ivy, the terraces, the brackets, the pipes and their
+## platforms.
 func _keep_clear_of_ways_up(layout: MazeLayout) -> void:
 	for piece in layout.pieces(MazePiece.Kind.IVY):
 		var t := Transform3D(piece.transform.basis.orthonormalized(), piece.position)

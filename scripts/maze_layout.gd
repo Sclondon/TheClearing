@@ -617,11 +617,14 @@ func _lay_out(maze: Maze) -> void:
 		laying_zone = ledge[2] if laying_zone < 0 else laying_zone
 		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1], "ledge": true})
 		laying_zone = was
-	MazeFeatures.lay_out(self, maze, _zones)
+	var features := MazeFeatures.lay_out(self, maze, _zones)
 	Ponds.lay_out(self, maze, _zones)
 	maze.ponds = Ponds.read(self)
-	# (after the ways up and the ponds: the props keep clear of them, and cables hang by the vines)
+	# (after the ways up and the ponds: the props keep clear of them)
 	MazeProps.lay_out(self, maze, _zones)
+	# (and the vines last, hung on whatever is on the walls)
+	features.hang_vines()
+	features.free()
 	_trees(maze)
 	if not maze.round_rings:
 		_add(MazePiece.Kind.BEACON, Transform3D(Basis.IDENTITY, maze.world(maze.exit + maze.exit_side * 2)), {})

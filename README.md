@@ -21,7 +21,7 @@ https://sclondon.github.io/Warren/build/.
 
 - **Move:** a thumb on the left half of the screen (touch), WASD or arrows, or a gamepad stick.
 - **Look:** drag on the right half, the mouse, or the right stick. **Jump:** the jump button, Space, or A.
-- **Cut** a vine strung across a hall (walk it like a tightrope from the stone corbel at its end): the hand button, E or F.
+- **Cut** a vine strung across a hall (walk it like a tightrope from the ledge or bracket it is strung from): the hand button, E or F.
   It falls into two vines hanging from the walls; if you were on it, you keep hold of yours.
 - **Take** what lies about (a grappling hook, a backpack, a spear, a torch, a flare, a map scrap, a rope ladder): the act
   button near it. **Tap a slot** at the top (or 1 to 4; a pad's d-pad and Y) to take a tool into his hand or put it
@@ -121,7 +121,9 @@ leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened i
 - `scripts/maze_features.gd` (`MazeFeatures`): the ways up, chosen from the seed. Terraces of stone against the walls
   like steps for something huge (a lower one 6.5 m up and 3 m deep, often an upper one at 13 m set back above
   it), with climbable ivy up their faces (`scripts/ivy_climb.gd`, `IvyClimb`, a `Ladder`) and sometimes on up to the
-  wall top, where he can walk to the next pier; vines to swing on (`scripts/vine.gd`, `Vine`, a `Rope`, its end
+  wall top, where he can walk to the next pier; stone brackets with ivy up to them; vines to swing on, hung last of
+  all on whatever is on the walls (`hang_vines`, after `MazeProps`; MazeStyle "Vines": mezzanine crossing, hanging
+  and random crossing densities, an overall density and a height limit) (`scripts/vine.gd`, `Vine`, a `Rope`, its end
   2.6 m up so it takes a jump); and rope bridges (`scripts/rope_bridge.gd`, `RopeBridge`: a chain of points that
   sags, dips under anyone in the group `bridge_weights` and sways, its planks moving bodies) between terraces
   across a hall and between wall tops. And grappling hook spots (`scripts/grapple_spots.gd`, `GrappleSpots`, pieces

@@ -1,16 +1,16 @@
 extends SceneTree
 ## Pictures of a hall of the first section with its vines, ivy and cables as the
 ## user's concept slice has them (2026-10-18): ivy up to the ledges, brackets high
-## over them with vines strung across, swept down and hanging from them, vines
-## between the ledges and from a ledge to the floor, junction boxes with a
-## vine-grown cable between them, cables slanting across and down from a ledge.
+## over them, and the vines hung on what is there (MazeStyle "Vines": strung across
+## between the ledges, hanging straight down, strung or swept across from brackets,
+## vents, junction boxes and bare wall), cables slanting across and down from a ledge.
 ## In a real round, the first section set as the user has it (120 m walls 13 m
 ## thick, a ledge 10 m up; pass a second argument for another ledge height).
 ## Looks along the hall from the floor and from a ledge, and across it.
 ##
 ##     godot --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/zone1_vines_shots.gd -- <folder> [ledge m]
 ## (or, for the second argument, a mode: anchors, leaves (close up), wallvines (vines out of the walls),
-## zone2, corners, border, clearing)
+## hung (vines hung on the props: vents, outlets, culverts, junction boxes), zone2, corners, border, clearing)
 
 var main: Node
 
@@ -58,6 +58,10 @@ func _run() -> void:
 		return
 	if args.size() > 1 and args[1] == "leaves":
 		await _leaves(world, folder)
+		quit()
+		return
+	if args.size() > 1 and args[1] == "hung":
+		await _hung(world, folder)
 		quit()
 		return
 	if args.size() > 1 and args[1] == "wallvines":
@@ -459,6 +463,50 @@ func _wall_vines(world: Node, folder: String) -> void:
 				camera.look_at(strand.to)
 				await _shot("%s/wall_vine_swept_%s_%d_root.png" % [folder, tag, shots])
 			shots += 1
+
+
+## The vines hung on the props (the user, 2026-10-18: "the vines are hung on whats
+## there"): in the first two sections, for each kind of prop a vine hangs from or is
+## strung from, one of them, from across the hall a little way off and close up.
+func _hung(world: Node, folder: String) -> void:
+	var maze: Maze = world.maze
+	var layout: MazeLayout = world.get_node("Maze").layout
+	var camera := Camera3D.new()
+	camera.fov = 62.0
+	camera.far = 600.0
+	world.add_child(camera)
+	camera.make_current()
+	var names := {MazeProps.Prop.VENT: "vent", MazeProps.Prop.ROUND_VENT: "round_vent", MazeProps.Prop.OUTLET: "outlet",
+		MazeProps.Prop.CULVERT: "culvert", MazeProps.Prop.JUNCTION_BOX: "junction_box"}
+	var tally := {}
+	for piece in layout.pieces(MazePiece.Kind.PROP):
+		if not names.has(piece.prop) or maze.ring_of(maze.cell_at(piece.position)) > 2:
+			continue
+		var big := piece.basis.get_scale().x
+		# (a vine hanging from it, or strung from it: its top or end within reach of the prop)
+		var hung: MazePiece = null
+		for kind: MazePiece.Kind in [MazePiece.Kind.VINE, MazePiece.Kind.STRAND]:
+			for vine in layout.pieces(kind):
+				if hung == null and vine.position.distance_to(piece.position) < 1.6 * big + 0.3:
+					hung = vine
+		if hung == null:
+			continue
+		var tag := "%s_%s" % [names[piece.prop], "hanging" if hung.kind == MazePiece.Kind.VINE else "strung"]
+		tally[tag] = tally.get(tag, 0) + 1
+		if tally[tag] > 1:
+			continue
+		var out := piece.basis.orthonormalized().z
+		out = Vector3(out.x, 0.0, out.z).normalized()
+		var along := Vector3.UP.cross(out)
+		var eye := Vector3(piece.position.x, maxf(piece.position.y - 1.0, 1.7), piece.position.z)
+		var look := piece.position + (Vector3.DOWN * 2.0 if hung.kind == MazePiece.Kind.VINE else out * 4.0)
+		camera.global_position = eye + out * _room_out(layout, eye, out, 9.0) * 0.8 + along * _room_out(layout, eye, along, 4.0) * 0.7
+		camera.look_at(look)
+		await _shot("%s/hung_%s.png" % [folder, tag])
+		camera.global_position = piece.position + out * 2.2 + along * 1.0 + Vector3.UP * 0.4
+		camera.look_at(piece.position)
+		await _shot("%s/hung_%s_close.png" % [folder, tag])
+	print("vines hung on props in the first two sections: ", tally)
 
 
 ## The ledges along the great walls between sections (the user: "the border walls

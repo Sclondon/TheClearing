@@ -90,14 +90,16 @@ const RING_DROP := 0.14
 const SPOT_SQUARE := 48.0
 
 
-## Lays out the ways up of `maze` as pieces of `layout`: terraces, ivy, vines and bridges.
-## Only in the rings in `zones` (ring -> true), if any are given: each ring is laid
-## out with numbers of its own, so it comes out the same whichever others are.
-static func lay_out(layout: MazeLayout, maze: Maze, zones: Dictionary = {}) -> void:
+## Lays out the ways up of `maze` as pieces of `layout`: terraces, ivy, brackets and
+## bridges. Only in the rings in `zones` (ring -> true), if any are given: each ring
+## is laid out with numbers of its own, so it comes out the same whichever others are.
+## The placer is given back to hang the vines with once the props are laid out too
+## (hang_vines), and then freed by the caller.
+static func lay_out(layout: MazeLayout, maze: Maze, zones: Dictionary = {}) -> MazeFeatures:
 	var placer := MazeFeatures.new()
 	placer._zones = zones
 	placer._place(layout, maze)
-	placer.free()
+	return placer
 
 
 ## Makes the real ivy, vines and bridges of a layout's pieces, under this node.
@@ -194,10 +196,8 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 			if not plan.blocked(cell, step) or _taken.has([cell, step]):
 				continue
 			if _rng.randf() >= _style.amount(&"terrace_share"):
-				# (or ivy up the bare wall from the ground, part of the way, and now and
-				# then a vine hanging from its top: climb the ivy, swing from the vine)
-				var hangs := _rng.randf() < _style.amount(&"hanging_vine_share")
-				if hangs or _rng.randf() < _style.amount(&"wall_ivy_share"):
+				# (or ivy up the bare wall from the ground, part of the way)
+				if _rng.randf() < _style.amount(&"wall_ivy_share"):
 					_taken[[cell, step]] = true
 					var high := minf(_face_top(cell, step) * _rng.randf_range(_style.wall_ivy_height_range.x, _style.wall_ivy_height_range.y), IVY_MOST)
 					# (with a ledge along the walls, a curtain of it hanging from the ledge's
@@ -215,12 +215,6 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 						continue
 					var ivy_along := clampf(_rng.randf_range(-0.3, 0.3) * Maze.CELL, low, high_along)
 					_climb(_edge(cell, step, off_wall, ivy_along), step, high, WALL_IVY)
-					if hangs:
-						var beside := ivy_along + (VINE_BESIDE if ivy_along < 0.0 else -VINE_BESIDE)
-						# (on the wall, well clear of its ends: not tucked into a corner as if hung on a pier)
-						beside = clampf(beside, low, high_along)
-						var out := WALL_VINE_OUT + off_wall
-						_vine(cell, step, out, beside, high, VINE_CLEAR, false, Vine.Held.LIP if off_wall > 0.0 else Vine.Held.FACE, WALL_VINE_OUT)
 				continue
 			var upper := _rng.randf() < _style.upper_terrace_share
 			var along := _rng.randf_range(-0.2, 0.2) * Maze.CELL
@@ -256,41 +250,6 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 					_bridge(a, b)
 
 
-	# Vines strung across halls from wall to wall, sagging (from the cell at one
-	# side of the hall to the one at the other).
-	for i in plan.size * plan.size:
-		var cell := Vector2i(i % plan.size, i / plan.size)
-		var ring := plan.ring_of(cell)
-		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
-			continue
-		if not _enter(ring):
-			continue
-		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
-			if not plan.blocked(cell, -step):
-				continue
-			var far := _far_side(cell, step)
-			if far == NOWHERE or _taken.has([cell, -step]) or _rng.randf() >= _style.amount(&"tightrope_vine_share"):
-				continue
-			var low := minf(_face_top(cell, -step), _face_top(far, step))
-			var high := low * _rng.randf_range(_style.tightrope_vine_height_range.x, _style.tightrope_vine_height_range.y)
-			var along := _rng.randf_range(-0.4, 0.4) * Maze.CELL
-			# (held at its near end on a corbel set into the wall, a curtain of ivy
-			# hanging from its edge to the ground, so that he can climb to it, step
-			# onto it and walk the vine)
-			_taken[[cell, -step]] = true
-			var s := Vector3(-step.x, 0.0, -step.y)
-			var side := Vector3(-s.z, 0.0, s.x)
-			var size := side.abs() * VINE_CORBEL.x + s.abs() * VINE_CORBEL.z + Vector3.UP * VINE_CORBEL.y
-			_layout.add_piece(MazePiece.Kind.TERRACE, Transform3D(Basis.IDENTITY, _edge(cell, -step, VINE_CORBEL.z * 0.5, along) + Vector3.UP * (high - VINE_CORBEL.y)), {"size": size})
-			_lip(cell, -step, VINE_CORBEL.z, along, high, VINE_CORBEL.x)
-			_climb(_edge(cell, -step, VINE_CORBEL.z, along), -step, high, VINE_CORBEL.x * 0.8)
-			var a := _edge(cell, -step, VINE_CORBEL.z, along) + Vector3.UP * high
-			# (along that wall runs the other way)
-			# (on its own length of that wall, not past it where the next cell may be open:
-			# tied to the wall, not to the air)
-			var b := _edge(far, step, VineStrand.TIED_OUT, clampf(-along + _rng.randf_range(-3.0, 3.0), -Maze.CELL * 0.5 + 1.5, Maze.CELL * 0.5 - 1.5)) + Vector3.UP * (high + _rng.randf_range(-1.5, 1.5))
-			_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b, "held_end": Vine.Held.FACE})
-
 	# Sewer pipes through the maze walls, high up, between halls on both sides.
 	for i in plan.size * plan.size:
 		var cell := Vector2i(i % plan.size, i / plan.size)
@@ -311,10 +270,11 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 
 	_levels(plan)
 	_pipe_ivy()
+	_brackets(plan)
 	_spots(plan)
-	_ledge_vines(plan)
-	_wall_vines(plan)
+	_concrete_bridges(plan)
 	_furnish_rooms(plan)
+	# (the vines are hung after the props are laid out: see hang_vines)
 
 
 ## How high a room's column stands over its walls, as the piers where walls meet do.
@@ -523,6 +483,8 @@ func _pipe(cell: Vector2i, step: Vector2i) -> void:
 		# (ivy up to it from the floor in front of the face: laid once the levels of ledge are, see _pipe_ivy)
 		_pipe_climbs.append([end[0], end[1], end[2], high, _maze.ring_of(end[0])])
 		_lip(end[0], end[1], PLATFORM.x, end[2], high, PLATFORM.y)
+		# (a vine may hang from its edge, beside the ivy, or be strung across from it)
+		_ledge_tops.append([end[0], end[1], PLATFORM.x, end[2], high, PLATFORM.y, -1.0, end[2]])
 
 
 ## The ivy up to the pipes' platforms: [cell, step, along, how high, ring] each.
@@ -665,8 +627,7 @@ func _terrace(cell: Vector2i, step: Vector2i, upper: bool, along: float) -> void
 	# Ivy up its face, somewhere along it.
 	var ivy_along := _rng.randf_range(-0.3, 0.3) * length
 	_climb(_edge(cell, step, LOWER.y, ivy_along), step, LOWER.x)
-	if _rng.randf() < _style.amount(&"terrace_vine_share"):
-		_vine(cell, step, LOWER.y + VINE_OUT, _away_from(ivy_along, length), LOWER.x, VINE_CLEAR)
+	_ledge_tops.append([cell, step, LOWER.y, 0.0, LOWER.x, length, 0.0, ivy_along])
 	if not upper:
 		return
 	var upper_length := Maze.CELL * 0.5
@@ -675,9 +636,7 @@ func _terrace(cell: Vector2i, step: Vector2i, upper: bool, along: float) -> void
 	# Ivy from the lower terrace up the upper's face, away from the one below.
 	var up_along := along + (_rng.randf_range(0.1, 0.35) if ivy_along < along else _rng.randf_range(-0.35, -0.1)) * upper_length
 	_climb(_edge(cell, step, UPPER.y, up_along) + Vector3.UP * LOWER.x, step, UPPER.x - LOWER.x)
-	if _rng.randf() < _style.amount(&"terrace_vine_share"):
-		# (out past the lower terrace's edge, over the hall: jumped to from that edge)
-		_vine(cell, step, LOWER.y + 1.0, along + _away_from(up_along - along, upper_length), UPPER.x, LOWER.x + 1.6)
+	_ledge_tops.append([cell, step, UPPER.y, along, UPPER.x, upper_length, LOWER.x, up_along])
 	# And now and then on up the wall to its top (stood off it by the cornice).
 	if not _maze.ring_wall(cell, step) and _rng.randf() < _style.amount(&"ivy_to_wall_top_share"):
 		var top_along := along + _rng.randf_range(-0.3, 0.3) * upper_length
@@ -688,62 +647,8 @@ func _climb(at: Vector3, step: Vector2i, high: float, wide := 1.8) -> void:
 	_layout.add_piece(MazePiece.Kind.IVY, Transform3D(_facing_out(step), at), {"length": high, "width": wide})
 
 
-## A vine `out` from the face (cell, step) and `along` it, down to `end` over the
-## ground: hanging from a beam of stone out of the wall whose top is `top` high,
-## or (`beam` false) from the top of the wall itself, `top` high, held as `held` says
-## (Vine.Held) `from_face` out from what holds it.
-func _vine(cell: Vector2i, step: Vector2i, out: float, along: float, top: float, end: float, beam := true, held: int = Vine.Held.FACE, from_face := 0.0) -> void:
-	if not beam:
-		_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, _edge(cell, step, out, along) + Vector3.UP * top), {"length": top - end, "hold": Vector3(step.x, 0.0, step.y), "held": held, "reach": from_face})
-		return
-	var s := Vector3(step.x, 0.0, step.y)
-	var side := Vector3(-s.z, 0.0, s.x)
-	var reach := out + BEAM.y
-	var size := side.abs() * BEAM.x + s.abs() * reach + Vector3.UP * BEAM.x
-	_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(cell, step, reach * 0.5, along) + Vector3.UP * (top - BEAM.x)), {"size": size})
-	var under := top - BEAM.x
-	_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, _edge(cell, step, out, along) + Vector3.UP * under), {"length": under - end})
-
-
 func _bridge(a: Vector3, b: Vector3) -> void:
 	_layout.add_piece(MazePiece.Kind.BRIDGE, Transform3D(Basis.IDENTITY, a), {"to": b})
-
-
-## Somewhere along a face `length` long for a vine, at least 3 m from the ivy
-## at `ivy` (so that climbing the one he does not catch the other).
-func _away_from(ivy: float, length: float) -> float:
-	var at := _rng.randf_range(-0.42, 0.42) * length
-	if absf(at - ivy) < 3.0:
-		at = ivy + (3.0 if ivy < 0.0 else -3.0)
-	return at
-
-
-# --- The vines of halls with ledges ---
-# (the user's concept of the first section, 2026-10-18: ivy up to the ledges, brackets
-# high over them with vines strung across, swept down and hanging from them, vines
-# strung between the ledges and hanging from their edges to the floor)
-
-## A bracket of stone on the wall over a ledge: how long along the wall, how thick,
-## and how far out at most (no further than the ledge under it, which the ivy up to
-## it and the vine hanging from it stand on).
-const BRACKET := Vector3(4.6, 0.5, 1.2)
-## Along a bracket from its middle (towards the side its ivy is on): where the ivy up
-## to it is, the vine strung across from it, the vine swept down from it, and the
-## vine hanging from it.
-const BRACKET_IVY := 1.4
-const BRACKET_ACROSS := 0.4
-const BRACKET_SWEEP := -0.6
-const BRACKET_VINE := -1.6
-## How far along the wall from the ivy up to a bracket the ivy up to the ledge is.
-const LEDGE_IVY_BESIDE := 4.0
-## How wide the ivy up to a bracket is, and the ivy up to a ledge.
-const BRACKET_IVY_WIDE := 1.6
-const LEDGE_IVY_WIDE := 2.6
-## How high over what is under it the end of a vine hanging down to a ledge or to
-## the floor is: caught standing, or with a hop.
-const LOW_VINE_CLEAR := 1.2
-## How far out past a ledge's edge a vine hanging from it is.
-const LIP_VINE_OUT := 0.3
 
 
 ## Numbers of their own for one feature at one place: so that turning one feature
@@ -754,13 +659,90 @@ static func _numbers(from: int, feature: int) -> RandomNumberGenerator:
 	return made
 
 
-## The vines of the halls with a ledge along both walls (MazeStyle "Climbing":
-## concrete bridges; "Vines": bracket vines, vines strung between the ledges, vines
-## swept down across the hall) and of the walls with a ledge (vines hanging from
-## each level's edge to the level under it or the floor).
-func _ledge_vines(plan: Maze) -> void:
-	# (the faces given ivy up to the first level here: no hanging vine beside it as well)
-	var ivied := {}
+# --- Brackets ---
+# (wall decor, laid out whether or not there are vines: the user, 2026-10-18, "all of
+# the wall decor props should be independent of the vines- the vines are hung on whats there")
+
+## A bracket of stone on the wall over a ledge: how long along the wall, how thick,
+## and how far out at most (no further than the ledge under it, which the ivy up to
+## it stands on). One on a wall with no ledge is a shorter corbel (VINE_CORBEL).
+const BRACKET := Vector3(4.6, 0.5, 1.2)
+## How wide the ivy up to a bracket is, and the ivy up to a ledge.
+const BRACKET_IVY_WIDE := 1.6
+const LEDGE_IVY_WIDE := 2.6
+## How high over what is under it the end of a vine hanging down to a ledge or to
+## the floor is: caught standing, or with a hop.
+const LOW_VINE_CLEAR := 1.2
+## How far out past a ledge's edge a vine hanging from it is.
+const LIP_VINE_OUT := 0.3
+
+## The tops of what stands out of the walls that a vine may hang from or be strung
+## from, other than the ledges: terraces, brackets and the sewer pipes' platforms, as
+## [cell, step, how far out its edge is, along the face, how high its top is, how long
+## it is along the face, how high what is under its edge is (-1: the floor or the
+## ledge under it), where along the face its ivy is].
+var _ledge_tops: Array = []
+## The concrete bridges: [their middle, the way across the hall, the way along their side,
+## how long, how wide, how high their deck's top is, their level, the face at their
+## first end ([cell, step])].
+var _decks: Array = []
+
+
+## The brackets (MazeStyle "Wall decor": brackets): on faces nothing else has, each face
+## with numbers of its own (so that they come and go without moving anything else).
+func _brackets(plan: Maze) -> void:
+	for i in plan.size * plan.size:
+		var cell := Vector2i(i % plan.size, i / plan.size)
+		var ring := plan.ring_of(cell)
+		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
+			continue
+		if not _enter(ring) or _style.amount(&"bracket_share") <= 0.0:
+			continue
+		for step: Vector2i in Maze.STEPS:
+			if not plan.blocked(cell, step) or _taken.has([cell, step]):
+				continue
+			var numbers := _numbers(hash([plan.maze_seed, cell, step]), 40)
+			if numbers.randf() < _style.amount(&"bracket_share"):
+				_bracket(cell, step, numbers)
+
+
+## A bracket of stone on the face (cell, step), as `numbers` say: over the top ledge
+## along it (or the floor), as high as the style says, with ivy up to it from there to
+## one side of its middle.
+func _bracket(cell: Vector2i, step: Vector2i, numbers: RandomNumberGenerator) -> void:
+	var levels := int(_level_counts.get([cell, step], 0))
+	var foot := _level_height(levels - 1) if levels > 0 else 0.0
+	var long := BRACKET.x if levels > 0 else VINE_CORBEL.x
+	var out := minf(BRACKET.z, _level_depth(levels - 1)) if levels > 0 else VINE_CORBEL.z
+	var top := _face_top(cell, step) - MazeBuilder.CORNICE.y - 2.0
+	var range_of := _style.bracket_height_range
+	var high := minf(foot + numbers.randf_range(minf(range_of.x, range_of.y), maxf(range_of.x, range_of.y)), minf(top, foot + IVY_MOST))
+	if high < foot + 3.0:
+		return
+	var way := 1.0 if numbers.randf() < 0.5 else -1.0
+	# (all of it clear of the walls at the face's ends)
+	var lowest := -_room(cell, step, -1) + long * 0.5
+	var highest := _room(cell, step, 1) - long * 0.5
+	if lowest > highest:
+		return
+	var along := numbers.randf_range(lowest, highest)
+	_taken[[cell, step]] = true
+	var s := Vector3(step.x, 0.0, step.y)
+	var side := Vector3(-s.z, 0.0, s.x)
+	var size := side.abs() * long + s.abs() * out + Vector3.UP * BRACKET.y
+	_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(cell, step, out * 0.5, along) + Vector3.UP * (high - BRACKET.y)), {"size": size})
+	_lip(cell, step, out, along, high, long)
+	# (its ivy, up from the floor or the ledge under it to its edge)
+	var ivy_along := along + way * maxf(long * 0.5 - BRACKET_IVY_WIDE * 0.5 - 0.2, 0.0)
+	_climb(_edge(cell, step, out, ivy_along) + Vector3.UP * foot, step, high - foot, BRACKET_IVY_WIDE)
+	_ledge_tops.append([cell, step, out, along, high, long, foot, ivy_along])
+
+
+# --- Concrete bridges ---
+
+## The concrete bridges (MazeStyle "Climbing": concrete bridges) across the halls
+## with a ledge along both walls, at each level over the first.
+func _concrete_bridges(plan: Maze) -> void:
 	for i in plan.size * plan.size:
 		var cell := Vector2i(i % plan.size, i / plan.size)
 		var ring := plan.ring_of(cell)
@@ -775,163 +757,14 @@ func _ledge_vines(plan: Maze) -> void:
 			var far := _far_side(cell, step)
 			if far == NOWHERE or not _level_counts.has([far, step]):
 				continue
-			# (one number drawn for the hall whatever is on, each feature's own numbers from it)
+			# (one number drawn for the hall whatever is on, each level's own numbers from it)
 			var drawn := _rng.randi()
 			var one := [cell, -step]
 			var other := [far, step]
-			var common := mini(int(_level_counts[one]), int(_level_counts[other]))
-			if _numbers(drawn, 0).randf() < _style.amount(&"bracket_vine_share"):
-				_brackets(one, other, _numbers(drawn, 1), ivied)
-			for level in common:
+			for level in mini(int(_level_counts[one]), int(_level_counts[other])):
 				var numbers := _numbers(drawn, 10 + level)
-				# (over the first level: arched concrete bridges between ledges at the same height)
 				if level > 0 and numbers.randf() < _style.amount(&"concrete_bridge_share"):
-					_concrete_bridge(one, other, level, numbers, ivied)
-				numbers = _numbers(drawn, 20 + level)
-				if numbers.randf() < _style.amount(&"ledge_strung_vine_share"):
-					_ledge_strand(one, other, level, numbers)
-				# (down from a level's edge across to the far ledge one level under it, either way)
-				numbers = _numbers(drawn, 30 + level)
-				if level > 0 and numbers.randf() < _style.amount(&"swept_vine_share"):
-					if numbers.randf() < 0.5:
-						_swept_vine(one, other, level, numbers)
-					else:
-						_swept_vine(other, one, level, numbers)
-	# Vines hanging from the ledges' edges down to the level under them, or the floor.
-	for i in plan.size * plan.size:
-		var cell := Vector2i(i % plan.size, i / plan.size)
-		var ring := plan.ring_of(cell)
-		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
-			continue
-		if not _enter(ring) or _style.mezzanine_height <= 0.0:
-			continue
-		for step: Vector2i in Maze.STEPS:
-			if not _level_counts.has([cell, step]):
-				continue
-			var drawn := _rng.randi()
-			for level in int(_level_counts[[cell, step]]):
-				var numbers := _numbers(drawn, level)
-				if numbers.randf() >= _style.amount(&"ledge_hanging_vine_share") or _taken.has([cell, step]) or (level == 0 and ivied.has([cell, step])):
-					continue
-				var room := minf(_room(cell, step, -1), _room(cell, step, 1)) - 1.0
-				if room < 0.0:
-					continue
-				var top := _level_height(level)
-				var under := _level_height(level - 1) if level > 0 else 0.0
-				var along := numbers.randf_range(-room, room)
-				_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, _edge(cell, step, _level_depth(level) + LIP_VINE_OUT, along) + Vector3.UP * top),
-					{"length": top - under - LOW_VINE_CLEAR, "hold": Vector3(step.x, 0.0, step.y), "held": Vine.Held.LIP, "reach": LIP_VINE_OUT})
-
-
-## A pair of brackets across a hall, on the faces `one` and `other` ([cell, step]
-## each): on one of them (its own ivy and vines) ivy from the floor to the ledge's
-## edge and from the ledge up to the bracket, a vine hanging from the bracket to the
-## ledge, and vines strung from it across to the other bracket and down to the far
-## ledge's edge; ivy to the ledge under the other bracket too.
-func _brackets(one: Array, other: Array, numbers: RandomNumberGenerator, ivied: Dictionary) -> void:
-	# (the bracket with the ivy: either, of those whose face nothing else has)
-	var near := one
-	var far := other
-	if numbers.randf() < 0.5:
-		near = other
-		far = one
-	if _taken.has(near):
-		var swap := near
-		near = far
-		far = swap
-	if _taken.has(near):
-		return
-	var ledge := _style.mezzanine_height
-	var depth := _style.mezzanine_depth
-	var out := minf(BRACKET.z, depth)
-	var top := minf(_face_top(near[0], near[1]), _face_top(far[0], far[1])) - MazeBuilder.CORNICE.y - 2.0
-	var high := minf(ledge + numbers.randf_range(_style.bracket_height_range.x, _style.bracket_height_range.y), top)
-	if high < ledge + 3.0:
-		return
-	# (which way along the wall its ivy is; everything of it clear of the walls at the ends)
-	var way := 1.0 if numbers.randf() < 0.5 else -1.0
-	var parts := [BRACKET.x * 0.5, -BRACKET.x * 0.5, BRACKET_IVY + LEDGE_IVY_BESIDE + LEDGE_IVY_WIDE * 0.5]
-	var reach_low := 0.0
-	var reach_high := 0.0
-	for part: float in parts:
-		reach_low = minf(reach_low, part * way)
-		reach_high = maxf(reach_high, part * way)
-	var lowest := -_room(near[0], near[1], -1) - reach_low
-	var highest := _room(near[0], near[1], 1) - reach_high
-	if lowest > highest:
-		return
-	var along := numbers.randf_range(lowest, highest)
-	_bracket(near[0], near[1], along, high, out)
-	# Ivy up from the floor to the ledge's edge, and on up from the ledge to the bracket.
-	_climb(_edge(near[0], near[1], depth, along + way * (BRACKET_IVY + LEDGE_IVY_BESIDE)), near[1], ledge, LEDGE_IVY_WIDE)
-	_climb(_edge(near[0], near[1], out, along + way * BRACKET_IVY) + Vector3.UP * ledge, near[1], high - ledge, BRACKET_IVY_WIDE)
-	ivied[near] = true
-	# A vine hanging from it down to the ledge (over the ledge, a step in from its edge).
-	var under := high - BRACKET.y
-	_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, _edge(near[0], near[1], out * 0.6, along + way * BRACKET_VINE) + Vector3.UP * under),
-		{"length": under - ledge - LOW_VINE_CLEAR})
-	# The bracket across the hall (along that wall runs the other way), about as high.
-	var far_room := Vector2(_room(far[0], far[1], -1), _room(far[0], far[1], 1)) - Vector2.ONE * BRACKET.x * 0.5
-	if -far_room.x > far_room.y:
-		return
-	var far_along := clampf(-along + numbers.randf_range(-1.5, 1.5), -far_room.x, far_room.y)
-	var far_high := minf(high + numbers.randf_range(-1.0, 1.0), top)
-	_bracket(far[0], far[1], far_along, far_high, out)
-	# (ivy up to the ledge under it, if nothing else is on that face)
-	if not _taken.has(far):
-		var ivy_along := clampf(far_along - way * LEDGE_IVY_BESIDE * 0.5, -_room(far[0], far[1], -1) + LEDGE_IVY_WIDE * 0.5, _room(far[0], far[1], 1) - LEDGE_IVY_WIDE * 0.5)
-		_climb(_edge(far[0], far[1], depth, ivy_along), far[1], ledge, LEDGE_IVY_WIDE)
-		ivied[far] = true
-	# Vines strung from it: across to the other bracket, and swept down to the far ledge's edge.
-	var a := _edge(near[0], near[1], out, along + way * BRACKET_ACROSS) + Vector3.UP * high
-	var b := _edge(far[0], far[1], out, far_along) + Vector3.UP * far_high
-	_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b})
-	var sweep_room := Vector2(_room(far[0], far[1], -1), _room(far[0], far[1], 1)) - Vector2.ONE * 1.0
-	var sweep_along := clampf(-along + way * numbers.randf_range(2.0, 4.0), -sweep_room.x, sweep_room.y)
-	var c := _edge(near[0], near[1], out, along + way * BRACKET_SWEEP) + Vector3.UP * high
-	var d := _edge(far[0], far[1], depth, sweep_along) + Vector3.UP * ledge
-	_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, c), {"to": d})
-
-
-## A bracket of stone on the face (cell, step), `along` it, its top `high`, `out`
-## from the wall.
-func _bracket(cell: Vector2i, step: Vector2i, along: float, high: float, out: float) -> void:
-	var s := Vector3(step.x, 0.0, step.y)
-	var side := Vector3(-s.z, 0.0, s.x)
-	var size := side.abs() * BRACKET.x + s.abs() * out + Vector3.UP * BRACKET.y
-	_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(cell, step, out * 0.5, along) + Vector3.UP * (high - BRACKET.y)), {"size": size})
-
-
-## A vine strung across the hall between the edges of the ledges at `level` along
-## the faces `one` and `other` ([cell, step] each): under the ledges of the first
-## section, across the floor's channel and over the top ledges of the second.
-func _ledge_strand(one: Array, other: Array, level: int, numbers: RandomNumberGenerator) -> void:
-	var high := _level_height(level)
-	var deep := _level_depth(level)
-	var room := Vector2(_room(one[0], one[1], -1), _room(one[0], one[1], 1)) - Vector2.ONE * 1.0
-	var far_room := Vector2(_room(other[0], other[1], -1), _room(other[0], other[1], 1)) - Vector2.ONE * 1.0
-	if -room.x > room.y or -far_room.x > far_room.y:
-		return
-	var along := numbers.randf_range(-room.x, room.y)
-	var far_along := clampf(-along + numbers.randf_range(-2.0, 2.0), -far_room.x, far_room.y)
-	var a := _edge(one[0], one[1], deep, along) + Vector3.UP * high
-	var b := _edge(other[0], other[1], deep, far_along) + Vector3.UP * high
-	_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b})
-
-
-## A vine swept down across the hall from the edge of the ledge at `level` along
-## the face `from` to the edge of the one a level under it along `to`.
-func _swept_vine(from: Array, to: Array, level: int, numbers: RandomNumberGenerator) -> void:
-	var room := Vector2(_room(from[0], from[1], -1), _room(from[0], from[1], 1)) - Vector2.ONE * 1.0
-	var far_room := Vector2(_room(to[0], to[1], -1), _room(to[0], to[1], 1)) - Vector2.ONE * 1.0
-	if -room.x > room.y or -far_room.x > far_room.y:
-		return
-	var along := numbers.randf_range(-room.x, room.y)
-	var way := 1.0 if numbers.randf() < 0.5 else -1.0
-	var far_along := clampf(-along + way * numbers.randf_range(2.0, 4.0), -far_room.x, far_room.y)
-	var a := _edge(from[0], from[1], _level_depth(level), along) + Vector3.UP * _level_height(level)
-	var b := _edge(to[0], to[1], _level_depth(level - 1), far_along) + Vector3.UP * _level_height(level - 1)
-	_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b})
+					_concrete_bridge(one, other, level, numbers)
 
 
 ## How thick a concrete bridge's deck is over its arch, metres, and how long at most
@@ -947,9 +780,8 @@ const BRIDGE_IVY := 2.0
 ## first) along the faces `one` and `other` ([cell, step] each): a flat deck flush
 ## with the ledges, its underside arched (blocks of the ledges' concrete, each as
 ## deep as the arch is there, their edges worn round as the walls' are), with ivy up
-## to it at each end from the floor, level by level, and now and then a vine hanging
-## from its side. Solid, walked across.
-func _concrete_bridge(one: Array, other: Array, level: int, numbers: RandomNumberGenerator, ivied: Dictionary) -> void:
+## to it at each end from the floor, level by level. Solid, walked across.
+func _concrete_bridge(one: Array, other: Array, level: int, numbers: RandomNumberGenerator) -> void:
 	var wide := _style.concrete_bridge_width
 	var high := _level_height(level)
 	var deep := _level_depth(level)
@@ -998,19 +830,26 @@ func _concrete_bridge(one: Array, other: Array, level: int, numbers: RandomNumbe
 			var at := clampf(float(end[1]) + way * (wide * 0.5 + BRIDGE_IVY + (j % 2) * 3.0), -limit.x, limit.y)
 			var foot := _level_height(j - 1) if j > 0 else 0.0
 			_climb(_edge(face[0], face[1], _level_depth(j), at) + Vector3.UP * foot, face[1], _level_height(j) - foot, LEDGE_IVY_WIDE)
-		ivied[face] = true
-	# A vine hanging from its side, down past the level under it (to the one under that, or the floor).
-	if numbers.randf() < _style.amount(&"bridge_hanging_vine_share"):
-		var way := 1.0 if numbers.randf() < 0.5 else -1.0
-		var top := middle + across * long * numbers.randf_range(-0.2, 0.2) + side * way * (wide * 0.5 + 0.25)
-		var end := _level_height(level - 2) if level >= 2 else 0.0
-		_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, top), {"length": high - end - LOW_VINE_CLEAR, "hold": -side * way, "held": Vine.Held.LIP, "reach": 0.25})
+	_decks.append([middle, across, side, long, wide, high, level, one])
 
 
-# --- Vines out of the walls ---
-# (the user, 2026-10-18: "Vines should be able to connect directly to the wall and hang
-# a random amount down across the hall as well as the designated anchor points")
+# --- The vines ---
+# (the user, 2026-10-18: "the vines are hung on whats there. There should be 3 sliders-
+# one for mezzanine crossing density, one for hanging straight down vine desnity, a
+# thirdn for random corssing vine desnity ... and fourth and final for overall vine
+# density. There hsould also be a single height limit as a percentage of hte wall height")
 
+## What a vine is hung on: the edge of a ledge, bare wall, or a thing on the wall (a
+## terrace, a bracket, a sewer pipe's platform, a concrete bridge's side, a vent, an
+## outlet, a culvert, a junction box).
+enum Anchor { LEDGE, WALL, THING }
+## How strongly each pulls vines to it, hanging and strung across: the hanging and
+## random crossing densities are the chance for each ledge edge (at each level); bare
+## wall faces have this much of it, things on the walls this much (at most every one).
+const PULL := {Anchor.LEDGE: Vector2(1.0, 1.0), Anchor.WALL: Vector2(0.3, 0.3), Anchor.THING: Vector2(4.0, 1.5)}
+## How high up its band of wall a vine out of bare wall comes out: lowest and highest,
+## metres over the floor (or the top ledge under it).
+const WALL_VINE_HEIGHTS := Vector2(4.0, 14.0)
 ## How far out from a wall's face a vine grown out of it hangs, metres (its stem comes
 ## out of the face and bends down to there).
 const WALL_GROWN_OUT := 0.35
@@ -1022,23 +861,63 @@ const WALL_VINE_ENDS := 1.5
 const GROUND_ROOT := 2.5
 ## How far clear of a ledge a vine swept across the hall keeps, metres.
 const LEDGE_CLEAR := 0.4
+## The props on the walls vines are hung on.
+const HUNG_ON := [MazeProps.Prop.VENT, MazeProps.Prop.ROUND_VENT, MazeProps.Prop.OUTLET, MazeProps.Prop.CULVERT, MazeProps.Prop.JUNCTION_BOX]
+
+## [cell, step] -> the tops of the things on that face a vine strung across to it may
+## be tied to: [where, how far along the face].
+var _targets := {}
 
 
-## The vines grown straight out of the walls (MazeStyle "Vines": vines out of the
-## walls), after everything else and on faces nothing else has taken, each face
-## with numbers of its own: out of the face somewhere along it (under the first
-## ledge, or over the top one, where it has ledges), and hanging a random way down,
-## or swept down across the hall to the far wall or to the floor part way across.
-func _wall_vines(plan: Maze) -> void:
-	# (where there are things on the walls already, by cell, to keep clear of)
+## Hangs the vines, by each section's MazeStyle "Vines", on what was laid out: by this
+## (ledges, terraces, brackets, sewer pipes, concrete bridges) and by MazeProps (vents,
+## outlets, culverts, junction boxes), and on bare wall (then the placer is freed). Each
+## place a vine may hang has numbers of its own, apart from everything else's, so that
+## the vines' rules change only the vines.
+func hang_vines() -> void:
+	# (where there are things on the walls already, to keep clear of)
 	var near := {}
-	for piece in _layout.pieces(MazePiece.Kind.VINE):
-		_note(near, piece.position, 0.0)
-	for piece in _layout.pieces(MazePiece.Kind.STRAND):
-		_note(near, piece.position, 0.0)
-		_note(near, piece.bridge_end(), 0.0)
 	for piece in _layout.pieces(MazePiece.Kind.IVY):
 		_note(near, piece.position, piece.width * 0.5)
+	for piece in _layout.pieces(MazePiece.Kind.PROP):
+		if piece.prop in HUNG_ON:
+			_note(near, piece.position, piece.basis.get_scale().x * 0.6)
+	_mezzanine_crossings(near)
+	for anchor: Dictionary in _anchors():
+		_hang_on(anchor, near)
+
+
+## How many vines there are of a density `chance` at one place, as `numbers` say (its
+## first number always drawn): the whole number of it, and one more by chance; one at
+## most if not `many`.
+static func _count(chance: float, numbers: RandomNumberGenerator, many: bool) -> int:
+	var roll := numbers.randf()
+	var count := floori(maxf(chance, 0.0))
+	if roll < chance - count:
+		count += 1
+	return count if many else mini(count, 1)
+
+
+## How high vines may go on the face (cell, step): MazeStyle.vine_height_limit of its height.
+func _limit(cell: Vector2i, step: Vector2i) -> float:
+	return _face_top(cell, step) * _style.vine_height_limit / 100.0
+
+
+## How high what is under a point `x` out from the face (cell, step) and `y` high is:
+## the top of the highest level of ledge along it under it that reaches out past it, or the floor.
+func _foot_under(cell: Vector2i, step: Vector2i, x: float, y: float) -> float:
+	var foot := 0.0
+	for level in int(_level_counts.get([cell, step], 0)):
+		if _level_height(level) < y - 0.5 and _level_depth(level) > x + 0.15:
+			foot = maxf(foot, _level_height(level))
+	return foot
+
+
+## Vines strung across the halls with ledges along both walls, edge to edge
+## (MazeStyle.mezzanine_crossing_density): at the same level, and swept down from a
+## level to the one under it on the far side; none over the height limit.
+func _mezzanine_crossings(near: Dictionary) -> void:
+	var plan := _maze
 	for i in plan.size * plan.size:
 		var cell := Vector2i(i % plan.size, i / plan.size)
 		var ring := plan.ring_of(cell)
@@ -1046,62 +925,333 @@ func _wall_vines(plan: Maze) -> void:
 			continue
 		if not _enter(ring):
 			continue
-		for step: Vector2i in Maze.STEPS:
-			if not plan.blocked(cell, step) or _taken.has([cell, step]):
+		var chance := _style.mezzanine_crossing_density * _style.amount(&"vine_density")
+		if chance <= 0.0:
+			continue
+		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+			if not _level_counts.has([cell, -step]):
 				continue
-			var numbers := _numbers(_rng.randi(), 0)
-			if numbers.randf() < _style.amount(&"wall_vine_share"):
-				_layout.laying_zone = ring
-				_wall_vine(cell, step, numbers, near)
-				_layout.laying_zone = -1
+			var far := _far_side(cell, step)
+			if far == NOWHERE or not _level_counts.has([far, step]):
+				continue
+			var one := [cell, -step]
+			var other := [far, step]
+			var counts := [int(_level_counts[one]), int(_level_counts[other])]
+			var limit := minf(_limit(cell, -step), _limit(far, step))
+			var hall := hash([plan.maze_seed, cell, step])
+			_layout.laying_zone = ring
+			for level in maxi(counts[0], counts[1]):
+				if _level_height(level) > limit:
+					break
+				# (at the same level, both sides)
+				var numbers := _numbers(hall, 20 + level)
+				if level < mini(counts[0], counts[1]):
+					for k in _count(chance, numbers, true):
+						_ledge_strand(one, other, level, numbers, near)
+				# (down from this level on one side to the one under it on the other)
+				numbers = _numbers(hall, 30 + level)
+				var ways: Array = []
+				if level > 0 and counts[0] > level and counts[1] >= level:
+					ways.append([one, other])
+				if level > 0 and counts[1] > level and counts[0] >= level:
+					ways.append([other, one])
+				for k in _count(chance, numbers, true):
+					if not ways.is_empty():
+						var way: Array = ways[numbers.randi() % ways.size()]
+						_swept_vine(way[0], way[1], level, numbers, near)
+			_layout.laying_zone = -1
 
 
-## Notes something on a wall at `at`, `wide` along it either side, in `near` (cell -> [[where, how wide]]).
+## A vine strung across the hall between the edges of the ledges at `level` along
+## the faces `one` and `other` ([cell, step] each): under the ledges of the first
+## section, across the floor's channel and over the top ledges of the second.
+func _ledge_strand(one: Array, other: Array, level: int, numbers: RandomNumberGenerator, near: Dictionary) -> void:
+	var high := _level_height(level)
+	var deep := _level_depth(level)
+	var room := Vector2(_room(one[0], one[1], -1), _room(one[0], one[1], 1)) - Vector2.ONE * 1.0
+	var far_room := Vector2(_room(other[0], other[1], -1), _room(other[0], other[1], 1)) - Vector2.ONE * 1.0
+	if -room.x > room.y or -far_room.x > far_room.y:
+		return
+	var along := numbers.randf_range(-room.x, room.y)
+	var far_along := clampf(-along + numbers.randf_range(-2.0, 2.0), -far_room.x, far_room.y)
+	var a := _edge(one[0], one[1], deep, along) + Vector3.UP * high
+	var b := _edge(other[0], other[1], deep, far_along) + Vector3.UP * high
+	_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b})
+	_note(near, a, 0.0)
+	_note(near, b, 0.0)
+
+
+## A vine swept down across the hall from the edge of the ledge at `level` along
+## the face `from` to the edge of the one a level under it along `to`.
+func _swept_vine(from: Array, to: Array, level: int, numbers: RandomNumberGenerator, near: Dictionary) -> void:
+	var room := Vector2(_room(from[0], from[1], -1), _room(from[0], from[1], 1)) - Vector2.ONE * 1.0
+	var far_room := Vector2(_room(to[0], to[1], -1), _room(to[0], to[1], 1)) - Vector2.ONE * 1.0
+	if -room.x > room.y or -far_room.x > far_room.y:
+		return
+	var along := numbers.randf_range(-room.x, room.y)
+	var way := 1.0 if numbers.randf() < 0.5 else -1.0
+	var far_along := clampf(-along + way * numbers.randf_range(2.0, 4.0), -far_room.x, far_room.y)
+	var a := _edge(from[0], from[1], _level_depth(level), along) + Vector3.UP * _level_height(level)
+	var b := _edge(to[0], to[1], _level_depth(level - 1), far_along) + Vector3.UP * _level_height(level - 1)
+	_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b})
+	_note(near, a, 0.0)
+	_note(near, b, 0.0)
+
+
+## Everything a vine may be hung on, in the sections being laid out, as dictionaries:
+## its section ("ring"), the face it is on ("cell", "step"), what it is ("kind", an
+## Anchor), where on it a vine is held ("at": on its edge, or on the wall's face), the
+## way out of what holds it ("out") and along it ("side"), how far along it either way
+## a vine may be ("span"), how it is held ("held", Vine.Held), how far out from it a
+## vine hanging from it hangs ("reach"), how high what is under it is ("foot"), whether
+## a vine hanging from it reaches all the way down to that ("full"), whether one may be
+## strung across from it ("crosses"), where its ivy is along it ("ivy"), and its numbers' seed ("key").
+func _anchors() -> Array:
+	var anchors: Array = []
+	var seed_of := func(kind: int, at: Vector3) -> int: return hash([_maze.maze_seed, kind, at.snappedf(0.01)])
+	# The edges of the ledges, at each level.
+	for face: Array in _level_counts:
+		var cell: Vector2i = face[0]
+		var step: Vector2i = face[1]
+		var ring := _maze.ring_of(cell)
+		if not _enter(ring):
+			continue
+		var span := minf(_room(cell, step, -1), _room(cell, step, 1)) - 1.0
+		if span < 0.0:
+			continue
+		for level in int(_level_counts[face]):
+			var at := _edge(cell, step, _level_depth(level), 0.0) + Vector3.UP * _level_height(level)
+			anchors.append(_anchor(ring, cell, step, Anchor.LEDGE, at, span, Vine.Held.LIP, LIP_VINE_OUT,
+				_level_height(level - 1) if level > 0 else 0.0, true, hash([_maze.maze_seed, cell, step, level])))
+	# Terraces, brackets and the sewer pipes' platforms.
+	for top: Array in _ledge_tops:
+		var cell: Vector2i = top[0]
+		var step: Vector2i = top[1]
+		var ring := _maze.ring_of(cell)
+		if not _enter(ring):
+			continue
+		var at := _edge(cell, step, top[2], top[3]) + Vector3.UP * float(top[4])
+		var foot: float = top[6] if float(top[6]) >= 0.0 else _foot_under(cell, step, float(top[2]) + LIP_VINE_OUT, at.y)
+		var anchor := _anchor(ring, cell, step, Anchor.THING, at, float(top[5]) * 0.5 - 0.5, Vine.Held.LIP, LIP_VINE_OUT, foot, true, seed_of.call(Anchor.THING, at))
+		anchor["ivy"] = float(top[7]) - float(top[3])
+		anchors.append(anchor)
+		_target(cell, step, at)
+	# The sides of the concrete bridges (vines hang from them, none is strung from them).
+	for deck: Array in _decks:
+		var face: Array = deck[7]
+		var ring := _maze.ring_of(face[0])
+		if not _enter(ring):
+			continue
+		var level: int = deck[6]
+		for way: float in [1.0, -1.0]:
+			var at: Vector3 = deck[0] + deck[2] * way * float(deck[4]) * 0.5
+			at.y = deck[5]
+			var anchor := _anchor(ring, face[0], face[1], Anchor.THING, at, float(deck[3]) * 0.2, Vine.Held.LIP, 0.25,
+				_level_height(level - 2) if level >= 2 else 0.0, true, seed_of.call(Anchor.THING, at))
+			anchor["out"] = deck[2] * way
+			anchor["side"] = deck[1]
+			anchor["crosses"] = false
+			anchors.append(anchor)
+	# Vents, outlets, culverts and junction boxes (MazeProps): over the top of each.
+	for piece in _layout.pieces(MazePiece.Kind.PROP):
+		if not (piece.prop in HUNG_ON):
+			continue
+		var out := piece.basis.orthonormalized().z
+		out = Vector3(out.x, 0.0, out.z).normalized()
+		var cell := _maze.cell_at(piece.position + out * 0.6)
+		var step := Vector2i(-roundi(out.x), -roundi(out.z))
+		var ring := _maze.ring_of(cell)
+		if ring < 1 or ring > _maze.rings or _maze.solid.has(cell) or not _maze.blocked(cell, step) or not _enter(ring):
+			continue
+		var big := piece.basis.get_scale().x
+		# (its top's front edge, and how wide it is)
+		var top: Vector2 = {MazeProps.Prop.VENT: Vector2(0.45, 0.1), MazeProps.Prop.ROUND_VENT: Vector2(0.56, 0.1),
+			MazeProps.Prop.OUTLET: Vector2(MazeProps.OUTLET_RADIUS, MazeProps.OUTLET_REACH), MazeProps.Prop.CULVERT: Vector2(1.44, 0.18),
+			MazeProps.Prop.JUNCTION_BOX: Vector2(0.5, 0.33)}[piece.prop] * big
+		var half: float = {MazeProps.Prop.VENT: 0.6, MazeProps.Prop.ROUND_VENT: 0.4, MazeProps.Prop.OUTLET: 0.0,
+			MazeProps.Prop.CULVERT: 1.0, MazeProps.Prop.JUNCTION_BOX: 0.35}[piece.prop] * big
+		var at := piece.position + Vector3.UP * top.x + out * top.y
+		var x := (at - _edge(cell, step, 0.0, 0.0)).dot(out)
+		var anchor := _anchor(ring, cell, step, Anchor.THING, at, half * 0.6, Vine.Held.LIP, 0.1, _foot_under(cell, step, x + 0.1, at.y), false, seed_of.call(Anchor.THING, at))
+		anchor["out"] = out
+		anchors.append(anchor)
+		_target(cell, step, at)
+	# Bare wall: a place on each face nothing else has, as its own numbers say (under
+	# the first ledge, or over the top one, where it has ledges).
+	for i in _maze.size * _maze.size:
+		var cell := Vector2i(i % _maze.size, i / _maze.size)
+		var ring := _maze.ring_of(cell)
+		if ring < 1 or ring > _maze.rings or _maze.entrances.has(cell) or _maze.solid.has(cell) or not _enter(ring):
+			continue
+		for step: Vector2i in Maze.STEPS:
+			if not _maze.blocked(cell, step) or _taken.has([cell, step]):
+				continue
+			var numbers := _numbers(hash([_maze.maze_seed, cell, step]), 50)
+			var levels := int(_level_counts.get([cell, step], 0))
+			var band := _band(cell, step, levels, levels > 0 and numbers.randf() < 0.5)
+			var high := minf(band.x + numbers.randf_range(WALL_VINE_HEIGHTS.x, WALL_VINE_HEIGHTS.y), band.y)
+			var lowest := -_room(cell, step, -1) + WALL_VINE_ENDS
+			var highest := _room(cell, step, 1) - WALL_VINE_ENDS
+			if high - band.x < 3.0 or lowest > highest:
+				continue
+			var at := _edge(cell, step, 0.0, numbers.randf_range(lowest, highest)) + Vector3.UP * high
+			anchors.append(_anchor(ring, cell, step, Anchor.WALL, at, 0.0, Vine.Held.FACE, WALL_GROWN_OUT, band.x, false, seed_of.call(Anchor.WALL, at)))
+	return anchors
+
+
+func _anchor(ring: int, cell: Vector2i, step: Vector2i, kind: Anchor, at: Vector3, span: float, held: int, reach: float, foot: float, full: bool, key: int) -> Dictionary:
+	var s := Vector3(step.x, 0.0, step.y)
+	return {"ring": ring, "cell": cell, "step": step, "kind": kind, "at": at, "out": -s, "side": Vector3(-s.z, 0.0, s.x),
+		"span": maxf(span, 0.0), "held": held, "reach": reach, "foot": foot, "full": full, "crosses": true, "ivy": INF, "key": key}
+
+
+## Notes the top of a thing on the face (cell, step) at `at`, for vines strung across to it.
+func _target(cell: Vector2i, step: Vector2i, at: Vector3) -> void:
+	if not _targets.has([cell, step]):
+		_targets[[cell, step]] = []
+	_targets[[cell, step]].append(at)
+
+
+## The vines on `anchor` (see _anchors), as its section's densities say, each with numbers
+## of its own: hanging straight down from it, and strung or swept across the hall from it.
+func _hang_on(anchor: Dictionary, near: Dictionary) -> void:
+	var ring: int = anchor.ring
+	if not _enter(ring):
+		return
+	var overall := _style.amount(&"vine_density")
+	var at: Vector3 = anchor.at
+	if overall <= 0.0 or at.y > _limit(anchor.cell, anchor.step):
+		return
+	var pull: Vector2 = PULL[anchor.kind]
+	var many: bool = anchor.span > 1.0
+	var hang_numbers := _numbers(anchor.key, 1)
+	var cross_numbers := _numbers(anchor.key, 2)
+	var hangs := _count(_style.hanging_vine_density * overall * pull.x, hang_numbers, many)
+	var crosses := _count(_style.random_crossing_density * overall * pull.y, cross_numbers, many)
+	_layout.laying_zone = ring
+	var crossed := false
+	if anchor.crosses:
+		for k in crosses:
+			crossed = _cross(anchor, cross_numbers, near) or crossed
+	# (out of bare wall a vine either hangs or is strung across, not both from one place)
+	if not (crossed and anchor.kind == Anchor.WALL):
+		for k in hangs:
+			_hang(anchor, hang_numbers, near)
+	_layout.laying_zone = -1
+
+
+## Where along `anchor` a vine is, as `numbers` say: anywhere along it, clear of its ivy.
+func _along(anchor: Dictionary, numbers: RandomNumberGenerator) -> float:
+	var span: float = anchor.span
+	var x := numbers.randf_range(-span, span) if span > 0.0 else 0.0
+	var ivy: float = anchor.ivy
+	if is_finite(ivy) and absf(x - ivy) < 1.6:
+		x = clampf(ivy + (1.6 if ivy < 0.0 else -1.6), -span, span)
+	return x
+
+
+## A vine hanging straight down from `anchor`: to a hop over what is under it, or (out
+## of bare wall, or over a prop) a random way down.
+func _hang(anchor: Dictionary, numbers: RandomNumberGenerator, near: Dictionary) -> void:
+	var out: Vector3 = anchor.out
+	var top: Vector3 = anchor.at + anchor.side * _along(anchor, numbers) + out * float(anchor.reach)
+	var longest: float = top.y - float(anchor.foot) - LOW_VINE_CLEAR
+	if longest < 1.5:
+		return
+	# (things on the walls are hung on where they are; elsewhere, clear of what is there)
+	if anchor.kind != Anchor.THING and not _clear_of(near, top, anchor.ring):
+		return
+	var length := longest if anchor.full else numbers.randf_range(minf(2.0, longest), longest)
+	_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, top), {"length": length, "hold": -out, "held": anchor.held, "reach": anchor.reach})
+	_note(near, top, 0.0)
+
+
+## A vine strung across the hall from `anchor`: to a thing on the far wall about
+## across from it (a bracket, a vent, a junction box...), or to the far wall itself,
+## lower down (higher, from low down), or swept down to the floor part way across.
+## Clear of the ledges both sides, and under the height limit. Whether there was room.
+func _cross(anchor: Dictionary, numbers: RandomNumberGenerator, near: Dictionary) -> bool:
+	var cell: Vector2i = anchor.cell
+	var step: Vector2i = anchor.step
+	var across := -step
+	var ring: int = anchor.ring
+	var held: int = anchor.held
+	var a: Vector3 = anchor.at + anchor.side * _along(anchor, numbers) + (anchor.out * VineStrand.TIED_OUT if held == Vine.Held.FACE else Vector3.ZERO)
+	var levels := int(_level_counts.get([cell, step], 0))
+	var far := _far_side(cell, across)
+	var far_levels := int(_level_counts.get([far, across], 0)) if far != NOWHERE else 0
+	# (between ledges both sides: a mezzanine crossing, not this)
+	if anchor.kind == Anchor.LEDGE and far_levels > 0:
+		return false
+	if anchor.kind == Anchor.WALL and not _clear_of(near, a, ring):
+		return false
+	var s := Vector3(step.x, 0.0, step.y)
+	var wide := Maze.CELL * 0.8
+	if far != NOWHERE:
+		wide = absf((_edge(far, across, 0.0, 0.0) - _edge(cell, step, 0.0, 0.0)).dot(s))
+	var along := (a - _edge(cell, step, 0.0, 0.0)).dot(anchor.side)
+	var to_floor := far == NOWHERE or numbers.randf() < 0.35
+	var b := Vector3.INF
+	var held_end := Vine.Held.FACE
+	if not to_floor:
+		var far_limit := minf(_limit(far, across), _face_top(far, across) - MazeBuilder.CORNICE.y - 1.0)
+		# (lower down, or from low down up)
+		var lowest := a.y - 9.0
+		var highest := (a.y + 8.0) if a.y < 6.0 else a.y + 1.5
+		# (a thing on the far wall about across from it, now and then)
+		var tie := numbers.randf() < 0.7
+		var far_side := Vector3(-across.y, 0.0, across.x)
+		var best := INF
+		for target: Vector3 in _targets.get([far, across], []):
+			var off := absf((target - _edge(far, across, 0.0, 0.0)).dot(far_side) + along)
+			if tie and off < 6.0 and off < best and target.y > lowest and target.y < highest and target.y <= far_limit:
+				best = off
+				b = target
+		if b.is_finite():
+			held_end = Vine.Held.LIP
+		else:
+			var low := a.y - numbers.randf_range(1.0, 7.0) if a.y > 6.0 else a.y + numbers.randf_range(3.0, 8.0)
+			low = minf(low, far_limit)
+			var far_room := Vector2(_room(far, across, -1), _room(far, across, 1)) - Vector2.ONE * WALL_VINE_ENDS
+			if low < 2.0 or -far_room.x > far_room.y:
+				return false
+			b = _edge(far, across, VineStrand.TIED_OUT, clampf(-along + numbers.randf_range(-3.0, 3.0), -far_room.x, far_room.y)) + Vector3.UP * low
+			if not _clear_of(near, b, ring):
+				return false
+	else:
+		# (to the floor part way across: not out under the far wall's ledge)
+		var far_ledge := _level_depth(0) + 0.5 if far_levels > 0 else 0.5
+		var out := numbers.randf_range(maxf(GROUND_ROOT, wide * 0.3), minf(wide * 0.75, wide - far_ledge))
+		var room := Vector2(_room(cell, step, -1), _room(cell, step, 1)) - Vector2.ONE * WALL_VINE_ENDS
+		if out < GROUND_ROOT or a.y < VineStrand.GROUND_SAG * 4.0 + 1.0 or -room.x > room.y:
+			return false
+		b = _edge(cell, step, out, clampf(along + numbers.randf_range(-3.0, 3.0), -room.x, room.y))
+		held_end = Vine.Held.GROUND
+	if not _sweep_clears(a, b, [cell, step], levels, far_levels, wide, held_end == Vine.Held.GROUND):
+		return false
+	_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b, "held": held, "held_end": held_end})
+	_note(near, a, 0.0)
+	_note(near, b, 0.0)
+	return true
+
+
+## Notes something on a wall at `at`, `wide` along it either side, in `near` (cell -> [[where, how wide, section]]).
 func _note(near: Dictionary, at: Vector3, wide: float) -> void:
 	var key := _maze.cell_at(at)
 	if not near.has(key):
 		near[key] = []
-	near[key].append([Vector2(at.x, at.z), wide])
+	near[key].append([Vector2(at.x, at.z), wide, _maze.ring_of(key)])
 
 
-## Whether `at` is WALL_VINE_CLEAR from everything noted in `near` (see _note).
-func _clear_of(near: Dictionary, at: Vector3) -> bool:
+## Whether `at` is WALL_VINE_CLEAR from everything of section `ring` noted in `near` (see _note).
+func _clear_of(near: Dictionary, at: Vector3, ring: int) -> bool:
 	var cell := _maze.cell_at(at)
 	for dx in range(-1, 2):
 		for dy in range(-1, 2):
 			for noted: Array in near.get(cell + Vector2i(dx, dy), []):
-				if (noted[0] as Vector2).distance_to(Vector2(at.x, at.z)) < WALL_VINE_CLEAR + float(noted[1]):
+				if int(noted[2]) == ring and (noted[0] as Vector2).distance_to(Vector2(at.x, at.z)) < WALL_VINE_CLEAR + float(noted[1]):
 					return false
 	return true
-
-
-## A vine out of the face (cell, step), as `numbers` say (see _wall_vines).
-func _wall_vine(cell: Vector2i, step: Vector2i, numbers: RandomNumberGenerator, near: Dictionary) -> void:
-	var levels := int(_level_counts.get([cell, step], 0))
-	# (the band of the wall it grows out of: from the floor up to under the first ledge
-	# (or the wall's cornice), or over the top ledge)
-	var band := _band(cell, step, levels, levels > 0 and numbers.randf() < 0.5)
-	var high := minf(band.x + numbers.randf_range(_style.wall_vine_height_range.x, _style.wall_vine_height_range.y), band.y)
-	if high - band.x < 3.0:
-		return
-	var lowest := -_room(cell, step, -1) + WALL_VINE_ENDS
-	var highest := _room(cell, step, 1) - WALL_VINE_ENDS
-	if lowest > highest:
-		return
-	var along := numbers.randf_range(lowest, highest)
-	if not _clear_of(near, _edge(cell, step, 0.0, along)):
-		return
-	var s := Vector3(step.x, 0.0, step.y)
-	if numbers.randf() < _style.wall_vine_sweep_share and _wall_sweep(cell, step, along, high, band, levels, numbers, near):
-		return
-	# Hanging a random way down, its end no lower than a hop over what is under it.
-	var longest := high - band.x - LOW_VINE_CLEAR
-	if longest < 1.5:
-		return
-	var top := _edge(cell, step, WALL_GROWN_OUT, along) + Vector3.UP * high
-	_layout.add_piece(MazePiece.Kind.VINE, Transform3D(Basis.IDENTITY, top),
-		{"length": numbers.randf_range(minf(2.0, longest), longest), "hold": s, "held": Vine.Held.FACE, "reach": WALL_GROWN_OUT})
-	_note(near, top, 0.0)
 
 
 ## The band of the face (cell, step) that has `levels` levels of ledge a vine may grow
@@ -1114,51 +1264,6 @@ func _band(cell: Vector2i, step: Vector2i, levels: int, over: bool) -> Vector2:
 	if over:
 		return Vector2(_level_height(levels - 1), top)
 	return Vector2(0.0, _style.mezzanine_height - _style.mezzanine_thickness - 0.6)
-
-
-## A vine out of the face (cell, step) at `along`, `high` up its band `band`, swept
-## down across the hall: to the far wall in the same band, lower down, or (from the
-## band under the ledges, or a wall without) to the floor part way across. Whether
-## there was room for it, clear of the ledges both sides.
-func _wall_sweep(cell: Vector2i, step: Vector2i, along: float, high: float, band: Vector2, levels: int, numbers: RandomNumberGenerator, near: Dictionary) -> bool:
-	var across := -step
-	var far := _far_side(cell, across)
-	var over := levels > 0 and band.x > 0.0
-	var a := _edge(cell, step, VineStrand.TIED_OUT, along) + Vector3.UP * high
-	var far_levels := int(_level_counts.get([far, across], 0)) if far != NOWHERE else 0
-	var wide := Maze.CELL * 0.8
-	if far != NOWHERE:
-		wide = absf((_edge(far, across, 0.0, 0.0) - _edge(cell, step, 0.0, 0.0)).dot(Vector3(step.x, 0.0, step.y)))
-	var b: Vector3
-	var held_end := Vine.Held.FACE
-	if far != NOWHERE and (over or numbers.randf() < 0.5):
-		# (to the far wall, lower down, in the same band of it)
-		var far_band := _band(far, across, far_levels, over and far_levels > 0)
-		var low := minf(high - numbers.randf_range(2.0, 8.0), far_band.y)
-		low = maxf(low, far_band.x + 2.0)
-		if low > high - 1.0:
-			return false
-		var far_room := Vector2(_room(far, across, -1), _room(far, across, 1)) - Vector2.ONE * WALL_VINE_ENDS
-		if -far_room.x > far_room.y:
-			return false
-		b = _edge(far, across, VineStrand.TIED_OUT, clampf(-along + numbers.randf_range(-3.0, 3.0), -far_room.x, far_room.y)) + Vector3.UP * low
-	elif not over:
-		# (to the floor part way across: not out under the far wall's ledge)
-		var far_ledge := _style.mezzanine_depth + 0.5 if far_levels > 0 else 0.5
-		var out := numbers.randf_range(maxf(GROUND_ROOT, wide * 0.3), minf(wide * 0.75, wide - far_ledge))
-		if out < GROUND_ROOT or high < VineStrand.GROUND_SAG * 4.0 + 1.0:
-			return false
-		var room := Vector2(_room(cell, step, -1), _room(cell, step, 1)) - Vector2.ONE * WALL_VINE_ENDS
-		b = _edge(cell, step, out, clampf(along + numbers.randf_range(-3.0, 3.0), -room.x, room.y))
-		held_end = Vine.Held.GROUND
-	else:
-		return false
-	if not _clear_of(near, b) or not _sweep_clears(a, b, [cell, step], levels, far_levels, wide, held_end == Vine.Held.GROUND):
-		return false
-	_layout.add_piece(MazePiece.Kind.STRAND, Transform3D(Basis.IDENTITY, a), {"to": b, "held": Vine.Held.FACE, "held_end": held_end})
-	_note(near, a, 0.0)
-	_note(near, b, 0.0)
-	return true
 
 
 ## Whether a vine strung from `a`, on the face `face` with `levels` levels of ledge,
