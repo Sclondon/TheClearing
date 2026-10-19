@@ -56,6 +56,31 @@ func _initialize() -> void:
 			for ring in range(2, built + 1):
 				gates_after += maze.gates[ring - 1].size()
 			check("%s: rings shut but for their gates" % name, from_clearing >= 4 * span and from_clearing <= 4 * (span + 1) and openings == gates_after and (built < 2 or maze.gates[1].size() == maze.styles[1].entrance_count), "(%d from the clearing, %d after, %d gates)" % [from_clearing, openings, gates_after])
+			# The rooms (MazeStyle "Rooms"): open floors inside, come into from at least two
+			# sides, clear of the wall round the inside of their ring, and never a gate.
+			var bad_rooms := 0
+			for room: Dictionary in maze.rooms:
+				var rect: Rect2i = room.rect
+				var sides := {}
+				var shut_inside := false
+				var by_inner_wall := false
+				var gated := false
+				for x in range(rect.position.x, rect.end.x):
+					for y in range(rect.position.y, rect.end.y):
+						var cell := Vector2i(x, y)
+						for step: Vector2i in Maze.STEPS:
+							var next := cell + step
+							if maze.ring_of(next) < room.ring or maze.solid.has(next):
+								by_inner_wall = true
+							if rect.has_point(next):
+								shut_inside = shut_inside or maze.blocked(cell, step)
+							elif not maze.blocked(cell, step):
+								if maze.ring_of(next) != room.ring:
+									gated = true
+								sides[step] = true
+				if shut_inside or by_inner_wall or gated or sides.size() < 2 or mini(rect.size.x, rect.size.y) < 2:
+					bad_rooms += 1
+			check("%s: rooms open, two ways in at least, off the inner wall, no gate" % name, not maze.rooms.is_empty() and bad_rooms == 0, "(%d rooms, %d not)" % [maze.rooms.size(), bad_rooms])
 			var ring_cells := maze.size * maze.size - maze.clearing * maze.clearing
 			check("%s: still a maze" % name, open < ring_cells * 1.7, "(%d open of %d cells)" % [open, ring_cells])
 			# Each way in from the clearing is a narrow entrance as long as the style says:

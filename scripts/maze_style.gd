@@ -12,7 +12,9 @@ extends Resource
 ## branch chance) from an older one, which makes side branches; going on the way
 ## it was going when it can (straight on chance), which makes long straight
 ## hallways. Then some of the walls left between hallways are knocked through
-## (loop share), so there is more than one way round.
+## (loop share), so there is more than one way round. Rooms (room count) are blocks
+## taken together into open floors several cells across, scattered round it, each
+## come into from halls on a few sides.
 ##
 ## Each thing on or about its walls (terraces, ivy, vines, vents, pipes...) has a
 ## box to turn it on or off (the user, 2026-10-18: "there should be check boxes to
@@ -65,6 +67,18 @@ extends Resource
 @export_range(0, 16, 1, "suffix:cells") var entrance_corridor_cells := 0
 ## How wide the way through an entrance corridor is, metres; walls fill the rest of the cell (0: all open).
 @export_range(0.0, 12.0, 0.001, "suffix:m") var entrance_doorway_width := 0.0
+## Rooms: open floors here and there in the passages, a few halls into each from different sides, a column, a pine or
+## a pond in the middle (the user, 2026-10-18: "There should be larger “rooms” scattered about the maze").
+@export var rooms_on: bool:
+	get:
+		return feature_on(&"rooms_on")
+	set(value):
+		_switch(&"rooms_on", value)
+## How many rooms the section has, spread round it (fewer if there is no room for them: each keeps clear of the
+## section's walls, its gates and the other rooms).
+@export_range(0, 24, 1, "suffix:rooms") var room_count := 6
+## How far across a room is, smallest and largest, in cells (14 m each; never less than two hallways across).
+@export_custom(PROPERTY_HINT_RANGE, "2,8,1,suffix:cells") var room_size_cells := Vector2i(2, 4)
 
 @export_group("Climbing")
 @export_subgroup("Mezzanine (ledges)")
@@ -736,6 +750,7 @@ extends Resource
 ## Each feature's on/off box, and the settings it shows under it while on (the
 ## first: how much of it there is, which goes to 0 while it is off).
 const FEATURES := {
+	&"rooms_on": [&"room_count", &"room_size_cells"],
 	&"terraces_on": [&"terrace_share", &"upper_terrace_share"],
 	&"terrace_bridges_on": [&"terrace_bridge_share"],
 	&"wall_top_bridges_on": [&"wall_top_bridge_share"],
@@ -905,6 +920,7 @@ func crowded(times: float) -> MazeStyle:
 func bare() -> MazeStyle:
 	var copy: MazeStyle = duplicate(true)
 	copy.section_width_cells = 1
+	copy.room_count = 0
 	copy.mezzanine_height = 0.0
 	copy.loot_items = 0
 	copy.abandoned_camps = 0

@@ -314,6 +314,43 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 	_spots(plan)
 	_ledge_vines(plan)
 	_wall_vines(plan)
+	_furnish_rooms(plan)
+
+
+## How high a room's column stands over its walls, as the piers where walls meet do.
+const COLUMN_OVER := MazeBuilder.PIER.y
+## How big a room's pine is, smallest and largest, as times a clearing pine's 13 m:
+## up the light well its walls make.
+const ROOM_PINE := Vector2(1.8, 2.5)
+
+
+## What stands in each room (Maze.rooms; a pond is Ponds'): its column, or four, of
+## the walls' stone, from the floor to over the tops of its walls, on the corners of
+## cells Maze.columns says (clear of the ways through it, which go by the cells'
+## middles); or a great pine in its middle.
+func _furnish_rooms(plan: Maze) -> void:
+	for room: Dictionary in plan.rooms:
+		var ring: int = room.ring
+		if not _enter(ring):
+			continue
+		var rect: Rect2i = room.rect
+		_layout.laying_zone = ring
+		if room.fill == Maze.Room.TREE:
+			var numbers := _numbers(hash(rect.position), plan.maze_seed)
+			var at := plan.room_middle(room)
+			at.y = plan.ground_height(at) - 0.15
+			var big := numbers.randf_range(ROOM_PINE.x, ROOM_PINE.y)
+			_layout.add_piece(MazePiece.Kind.TREE, Transform3D(Basis(Vector3.UP, numbers.randf() * TAU).scaled(Vector3.ONE * big), at), {})
+		elif room.fill == Maze.Room.COLUMN:
+			var high := plan.maze_wall_height(ring) + COLUMN_OVER
+			for x in range(rect.position.x, rect.end.x + 1):
+				for y in range(rect.position.y, rect.end.y + 1):
+					var corner := Vector2i(x, y)
+					if not plan.columns.has(corner):
+						continue
+					var wide: float = plan.columns[corner]
+					_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, plan.corner_at(corner)), {"size": Vector3(wide, high, wide)})
+		_layout.laying_zone = -1
 
 
 ## The levels of ledge over the first (MazeStyle.mezzanine_levels): along some
@@ -584,10 +621,13 @@ const NOWHERE := Vector2i(-1, -1)
 ## The cell on the far side of the hall from `cell`, going the `across` way: the
 ## first with a wall that way, if the hall is open up to it and no more than
 ## two cells across (NOWHERE if not: a bridge any longer sags too far). `cell`
-## itself in a hall one cell wide.
+## itself in a hall one cell wide. Never across a room (Maze.rooms): it is open
+## floor round what stands in it, nothing strung or bridged over it.
 func _far_side(cell: Vector2i, across: Vector2i) -> Vector2i:
 	var at := cell
 	for i in 2:
+		if _maze.in_room(at):
+			return NOWHERE
 		if _maze.blocked(at, across):
 			return at if _maze.ring_of(at) == _maze.ring_of(cell) and not _maze.entrances.has(at) else NOWHERE
 		at += across

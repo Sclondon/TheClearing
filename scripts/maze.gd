@@ -66,6 +66,18 @@ var entrances := {}
 ## The cells of solid stone in the ramparts round the inside of rings (see
 ## `rampart`): no way into them, walls all round.
 var solid := {}
+## The rooms carved in the rings (MazeStyle "Rooms"): open floors several cells
+## across, a few halls into each from different sides, each {ring, rect (the cells
+## it covers), fill (what stands in it: Room)}.
+var rooms: Array = []
+## [cell] -> which of `rooms` it is in.
+var room_cells := {}
+## What stands in the middle of a room: a column (four in a big one) going up the
+## light well its walls make, a pine, or a pond.
+enum Room { COLUMN, TREE, POND }
+## The columns in the rooms, by the corner of cells each stands on (the corner
+## north-west of cell (i, j), as MazeLayout counts them) -> how wide it is, metres.
+var columns := {}
 ## The standing water in the halls (Ponds: each {rect, level, depth, round, fish,
 ## seed}), as the layout's pond pieces have it; the ground is lower under it.
 var ponds: Array = []:
@@ -185,6 +197,21 @@ func depth_in_ring(cell: Vector2i) -> int:
 
 func in_clearing(cell: Vector2i) -> bool:
 	return ring_of(cell) == 0
+
+
+func in_room(cell: Vector2i) -> bool:
+	return room_cells.has(cell)
+
+
+## The point on the ground at the corner north-west of cell `corner` (as `columns` has them).
+func corner_at(corner: Vector2i) -> Vector3:
+	return world(corner) - Vector3(CELL * 0.5, 0.0, CELL * 0.5)
+
+
+## The middle of the floor of room `room` (one of `rooms`), on the ground.
+func room_middle(room: Dictionary) -> Vector3:
+	var rect: Rect2i = room.rect
+	return (world(rect.position) + world(rect.end - Vector2i.ONE)) * 0.5
 
 
 ## Whether the wall between `cell` and its neighbour the `step` way divides one
@@ -429,7 +456,7 @@ func _carve() -> void:
 		var out := Vector2i.ZERO
 		for i in count:
 			var cell := Vector2i(i % size, i / size)
-			if ring_of(cell) != ring or ring_of(cell + _outward(cell)) == ring:
+			if ring_of(cell) != ring or ring_of(cell + _outward(cell)) == ring or room_cells.has(cell):
 				continue
 			# (a tie goes to the seed, not to the first cell found)
 			var score := distance[i] * 4 + rng.randi_range(0, 3)
@@ -463,7 +490,7 @@ func _furthest_by_side(ring: int, first: Array, rng: RandomNumberGenerator) -> A
 		var out := Vector2i(-1, -1)
 		for i in size * size:
 			var cell := Vector2i(i % size, i / size)
-			if ring_of(cell) != ring or _outward(cell) != side or ring_of(cell + side) == ring:
+			if ring_of(cell) != ring or _outward(cell) != side or ring_of(cell + side) == ring or room_cells.has(cell):
 				continue
 			# (not at a corner: a quarter's way in stands well along its side)
 			var along: int = absi(cell.y - size / 2) if side.x != 0 else absi(cell.x - size / 2)
@@ -488,7 +515,7 @@ func _spread_out(ring: int, ways: Array, count: int, rng: RandomNumberGenerator)
 		var out := Vector2i(-1, -1)
 		for i in size * size:
 			var cell := Vector2i(i % size, i / size)
-			if ring_of(cell) != ring or ring_of(cell + _outward(cell)) == ring:
+			if ring_of(cell) != ring or ring_of(cell + _outward(cell)) == ring or room_cells.has(cell):
 				continue
 			var apart := 1 << 30
 			for way: Array in found:
@@ -541,6 +568,8 @@ func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: Rando
 		cells_of[key] = line
 		ends[key] = [line.back(), step]
 	_split_apart(block_of, cells_of)
+	# The rooms: blocks taken together, each into one block of its own.
+	var in_rooms := _put_rooms(ring, style, ways_in, block_of, cells_of)
 	# The rest of the rampart is stone.
 	for i in size * size:
 		var cell := Vector2i(i % size, i / size)
@@ -614,18 +643,209 @@ func _carve_ring(ring: int, ways_in: Array, visited: PackedByteArray, rng: Rando
 		_join(block, pick, block_of, cells_of, ends)
 		reached[pick] = true
 		heading[pick] = next_to[block][pick]
-		active.append(pick)
+		# (a room is come into, and the walk goes on from the halls round it: its other
+		# ways in are put in afterwards, a few, on other sides)
+		if not in_rooms.has(pick):
+			active.append(pick)
+	if not in_rooms.is_empty():
+		# (anything a room left the walk no way round to, joined to what it reached)
+		var more := true
+		while more and reached.size() < cells_of.size():
+			more = false
+			for block: Vector2i in cells_of:
+				if reached.has(block):
+					continue
+				for other: Vector2i in next_to[block]:
+					if reached.has(other):
+						_join(block, other, block_of, cells_of, ends)
+						reached[block] = true
+						more = true
+						break
 
-	# A few walls between halls knocked through, for loops.
+	# A few walls between halls knocked through, for loops (none into a room: its
+	# ways in are its own).
 	var all: Array = cells_of.keys()
 	for i in int(all.size() * style.loop_share):
 		var block: Vector2i = all[rng.randi_range(0, all.size() - 1)]
 		var others: Array = (next_to[block] as Dictionary).keys()
 		if not others.is_empty():
-			_join(block, others[rng.randi_range(0, others.size() - 1)], block_of, cells_of, ends)
+			var other: Vector2i = others[rng.randi_range(0, others.size() - 1)]
+			if not in_rooms.has(block) and not in_rooms.has(other):
+				_join(block, other, block_of, cells_of, ends)
+	for key: Vector2i in in_rooms:
+		_room_doors(key, in_rooms[key], next_to, block_of, cells_of, ends)
 
 
 const NO_BLOCK := Vector2i(-1000, -1000)
+
+## How many places for each room are tried, and how many of those that fit are
+## weighed against each other (the one furthest from the rooms already put wins).
+const ROOM_TRIES := 240
+const ROOM_CHOICES := 16
+## How many cells clear of the entrances, the gates in and other rooms a room keeps.
+const ROOM_CLEAR := 2
+
+
+## Puts the rooms of `ring` in among its blocks (MazeStyle "Rooms", the user,
+## 2026-10-18: "There should be larger “rooms” scattered about the maze"): as many
+## as its style says, each a rectangle of whole blocks taken together into one
+## block of its own, so that the walls inside it all come down and the walk comes
+## into it as into any other block. Each keeps a block clear of the walls round
+## the ring (so that none opens on the clearing or cuts a rampart; in a section too
+## narrow for that, it may lie against the wall round its outside, but no gate out
+## is put in a room), ROOM_CLEAR cells clear of the entrances and of the other rooms,
+## and is put as far from the rooms already put as it can be. With numbers of their
+## own: a ring with none is carved just as it was. The rooms' blocks -> which of
+## `rooms` each is.
+func _put_rooms(ring: int, style: MazeStyle, ways_in: Array, block_of: Dictionary, cells_of: Dictionary) -> Dictionary:
+	var made := {}
+	var count := int(style.amount(&"room_count"))
+	if count <= 0:
+		return made
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("rooms/%d/%d" % [maze_seed, ring])
+	var span := maxi(style.hallway_diameter_cells, 1)
+	var sizes := Vector2i(mini(style.room_size_cells.x, style.room_size_cells.y), maxi(style.room_size_cells.x, style.room_size_cells.y))
+	# (the cells just inside the gates, kept clear of as the entrances are)
+	var gates_in := {}
+	for way: Array in ways_in:
+		gates_in[(way[0] as Vector2i) + (way[1] as Vector2i)] = true
+	# (the blocks laid on the ring's square, that a room may be made of)
+	var grid: Array = cells_of.keys().filter(func(block: Vector2i) -> bool: return block.x >= 0 and block.y >= 0)
+	if grid.is_empty():
+		return made
+	var middles: Array[Vector2] = []
+	for k in count:
+		var best: Array = []
+		var best_apart := -1.0
+		var found := 0
+		for attempt in ROOM_TRIES * 2:
+			# (a block clear of the walls round the ring first; if none fits so in a
+			# section too narrow for it, against the wall round its outside)
+			if found >= ROOM_CHOICES or (attempt == ROOM_TRIES and found > 0):
+				break
+			# Blocks across and along it: as many as make its size in cells, and never
+			# fewer than two (one is only a hall).
+			var wide := rng.randi_range(sizes.x, sizes.y)
+			var long := clampi(wide + rng.randi_range(-1, 1), sizes.x, sizes.y)
+			var blocks := Vector2i(maxi(2, roundi(float(wide) / span)), maxi(2, roundi(float(long) / span)))
+			if rng.randf() < 0.5:
+				blocks = Vector2i(blocks.y, blocks.x)
+			var from: Vector2i = grid[rng.randi_range(0, grid.size() - 1)]
+			var cells := _room_fits(ring, from, blocks, block_of, cells_of, gates_in, attempt >= ROOM_TRIES)
+			if cells.is_empty():
+				continue
+			found += 1
+			var middle := Vector2.ZERO
+			for cell: Vector2i in cells:
+				middle += Vector2(cell)
+			middle /= cells.size()
+			var apart := INF
+			for other: Vector2 in middles:
+				apart = minf(apart, middle.distance_to(other))
+			if apart > best_apart:
+				best_apart = apart
+				best = [from, blocks, cells, middle]
+		if best.is_empty():
+			break
+		# One block of them all.
+		var key := Vector2i(-300 - rooms.size(), -300)
+		var low: Vector2i = best[2][0]
+		var high: Vector2i = best[2][0]
+		for cell: Vector2i in best[2]:
+			(cells_of[block_of[cell]] as Array).erase(cell)
+			if (cells_of[block_of[cell]] as Array).is_empty():
+				cells_of.erase(block_of[cell])
+			block_of[cell] = key
+			low = low.min(cell)
+			high = high.max(cell)
+			room_cells[cell] = rooms.size()
+		cells_of[key] = best[2]
+		grid = grid.filter(func(block: Vector2i) -> bool: return cells_of.has(block))
+		middles.append(best[3])
+		made[key] = rooms.size()
+		var rect := Rect2i(low, high - low + Vector2i.ONE)
+		rooms.append({"ring": ring, "rect": rect, "fill": _room_fill(ring, style, rect)})
+	return made
+
+
+## The cells of the room of `blocks` blocks from block `from` (towards +x and +z)
+## in `ring`, or none if it does not fit there (see _put_rooms); `outer`: it may lie
+## against the wall round the ring's outside (never the one round its inside).
+func _room_fits(ring: int, from: Vector2i, blocks: Vector2i, block_of: Dictionary, cells_of: Dictionary, gates_in: Dictionary, outer: bool) -> Array:
+	var cells: Array = []
+	for bx in blocks.x:
+		for by in blocks.y:
+			var block := from + Vector2i(bx, by)
+			if not cells_of.has(block):
+				return []
+			cells.append_array(cells_of[block])
+	for cell: Vector2i in cells:
+		for dx in range(-ROOM_CLEAR, ROOM_CLEAR + 1):
+			for dy in range(-ROOM_CLEAR, ROOM_CLEAR + 1):
+				var near := cell + Vector2i(dx, dy)
+				if entrances.has(near) or gates_in.has(near) or room_cells.has(near):
+					return []
+				# (a block of the ring's halls all round it: not against its walls)
+				if absi(dx) <= 1 and absi(dy) <= 1 and not block_of.has(near) and not (outer and ring_of(near) > ring):
+					return []
+	return cells
+
+
+## What stands in a room of `ring` covering `rect` (Room), from numbers of its own;
+## and the columns it has, noted in `columns`: four in a room four cells across both
+## ways, one in the middle of a smaller. A pond only if the section has ponds.
+func _room_fill(ring: int, style: MazeStyle, rect: Rect2i) -> Room:
+	var numbers := RandomNumberGenerator.new()
+	numbers.seed = hash("room/%d/%d/%s" % [maze_seed, ring, rect.position])
+	var choices: Array[Room] = [Room.COLUMN, Room.COLUMN, Room.TREE]
+	if style.amount(&"pond_share") > 0.0:
+		choices.append(Room.POND)
+	var fill: Room = choices[numbers.randi_range(0, choices.size() - 1)]
+	if fill == Room.COLUMN:
+		var wide := clampf(style.maze_wall_diameter + MazeBuilder.PIER.x, 4.0, 7.0)
+		if rect.size.x >= 4 and rect.size.y >= 4:
+			for x: int in [rect.position.x + 1, rect.end.x - 1]:
+				for y: int in [rect.position.y + 1, rect.end.y - 1]:
+					columns[Vector2i(x, y)] = wide * 0.7
+		else:
+			columns[rect.position + rect.size / 2] = wide
+	return fill
+
+
+## The ways into room `room` (its block `key`), after the walk: as many sides with a
+## way in as its numbers say (two to four), each new one from a hall on a side it has
+## none from yet, so that it is come into from different sides.
+func _room_doors(key: Vector2i, room: int, next_to: Dictionary, block_of: Dictionary, cells_of: Dictionary, ends: Dictionary) -> void:
+	var rect: Rect2i = rooms[room].rect
+	var numbers := RandomNumberGenerator.new()
+	numbers.seed = hash("room doors/%d/%s" % [maze_seed, rect.position])
+	var open := {}
+	for cell: Vector2i in cells_of[key]:
+		for s: Vector2i in STEPS:
+			if block_of.get(cell + s, NO_BLOCK) != key and not blocked(cell, s):
+				open[s] = true
+	var by_side := {}
+	for other: Vector2i in next_to[key]:
+		var s: Vector2i = next_to[key][other]
+		if not by_side.has(s):
+			by_side[s] = []
+		(by_side[s] as Array).append(other)
+	var want := numbers.randi_range(2, 4)
+	var sides: Array = STEPS.duplicate()
+	for i in range(sides.size() - 1, 0, -1):
+		var j := numbers.randi_range(0, i)
+		var swap: Vector2i = sides[i]
+		sides[i] = sides[j]
+		sides[j] = swap
+	for s: Vector2i in sides:
+		if open.size() >= want:
+			break
+		if open.has(s) or not by_side.has(s):
+			continue
+		var choices: Array = by_side[s]
+		_join(key, choices[numbers.randi_range(0, choices.size() - 1)], block_of, cells_of, ends)
+		open[s] = true
 
 
 ## The blocks of a ring, as [{cell: block}, {block: [cells]}]. Blocks are counted

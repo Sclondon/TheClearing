@@ -134,7 +134,17 @@ rocks are bumped into; the swamp's and plains' ground is walked on (Maze.ground_
 
 What a style can set: depth (cells), hall width (cells), wall thickness, its border wall (the wall round its outside: how high, and extra cells of solid wall
 thickening it on the far side), how often passages go straight, how often they branch, how many loops, narrow entrances (a passage of
-some length from each gate) and doorways (a slot through a gatehouse), and what is on and about its walls.
+some length from each gate) and doorways (a slot through a gatehouse), rooms, and what is on and about its walls.
+
+**Rooms** (the user, 2026-10-18: "There should be larger “rooms” scattered about the maze"; MazeStyle "Hallways":
+an on/off box, how many, how big in cells, on by default with 6 a section of 2 to 4 cells across): open floors
+carved as part of the maze, whole blocks of it taken together, so the section stays one maze with nothing cut off.
+Each is come into from halls on two to four sides, keeps a block clear of the wall round its section's inside (none
+opens on the clearing or a rampart; in a section too narrow it may stand against the wall round its outside, but no
+gate out is put in one), and keeps clear of the gates, the entrances and the other rooms. The walls are tall, so a
+room is a light well: in the middle a column of the walls' stone from the floor to over their tops (four in a room
+four cells across), a great pine, or a pond (only in a section with ponds). Nothing is strung or bridged across a
+room; the ledges go round its walls as round any other.
 
 Each feature of a section has its own on/off box in the maze editor's Inspector, its amount and size settings shown
 under it only while it is on (the user, 2026-10-18: "Rather than a share slider - there should be check boxes to turn

@@ -265,6 +265,13 @@ func clear_of_walls(point: Vector3, margin: float) -> bool:
 		if maze.blocked(cell, Vector2i(sx, 0)) or maze.blocked(cell, Vector2i(0, sy)) \
 				or (maze.inside(side) and maze.blocked(side, Vector2i(0, sy))) or (maze.inside(below) and maze.blocked(below, Vector2i(sx, 0))):
 			return false
+	# A column standing in a room, on the corner nearest (Maze.columns).
+	if not maze.columns.is_empty():
+		var corner := cell + Vector2i(1 if off.x > 0.0 else 0, 1 if off.y > 0.0 else 0)
+		if maze.columns.has(corner):
+			var reach: float = maze.columns[corner] * 0.5 + margin
+			if absf(absf(off.x) - half) < reach and absf(absf(off.y) - half) < reach:
+				return false
 	return true
 
 

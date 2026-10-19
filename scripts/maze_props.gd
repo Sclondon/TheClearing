@@ -628,6 +628,9 @@ func _ledge_cable(cell: Vector2i, far: Vector2i, step: Vector2i, numbers: Random
 func _far_side(cell: Vector2i, across: Vector2i) -> Vector2i:
 	var at := cell
 	for i in 2:
+		# (never across a room)
+		if _maze.in_room(at):
+			return Vector2i(-1, -1)
 		if _maze.blocked(at, across):
 			return at if _maze.ring_of(at) == _maze.ring_of(cell) and not _maze.entrances.has(at) else Vector2i(-1, -1)
 		at += across

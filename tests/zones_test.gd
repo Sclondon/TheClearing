@@ -12,7 +12,7 @@ extends SceneTree
 
 var failures := 0
 ## The rules of how a section is carved: they may move its gate out.
-const CARVING := ["hallway_diameter_cells", "straight_on_chance", "side_branch_chance", "loop_share", "entrance_corridor_cells", "entrance_count"]
+const CARVING := ["hallway_diameter_cells", "straight_on_chance", "side_branch_chance", "loop_share", "entrance_corridor_cells", "entrance_count", "rooms_on", "room_count"]
 
 
 func check(what: String, ok: bool, detail := "") -> void:

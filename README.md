@@ -81,7 +81,9 @@ leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened i
 - `scripts/maze.gd` (`Maze`): the plan. Square cells 14 m across. `Maze.CLEARING` cells across the clearing (41),
   then each ring as its `MazeStyle` (`scripts/maze_style.gd`) says: depth, hall width (it carves over blocks of
   cells), wall thickness, its border wall (round its outside: how high, and a rampart of solid cells; the clearing's own wall is `ClearingStyle`'s), straightness,
-  branching, loops, entrances, and
+  branching, loops, entrances, rooms (`Maze.rooms`: open floors of whole blocks, a few halls into each from
+  different sides, a column, a pine or a pond in the middle; `Maze.columns` are in the plan so the hunters go
+  round them), and
   what is on its walls (see DESIGN.md). `rings` of them are built (1 for now) and the grid runs to the outside of
   the last. Each ring is grown from its first way in (into the first, a gate in the middle of each side of the
   clearing; into each later one, the gate out of the ring inside it), and its gate out put on its outside as far
@@ -238,6 +240,7 @@ node tools/dev_relay.mjs <scareathon-v3/server> 3111      # local rooms (needs s
 sh tools/coop_test.sh                                     # two copies in one room against it
 "$G" --path . --resolution 1280x720 -s res://tools/shots.gd -- <folder>   # pictures to look at
 "$G" --path . --resolution 1280x720 -s res://tools/clearing_shots.gd -- <folder> [seed]   # the clearing: hills, woods
+"$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/room_shots.gd -- <folder> [seed]   # the rooms: the plan, in each kind, from above
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/deer_shots.gd -- <folder> [studio|strips|maze|clearing|all]   # deer and elk, gallop strips, the herd, wildlife
 "$G" --headless --audio-driver Dummy --path . -s res://tests/marsh_test.gd   # the marsh: water, sedges in it, the lane in
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/crow_shots.gd -- <folder> [studio|beat|maze|clearing]   # crows, ravens, blue jays, the wingbeat

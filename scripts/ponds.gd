@@ -212,6 +212,7 @@ static func lay_out(layout: MazeLayout, maze: Maze, zones: Dictionary = {}) -> v
 		layout.laying_zone = 1
 		_flood_gate(layout, maze, blocks, taken)
 		layout.laying_zone = was
+	_room_ponds(layout, maze, zones, blocks, taken)
 	for i in maze.size * maze.size:
 		var cell := Vector2i(i % maze.size, i / maze.size)
 		var ring := maze.ring_of(cell)
@@ -249,6 +250,40 @@ static func lay_out(layout: MazeLayout, maze: Maze, zones: Dictionary = {}) -> v
 		var fish := style.fish_per_school if depth >= FishSchool.SHALLOWEST and rng.randf() < style.amount(&"fish_share") else 0
 		var round := 3.0 if flooded else minf(rect.size.x, rect.size.y) * 0.45
 		_put(layout, rect, LEVEL, depth, round, fish)
+
+
+## The ponds in the middle of the rooms that have one (Maze.rooms, Room.POND): round,
+## half to two-thirds of the floor across, as deep as the section's ponds (and as
+## often deep enough to swim, with fish as often). No other water lies in a room.
+static func _room_ponds(layout: MazeLayout, maze: Maze, zones: Dictionary, blocks: Dictionary, taken: Dictionary) -> void:
+	for room: Dictionary in maze.rooms:
+		var ring: int = room.ring
+		if not zones.is_empty() and not zones.has(ring):
+			continue
+		var rect: Rect2i = room.rect
+		var cells: Array[Vector2i] = []
+		for x in range(rect.position.x, rect.end.x):
+			for y in range(rect.position.y, rect.end.y):
+				cells.append(Vector2i(x, y))
+				taken[Vector2i(x, y)] = true
+		var style: MazeStyle = maze.styles[ring - 1]
+		if room.fill != Maze.Room.POND or style.amount(&"pond_share") <= 0.0:
+			continue
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash("room pond/%d/%s" % [maze.maze_seed, rect.position])
+		var floor := _hall_rect(maze, cells)
+		var size := floor.size * rng.randf_range(0.5, 0.65)
+		var water := _whole(_clear_of(Rect2(floor.get_center() - size * 0.5, size), blocks, 0.6))
+		if water.size.x < 3.0 or water.size.y < 3.0:
+			continue
+		var depth := rng.randf_range(style.pond_depth_range.x, style.pond_depth_range.y)
+		if rng.randf() < style.amount(&"swim_pond_share") and minf(water.size.x, water.size.y) >= 6.0:
+			depth = style.swim_pond_depth * rng.randf_range(0.9, 1.1)
+		var fish := style.fish_per_school if depth >= FishSchool.SHALLOWEST and rng.randf() < style.amount(&"fish_share") else 0
+		var was := layout.laying_zone
+		layout.laying_zone = ring
+		_put(layout, water, LEVEL, depth, minf(water.size.x, water.size.y) * 0.45, fish)
+		layout.laying_zone = was
 
 
 static func _put(layout: MazeLayout, rect: Rect2, level: float, depth: float, round: float, fish: int) -> void:
