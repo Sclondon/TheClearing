@@ -1,0 +1,5 @@
+# The wyvern: how it looks, moves and sounds, and its nest (stands alone)
+creatures/wyvern/wyvern.gd
+creatures/wyvern/wyvern_look.gd
+creatures/wyvern/wyvern_nest.gd
+creatures/wyvern/models/wyvern.glb
