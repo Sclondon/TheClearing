@@ -326,14 +326,12 @@ func _out_of_sight(all: Array, turn: Array = []) -> void:
 	var going := (all if turn.is_empty() else turn).filter(_asleep)
 	for one: MazeEnemy in going:
 		one.roam_unseen(ROAM_STEP)
-	# (who is asleep to be eaten: found only if a hungry hunter is going)
-	var asleep: Array = []
 	for hunter: MazeEnemy in going:
 		if hunter.dead or not hungry(hunter):
 			continue
-		if asleep.is_empty():
-			asleep = all.filter(_asleep)
-		for one: MazeEnemy in asleep:
+		# (only those asleep near it, not every creature in the maze: they may have
+		# gone a step since they were put in their squares)
+		for one: MazeEnemy in near(hunter.global_position, ASLEEP_KILL_NEAR + ROAM_STEP).filter(_asleep):
 			if not one.dead and is_prey(one, hunter) and one.global_position.distance_to(hunter.global_position) < ASLEEP_KILL_NEAR and _rng.randf() < ASLEEP_KILL_CHANCE:
 				kill(one, hunter)
 				break

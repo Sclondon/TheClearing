@@ -32,6 +32,8 @@ func _run() -> void:
 	for i in 180:
 		await process_frame
 	if ring > 0:
+		if main.world.dev == null:
+			main.world.dev = load("res://scripts/dev_tools.gd").new(main.world)
 		main.world.dev.to_ring(ring)
 		for i in 120:
 			await process_frame
