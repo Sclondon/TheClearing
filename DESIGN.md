@@ -130,7 +130,7 @@ rocks are bumped into; the swamp's and plains' ground is walked on (Maze.ground_
 | Halls | 2 cells wide (about 16 m between walls) | 1 cell | 1 cell |
 | Walls | 12 m thick, 34 m high | 3.2 m thick | 3.2 m thick |
 | Passages | go on straight half the time; no extra branching; no loops | winding, forking | branching often, many loops |
-| On the walls | climbable ivy up a tenth of the faces (a third to two-thirds of the way up, never to the top), vines hanging from some of it, vines strung across an eighth of the halls (walked as tightropes from a buttress with ivy up it; the act button cuts one into two hanging vines) | terraces, ivy, vines, rope bridges | as Narrows |
+| On the walls | climbable ivy up a tenth of the faces (a third to two-thirds of the way up, never to the top), vines hanging from some of it, vines strung across an eighth of the halls (walked as tightropes from a stone corbel set into the wall, a curtain of ivy hanging from it (no buttresses: the user, 2026-10-18, "I never asked for butresses"); the act button cuts one into two hanging vines) | terraces, ivy, vines, rope bridges | as Narrows |
 
 What a style can set: depth (cells), hall width (cells), wall thickness, its border wall (the wall round its outside: how high, and extra cells of solid wall
 thickening it on the far side), how often passages go straight, how often they branch, how many loops, narrow entrances (a passage of
@@ -178,7 +178,7 @@ and planned (`GrappleSpots`, `MazePiece.Kind.ANCHOR`, laid out by `MazeFeatures`
   at the ring above, climb, pull up onto the corbel, throw at the next. (So the hook can now take you to a wall top,
   but only up one of these.)
 - **Rings at the lips of ledges** (grapple ring share): each level of the mezzanine along a face, terraces, the
-  platforms under the sewer pipes, the strung vines' buttresses. The hook catches any lip anyway; the ring shows where.
+  platforms under the sewer pipes, the strung vines' corbels. The hook catches any lip anyway; the ring shows where.
 - **Hooks and pipes to swing from** (grapple swing share, and how high over the floor): an iron hook or an old pipe out
   of a wall over the hall.
 
@@ -647,7 +647,7 @@ left things behind. **They are tools to get away with** (pillar 2): a spear buys
 things off; a flare sends them looking elsewhere. (What there is to fight with came later: "Fighting back", below.)
 
 - **Grappling hook.** Out of your hand with the act button at the lip of a ledge in reach above you (a mezzanine, a
-  terrace, the platform under a sewer pipe, a buttress's top: any ledge's edge the hook can feel for, up to about 13
+  terrace, the platform under a sewer pipe, a vine's corbel: any ledge's edge the hook can feel for, up to about 13
   m: never the wall tops, which stay out of reach but by the routes of hook spots), at a hook spot (rings, hooks and
   pipes: "Ways up"), at a vine (wrapped round it, you are hauled in to it and hold it), or at anything marked as a
   grapple point. It bites, you swing on

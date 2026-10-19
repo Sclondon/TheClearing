@@ -21,7 +21,7 @@ https://sclondon.github.io/Warren/build/.
 
 - **Move:** a thumb on the left half of the screen (touch), WASD or arrows, or a gamepad stick.
 - **Look:** drag on the right half, the mouse, or the right stick. **Jump:** the jump button, Space, or A.
-- **Cut** a vine strung across a hall (walk it like a tightrope from the buttress at its end): the hand button, E or F.
+- **Cut** a vine strung across a hall (walk it like a tightrope from the stone corbel at its end): the hand button, E or F.
   It falls into two vines hanging from the walls; if you were on it, you keep hold of yours.
 - **Take** what lies about (a grappling hook, a backpack, a spear, a torch, a flare, a map scrap, a rope ladder): the act
   button near it. **Tap a slot** at the top (or 1 to 4; a pad's d-pad and Y) to take a tool into his hand or put it

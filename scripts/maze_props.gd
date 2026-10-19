@@ -386,7 +386,7 @@ func _cable_across(cell: Vector2i, step: Vector2i) -> void:
 	_wire(a, b, a.distance_to(b) * _rng.randf_range(0.05, 0.13), true)
 
 
-## A cable beside a vine strung from `a` to `b` (its buttress end first), in
+## A cable beside a vine strung from `a` to `b` (its corbel end first), in
 ## among it: from the wall a little along from each of its ends, now and then
 ## crossing it in the middle.
 func _cable_by_strand(a: Vector3, b: Vector3) -> void:
@@ -397,9 +397,9 @@ func _cable_by_strand(a: Vector3, b: Vector3) -> void:
 	var off_b := off_a if _rng.randf() < 0.6 else -off_a * _rng.randf_range(0.5, 1.0)
 	var h_a := a.y + _rng.randf_range(-1.5, 1.0)
 	var h_b := b.y + _rng.randf_range(-1.0, 1.5)
-	# (the walls behind its ends, found from about where they are: its buttress
+	# (the walls behind its ends, found from about where they are: its corbel
 	# end stands out from its wall, its far end is held on the wall itself)
-	var from_a := Vector3(a.x, 0.0, a.z) - across * MazeFeatures.BUTTRESS.y + side * off_a
+	var from_a := Vector3(a.x, 0.0, a.z) - across * MazeFeatures.VINE_CORBEL.z + side * off_a
 	var from_b := Vector3(b.x, 0.0, b.z) + side * off_b
 	var d_a := _face_out(from_a, across, h_a)
 	var d_b := _face_out(from_b, -across, h_b)
@@ -526,7 +526,7 @@ func _solid(p: Vector3) -> bool:
 	return false
 
 
-## The ways up are kept clear: ivy, the terraces and buttresses, the pipes and
+## The ways up are kept clear: ivy, the terraces and the vines' corbels, the pipes and
 ## their platforms, the beams the vines hang from.
 func _keep_clear_of_ways_up(layout: MazeLayout) -> void:
 	for piece in layout.pieces(MazePiece.Kind.IVY):

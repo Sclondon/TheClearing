@@ -42,9 +42,10 @@ const VINE_BESIDE := 3.2
 const WALL_IVY := 5.0
 ## (No higher than this, even up the clearing's great wall: its leaves are many.)
 const IVY_MOST := 30.0
-## The buttress a strung vine is held on at one end: how wide, and how deep out
-## from the wall.
-const BUTTRESS := Vector2(2.6, 1.8)
+## The corbel a strung vine is held on at its near end: a short slab of stone set
+## into the wall (no pillar to the ground: the user, 2026-10-18), how long along
+## the wall, how thick and how far out from it.
+const VINE_CORBEL := Vector3(2.2, 0.5, 1.2)
 
 ## What is in the maze, for tests and tools: where each terrace stands, and each
 ## IvyClimb, Vine and RopeBridge made.
@@ -70,7 +71,7 @@ var _taken := {}
 var _spot_rng := RandomNumberGenerator.new()
 ## [cell, step] -> how many levels of ledge its face has (see _levels).
 var _level_counts := {}
-## The lips of the ledges laid out (terraces, platforms, buttresses), for rings:
+## The lips of the ledges laid out (terraces, platforms, the vines' corbels), for rings:
 ## [the middle of the top of its front, the way out from it, how long it is along the face].
 var _lips: Array = []
 
@@ -189,7 +190,8 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 					_climb(_edge(cell, step, off_wall, ivy_along), step, high, WALL_IVY)
 					if hangs:
 						var beside := ivy_along + (VINE_BESIDE if ivy_along < 0.0 else -VINE_BESIDE)
-						beside = clampf(beside, low - WALL_IVY * 0.5 + 0.5, high_along + WALL_IVY * 0.5 - 0.5)
+						# (on the wall, well clear of its ends: not tucked into a corner as if hung on a pier)
+						beside = clampf(beside, low, high_along)
 						var out := WALL_VINE_OUT + off_wall
 						_vine(cell, step, out, beside, high, VINE_CLEAR, false)
 				continue
@@ -243,16 +245,17 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 			var low := minf(_face_top(cell, -step), _face_top(far, step))
 			var high := low * _rng.randf_range(_style.tightrope_vine_height_range.x, _style.tightrope_vine_height_range.y)
 			var along := _rng.randf_range(-0.4, 0.4) * Maze.CELL
-			# (held at one end on top of a buttress of stone against the wall, with ivy up
-			# its face, so that he can climb to it, step onto it and walk it)
+			# (held at its near end on a corbel set into the wall, a curtain of ivy
+			# hanging from its edge to the ground, so that he can climb to it, step
+			# onto it and walk the vine)
 			_taken[[cell, -step]] = true
 			var s := Vector3(-step.x, 0.0, -step.y)
 			var side := Vector3(-s.z, 0.0, s.x)
-			var size := side.abs() * BUTTRESS.x + s.abs() * BUTTRESS.y + Vector3.UP * high
-			_layout.add_piece(MazePiece.Kind.TERRACE, Transform3D(Basis.IDENTITY, _edge(cell, -step, BUTTRESS.y * 0.5, along)), {"size": size})
-			_lip(cell, -step, BUTTRESS.y, along, high, BUTTRESS.x)
-			_climb(_edge(cell, -step, BUTTRESS.y, along), -step, high, BUTTRESS.x * 0.8)
-			var a := _edge(cell, -step, BUTTRESS.y, along) + Vector3.UP * high
+			var size := side.abs() * VINE_CORBEL.x + s.abs() * VINE_CORBEL.z + Vector3.UP * VINE_CORBEL.y
+			_layout.add_piece(MazePiece.Kind.TERRACE, Transform3D(Basis.IDENTITY, _edge(cell, -step, VINE_CORBEL.z * 0.5, along) + Vector3.UP * (high - VINE_CORBEL.y)), {"size": size})
+			_lip(cell, -step, VINE_CORBEL.z, along, high, VINE_CORBEL.x)
+			_climb(_edge(cell, -step, VINE_CORBEL.z, along), -step, high, VINE_CORBEL.x * 0.8)
+			var a := _edge(cell, -step, VINE_CORBEL.z, along) + Vector3.UP * high
 			# (along that wall runs the other way)
 			# (on its own length of that wall, not past it where the next cell may be open:
 			# tied to the wall, not to the air)
