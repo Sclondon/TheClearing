@@ -9,8 +9,7 @@ var main: Node
 
 func _initialize() -> void:
 	var styles := MazeStyle.square_defaults() + MazeStyle.round_defaults()
-	styles[0].mezzanine_height = 10.0
-	styles[0].mezzanine_depth = 1.0
+	styles[0].mezzanines = [MezzanineLevel.made(10.0, 1.0)]
 	MazeStyle.chosen = styles
 	main = load("res://main.tscn").instantiate()
 	main.testing = true
@@ -25,7 +24,7 @@ func _run() -> void:
 	for i in 60:
 		await physics_frame
 	var maze: Maze = main.world.maze
-	print("first ring's ledge %.1f m, %.1f deep; rampart %d" % [maze.styles[0].mezzanine_height, maze.styles[0].mezzanine_depth, maze.rampart(1)])
+	print("first ring's ledge %.1f m, %.1f deep; rampart %d" % [maze.styles[0].level_height(0), maze.styles[0].level_depth(0), maze.rampart(1)])
 	var space: PhysicsDirectSpaceState3D = main.world.get_world_3d().direct_space_state
 	var shown := 0
 	for i in maze.size * maze.size:

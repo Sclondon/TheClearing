@@ -84,7 +84,8 @@ leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened i
   branching, loops, entrances, rooms (`Maze.rooms`: open floors of whole blocks, a few halls into each from
   different sides, a column, a pine or a pond in the middle; `Maze.columns` are in the plan so the hunters go
   round them), and
-  what is on its walls (see DESIGN.md). `rings` of them are built (1 for now) and the grid runs to the outside of
+  what is on its walls (see DESIGN.md): its levels of ledge are a list (`mezzanines`, each a `MezzanineLevel`,
+  `scripts/mezzanine_level.gd`: height over the one under it, depth, share of faces). `rings` of them are built (1 for now) and the grid runs to the outside of
   the last. Each ring is grown from its first way in (into the first, a gate in the middle of each side of the
   clearing; into each later one, the gate out of the ring inside it), and its gate out put on its outside as far
   round the walls from its ways in as there is. The gate out of the last ring is the exit. The same seed always

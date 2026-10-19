@@ -10,7 +10,9 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/zone1_vines_shots.gd -- <folder> [ledge m]
 ## (or, for the second argument, a mode: anchors, leaves (close up), wallvines (vines out of the walls),
-## hung (vines hung on the props: vents, outlets, culverts, junction boxes), zone2, corners, border, clearing)
+## hung (vines hung on the props: vents, outlets, culverts, junction boxes), zone2, levels (zone2 with three levels
+## of ledge each its own height and depth: 6 m up and 4 m deep, 12 m over it 2.5 m deep, 18 m over that 1 m deep),
+## corners, border, clearing)
 
 var main: Node
 
@@ -22,18 +24,16 @@ func _initialize() -> void:
 	first.maze_wall_height = 120.0
 	first.maze_wall_diameter = 13.0
 	first.section_border_wall_height = 175.0
-	first.mezzanine_height = float(args[1]) if args.size() > 1 and args[1].is_valid_float() else 10.0
-	first.mezzanine_depth = 1.0
-	first.mezzanine_thickness = 0.25
+	first.mezzanines = [MezzanineLevel.made(float(args[1]) if args.size() > 1 and args[1].is_valid_float() else 10.0, 1.0)]
 	# (the second as the user has it: walls 100 m high and 10 m thick, three levels of ledge from 5 m up, 20 m apart)
 	var second: MazeStyle = styles[1]
 	second.section_width_cells = 10
 	second.maze_wall_diameter = 10.0
 	second.maze_wall_height = 100.0
 	second.section_border_wall_height = 100.0
-	second.mezzanine_height = 5.0
-	second.mezzanine_depth = 4.0
-	second.mezzanine_level_rise = 20.0
+	second.mezzanines = [MezzanineLevel.made(5.0, 4.0), MezzanineLevel.made(20.0, 3.4, 0.55), MezzanineLevel.made(20.0, 2.8, 0.55)]
+	if args.size() > 1 and args[1] == "levels":
+		second.mezzanines = [MezzanineLevel.made(6.0, 4.0), MezzanineLevel.made(12.0, 2.5, 0.7), MezzanineLevel.made(18.0, 1.0, 0.7)]
 	MazeStyle.chosen = styles
 	main = load("res://main.tscn").instantiate()
 	main.testing = true
@@ -80,13 +80,13 @@ func _run() -> void:
 		await _border(world, folder)
 		quit()
 		return
-	if args.size() > 1 and args[1] == "zone2":
+	if args.size() > 1 and args[1] in ["zone2", "levels"]:
 		await _zone2(world, folder)
 		quit()
 		return
 	var maze: Maze = world.maze
 	var style: MazeStyle = maze.styles[0]
-	var ledge := style.mezzanine_height
+	var ledge := style.level_height(0)
 	var layout: MazeLayout = world.get_node("Maze").layout
 	# The brackets of the first section, and what is near each: pick the hall with the most of the concept in it.
 	var brackets: Array = []
@@ -164,13 +164,13 @@ func _run() -> void:
 	for piece in layout.pieces(MazePiece.Kind.VINE):
 		if piece.position.distance_to(best.position) < 3.0:
 			vine_side = signf((piece.position - best.position).dot(along))
-	var on_ledge := wall_at + out * style.mezzanine_depth * 0.5 + along * 9.0 * vine_side
+	var on_ledge := wall_at + out * style.level_depth(0) * 0.5 + along * 9.0 * vine_side
 	on_ledge.y = ledge + 1.6
 	camera.global_position = on_ledge
 	camera.look_at(best.position + out * 5.0 + Vector3.DOWN * 4.0)
 	await _shot("%s/4_from_the_ledge.png" % folder)
 	# From the far ledge, looking back at the bracket's wall.
-	var far_ledge := wall_at + out * (width - style.mezzanine_depth * 0.5) - along * 8.0
+	var far_ledge := wall_at + out * (width - style.level_depth(0) * 0.5) - along * 8.0
 	far_ledge.y = ledge + 1.6
 	camera.global_position = far_ledge
 	camera.look_at(best.position + Vector3.DOWN * 3.0)
@@ -222,8 +222,8 @@ func _zone2(world: Node, folder: String) -> void:
 	world.add_child(camera)
 	camera.make_current()
 	var levels: Array[float] = []
-	for level in style.mezzanine_levels:
-		levels.append(style.mezzanine_height + level * style.mezzanine_level_rise)
+	for level in style.mezzanine_count():
+		levels.append(style.level_height(level))
 	for way: float in [1.0, -1.0]:
 		var tag := "a" if way > 0.0 else "b"
 		# Looking along the hall from the floor, as the concept slice is drawn, and up from under the bridge.
@@ -261,13 +261,13 @@ func _corners(world: Node, folder: String) -> void:
 		if shots >= 2 or not piece.ledge or maze.ring_of(maze.cell_at(piece.position)) != 2 or piece.position.y > 0.1:
 			continue
 		# (across a wall's end: as long as the wall is thick, as deep as the ledge)
-		if is_equal_approx(maxf(size.x, size.z), style.maze_wall_diameter) and is_equal_approx(minf(size.x, size.z), style.mezzanine_depth):
+		if is_equal_approx(maxf(size.x, size.z), style.maze_wall_diameter) and is_equal_approx(minf(size.x, size.z), style.level_depth(0)):
 			var thin := Vector3(1, 0, 0) if size.x < size.z else Vector3(0, 0, 1)
 			# (out from the end face: away from the wall, which is the side with stone)
 			var way := 1.0 if not _solid(layout, piece.position + thin * (size.dot(thin) * 0.5 + 1.0) + Vector3.UP * 2.0) else -1.0
 			var across := Vector3.UP.cross(thin)
-			camera.global_position = piece.position + thin * way * 12.0 + across * 9.0 + Vector3.UP * (style.mezzanine_height + 6.0)
-			camera.look_at(piece.position + Vector3.UP * style.mezzanine_height * 0.7)
+			camera.global_position = piece.position + thin * way * 12.0 + across * 9.0 + Vector3.UP * (style.level_height(0) + 6.0)
+			camera.look_at(piece.position + Vector3.UP * style.level_height(0) * 0.7)
 			await _shot("%s/corner_%d.png" % [folder, shots])
 			shots += 1
 	print("corner shots: ", shots)
@@ -535,7 +535,7 @@ func _border(world: Node, folder: String) -> void:
 				found = true
 				var s := Vector3(step.x, 0.0, step.y)
 				var along := Vector3(side.x, 0.0, side.y)
-				var high: float = maze.styles[ring - 1].mezzanine_height
+				var high: float = maze.styles[ring - 1].level_height(0)
 				camera.global_position = maze.world(cell) - s * 3.0 - along * Maze.CELL * 1.2 + Vector3.UP * (high + 4.0)
 				camera.look_at(maze.world(cell) + s * Maze.CELL * 0.4 + along * Maze.CELL + Vector3.UP * high * 0.6)
 				await _shot("%s/border_ring%d.png" % [folder, ring])
@@ -564,7 +564,7 @@ func _clearing_wall(world: Node, folder: String) -> void:
 	camera.far = 600.0
 	world.add_child(camera)
 	camera.make_current()
-	var high: float = maze.styles[0].mezzanine_height
+	var high: float = maze.styles[0].level_height(0)
 	# (inside: from near the clearing's south edge, looking along its wall)
 	var edge := maze.ring_sizes[0] * Maze.CELL * 0.5
 	var lean := maze.wall_thick(Vector2i.ZERO, Vector2i(0, 1)) * 0.5

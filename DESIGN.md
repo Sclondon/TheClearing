@@ -165,7 +165,8 @@ Each feature of a section has its own on/off box in the maze editor's Inspector,
 under it only while it is on (the user, 2026-10-18: "Rather than a share slider - there should be check boxes to turn
 on and off each feature for the section in the editor. Vines and ivy should be their own sections not in climbing,
 same with sewers (wall decor) and tunnels."). The groups:
-- **Climbing**: the mezzanine (ledges along the walls: height, depth, levels), terraces (how many, upper terraces),
+- **Climbing**: the mezzanines (a list of levels of ledge along the walls, each with its height, depth and share of
+  faces; see "The levels of ledge" below), terraces (how many, upper terraces),
   arched concrete bridges between ledges at the same level (how many, deck width, arch rise),
   rope bridges (between terraces, wall top to wall top, between mezzanine ledges).
 - **Ivy**: wall ivy from the ground (how many, how high), ivy on from upper terraces to the wall top, ivy between
@@ -189,6 +190,19 @@ the boxes (or a preset) has each feature on when its amount is more than 0, so i
 amount of 0 (`MazeStyle.amount`), so the same random numbers are drawn and a maze with nothing changed is the same.
 Every setting shows its unit in the Inspector (m, cells, s, "of faces", "of halls", per hectare...; shares are 0 to
 1) and has a one-line tooltip (the user, 2026-10-18: "the editor also needs units - its hard to tell what im changing").
+
+**The levels of ledge** (MazeStyle `mezzanines`, a list of `MezzanineLevel`; the user, 2026-10-18: "I should be able to
+add mezzanines as a list and control them indvidiually, height and depth. The automatically get stacked on top of
+eachother, and the limits of depth and theight should be the whole hallway for edditing purposes"). Add Element adds a
+level over the last. Each has its *height* (m over the top of the level under it; the first, over the ground), its
+*depth* (m out from the wall) and its *share* (of the faces with the level under it, how many have it too; the first
+runs along every wall, a step of stone from the floor). They stack by themselves, each standing on the one under it,
+and step back where each is shallower. The sliders run to 120 m (the highest maze wall) and 56 m (across the widest
+hall, four cells), and further typed in; laying out keeps them sensible for the section (`MazeStyle.level_height`,
+`level_depth`): the levels stop at the first that would come within 2 m of the maze walls' tops (or rises nothing),
+and no level is deeper than leaves a 1.5 m walkway between it and one facing it across a hall of the section's width.
+A section saved with the old rules (mezzanine height, depth, levels, level rise, depth step, upper share; thickness
+was unused) is given the levels they made when it loads (`MazeStyle._set`): the same ledges as before.
 
 Because walls are thick, any opening one cell long through a wall is itself a slot (cell minus wall thickness):
 that is how the gates become slots.

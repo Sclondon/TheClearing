@@ -164,12 +164,12 @@ func _dress_face(cell: Vector2i, step: Vector2i, near_gate: bool) -> void:
 	var top := _maze.wall_height(cell, step)
 	# (the step of ledge along the wall's foot, if it has one: vents stay under it)
 	var under_ledge := top
-	if _style.mezzanine_height > 0.0:
-		under_ledge = _style.mezzanine_height
+	if _style.has_mezzanine():
+		under_ledge = _style.level_height(0)
 		# (and they go on the ledge's front, standing out of it, not buried in it: the
 		# user, 2026-10-18, "sewer parts should stick out of the mezzanine rather than get clipped")
 		if _ledged(cell, step):
-			foot += out * _style.mezzanine_depth
+			foot += out * _style.level_depth(0)
 	var room := Maze.CELL * 0.5 - 1.0
 	if _rng.randf() < _style.amount(&"wall_vent_share"):
 		var is_round := _rng.randf() < 0.35
@@ -441,7 +441,7 @@ func _wire(a: Vector3, b: Vector3, sag: float, across: bool) -> void:
 func _ledge_cables(plan: Maze) -> void:
 	for i in plan.size * plan.size:
 		var cell := Vector2i(i % plan.size, i / plan.size)
-		if not _in_a_section(cell) or _style.mezzanine_height <= 0.0:
+		if not _in_a_section(cell) or not _style.has_mezzanine():
 			continue
 		# (its section's numbers, after all else drawn from them)
 		var numbers := _rng
@@ -487,7 +487,7 @@ func _hall_top(cell: Vector2i, far: Vector2i, step: Vector2i) -> float:
 ## and the cable between them (a vine is now and then strung between them as well,
 ## by MazeFeatures.hang_vines, as from anything on the walls).
 func _junction_boxes(cell: Vector2i, far: Vector2i, step: Vector2i, numbers: RandomNumberGenerator) -> void:
-	var ledge := _style.mezzanine_height
+	var ledge := _style.level_height(0)
 	var top := _hall_top(cell, far, step)
 	var range_of := _style.junction_box_height_range
 	var h_a := minf(ledge + numbers.randf_range(range_of.x, range_of.y), top)
@@ -518,7 +518,7 @@ func _junction_boxes(cell: Vector2i, far: Vector2i, step: Vector2i, numbers: Ran
 
 ## A cable slanting across the hall from high on one wall down to the other.
 func _slanting_cable(cell: Vector2i, far: Vector2i, step: Vector2i, numbers: RandomNumberGenerator) -> void:
-	var ledge := _style.mezzanine_height
+	var ledge := _style.level_height(0)
 	var top := _hall_top(cell, far, step)
 	var heights := _style.slanting_cable_heights
 	var high := minf(ledge + heights.y + numbers.randf_range(-1.5, 1.5), top)
@@ -540,7 +540,7 @@ func _slanting_cable(cell: Vector2i, far: Vector2i, step: Vector2i, numbers: Ran
 ## A cable from the edge of the ledge along one wall across and down to the other
 ## wall under its ledge, fixed there, and from there hanging down to the floor.
 func _ledge_cable(cell: Vector2i, far: Vector2i, step: Vector2i, numbers: RandomNumberGenerator) -> void:
-	var ledge := _style.mezzanine_height
+	var ledge := _style.level_height(0)
 	var fixed := clampf(ledge * _style.ledge_cable_fix_height + numbers.randf_range(-0.5, 0.5), 1.5, ledge - 1.0)
 	var along := numbers.randf_range(-0.4, 0.4) * Maze.CELL
 	var feet := _hall_feet(cell, far, step, along, along + numbers.randf_range(-3.0, 3.0))

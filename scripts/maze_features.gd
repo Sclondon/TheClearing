@@ -205,9 +205,9 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 					var off_wall := 0.0
 					# (only the maze walls have the ledge, not the great walls round the ring)
 					var beyond := cell + step
-					if _style.mezzanine_height > 0.0 and plan.ring_of(beyond) == ring and not plan.solid.has(beyond):
-						high = _style.mezzanine_height
-						off_wall = _style.mezzanine_depth
+					if _style.has_mezzanine() and plan.ring_of(beyond) == ring and not plan.solid.has(beyond):
+						high = _style.level_height(0)
+						off_wall = _style.level_depth(0)
 					# (somewhere along the face clear of any wall meeting it)
 					var low := -_room(cell, step, -1) + WALL_IVY * 0.5
 					var high_along := _room(cell, step, 1) - WALL_IVY * 0.5
@@ -313,7 +313,7 @@ func _furnish_rooms(plan: Maze) -> void:
 		_layout.laying_zone = -1
 
 
-## The levels of ledge over the first (MazeStyle.mezzanine_levels): along some
+## The levels of ledge over the first (MazeStyle.mezzanines): along some
 ## faces of the maze walls, each level over one that is there, shallower than it;
 ## ivy from the edge of each down to the one under; rope bridges across halls
 ## between ledges at the same level.
@@ -327,13 +327,13 @@ func _levels(plan: Maze) -> void:
 			continue
 		if not _enter(ring):
 			continue
-		if _style.mezzanine_height <= 0.0:
+		if not _style.has_mezzanine():
 			continue
 		for step: Vector2i in Maze.STEPS:
 			if not plan.has_ledge(cell, step):
 				continue
 			var count := 1
-			while count < _style.mezzanine_levels and _rng.randf() < _style.mezzanine_upper_share:
+			while count < _style.mezzanine_count() and _rng.randf() < _style.level_share(count):
 				count += 1
 			levels[[cell, step]] = count
 			var room := {-1: _room(cell, step, -1), 1: _room(cell, step, 1)}
@@ -433,11 +433,11 @@ func _past_end(cell: Vector2i, step: Vector2i, way: int, deep: float) -> float:
 ## How high the top of level `level` is (0 the first), and how deep it is, by the
 ## style of the ring being laid out.
 func _level_height(level: int) -> float:
-	return _style.mezzanine_height + level * _style.mezzanine_level_rise
+	return _style.level_height(level)
 
 
 func _level_depth(level: int) -> float:
-	return maxf(_style.mezzanine_depth - level * _style.mezzanine_depth_step, 0.6)
+	return _style.level_depth(level)
 
 
 ## How far a pipe stands out of each face of its wall, and how deep and wide the
@@ -467,8 +467,8 @@ func _pipe(cell: Vector2i, step: Vector2i) -> void:
 	var along := _rng.randf_range(-room[-1], room[1])
 	var high := _maze.wall_height(cell, step) * _style.sewer_pipe_height
 	# (over the highest level of ledge there may be, not buried in it)
-	if _style.mezzanine_height > 0.0:
-		high = maxf(high, minf(_level_height(_style.mezzanine_levels - 1) + PLATFORM_THICK + 1.5, _maze.wall_height(cell, step) - MazeBuilder.CORNICE.y - SewerPipe.HOLE.y - 1.0))
+	if _style.has_mezzanine():
+		high = maxf(high, minf(_level_height(_style.mezzanine_count() - 1) + PLATFORM_THICK + 1.5, _maze.wall_height(cell, step) - MazeBuilder.CORNICE.y - SewerPipe.HOLE.y - 1.0))
 	var middle := _edge(cell, step, -thick * 0.5, along) + Vector3.UP * high
 	if not _hole(middle, s):
 		return
@@ -568,7 +568,7 @@ func _room(cell: Vector2i, step: Vector2i, way: int) -> float:
 		return Maze.CELL * 0.5
 	var room := Maze.CELL * 0.5 - _maze.wall_thick(cell, side) * 0.5
 	if _maze.has_ledge(cell, side):
-		room -= _maze.ledge_style(cell).mezzanine_depth
+		room -= _maze.ledge_style(cell).level_depth(0)
 	return room
 
 
@@ -748,7 +748,7 @@ func _concrete_bridges(plan: Maze) -> void:
 		var ring := plan.ring_of(cell)
 		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
 			continue
-		if not _enter(ring) or _style.mezzanine_height <= 0.0:
+		if not _enter(ring) or not _style.has_mezzanine():
 			continue
 		# Across the hall, from the face (cell, -step) to the far side's (far, step).
 		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
@@ -1094,7 +1094,9 @@ func _anchors() -> Array:
 			var highest := _room(cell, step, 1) - WALL_VINE_ENDS
 			if high - band.x < 3.0 or lowest > highest:
 				continue
-			var at := _edge(cell, step, 0.0, numbers.randf_range(lowest, highest)) + Vector3.UP * high
+			# (under the ledges, out of the first level's front)
+			var face := _level_depth(0) if levels > 0 and band.x <= 0.0 else 0.0
+			var at := _edge(cell, step, face, numbers.randf_range(lowest, highest)) + Vector3.UP * high
 			anchors.append(_anchor(ring, cell, step, Anchor.WALL, at, 0.0, Vine.Held.FACE, WALL_GROWN_OUT, band.x, false, seed_of.call(Anchor.WALL, at)))
 	return anchors
 
@@ -1255,15 +1257,16 @@ func _clear_of(near: Dictionary, at: Vector3, ring: int) -> bool:
 
 
 ## The band of the face (cell, step) that has `levels` levels of ledge a vine may grow
-## out of: (its foot, its top), from the floor to under the first ledge (or the cornice),
-## or (`over`) from the top ledge to under the cornice.
+## out of: (its foot, its top), from the floor to under the cornice, or with ledges, to
+## under the first ledge's top (out of its front: the first level is a step of stone from
+## the floor), or (`over`) from the top ledge to under the cornice.
 func _band(cell: Vector2i, step: Vector2i, levels: int, over: bool) -> Vector2:
 	var top := _face_top(cell, step) - MazeBuilder.CORNICE.y - 1.0
 	if levels <= 0:
 		return Vector2(0.0, top)
 	if over:
 		return Vector2(_level_height(levels - 1), top)
-	return Vector2(0.0, _style.mezzanine_height - _style.mezzanine_thickness - 0.6)
+	return Vector2(0.0, _level_height(0) - 1.0)
 
 
 ## Whether a vine strung from `a`, on the face `face` with `levels` levels of ledge,
@@ -1290,7 +1293,8 @@ func _in_ledges(levels: int, x: float, y: float) -> bool:
 	if levels <= 0:
 		return false
 	var m := LEDGE_CLEAR
-	if x < _level_depth(0) + m and y > _style.mezzanine_height - _style.mezzanine_thickness - m and y < _style.mezzanine_height + m:
+	# (the first level a step of stone from the floor, each over it from the one under it)
+	if x < _level_depth(0) + m and y < _level_height(0) + m:
 		return true
 	for level in range(1, levels):
 		if x < _level_depth(level) + m and y > _level_height(level - 1) - m and y < _level_height(level) + m:

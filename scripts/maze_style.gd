@@ -82,20 +82,10 @@ extends Resource
 
 @export_group("Climbing")
 @export_subgroup("Mezzanine (ledges)")
-## How high the ledge along every wall face is, metres, a mezzanine to walk along (0: none).
-@export_range(0.0, 100.0, 0.001, "suffix:m") var mezzanine_height := 0.0
-## How deep the ledge stands out from the wall, metres.
-@export_range(0.5, 4.0, 0.001, "suffix:m") var mezzanine_depth := 1.2
-## How thick the ledge is, metres.
-@export_range(0.2, 2.0, 0.001, "suffix:m") var mezzanine_thickness := 0.6
-## How many levels of ledge there are, one over another (those over the first only along some faces).
-@export_range(1, 5, 1, "suffix:levels") var mezzanine_levels := 1
-## How far apart the levels are, one over the next, metres.
-@export_range(3.0, 30.0, 0.001, "suffix:m") var mezzanine_level_rise := 8.0
-## Of the faces with a level, how many have the level over it too (a share, 0 to 1).
-@export_range(0.0, 1.0, 0.001, "suffix:of faces") var mezzanine_upper_share := 0.5
-## How much shallower each level is than the one under it, metres (so they step back going up).
-@export_range(0.0, 1.5, 0.001, "suffix:m") var mezzanine_depth_step := 0.6
+## The levels of ledge along the walls, mezzanines to walk along, first to last going up: each its height over the
+## one under it, its depth and its share of faces (MezzanineLevel; Add Element, then New MezzanineLevel). They stack by
+## themselves, each standing on the one under it; the first runs along every wall. None: no ledges.
+@export var mezzanines: Array[MezzanineLevel] = []
 
 @export_subgroup("Terraces")
 ## Terraces: steps of stone against the walls, like those of something far bigger than a boy, ivy up their faces.
@@ -846,9 +836,94 @@ func _set(property: StringName, value: Variant) -> bool:
 		return true
 	if property == &"ledge":
 		# (it was a share of the maze walls' height)
-		mezzanine_height = float(value) * maze_wall_height
+		return _set(&"mezzanine_height", float(value) * maze_wall_height)
+	if OLD_MEZZANINE.has(property):
+		_old_mezzanine[property] = value
+		_from_old_mezzanine()
 		return true
 	return false
+
+
+# --- The levels of ledge (mezzanines) ---
+
+## The rules the levels of ledge were made by before the list of them (2026-10-18), and
+## what each was when not saved: a section saved with them is given the levels they made.
+const OLD_MEZZANINE := {
+	&"mezzanine_height": 0.0, &"mezzanine_depth": 1.2, &"mezzanine_thickness": 0.6, &"mezzanine_levels": 1,
+	&"mezzanine_level_rise": 8.0, &"mezzanine_upper_share": 0.5, &"mezzanine_depth_step": 0.6,
+}
+## The old rules as loaded (OLD_MEZZANINE), and whether `mezzanines` was made from them.
+var _old_mezzanine := {}
+var _mezzanines_from_old := false
+
+## How near the top of its walls the top of a level of ledge may come, metres; and how
+## wide a way along a hall ledges facing each other at the same level leave at least.
+const LEDGE_UNDER_TOP := 2.0
+const LEDGE_WALKWAY := 1.5
+
+
+## The levels of ledge as the old rules loaded say (once the list is empty, or was made
+## from them): the first along every wall `mezzanine_height` up, `mezzanine_depth` deep;
+## each over it `mezzanine_level_rise` higher, `mezzanine_depth_step` shallower (0.6 m at
+## least), along `mezzanine_upper_share` of the faces under it.
+func _from_old_mezzanine() -> void:
+	if not mezzanines.is_empty() and not _mezzanines_from_old:
+		return
+	var old := OLD_MEZZANINE.duplicate()
+	old.merge(_old_mezzanine, true)
+	var made: Array[MezzanineLevel] = []
+	if float(old.mezzanine_height) > 0.0:
+		for level in maxi(int(old.mezzanine_levels), 1):
+			var deep := float(old.mezzanine_depth) if level == 0 else maxf(float(old.mezzanine_depth) - level * float(old.mezzanine_depth_step), 0.6)
+			made.append(MezzanineLevel.made(float(old.mezzanine_height) if level == 0 else float(old.mezzanine_level_rise), deep,
+				1.0 if level == 0 else float(old.mezzanine_upper_share)))
+	mezzanines = made
+	_mezzanines_from_old = true
+
+
+## How many levels of ledge there are: those of `mezzanines` up to the first that is
+## empty, rises nothing, or would come within LEDGE_UNDER_TOP of the maze walls' tops.
+func mezzanine_count() -> int:
+	var top := 0.0
+	var count := 0
+	for level in mezzanines:
+		if level == null or level.height <= 0.0:
+			break
+		top += level.height
+		if top > maze_wall_height - LEDGE_UNDER_TOP:
+			break
+		count += 1
+	return count
+
+
+## Whether its walls have ledges along them.
+func has_mezzanine() -> bool:
+	return mezzanine_count() > 0
+
+
+## How high the top of level `level` is (0 the first; under it, the ground: 0), metres.
+func level_height(level: int) -> float:
+	var top := 0.0
+	for k in mini(level + 1, mezzanine_count()):
+		top += mezzanines[k].height
+	return top
+
+
+## How deep level `level` stands out from the wall, metres: no deeper than leaves
+## LEDGE_WALKWAY between it and one facing it across a hall of the section (and 0.3 m
+## at least).
+func level_depth(level: int) -> float:
+	if level < 0 or level >= mezzanine_count():
+		return 0.0
+	var most := (hallway_diameter_cells * Maze.CELL - maze_wall_diameter - LEDGE_WALKWAY) * 0.5
+	return clampf(mezzanines[level].depth, 0.3, maxf(most, 0.3))
+
+
+## Of the faces with level `level` - 1, how many have level `level` too (the first: every one).
+func level_share(level: int) -> float:
+	if level <= 0:
+		return 1.0
+	return mezzanines[level].share if level < mezzanine_count() else 0.0
 
 
 ## The groups `bare` empties: every count in them goes to none.
@@ -881,7 +956,7 @@ func bare() -> MazeStyle:
 	var copy: MazeStyle = duplicate(true)
 	copy.section_width_cells = 1
 	copy.room_count = 0
-	copy.mezzanine_height = 0.0
+	copy.mezzanines = []
 	copy.loot_items = 0
 	copy.abandoned_camps = 0
 	var group := ""
@@ -919,11 +994,8 @@ static func made(depth_cells: int, hallway_cells: int, straightness: float, bran
 static func avenues() -> MazeStyle:
 	var style := made(6, 2, 0.5, 0.0, 0.0)
 	style.maze_wall_diameter = 12.0
-	style.mezzanine_height = style.maze_wall_height / 3.0
-	# (one thin ledge: a lip of concrete, not a balcony)
-	style.mezzanine_levels = 1
-	style.mezzanine_thickness = 0.25
-	style.mezzanine_depth = 0.9
+	# (one narrow ledge a third of the way up: a lip of concrete, not a balcony)
+	style.mezzanines = [MezzanineLevel.made(style.maze_wall_height / 3.0, 0.9)]
 	style.terrace_share = 0.0
 	style.wall_top_bridge_share = 0.0
 	style.wall_ivy_share = 0.1
@@ -966,12 +1038,8 @@ static func galleries() -> MazeStyle:
 	style.maze_wall_diameter = 12.0
 	# (three ways in from the Avenues)
 	style.entrance_count = 3
-	style.mezzanine_height = 8.0
-	style.mezzanine_depth = 2.4
-	style.mezzanine_levels = 3
-	style.mezzanine_level_rise = 8.0
-	style.mezzanine_upper_share = 0.55
-	style.mezzanine_depth_step = 0.6
+	# (three levels 8 m apart, each 0.6 m shallower than the one under it, the upper two along about half the faces under them)
+	style.mezzanines = [MezzanineLevel.made(8.0, 2.4), MezzanineLevel.made(8.0, 1.8, 0.55), MezzanineLevel.made(8.0, 1.2, 0.55)]
 	style.mezzanine_ivy_share = 0.25
 	style.mezzanine_bridge_share = 0.2
 	style.bracket_share = 0.1

@@ -90,7 +90,7 @@ func _run() -> void:
 
 	# --- The ways ---
 	ways = GibbonWays.of(maze, 1)
-	var high: float = maze.styles[0].mezzanine_height
+	var high: float = maze.styles[0].level_height(0)
 	check("the first section has its ways", ways.size() > 200, "(%d faces)" % ways.size())
 	var on_ledge := 0
 	for f in ways.size():
