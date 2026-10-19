@@ -537,7 +537,7 @@ func _process(delta: float) -> void:
 	if _showing.is_empty():
 		return
 	# The nearest pushers to the camera (or to the field) go to the shader.
-	var found := _nearest_pushers(camera)
+	var found := nearest_pushers(camera)
 	var packed := PackedVector4Array()
 	packed.resize(MAX_PUSHERS)
 	var n := mini(found.size(), MAX_PUSHERS)
@@ -581,7 +581,8 @@ func _thin(i: int, eye: Vector3) -> void:
 			_showing[i] = true
 
 
-## The pushers, nearest the camera first: found once a frame for every field.
+## The pushers, nearest the camera first (only the SHORTLIST nearest): found once a
+## frame for every field, and for the plants, the corn and the marsh.
 static var _pushers_frame := -1
 static var _pushers: Array = []
 ## The few pushers nearest the camera, picked out of all of them only every
@@ -592,21 +593,22 @@ const SHORTLIST_EVERY := 10
 const SHORTLIST := MAX_PUSHERS * 3
 
 
-func _nearest_pushers(camera: Camera3D) -> Array:
+static func nearest_pushers(camera: Camera3D) -> Array:
+	var tree := Engine.get_main_loop() as SceneTree
 	var frame := Engine.get_process_frames()
 	if frame == _pushers_frame:
 		return _pushers
 	_pushers_frame = frame
 	if camera == null:
 		_pushers = []
-		for node in get_tree().get_nodes_in_group(PUSHERS):
+		for node in tree.get_nodes_in_group(PUSHERS):
 			if node is Node3D and node.is_inside_tree():
 				_pushers.append(node)
 		return _pushers
 	var eye := camera.global_position
 	if frame % SHORTLIST_EVERY == 0 or _shortlist.is_empty():
 		var near: Array = []
-		for node in get_tree().get_nodes_in_group(PUSHERS):
+		for node in tree.get_nodes_in_group(PUSHERS):
 			if node is Node3D and node.is_inside_tree():
 				near.append([(node as Node3D).global_position.distance_squared_to(eye), node])
 		if near.size() > SHORTLIST:
@@ -614,7 +616,7 @@ func _nearest_pushers(camera: Camera3D) -> Array:
 			near.resize(SHORTLIST)
 		_shortlist = near.map(func(one: Array) -> Node3D: return one[1])
 	_pushers = _shortlist.filter(func(node) -> bool: return is_instance_valid(node) and (node as Node3D).is_inside_tree())
-	if _pushers.size() > MAX_PUSHERS:
+	if _pushers.size() > 1:
 		_pushers.sort_custom(func(a: Node3D, b: Node3D) -> bool: return a.global_position.distance_squared_to(eye) < b.global_position.distance_squared_to(eye))
 	return _pushers
 

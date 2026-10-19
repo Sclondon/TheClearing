@@ -672,13 +672,11 @@ func _process(_delta: float) -> void:
 			_bulrush_material.set_shader_parameter(&"pusher_count", 0)
 			_pushing = false
 		return
-	var eye := camera.global_position
 	var found: Array[Node3D] = []
-	for node in get_tree().get_nodes_in_group(Grass.PUSHERS):
-		if node is Node3D and node.is_inside_tree() and area.grow(3.0).has_point(Vector2(node.global_position.x, node.global_position.z)):
+	# (Grass's shortlist of the nearest, already nearest first)
+	for node: Node3D in Grass.nearest_pushers(camera):
+		if area.grow(3.0).has_point(Vector2(node.global_position.x, node.global_position.z)):
 			found.append(node)
-	if found.size() > Grass.MAX_PUSHERS:
-		found.sort_custom(func(a: Node3D, b: Node3D) -> bool: return a.global_position.distance_squared_to(eye) < b.global_position.distance_squared_to(eye))
 	var packed := PackedVector4Array()
 	packed.resize(Grass.MAX_PUSHERS)
 	var n := mini(found.size(), Grass.MAX_PUSHERS)

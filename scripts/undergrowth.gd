@@ -473,10 +473,8 @@ func _process(_delta: float) -> void:
 		return
 	_pushed_frame = frame
 	var camera := get_viewport().get_camera_3d()
-	var found: Array = get_tree().get_nodes_in_group(Grass.PUSHERS).filter(func(n: Node) -> bool: return n is Node3D and n.is_inside_tree())
-	if camera and found.size() > Grass.MAX_PUSHERS:
-		var eye := camera.global_position
-		found.sort_custom(func(a: Node3D, b: Node3D) -> bool: return a.global_position.distance_squared_to(eye) < b.global_position.distance_squared_to(eye))
+	# (already nearest first)
+	var found: Array = Grass.nearest_pushers(camera)
 	var packed := PackedVector4Array()
 	packed.resize(Grass.MAX_PUSHERS)
 	var n := mini(found.size(), Grass.MAX_PUSHERS)

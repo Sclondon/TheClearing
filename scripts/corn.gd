@@ -353,11 +353,10 @@ func _drive(camera: Camera3D, delta: float) -> void:
 	# Who is going through it: the nearest the camera, to the shader (a soft lean)
 	# and, the nearest MAX_SHOVERS, shoving the stalks they are among.
 	var found: Array = []
-	for node in get_tree().get_nodes_in_group(Grass.PUSHERS):
-		if node is Node3D and node.is_inside_tree() and (node as Node3D).global_position.distance_squared_to(eye) < 3600.0:
+	# (Grass's shortlist of the nearest, already nearest first)
+	for node: Node3D in Grass.nearest_pushers(camera):
+		if node.global_position.distance_squared_to(eye) < 3600.0:
 			found.append(node)
-	if found.size() > 1:
-		found.sort_custom(func(a: Node3D, b: Node3D) -> bool: return a.global_position.distance_squared_to(eye) < b.global_position.distance_squared_to(eye))
 	var packed := PackedVector4Array()
 	packed.resize(Grass.MAX_PUSHERS)
 	var n := mini(found.size(), Grass.MAX_PUSHERS)
