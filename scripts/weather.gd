@@ -71,6 +71,8 @@ var sunshine := 0.0
 ## How much ground fog is lying (0 to 1), and how high its top is over the ground, metres.
 var ground_fog := 0.0
 var ground_fog_height := 1.0
+## How thick the clearing's fog banks are now (ClearingFog), 0 to 1.
+var clearing_fog := 0.0
 ## For DevTools: a kind to have instead of the spells (-1: the spells).
 var forced := -1
 ## For DevTools: ground fog or none instead of as the spells have it (-1: the spells, 0 none, 1 fog).
@@ -86,6 +88,7 @@ var _spells: Array = []
 var _cloud_material: ShaderMaterial
 var _rain: Rain
 var _ground_fog: GroundFog
+var _clearing_fog: ClearingFog
 var _lightning: DirectionalLight3D
 var _thunder: AudioStreamPlayer
 ## The strike now under way: when it began (INF: none), and its thunder still to come.
@@ -93,6 +96,8 @@ var _struck_at := INF
 var _struck_slot := -1
 var _thunder_at := INF
 var _thunder_loud := 0.0
+var _thunder_task := -1
+var _thunder_made: AudioStreamWAV
 
 
 ## Puts the weather under `world`, for a round of `seed_value`.
@@ -161,6 +166,10 @@ func _ready() -> void:
 	_cloud_layer()
 	_rain = Rain.put(self, maze)
 	_ground_fog = GroundFog.put(self, get_parent())
+	if maze:
+		_clearing_fog = ClearingFog.put(self, maze)
+		# (there from the start, as thick as a morning has it)
+		clearing_fog = _clearing_fog.style.clearing_fog_thickness
 	_storm()
 
 
@@ -208,6 +217,26 @@ func _process(delta: float) -> void:
 		_ground_fog.show_fog(smoothstep(0.0, 1.0, ground_fog), ground_fog_height, wind, light, mist, eye, _rain.ground_at(eye), delta)
 	else:
 		_ground_fog.show_fog(0.0, 0.0, 0.0, 0.0, mist, eye, 0.0, delta)
+	if _clearing_fog:
+		_fog_banks(light, mist, eye, delta)
+
+
+## The clearing's fog banks: thickest at dawn, thinner by day, all but burnt
+## off on a sunny day, beaten down by rain and torn by a storm's wind; drawn
+## only while the camera is in the clearing or over it, and the mist thicker
+## round the camera while it is in a bank.
+func _fog_banks(light: float, mist: Color, eye: Vector3, delta: float) -> void:
+	var hour := day.hour if day else 12.0
+	var by_hour := 0.75 + 0.25 * (1.0 - smoothstep(8.0, 10.5, hour)) * smoothstep(4.0, 6.0, hour) + 0.12 * smoothstep(17.0, 19.5, hour)
+	if hour < 4.0 or hour >= 19.5:
+		by_hour = 0.85
+	var wanted := _clearing_fog.style.clearing_fog_thickness * by_hour * (1.0 - sunshine * 0.8) * (1.0 - rain * 0.45) * (1.0 - clampf(wind - 0.5, 0.0, 0.5))
+	clearing_fog = move_toward(clearing_fog, wanted, delta / CHANGE_SECONDS)
+	# (none of it seen from the halls round the clearing, past its high wall)
+	var over := maxf(absf(eye.x), absf(eye.z)) < _clearing_fog.half + 2.0 or eye.y > _clearing_fog.style.clearing_wall_height * 0.8
+	_clearing_fog.show_fog(clearing_fog if over else 0.0, light, mist, wind, delta)
+	if day:
+		day.thicken = clearing_fog * _clearing_fog.in_bank(eye, _rain.ground_at(eye)) * 2.2 if over else 0.0
 
 
 ## The kind of weather now (as the spells have it, or as DevTools forces it).
@@ -241,11 +270,21 @@ func _lightening(delta: float, storming: bool) -> void:
 		flash = clampf(flicker * _thunder_loud * 1.4, 0.0, 1.0)
 	_lightning.visible = flash > 0.01
 	_lightning.light_energy = flash * 3.0
+	if _thunder_task >= 0 and WorkerThreadPool.is_task_completed(_thunder_task):
+		WorkerThreadPool.wait_for_task_completion(_thunder_task)
+		_thunder_task = -1
+		_thunder.stream = _thunder_made
 	if seconds >= _thunder_at:
 		_thunder_at = INF
 		_thunder.volume_db = linear_to_db(_thunder_loud) - 6.0
 		_thunder.pitch_scale = lerpf(0.75, 1.05, _thunder_loud)
 		_thunder.play()
+
+
+func _exit_tree() -> void:
+	if _thunder_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_thunder_task)
+		_thunder_task = -1
 
 
 ## Lightning strikes now, near, its thunder after (for pictures and tests).
@@ -264,7 +303,8 @@ func _storm() -> void:
 	add_child(_lightning)
 	_thunder = AudioStreamPlayer.new()
 	_thunder.name = "Thunder"
-	_thunder.stream = _thunder_sound()
+	# (made on another thread: some forty milliseconds of sums, kept off the start of the round)
+	_thunder_task = WorkerThreadPool.add_task(func() -> void: _thunder_made = _thunder_sound())
 	add_child(_thunder)
 
 
