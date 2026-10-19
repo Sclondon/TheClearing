@@ -151,6 +151,47 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 		add_child(beacon)
 
 
+## For the maze editor's live preview, which is built a zone at a time
+## (MazeLayout.zone_views): the walls, ways up, props, trees and beacon of `pieces`
+## alone, as realize builds them; the ground and water are realize_ground's. With
+## `walls`, those walls (built before of the same stone) in place of building them.
+func realize_zone(pieces: MazeLayout, plan: Maze, walls: Node = null) -> void:
+	layout = pieces
+	maze = plan
+	if walls == null:
+		var body := StaticBody3D.new()
+		body.name = "Walls"
+		_walls(body, pieces)
+		walls = body
+	add_child(walls)
+	features = MazeFeatures.new()
+	features.name = "Features"
+	add_child(features)
+	features.realize(pieces)
+	props = MazeProps.new()
+	props.name = "Props"
+	props.realize(pieces)
+	add_child(props)
+	_trees(pieces)
+	for piece in pieces.pieces(MazePiece.Kind.BEACON):
+		beacon = beacon_light()
+		beacon.name = "Beacon"
+		beacon.position = piece.position
+		add_child(beacon)
+
+
+## For the live preview: the ground under all of `pieces` and the standing water
+## in it, as realize builds them.
+func realize_ground(pieces: MazeLayout, plan: Maze) -> void:
+	layout = pieces
+	maze = plan
+	_ground()
+	ponds = Ponds.new()
+	ponds.name = "Ponds"
+	add_child(ponds)
+	ponds.realize(maze, pieces, ground_material, preview)
+
+
 ## The walls, piers and terraces, merged into squares of `CHUNK` metres, one mesh
 ## of blocks and one of plain boxes in each for every height of stone (the ivy
 ## curtains of the stone hang from its top, so each height has its own material).

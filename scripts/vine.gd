@@ -36,8 +36,7 @@ func _ready() -> void:
 		_leaf.roughness = 1.0
 		_leaf.metallic_specular = 0.0
 		_leaf_mesh = leaf_mesh(0.16)
-	for link in _links:
-		link.material_override = _stem
+	_links.material_override = _stem
 	_knot.material_override = _stem
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(global_position.snappedf(0.01))

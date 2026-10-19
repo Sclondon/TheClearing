@@ -69,6 +69,10 @@ var _taken := {}
 ## The hook spots are chosen with their own numbers, so that what else is laid
 ## out is as it was without them.
 var _spot_rng := RandomNumberGenerator.new()
+## ring -> [its numbers, its hook spots' numbers].
+var _rngs := {}
+## The rings being laid out (all, if empty).
+var _zones := {}
 ## [cell, step] -> how many levels of ledge its face has (see _levels).
 var _level_counts := {}
 ## The lips of the ledges laid out (terraces, platforms, the vines' corbels), for rings:
@@ -87,8 +91,11 @@ const SPOT_SQUARE := 48.0
 
 
 ## Lays out the ways up of `maze` as pieces of `layout`: terraces, ivy, vines and bridges.
-static func lay_out(layout: MazeLayout, maze: Maze) -> void:
+## Only in the rings in `zones` (ring -> true), if any are given: each ring is laid
+## out with numbers of its own, so it comes out the same whichever others are.
+static func lay_out(layout: MazeLayout, maze: Maze, zones: Dictionary = {}) -> void:
 	var placer := MazeFeatures.new()
+	placer._zones = zones
 	placer._place(layout, maze)
 	placer.free()
 
@@ -150,11 +157,25 @@ func realize(layout: MazeLayout) -> void:
 		spots.append(squares[key])
 
 
+## Starts on ring `ring`: its style and its numbers. Whether it is being laid out.
+func _enter(ring: int) -> bool:
+	if not _zones.is_empty() and not _zones.has(ring):
+		return false
+	_style = _maze.styles[ring - 1]
+	if not _rngs.has(ring):
+		var made := RandomNumberGenerator.new()
+		made.seed = hash("features/%d/%d" % [_maze.maze_seed, ring])
+		var spots := RandomNumberGenerator.new()
+		spots.seed = hash("grapple spots/%d/%d" % [_maze.maze_seed, ring])
+		_rngs[ring] = [made, spots]
+	_rng = _rngs[ring][0]
+	_spot_rng = _rngs[ring][1]
+	return true
+
+
 func _place(layout: MazeLayout, plan: Maze) -> void:
 	_maze = plan
 	_layout = layout
-	_rng.seed = hash("features/%d" % plan.maze_seed)
-	_spot_rng.seed = hash("grapple spots/%d" % plan.maze_seed)
 	for i in plan.size * plan.size:
 		var cell := Vector2i(i % plan.size, i / plan.size)
 		# (in the rings, as their styles say: the clearing's walls are left bare, and
@@ -162,7 +183,8 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 		var ring := plan.ring_of(cell)
 		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
 			continue
-		_style = plan.styles[ring - 1]
+		if not _enter(ring):
+			continue
 		for step: Vector2i in Maze.STEPS:
 			if not plan.blocked(cell, step) or _taken.has([cell, step]):
 				continue
@@ -216,7 +238,8 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 		var ring := plan.ring_of(cell)
 		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
 			continue
-		_style = plan.styles[ring - 1]
+		if not _enter(ring):
+			continue
 		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
 			if not plan.blocked(cell, -step) or plan.ring_wall(cell, -step):
 				continue
@@ -235,7 +258,8 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 		var ring := plan.ring_of(cell)
 		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
 			continue
-		_style = plan.styles[ring - 1]
+		if not _enter(ring):
+			continue
 		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
 			if not plan.blocked(cell, -step):
 				continue
@@ -268,7 +292,8 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 		var ring := plan.ring_of(cell)
 		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
 			continue
-		_style = plan.styles[ring - 1]
+		if not _enter(ring):
+			continue
 		if _style.amount(&"sewer_pipe_share") <= 0.0:
 			continue
 		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
@@ -296,7 +321,8 @@ func _levels(plan: Maze) -> void:
 		var ring := plan.ring_of(cell)
 		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
 			continue
-		_style = plan.styles[ring - 1]
+		if not _enter(ring):
+			continue
 		if _style.mezzanine_height <= 0.0:
 			continue
 		for step: Vector2i in Maze.STEPS:
@@ -329,7 +355,7 @@ func _levels(plan: Maze) -> void:
 		var step: Vector2i = key[1]
 		if step.x < 0 or step.y < 0:
 			continue
-		_style = plan.styles[plan.ring_of(cell) - 1]
+		_enter(plan.ring_of(cell))
 		var far := _far_side(cell, -step)
 		if far == NOWHERE or not levels.has([far, -step]):
 			continue
@@ -402,6 +428,10 @@ func _hole(middle: Vector3, through: Vector3) -> bool:
 	for piece in _layout.pieces(MazePiece.Kind.WALL):
 		if piece.rotation != Vector3.ZERO or not piece.box_has(probe):
 			continue
+		# (a run of wall may go on into the next section, and be of its zone: not
+		# cut from this one, so that each zone is laid out the same alone or with the rest)
+		if MazeLayout.zone_of(_maze, piece) != MazeLayout.zone_at(_maze, middle):
+			continue
 		var size := piece.box_size()
 		var foot := piece.position
 		# (along the wall: x or z, whichever the pipe does not run along)
@@ -423,12 +453,17 @@ func _hole(middle: Vector3, through: Vector3) -> bool:
 		parts.append([base + along * (hole_from + hole_to) * 0.5, Vector3(gap.x, middle.y, gap.z)])
 		var over := middle.y + SewerPipe.HOLE.y
 		parts.append([base + along * (hole_from + hole_to) * 0.5 + Vector3.UP * over, Vector3(gap.x, size.y - over, gap.z)])
+		# (its parts of the zone it was of, wherever their middles are)
+		var zone := MazeLayout.zone_of(_maze, piece)
 		piece.get_parent().remove_child(piece)
 		piece.free()
+		var was := _layout.laying_zone
+		_layout.laying_zone = zone
 		for part: Array in parts:
 			var made := settings.duplicate()
 			made["size"] = part[1]
 			_layout.add_piece(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, part[0]), made)
+		_layout.laying_zone = was
 		return true
 	return false
 
@@ -878,7 +913,8 @@ func _spots(plan: Maze) -> void:
 		var ring := plan.ring_of(cell)
 		if ring < 1 or ring > plan.rings or plan.entrances.has(cell) or plan.solid.has(cell):
 			continue
-		_style = plan.styles[ring - 1]
+		if not _enter(ring):
+			continue
 		for step: Vector2i in Maze.STEPS:
 			var beyond := cell + step
 			if not plan.blocked(cell, step) or plan.ring_wall(cell, step) or plan.ring_of(beyond) != ring \
@@ -893,14 +929,14 @@ func _spots(plan: Maze) -> void:
 	for key: Array in _level_counts:
 		var cell: Vector2i = key[0]
 		var step: Vector2i = key[1]
-		_style = plan.styles[plan.ring_of(cell) - 1]
+		_enter(plan.ring_of(cell))
 		var room := minf(_room(cell, step, -1), _room(cell, step, 1)) - 1.0
 		for level in int(_level_counts[key]):
 			if _spot_rng.randf() < _style.amount(&"grapple_ring_share") and room > 0.0:
 				var along := _spot_rng.randf_range(-room, room) * 0.8
 				_ring(_edge(cell, step, _level_depth(level), along) + Vector3.UP * _level_height(level), -Vector3(step.x, 0.0, step.y))
 	for lip: Array in _lips:
-		_style = plan.styles[int(lip[3]) - 1]
+		_enter(int(lip[3]))
 		if _spot_rng.randf() >= _style.amount(&"grapple_ring_share"):
 			continue
 		var out: Vector3 = lip[1]

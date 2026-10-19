@@ -761,23 +761,39 @@ func _on_caught(player: Node3D, enemy: MazeEnemy) -> void:
 
 # A cell from `cells` as far by the passages as can be from all of `taken` (and from the clearing), with some chance in it.
 func _far_from(taken: Array[Vector2i], cells: Array[Vector2i], rng: RandomNumberGenerator) -> Vector2i:
-	var nav := MazeNav.new(maze)
+	var nearest := _nearest_to(taken)
 	var best := cells[rng.randi_range(0, cells.size() - 1)]
 	var score := -1.0
-	var fields: Array[PackedInt32Array] = []
-	for cell in taken:
-		fields.append(nav.field(cell))
 	for cell in cells:
-		var nearest := 9999.0
-		for steps in fields:
-			var d := steps[maze.index(cell)]
-			if d >= 0:
-				nearest = minf(nearest, d)
-		var value := nearest + rng.randf_range(0.0, 3.0)
+		var value := float(nearest[maze.index(cell)]) + rng.randf_range(0.0, 3.0)
 		if value > score:
 			score = value
 			best = cell
 	return best
+
+
+# How many steps every cell is from the nearest of `taken` (9999 where none can be
+# reached), kept from call to call: `taken` only grows as they are put in, so only
+# the newly taken are walked from (each placing used to walk from all of them).
+var _near_taken: Array[Vector2i] = []
+var _near_steps := PackedInt32Array()
+
+
+func _nearest_to(taken: Array[Vector2i]) -> PackedInt32Array:
+	var total := maze.size * maze.size
+	if _near_steps.size() != total or taken.size() < _near_taken.size() or taken.slice(0, _near_taken.size()) != _near_taken:
+		_near_taken = []
+		_near_steps.resize(total)
+		_near_steps.fill(9999)
+	var nav := MazeNav.new(maze)
+	for n in range(_near_taken.size(), taken.size()):
+		var steps := nav.field(taken[n])
+		for i in total:
+			var d := steps[i]
+			if d >= 0 and d < _near_steps[i]:
+				_near_steps[i] = d
+		_near_taken.append(taken[n])
+	return _near_steps
 
 
 # From a cell, `count` steps on along the passage (keeping straight where it can).

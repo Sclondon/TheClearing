@@ -46,6 +46,10 @@ var body: StaticBody3D
 var _maze: Maze
 var _layout: MazeLayout
 var _rng := RandomNumberGenerator.new()
+## section -> its numbers.
+var _rngs := {}
+## The sections being laid out (all, if empty).
+var _zones := {}
 var _style: MazeStyle
 ## The boxes of stone (walls, piers, terraces) by square of BOX_SQUARE metres:
 ## [inverse transform, half size].
@@ -66,9 +70,11 @@ static var _drip_shader: Shader
 
 # --- Laying out ---------------------------------------------------------------
 
-## Lays out the props of `maze` as pieces of `layout`, by the sections' styles.
-static func lay_out(layout: MazeLayout, maze: Maze) -> void:
+## Lays out the props of `maze` as pieces of `layout`, by the sections' styles;
+## only in the sections in `zones` (ring -> true), if any are given.
+static func lay_out(layout: MazeLayout, maze: Maze, zones: Dictionary = {}) -> void:
 	var placer := MazeProps.new()
+	placer._zones = zones
 	placer._place(layout, maze)
 	placer.free()
 
@@ -76,7 +82,6 @@ static func lay_out(layout: MazeLayout, maze: Maze) -> void:
 func _place(layout: MazeLayout, plan: Maze) -> void:
 	_maze = plan
 	_layout = layout
-	_rng.seed = hash("props/%d" % plan.maze_seed)
 	var wanted := false
 	for style in plan.styles:
 		if style and not style.round_section and _wants(style):
@@ -126,7 +131,15 @@ func _in_a_section(cell: Vector2i) -> bool:
 	var ring := _maze.ring_of(cell)
 	if ring < 1 or ring > _maze.rings or ring > _maze.styles.size() or _maze.entrances.has(cell) or _maze.solid.has(cell):
 		return false
+	if not _zones.is_empty() and not _zones.has(ring):
+		return false
 	_style = _maze.styles[ring - 1]
+	# (each section its own numbers, so that it comes out the same whichever others are laid out)
+	if not _rngs.has(ring):
+		var made := RandomNumberGenerator.new()
+		made.seed = hash("props/%d/%d" % [_maze.maze_seed, ring])
+		_rngs[ring] = made
+	_rng = _rngs[ring]
 	return not _style.round_section
 
 

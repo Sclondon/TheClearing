@@ -65,6 +65,10 @@ var ecology: Ecology
 ## Everyone starts in front of a gate instead of in the middle (with dev tools on,
 ## unless the flag `start=middle` is given).
 var start_at_gate := false
+## Only the clearing, for testing in (set before `setup`, or the flag `clearing`, or
+## `rings=0`): no maze round it past its wall, its gates kept shut, nothing that
+## hunts and no runners; its own wildlife, loot and the rest as ever (Maze.clearing_only).
+var clearing_only := false
 
 var _send_in := 0.0
 var _enemies_in := 0.0
@@ -91,6 +95,9 @@ func _breathe(what: String) -> void:
 func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layout_path := "") -> void:
 	slot = my_slot
 	online = is_online
+	if Flags.value("clearing") != "" or Flags.value("rings") == "0":
+		clearing_only = true
+	_lap("")
 	_sky()
 	var builder := MazeBuilder.new()
 	builder.name = "Maze"
@@ -98,7 +105,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	builder.building.connect(func(what: String) -> void: building.emit(what))
 	add_child(builder)
 	var laid_out: MazeLayout = null
-	if layout_path != "":
+	if layout_path != "" and not clearing_only:
 		var scene := load(layout_path) as PackedScene
 		laid_out = scene.instantiate() as MazeLayout if scene else null
 	if laid_out:
@@ -109,8 +116,9 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	else:
 		# (by the rules set in the maze editor: Mazes.rules)
 		var rules := Mazes.rules()
-		maze = Maze.generate(seed_value, int(Flags.value("rings", str(RINGS))), rules[0], rules[1], rules[2])
+		maze = Maze.generate(seed_value, 0 if clearing_only else int(Flags.value("rings", str(RINGS))), rules[0], rules[1], rules[2])
 		await builder.build(maze)
+	_lap("the maze (MazeBuilder)")
 	start_at_gate = DevTools.enabled() and Flags.value("start") != "middle"
 	if stepwise:
 		await _breathe("Day, weather and the gates")
@@ -120,6 +128,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	day.sunset.connect(_shut_gates.bind(true))
 	weather = Weather.put(self, seed_value, day, builder.ground_material)
 	_put_gates()
+	_lap("day, weather, gates")
 
 	if stepwise:
 		await _breathe("Waking everyone in the clearing")
@@ -168,6 +177,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	add_child(camera)
 	camera.make_current()
 	camera.snap()
+	_lap("the players and the camera")
 
 	var hud := CanvasLayer.new()
 	hud.layer = 0
@@ -181,27 +191,35 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	if stepwise:
 		await _breathe("Letting loose what hunts the maze")
 	_enemies(seed_value)
+	_lap("hunters and runners")
 	if stepwise:
 		await _breathe("The animals, the birds and what lies about")
 	wildlife = Wildlife.new()
 	wildlife.name = "Wildlife"
 	add_child(wildlife)
 	wildlife.populate(maze, hash("wildlife/%d" % seed_value))
+	_lap("wildlife")
 	tame_chickens = TameChickens.populate(self, maze, hash("chickens/%d" % seed_value))
+	_lap("tame chickens")
 	# What lies about to be found, and the camps (Loot), with the inventory on the HUD.
 	loot = Loot.put(self, seed_value, hud)
+	_lap("loot")
 	insects = Insects.new()
 	insects.name = "Insects"
 	add_child(insects)
 	insects.populate(maze, hash("insects/%d" % seed_value), self)
+	_lap("insects")
 	# The hunters' own lives: hunger, the hunted and the hunters, the dead coming back
 	# (run where the hunters are: alone, or the host)
 	if not (online and not Net.is_host):
 		ecology = Ecology.put(self, seed_value, insects)
+	_lap("ecology")
 	birds = Birds.put(self, maze, hash("birds/%d" % seed_value))
+	_lap("birds")
 	if DevTools.enabled():
 		dev = DevTools.new(self)
 		hud.add_child(dev)
+	_lap("dev tools")
 
 	if online:
 		Net.packet.connect(_on_packet)
@@ -244,6 +262,15 @@ func _enemies(seed_value: int) -> void:
 			best = apart
 			lair = cell
 	griever.setup(maze, lair, 0.0)
+	if clearing_only:
+		# (nothing hunts in the clearing alone: the Griever is kept, as so much asks
+		# for it, but asleep, hidden, out of the groups that would wake it and, as one
+		# felled by a shot is, left alone by the dev panel and World._sleep_far)
+		griever.set_meta(&"felled", true)
+		griever.remove_from_group(&"pursuers")
+		griever.remove_from_group(&"grievers")
+		griever.process_mode = Node.PROCESS_MODE_DISABLED
+		griever.visible = false
 	var puppets := online and not Net.is_host
 	enemies.set_puppet(puppets)
 	griever.puppet = puppets
@@ -540,11 +567,12 @@ func _put_gates() -> void:
 	# (the doorways are measured against the walls, which must be in the physics first)
 	await get_tree().physics_frame
 	gates = ClearingGates.put(self, maze)
-	gates.set_shut(not day.is_day())
+	# (only the clearing: kept shut, on nothing)
+	gates.set_shut(clearing_only or not day.is_day())
 
 
 func _shut_gates(shutting: bool) -> void:
-	if gates:
+	if gates and not clearing_only:
 		gates.close(shutting)
 
 
@@ -601,3 +629,17 @@ func _sleep_far() -> void:
 			# (unless the dev panel has frozen everything)
 			if not (dev and dev.frozen):
 				thing.process_mode = Node.PROCESS_MODE_INHERIT
+
+
+## With the flag `times`, how long each stage of `setup` took is printed (see
+## tools/start_times.gd): `_lap` ends the stage `what` and starts the next.
+var _lap_at := 0
+
+
+func _lap(what: String) -> void:
+	if Flags.value("times") == "":
+		return
+	var now := Time.get_ticks_usec()
+	if what != "":
+		print("  %-30s %6.0f ms" % [what, (now - _lap_at) / 1000.0])
+	_lap_at = now

@@ -201,17 +201,28 @@ static func sheet(size: Vector3) -> Node3D:
 ## Lays out the standing water of `maze` as pond pieces of `layout`, after its
 ## walls and ways up are laid out (it keeps clear of what stands on the ground):
 ## the flooded way through the marsh gate, then each section's, as its style says.
-static func lay_out(layout: MazeLayout, maze: Maze) -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash("ponds/%d" % maze.maze_seed)
+## Only in the sections in `zones` (ring -> true), if any are given (the marsh
+## gate's is the first section's), each with numbers of its own.
+static func lay_out(layout: MazeLayout, maze: Maze, zones: Dictionary = {}) -> void:
+	var rngs := {}
 	var blocks := _footprints(layout)
 	var taken := {}
-	_flood_gate(layout, maze, blocks, taken)
+	if zones.is_empty() or zones.has(1):
+		var was := layout.laying_zone
+		layout.laying_zone = 1
+		_flood_gate(layout, maze, blocks, taken)
+		layout.laying_zone = was
 	for i in maze.size * maze.size:
 		var cell := Vector2i(i % maze.size, i / maze.size)
 		var ring := maze.ring_of(cell)
 		if ring < 1 or ring > maze.rings or ring > maze.styles.size() or maze.entrances.has(cell) or maze.solid.has(cell) or taken.has(cell):
 			continue
+		if not zones.is_empty() and not zones.has(ring):
+			continue
+		if not rngs.has(ring):
+			rngs[ring] = RandomNumberGenerator.new()
+			(rngs[ring] as RandomNumberGenerator).seed = hash("ponds/%d/%d" % [maze.maze_seed, ring])
+		var rng: RandomNumberGenerator = rngs[ring]
 		var style: MazeStyle = maze.styles[ring - 1]
 		if style.round_section or rng.randf() >= style.amount(&"pond_share"):
 			continue
