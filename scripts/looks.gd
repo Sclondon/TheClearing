@@ -23,8 +23,9 @@ const HEAD := "inside_round"
 const LOCKS := "none"
 ## The cut of his hair (one of CharacterLook.HAIRS): a pudding basin, low over the brow.
 const HAIR := "bowl"
-## And the cut of his trousers and his boots (BodyShape.CUTS and BOOTS).
-const CUT := "shaped_slim"
+## And the cut of his trousers and his boots (BodyShape.CUTS and BOOTS): plain
+## tapered legs, as the runners have (the shaped cut read lumpy; the user, 2026-10-18).
+const CUT := "slim"
 const BOOT := "angular"
 
 
