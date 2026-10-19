@@ -89,6 +89,11 @@ enum Biome { DESERT, FOREST, SWAMP, PLAINS }
 @export_range(0.0, 40.0, 0.001, "suffix:per ha") var plains_boulders := 4.0
 ## Outcrops of rock (a clump of great rocks, some as big as a house), about how many to a hectare.
 @export_range(0.0, 10.0, 0.001, "suffix:per ha") var plains_outcrops := 0.6
+## Fields of tall dry corn in each plains quarter, after Inside's (Corn; the user, 2026-10-18: "Lets also add corn
+## like that one scene in the inside video"): how many (0: none).
+@export_range(0, 6, 1, "suffix:fields") var plains_cornfields := 2
+## How big a cornfield is, about: across its rows and along them, metres.
+@export_custom(PROPERTY_HINT_NONE, "suffix:m") var plains_cornfield_size := Vector2(55.0, 90.0)
 
 
 ## The quarter (x, z) is in: north (-z), east (+x), south (+z) or west (-x), as the

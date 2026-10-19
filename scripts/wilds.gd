@@ -97,6 +97,7 @@ func realize(wild: WildLands, material: Material) -> void:
 			_swamp_grass(rect)
 		elif biome == DesertStyle.Biome.PLAINS:
 			_plains_grass(rect)
+	_cornfields()
 
 
 ## The rectangle (x, z) round the quarter on side `side`.
@@ -190,6 +191,26 @@ func _plains_grass(rect: Rect2) -> void:
 		"flowers": 0.0,
 		"seed": lands.seed_value % 1000 + 43,
 	}))
+
+
+## The plains' cornfields (WildLands.cornfields, Corn): ragged all round, on the
+## hills, round the rocks. Filled near the camera by themselves.
+var corn: Corn
+
+
+func _cornfields() -> void:
+	var found := lands.cornfields()
+	if found.is_empty():
+		return
+	corn = Corn.new()
+	corn.name = "Corn"
+	corn.seed = lands.seed_value % 1000 + 44
+	var ground := func(p: Vector2) -> float: return lands.ground_at(p) + MazeBuilder.HILL_LIFT
+	var clear := func(p: Vector2) -> float: return 0.0 if lands.under_rock(p) or lands.margin_at(p) < WildLands.WALL_MARGIN + 1.0 else 1.0
+	for field: Array in found:
+		corn.add_patch(field[0], Corn.OPEN_ALL, field[1], ground, [], clear)
+	add_child(corn)
+	corn.build()
 
 
 # --- Near the camera ------------------------------------------------------------

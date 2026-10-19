@@ -313,6 +313,47 @@ func plains_grass_at(p: Vector2) -> float:
 	return 0.0 if under_rock(p) else 1.0
 
 
+## The cornfields of the plains quarters (DesertStyle.plains_cornfields, Corn), as
+## [Rect2 (x, z), rows along x]: each put at random in its quarter where the whole
+## of it fits inside the wedge and clear of the doors and gates, apart from the
+## others. Worked out once.
+func cornfields() -> Array:
+	if _cornfields_made:
+		return _cornfields
+	_cornfields_made = true
+	for side in SIDES:
+		if look.biome_of(side) != DesertStyle.Biome.PLAINS:
+			continue
+		var rng := _rng(77, side)
+		var out := Vector2(side)
+		var across := Vector2(-out.y, out.x)
+		for f in look.plains_cornfields:
+			for attempt in 40:
+				var size := look.plains_cornfield_size * Vector2(rng.randf_range(0.8, 1.15), rng.randf_range(0.8, 1.15))
+				# (its rows across the quarter or out along it)
+				var rows_x := rng.randf() < 0.5
+				var extent := Vector2(size.y, size.x) if rows_x else size
+				var far := rng.randf_range(plan.square_half, plan.inner_radius)
+				var middle := out * far + across * rng.randf_range(-0.8, 0.8) * (far - plan.square_half)
+				var rect := Rect2(middle - extent * 0.5, extent)
+				var fits_here := true
+				for corner in [rect.position, rect.end, Vector2(rect.position.x, rect.end.y), Vector2(rect.end.x, rect.position.y), middle]:
+					if not fits(corner, DesertStyle.Biome.PLAINS, 6.0):
+						fits_here = false
+						break
+				for other: Array in _cornfields:
+					if (other[0] as Rect2).grow(15.0).intersects(rect):
+						fits_here = false
+				if fits_here:
+					_cornfields.append([rect, rows_x])
+					break
+	return _cornfields
+
+
+var _cornfields: Array = []
+var _cornfields_made := false
+
+
 ## Whether `p` is under one of the rocks (of its square or those next to it).
 func under_rock(p: Vector2) -> bool:
 	var square := Vector2i((p / SQUARE).floor())

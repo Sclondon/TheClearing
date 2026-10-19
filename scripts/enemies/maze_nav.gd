@@ -315,9 +315,11 @@ func line_free(a: Vector3, b: Vector3, margin: float) -> bool:
 
 
 ## Whether there is a line of sight from `a` to `b` through the passages, no
-## more than `reach` metres long (the walls are far taller than anyone).
+## more than `reach` metres long (the walls are far taller than anyone). Deep in
+## corn, `b` is seen only nearer (Corn.sight_reach).
 func sees(a: Vector3, b: Vector3, reach := 1000.0) -> bool:
-	if Vector2(b.x - a.x, b.z - a.z).length() > reach:
+	var far := Vector2(b.x - a.x, b.z - a.z).length()
+	if far > reach or (far > Corn.SEEN_DEEP and far > Corn.sight_reach(b, reach)):
 		return false
 	return line_free(a, b, 0.0)
 

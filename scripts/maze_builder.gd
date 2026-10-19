@@ -52,6 +52,8 @@ var features: MazeFeatures
 var props: MazeProps
 ## The ferns, bushes, moss and tufts of grass.
 var undergrowth: Undergrowth
+## The corn in rooms and stretches of hall (Corn).
+var corn: Corn
 ## The ground's material (MazeStone.ground), for the weather to wet.
 var ground_material: ShaderMaterial
 ## For the maze editor's live preview: only what shows the maze's rules (no grass,
@@ -135,6 +137,10 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 	_trees(pieces)
 	if not preview:
 		_undergrowth(pieces)
+		# (the corn in rooms and halls: Corn, MazeStyle "Plants")
+		corn = Corn.plant_maze(maze, features.footprints)
+		add_child(corn)
+		corn.build()
 	# The round sections outside the square ones, past the moor.
 	if maze.round_rings:
 		if stepwise:
