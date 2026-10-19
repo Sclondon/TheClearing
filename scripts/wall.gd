@@ -74,6 +74,10 @@ uniform vec3 moss_light : source_color = vec3(0.28, 0.31, 0.14);
 // metres, and how weathered (0: none, and none of its cost).
 uniform float edge_size = 0.0;
 uniform float edge_weathering = 0.0;
+// Curved (a sewer's modelled mouth: SewerMouth): its texture laid on square to
+// whichever of the world's axes it faces most, not to its own face, which turns
+// round the curve and smeared the texture far out of the world's middle.
+uniform bool curved = false;
 
 varying vec3 at;
 varying vec3 facing;
@@ -101,6 +105,12 @@ void fragment() {
 	// The face's own across and up: up the wall on its sides, and away on its top and bottom.
 	vec3 v_axis = abs(n.y) > 0.5 ? vec3(0.0, 0.0, -1.0) : vec3(0.0, 1.0, 0.0);
 	vec3 u_axis = normalize(cross(v_axis, n));
+	if (curved) {
+		vec3 a = abs(n);
+		vec3 square = a.y >= a.x && a.y >= a.z ? vec3(0.0, sign(n.y), 0.0) : (a.x >= a.z ? vec3(sign(n.x), 0.0, 0.0) : vec3(0.0, 0.0, sign(n.z)));
+		v_axis = abs(square.y) > 0.5 ? vec3(0.0, 0.0, -1.0) : vec3(0.0, 1.0, 0.0);
+		u_axis = cross(v_axis, square);
+	}
 	vec2 metres = vec2(dot(at, u_axis), -dot(at, v_axis));
 	vec2 uv = metres / tile_size;
 	vec2 dx = dFdx(uv);

@@ -968,6 +968,13 @@ section's MazeStyle:
   vents high on the walls (louvred or round, some great ducts), barred culverts at their feet with a puddle in front,
   small pipes with a rust stain down the wall and a puddle under them (some dripping), drain grates by the walls and
   manhole covers out in the halls (now and then pushed half off the black shaft).
+- **The sewer pipes' mouths** (2026-10-19: "the sewer tunnel entrances should have modeleed funnel entrances rather
+  than just square terraces"): where a pipe comes out of a wall it flares into a bell of concrete, like a culvert's
+  outfall, its rim worn round, standing on a lip that juts out under it (flat on top, so he stands at the mouth; its
+  front edge rounded over, its corners round, its underside a cove curving back down into the wall). The ledges'
+  concrete, weathered as they are, with a tongue of dark slime run out over the lip, mossy at its edges, and the
+  drips falling off its front. The lip is where the square platform was: the ivy still comes up to its front, vines
+  hang from it, a hook ring may hang at it, and he ducks and crawls in through the bell.
 - **Signs of life** (the Avenues): three camps left; heaps of boxes and barrels against the walls (solid, some
   stacked, a barrel fallen over); old black cables strung high across the halls, some snapped with their ends hanging, now and then a dead lamp; cables looped
   along walls on brackets.

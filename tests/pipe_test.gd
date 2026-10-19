@@ -48,6 +48,8 @@ func let_go() -> void:
 
 
 func _initialize() -> void:
+	# (the Avenues, which has sewer pipes: the rules set in the editor may have none)
+	MazeStyle.chosen = [MazeStyle.avenues()]
 	main = load("res://main.tscn").instantiate()
 	main.testing = true
 	root.add_child(main)

@@ -62,6 +62,8 @@ var day: DayCycle
 var gates: ClearingGates
 var weather: Weather
 var ecology: Ecology
+## Keeps the maze about the players inhabited, in waves (where the hunters are run).
+var director: MazeDirector
 ## Everyone starts in front of a gate instead of in the middle (with dev tools on,
 ## unless the flag `start=middle` is given).
 var start_at_gate := false
@@ -280,6 +282,10 @@ func _enemies(seed_value: int) -> void:
 		griever.visible = false
 	var puppets := online and not Net.is_host
 	enemies.set_puppet(puppets)
+	# (where they are run, a director keeps the players' surroundings inhabited, in waves)
+	# (the flag director=off goes without, to compare)
+	if not puppets and Flags.value("director", "on") != "off":
+		director = MazeDirector.put(self, seed_value)
 	griever.puppet = puppets
 	enemies.caught.connect(func(who: Node3D, _enemy: MazeEnemy) -> void: _on_caught(who))
 	griever.caught.connect(_on_caught)

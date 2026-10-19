@@ -8,7 +8,7 @@ extends Node3D
 ## along it as far as the next pier. Vines hang from beams of stone out over their
 ## edges (Vine) to swing on, and rope bridges (RopeBridge) cross the halls between
 ## terraces facing each other, and between wall tops. Sewer pipes (SewerPipe) go
-## through walls high up, a platform under each mouth with ivy up to it: up one
+## through walls high up, each mouth a bell of concrete on a lip with ivy up to it: up one
 ## side, through the wall ducked, and down the other. And there are places made
 ## for a grappling hook to catch (GrappleSpots): routes of stone corbels up bare
 ## walls, an iron ring hanging from each; rings at the lips of ledges; iron
@@ -489,9 +489,8 @@ func _level_depth(level: int) -> float:
 	return _style.level_depth(level)
 
 
-## How far a pipe stands out of each face of its wall, and how deep and wide the
-## platform under each mouth is (the ivy hangs from its edge).
-const PIPE_OUT := 0.8
+## How deep and wide the platform under each mouth of a pipe is, and how thick: the
+## top of the lip the pipe's modelled mouth stands on (SewerMouth; the ivy hangs from its edge).
 const PLATFORM := Vector2(1.8, 2.6)
 const PLATFORM_THICK := 0.5
 
@@ -524,11 +523,13 @@ func _pipe(cell: Vector2i, step: Vector2i) -> void:
 	_taken[[cell, step]] = true
 	_taken[[other, -step]] = true
 	_layout.add_piece(MazePiece.Kind.PIPE, Transform3D(Basis(Vector3.UP, atan2(s.x, s.z)), middle),
-		{"length": thick + PIPE_OUT * 2.0, "width": thick})
+		{"length": thick, "width": thick})
 	var flat_side := Vector3(-s.z, 0.0, s.x)
 	for end: Array in [[cell, step, along], [other, -step, -along]]:
 		var size := flat_side.abs() * PLATFORM.y + s.abs() * PLATFORM.x + Vector3.UP * PLATFORM_THICK
-		_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(end[0], end[1], PLATFORM.x * 0.5, end[2]) + Vector3.UP * (high - PLATFORM_THICK)), {"size": size})
+		# (drawn as the pipe's modelled mouth, a bell on a lip, facing out of the wall: SewerMouth)
+		_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(end[0], end[1], PLATFORM.x * 0.5, end[2]) + Vector3.UP * (high - PLATFORM_THICK)),
+			{"size": size, "mouth": -Vector3(end[1].x, 0.0, end[1].y)})
 		# (ivy up to it from the floor in front of the face: laid once the levels of ledge are, see _pipe_ivy)
 		_pipe_climbs.append([end[0], end[1], end[2], high, _maze.ring_of(end[0])])
 		_lip(end[0], end[1], PLATFORM.x, end[2], high, PLATFORM.y)
