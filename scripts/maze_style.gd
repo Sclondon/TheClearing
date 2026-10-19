@@ -235,6 +235,20 @@ extends Resource
 		_switch(&"ledge_hanging_vines_on", value)
 ## How many walls with a ledge have a vine hanging from its edge, at each level (a share, 0 to 1).
 @export_range(0.0, 1.0, 0.001, "suffix:of faces") var ledge_hanging_vine_share := 0.1
+## Vines grown straight out of a wall's face, roots and a bunch of leaves where they come out: some hang a random way
+## down, some sweep down across the hall to the far wall or to the floor part way across (the user, 2026-10-18: "Vines
+## should be able to connect directly to the wall and hang a random amount down across the hall as well").
+@export var wall_vines_on: bool:
+	get:
+		return feature_on(&"wall_vines_on")
+	set(value):
+		_switch(&"wall_vines_on", value)
+## How many wall faces have a vine grown out of them (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of faces") var wall_vine_share := 0.05
+## How high up the wall they grow out: lowest and highest, metres over the floor (or the top ledge under them).
+@export_custom(PROPERTY_HINT_RANGE, "1,60,0.1,suffix:m") var wall_vine_height_range := Vector2(4.0, 14.0)
+## Of the vines out of a wall, how many sweep down across the hall instead of hanging (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of vines") var wall_vine_sweep_share := 0.45
 
 @export_group("Wall decor")
 ## Old vents high on the walls: louvred or round, rusted, some of them big (dressing, nothing to climb).
@@ -738,6 +752,7 @@ const FEATURES := {
 	&"concrete_bridges_on": [&"concrete_bridge_share", &"concrete_bridge_arch_rise", &"concrete_bridge_width"],
 	&"bridge_hanging_vines_on": [&"bridge_hanging_vine_share"],
 	&"ledge_hanging_vines_on": [&"ledge_hanging_vine_share"],
+	&"wall_vines_on": [&"wall_vine_share", &"wall_vine_height_range", &"wall_vine_sweep_share"],
 	&"vents_on": [&"wall_vent_share"],
 	&"outlets_on": [&"outlet_share", &"outlet_drip_share"],
 	&"wall_cables_on": [&"wall_cable_share"],
