@@ -10,6 +10,8 @@ var main: Node
 
 
 func _initialize() -> void:
+	HeavyVines.apply(_arg("vines", 0))
+	seed(_arg("seed", 1))
 	main = load("res://main.tscn").instantiate()
 	main.testing = true
 	root.add_child(main)

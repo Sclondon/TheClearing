@@ -13,6 +13,10 @@ var main: Node
 
 
 func _initialize() -> void:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("vines="):
+			HeavyVines.apply(float(a.substr(6)))
+	seed(1)
 	print("engine boot      %6d ms" % Time.get_ticks_msec())
 	var started := Time.get_ticks_usec()
 	var scene := load("res://main.tscn") as PackedScene
