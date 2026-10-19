@@ -36,6 +36,9 @@ const LENGTH := 0.2
 @export var lights := true
 ## The low-poly model (or Settings.low_poly).
 @export var low_poly := false
+## The render layers its light leaves out (its holder, drawn on a layer of its own:
+## a lantern held before someone lights the walls, not their face full on).
+@export_flags_3d_render var leaves_out := 0
 ## It creaks on its bail when it swings (a sound made in code).
 @export var sound := true
 @export var volume_db := -4.0
@@ -132,6 +135,7 @@ func _ready() -> void:
 		_light.shadow_enabled = false
 		# (it lights the halls, not the lantern's own glass)
 		_light.light_specular = 0.2
+		_light.light_cull_mask = 0xFFFFF & ~leaves_out
 		add_child(_light)
 	if sound:
 		_creak = AudioStreamPlayer3D.new()

@@ -637,6 +637,43 @@ lays out the same spots from the seed; a hooked vine swings on each player's own
   to it. A dog fed meat (thrown near it, or held out) becomes the giver's friend: it hunts no player, follows at heel,
   barks at what hunts near and goes for what comes at its friend. Left far behind long, it goes feral again.
 
+- **The woodsman and the beast** (2026-10-18, the user: "Lets add a woodsmen with an axe and top hat and lantern,
+  and a the Beast inspired character from Over the Garden Wall"). In the mood of *Over the Garden Wall*, in the
+  maze's greys. One of each in a section by default (MazeStyle "What hunts it": `woodsmen` and `beasts`, each with
+  its box; the beast one at most), none in the clearing.
+  - **The woodsman** (`MazeWoodsman`, `creatures/woodsman/`): a tall, gaunt, weary old man in a long coat and a
+    battered top hat, an axe over his shoulder and an oil lantern held out before him. Its warm light is the one
+    warm thing in the grey and really lights the halls round him (one light, no shadows; none on low detail, only
+    the glass and a halo), but not him: he stands dark against it. He walks the halls slowly (1 m/s), stops to
+    look about, and now and then goes to the ivy at a wall's foot (or a bare wall) and chops at it, three blows.
+    He is not a monster and not a friend. **His light keeps the hunters back**: whatever goes about the maze short
+    of the biggest (Ecology's sizes under 4: mummies, dogs, the tribe, the wolves...; not the giants, swarms and
+    flocks) cannot go after anyone within 7.5 m of him. **But he is wary of strangers**: come within 11 m and he
+    stops, turns, holds his lantern up at you and grunts (the warning), then goes on, watching you. Come within
+    3.4 m, or run at him, and he comes after you (2.7 m/s, slower than a run) and, within reach in front of him,
+    raises his axe high over his head (0.8 s, the warning) and brings it down: still in front of him, you are
+    caught. Then he turns away and lets everyone be for seven seconds. So walk near him, in his light, but give
+    him room. **He hunts the beast**: seeing it within 30 m, he turns on it, holds his lantern up and strides at it.
+  - **The beast** (`MazeBeast`, `creatures/beast/`): a tall shadow (about 2.8 m, its antlers over that), black,
+    great branching antlers like dead boughs, two pale burning eyes, and a lantern of its own glowing faintly.
+    Rare and **mostly unseen**: hidden (not there at all) most of the time; every 14 to 34 s (sooner in the dark)
+    it shows itself to the nearest player in its section, alone best (nobody else within 18 m; runners count as
+    company): it steps out of a side passage they cannot see into a straight hall at the far end from them and
+    stands there, a silhouette, eyes and lantern faint. By day 38 to 52 m off and less often; at night or in rain
+    and mist 18 to 30 m; with company further still and seldom. **It lures whoever is alone**: its lantern held up
+    and out at them, brightening and swaying, and a low hum, a tune of its own, carrying down the hall; it comes on
+    very slowly (0.75 m/s), and whoever it lures, on the ground in its sight, is drawn towards it (0.55 m/s, less
+    than a walk: walk or run away and you are free of it). **If it reaches you** (2.6 m) it draws its long arms up
+    and out (about a second: the warning; the hum stops, its eyes flare, wood groans) and closes its hands: still
+    within 3 m, you are taken into the dark (caught: back to the clearing). It goes (back out of sight, then gone)
+    when someone with company comes to it, when the one it lures gets away or out of its sight, or after it has
+    watched a while. **It cannot abide the woodsman's light**: it never shows itself within 24 m of him, flees one
+    who comes within 16 m, and lures nobody in his light.
+  - Online: run by the host; guests' puppets show what they do (the woodsman's chops, warnings, swings and his
+    lantern raised; the beast there or gone, luring, reaching), and whoever the beast lures on a guest's machine is
+    drawn towards it there. Neither hunts the others nor is hunted (Ecology: the woodsman size 2, the beast 4,
+    eating nothing).
+
 ### The maze lives on its own (2026-10-18, Ecology)
 
 The user: "they should also interact with each other. We should have world game manager ... like a Rain World or

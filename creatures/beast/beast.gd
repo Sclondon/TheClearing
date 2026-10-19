@@ -37,6 +37,8 @@ const MODEL := "res://creatures/beast/models/beast.glb"
 const MODEL_LO := "res://creatures/beast/models/beast_lo.glb"
 ## How much taller than the boy it is drawn (about 2.8 m to the crown, the antlers over that).
 const SIZE := 2.35
+## The render layer it is drawn on (its lantern's light leaves it out). The woodsman has 12.
+const OWN_LAYER := 13
 const BLACK := Color(0.022, 0.021, 0.02)
 ## Its lantern's flame, cold and pale, and its eyes.
 const FLAME := Color(0.72, 0.84, 0.76)
@@ -74,6 +76,7 @@ var pickup_point := Vector3.ZERO
 
 var _rig: BeastRig
 var _eyes_material: ShaderMaterial
+var _glow_material: ShaderMaterial
 var _burning := 0.7
 var _hum: AudioStreamPlayer3D
 var _creak: AudioStreamPlayer3D
@@ -115,6 +118,21 @@ func _ready() -> void:
 	_eyes_material.set_shader_parameter(&"colour", EYES)
 	eyes.material_override = _eyes_material
 	eyes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# (and a soft glow round each, so that they are seen burning from far down a hall, in the dark)
+	_glow_material = ShaderMaterial.new()
+	var glow_shader := Shader.new()
+	glow_shader.code = OilLantern.HALO_SHADER
+	_glow_material.shader = glow_shader
+	_glow_material.set_shader_parameter(&"flame", EYES)
+	for side: float in [1.0, -1.0]:
+		var glow := MeshInstance3D.new()
+		var quad := QuadMesh.new()
+		quad.size = Vector2.ONE * 0.15
+		glow.mesh = quad
+		glow.material_override = _glow_material
+		glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		glow.position = Vector3(side * 0.034, 0.112, 0.11)
+		_rig._head.add_child(glow)
 	_hang(_rig._chest if _rig._chest else _rig._spine, "cape", low)
 	_hang(_rig._hips, "shroud", low)
 	lantern = OilLantern.new()
@@ -126,7 +144,11 @@ func _ready() -> void:
 	lantern.lights = lights
 	lantern.sound = false
 	lantern.glow = 0.3
+	lantern.leaves_out = 1 << (OWN_LAYER - 1)
 	add_child(lantern)
+	# (drawn on a layer of its own, which its lantern's light leaves out: a shape cut out of the dark)
+	for drawn: GeometryInstance3D in find_children("*", "GeometryInstance3D", true, false):
+		drawn.layers = 1 << (OWN_LAYER - 1)
 	if sound:
 		_hum = AudioStreamPlayer3D.new()
 		_hum.stream = hum_sound()
@@ -180,6 +202,7 @@ func _process(delta: float) -> void:
 	var reaching := _rig._doing == BeastRig.Act.REACH and _rig.stage() == BeastRig.Stage.WIND
 	_burning = move_toward(_burning, 1.0 if reaching else burn, delta * 2.0)
 	_eyes_material.set_shader_parameter(&"burn", _burning)
+	_glow_material.set_shader_parameter(&"glow", 0.4 + 1.2 * _burning)
 	if _hum:
 		# (its hum swells in as it lures, and dies away)
 		var want := clampf((lure - 0.4) / 0.6, 0.0, 1.0)

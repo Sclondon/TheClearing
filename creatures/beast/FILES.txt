@@ -1,0 +1,7 @@
+# The beast: how it looks, moves and sounds (needs godot/character-controller and godot/woodsman installed too)
+creatures/beast/beast.gd
+creatures/beast/beast_rig.gd
+creatures/beast/models/beast.glb
+creatures/beast/models/beast_lo.glb
+creatures/beast/tools/.gdignore
+creatures/beast/tools/build_beast.py

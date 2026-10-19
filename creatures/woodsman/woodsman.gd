@@ -42,9 +42,13 @@ const MODEL := "res://creatures/woodsman/models/woodsman.glb"
 const MODEL_LO := "res://creatures/woodsman/models/woodsman_lo.glb"
 ## How much taller than the boy he is drawn (the boy stands about 1.2 m).
 const SIZE := 1.62
+## How broad he is for his height, against the boy (a grown man's build, thinner: CharacterLook's "build").
+const BUILD := 0.86
+## The render layer he is drawn on (his lantern's light leaves it out). The angel has 11.
+const OWN_LAYER := 12
 ## His clothes: the coat, his shirt under it, trousers, boots, his hands.
-const COAT := Color(0.19, 0.17, 0.155)
-const SHIRT := Color(0.38, 0.36, 0.33)
+const COAT := Color(0.15, 0.135, 0.125)
+const SHIRT := Color(0.27, 0.26, 0.24)
 const TROUSERS := Color(0.13, 0.125, 0.12)
 const BOOTS := Color(0.09, 0.08, 0.075)
 const HANDS := Color(0.44, 0.4, 0.36)
@@ -101,8 +105,9 @@ static var _swish_wav: AudioStreamWAV
 
 
 func _ready() -> void:
-	# (drawn half again as tall as the boy: his speeds go with it, as the rig reads them)
-	scale = Vector3.ONE * SIZE
+	# (drawn half again as tall as the boy, and narrower for it: gaunt. His speeds go with
+	# his height, as the rig reads them)
+	scale = Vector3(SIZE * BUILD, SIZE, SIZE * BUILD)
 	_rig = WoodsmanRig.new()
 	_rig.low_poly = low_poly
 	_rig.cap_hand = false
@@ -122,10 +127,18 @@ func _ready() -> void:
 	lantern = OilLantern.new()
 	lantern.size = SIZE
 	lantern.flame = FLAME
+	# (it lights the halls round him: both walls of a wide one)
+	lantern.light_range = 12.0
+	lantern.light_energy = 2.0
 	lantern.low_poly = low
 	lantern.lights = lights
 	lantern.sound = sound
+	lantern.leaves_out = 1 << (OWN_LAYER - 1)
 	add_child(lantern)
+	# (he is drawn on a layer of his own, which his lantern's light leaves out: it lights the
+	# halls round him, and he stands dark against them, as the woodsman of the story does)
+	for drawn: GeometryInstance3D in find_children("*", "GeometryInstance3D", true, false):
+		drawn.layers = 1 << (OWN_LAYER - 1)
 	if sound:
 		_chop_voice = _voice(chop_sound(), 6.0)
 		_step_voice = _voice(step_sound(), 3.0)
@@ -175,6 +188,19 @@ func _dress() -> void:
 		parts[slot] = "none"
 	_rig.look["cap"] = false
 	_rig.restyle()
+	# (the suit's jacket is short-sleeved and open over the boy's skin: here the coat's
+	# cloth goes over all of it, his arms and up round his neck, and his shirt is dark)
+	var cloth := {"skin": COAT, "jacket": COAT, "shirt": SHIRT}
+	for part: MeshInstance3D in _rig.find_children("*_body__suit", "MeshInstance3D", true, false):
+		for surface in part.mesh.get_surface_count():
+			var made := part.mesh.surface_get_material(surface)
+			var worn := part.get_surface_override_material(surface) as ShaderMaterial
+			if made == null or worn == null or not cloth.has(made.resource_name):
+				continue
+			var mine := worn.duplicate() as ShaderMaterial
+			mine.set_shader_parameter(&"albedo", cloth[made.resource_name])
+			mine.set_shader_parameter(&"stripe", 0.0)
+			part.set_surface_override_material(surface, mine)
 
 
 func is_on_floor() -> bool:

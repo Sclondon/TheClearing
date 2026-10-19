@@ -35,16 +35,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 COMPONENT = os.path.dirname(HERE)
 MODELS = os.path.join(COMPONENT, "models")
 
-SKIN = (0.52, 0.47, 0.43)
-SKIN_DARK = (0.36, 0.32, 0.29)
-SOCKET = (0.07, 0.06, 0.055)
-BEARD = (0.6, 0.585, 0.56)
-BEARD_DARK = (0.42, 0.41, 0.39)
+SKIN = (0.64, 0.59, 0.54)
+SKIN_DARK = (0.47, 0.42, 0.38)
+SOCKET = (0.24, 0.2, 0.18)
+EYE = (0.62, 0.6, 0.55)
+BEARD = (0.68, 0.665, 0.64)
+BEARD_DARK = (0.52, 0.505, 0.48)
 HAT = (0.12, 0.115, 0.11)
 HAT_WORN = (0.2, 0.19, 0.175)
 BAND = (0.06, 0.055, 0.05)
-COAT = (0.2, 0.18, 0.16)
-COAT_WORN = (0.27, 0.25, 0.22)
+COAT = (0.32, 0.29, 0.26)
+COAT_WORN = (0.4, 0.37, 0.33)
 LINING = (0.1, 0.09, 0.085)
 HAFT = (0.4, 0.34, 0.27)
 HAFT_DARK = (0.26, 0.22, 0.18)
@@ -285,13 +286,13 @@ def head(b, q):
         push = 0.0
         sx = x * w
         # The nose: long and thin, down from the brow.
-        push += 0.026 * front ** 6 * smooth(0.048, 0.062, y) * smooth(0.106, 0.075, y) * smooth(0.014, 0.0, abs(sx))
+        push += 0.032 * front ** 6 * smooth(0.048, 0.062, y) * smooth(0.106, 0.075, y) * smooth(0.014, 0.0, abs(sx))
         push += 0.012 * front ** 6 * bump(y, 0.058, 0.012) * smooth(0.01, 0.0, abs(sx))
         # The brow over the eyes, heavy; the eyes sunk under it.
         push += 0.008 * front ** 2 * bump(y, 0.108, 0.012)
         for side in (1.0, -1.0):
-            eye = smooth(0.014, 0.0, math.hypot(sx - side * 0.022, (y - 0.092) * 0.8))
-            push -= 0.014 * eye * front
+            eye = smooth(0.013, 0.0, math.hypot(sx - side * 0.022, (y - 0.092) * 0.8))
+            push -= 0.009 * eye * front
             # (hollow cheeks under the cheekbones)
             push -= 0.008 * smooth(0.02, 0.0, math.hypot(sx - side * 0.034, y - 0.045)) * front
         # The chin, a little out.
@@ -304,12 +305,15 @@ def head(b, q):
         front = max(0.0, math.cos(a))
         c = mix(SKIN, SKIN_DARK, 0.4 + 0.3 * noise(a * 2.0, y * 20.0, 5.0))
         for side in (1.0, -1.0):
-            c = mix(c, SOCKET, smooth(0.016, 0.006, math.hypot(x - side * 0.022, (y - 0.092) * 0.8)) * front)
+            c = mix(c, SOCKET, smooth(0.012, 0.004, math.hypot(x - side * 0.022, (y - 0.092) * 0.8)) * front)
         # (grey hair round the back and sides, under the hat)
         c = mix(c, BEARD_DARK, smooth(-0.2, -0.6, math.cos(a)) * smooth(0.06, 0.1, y))
         return c
 
     shell(b, [chin + (crown - chin) * t for t in rows], sides, radius_at, colour_at, centre_z=0.012)
+    # His eyes, small and pale, deep in their sockets under the brim.
+    for side in (1.0, -1.0):
+        b.blob((side * 0.022, 0.092, 0.064), (0.0065, 0.0045, 0.004), EYE, 6 + 2 * q, 4)
     # Ears, long and thin, the old man's.
     for side in (1.0, -1.0):
         b.blob((side * 0.054, 0.082, 0.004), (0.008, 0.022, 0.014), SKIN_DARK, 6 + 2 * q, 4)
@@ -412,15 +416,15 @@ def coat(b, q):
     below his waist). Two layers, the inside dark."""
     sides = 12 + 10 * q
     rows = 4 + 4 * q
-    top_y, bottom_y = 0.07, -0.43
+    top_y, bottom_y = 0.1, -0.43
     gap_top, gap_bottom = 0.28, 0.6  # (half the opening in front, radians)
     outer_rows, inner_rows = [], []
     for j in range(rows + 1):
         t = j / rows
         y = top_y + (bottom_y - top_y) * t
         gap = gap_top + (gap_bottom - gap_top) * t
-        rx = 0.14 + 0.07 * t ** 1.2
-        rz = 0.11 + 0.065 * t ** 1.2
+        rx = 0.118 + 0.075 * t ** 1.2
+        rz = 0.094 + 0.07 * t ** 1.2
         orow, irow = [], []
         for s in range(sides + 1):
             a = gap + (math.tau - 2.0 * gap) * s / sides
@@ -442,7 +446,7 @@ def coat(b, q):
     b.grid([[r[-1] for r in outer_rows], [r[-1] for r in inner_rows]], flip=True)
     b.grid([outer_rows[-1], inner_rows[-1]])
     # A belt of rope round the waist over it.
-    ring = [Vector((math.sin(math.tau * k / 14) * 0.145, 0.065, 0.005 + math.cos(math.tau * k / 14) * 0.115)) for k in range(15)]
+    ring = [Vector((math.sin(math.tau * k / 14) * 0.124, 0.09, 0.005 + math.cos(math.tau * k / 14) * 0.1)) for k in range(15)]
     b.tube(ring, [0.009] * 15, 4 + q, HAFT_DARK, cap_start=False, cap_end=False)
 
 

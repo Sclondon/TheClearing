@@ -1,0 +1,8 @@
+# The woodsman: how he looks, moves and sounds, and his oil lantern (needs godot/character-controller installed too)
+creatures/woodsman/woodsman.gd
+creatures/woodsman/woodsman_rig.gd
+creatures/woodsman/oil_lantern.gd
+creatures/woodsman/models/woodsman.glb
+creatures/woodsman/models/woodsman_lo.glb
+creatures/woodsman/tools/.gdignore
+creatures/woodsman/tools/build_woodsman.py

@@ -31,6 +31,8 @@ COMPONENT = os.path.dirname(HERE)
 MODELS = os.path.join(COMPONENT, "models")
 sys.path.insert(0, os.path.join(os.path.dirname(COMPONENT), "woodsman", "tools"))
 
+sys.dont_write_bytecode = True
+
 import bpy  # noqa: E402
 from mathutils import Vector  # noqa: E402
 
@@ -73,7 +75,7 @@ def head(b, q):
     kit.shell(b, [low + (high - low) * t for t in rows], sides, radius_at, colour_at, centre_z=0.01)
     rng = random.Random(5)
     for side in (1.0, -1.0):
-        bough(b, q, Vector((side * 0.045, 0.17, -0.01)), Vector((side * 0.85, 0.55, -0.12)).normalized(), 0.36, 0.017, 1 + min(q, 1), rng, side)
+        bough(b, q, Vector((side * 0.045, 0.17, -0.01)), Vector((side * 0.85, 0.55, -0.12)).normalized(), 0.46, 0.022, 1 + min(q, 1), rng, side)
     # A ruff of dark round its throat, joining it to the shroud.
     for k in range(7 + 5 * q):
         a = math.tau * k / (7 + 5 * q)
@@ -117,7 +119,7 @@ def bough(b, q, root, direction, length, radius, depth, rng, side):
 def eyes(b, q):
     """Two pale almonds, a little proud of the hollows they sit in."""
     for side in (1.0, -1.0):
-        b.blob((side * 0.033, 0.112, 0.085), (0.012, 0.007, 0.006), EYE, 6 + 2 * q, 4)
+        b.blob((side * 0.034, 0.112, 0.094), (0.019, 0.009, 0.01), EYE, 6 + 2 * q, 4)
 
 
 def cape(b, q):
