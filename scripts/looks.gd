@@ -23,10 +23,10 @@ const HEAD := "inside_round"
 const LOCKS := "none"
 ## The cut of his hair (one of CharacterLook.HAIRS): a pudding basin, low over the brow.
 const HAIR := "bowl"
-## And the cut of his trousers and his boots (BodyShape.CUTS and BOOTS): plain
-## tapered legs, as the runners have (the shaped cut read lumpy; the user, 2026-10-18).
-const CUT := "slim"
-const BOOT := "angular"
+## And the cut of his trousers and his boots (BodyShape.CUTS and BOOTS): the
+## character controller's boy as made, as Outside has him (the user, 2026-10-18).
+const CUT := "tube"
+const BOOT := "round"
 
 
 ## The look, as its word.

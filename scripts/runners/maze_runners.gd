@@ -14,8 +14,8 @@ extends Node3D
 ## Every runner is the same boy as the players, in a shirt of his own (SHIRTS),
 ## muted and greyer than the players' four so that he reads as one of the others.
 
-## The cut of their trousers (BodyShape.CUTS): plain tapered legs.
-const RUNNER_CUT := "slim"
+## The cut of their trousers (BodyShape.CUTS): the boy's own, as the players have.
+const RUNNER_CUT := "tube"
 ## Their shirts, in turn: a grey, a brown, an off-white, a dark taupe. None of
 ## them near Inside's red, the faded blue, the mustard or the dull green.
 const SHIRTS: Array[Color] = [
