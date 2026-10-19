@@ -112,7 +112,7 @@ func show_rain(rain: float, wind: float, flash: float, light: float, mist: Color
 	var sheets := smoothstep(0.22, 0.8, rain)
 	_sheets.visible = sheets > 0.01
 	_drift += Vector2(way.x, way.z) * (2.0 + wind * 10.0) * delta
-	var ground := _ground_at(eye)
+	var ground := ground_at(eye)
 	_sheet_look.set_shader_parameter(&"eye", eye)
 	_sheet_look.set_shader_parameter(&"base", ground)
 	_sheet_look.set_shader_parameter(&"drift", _drift)
@@ -122,8 +122,8 @@ func show_rain(rain: float, wind: float, flash: float, light: float, mist: Color
 	_sheet_look.set_shader_parameter(&"colour", (mist.darkened(0.38) * lerpf(0.4, 1.0, light)).lerp(Color(0.85, 0.88, 1.0), flash * 0.6))
 	# Splashes: the ground round the camera as a slope (its height under him,
 	# and how it rises each way), and where he stands if that is higher.
-	var east := _ground_at(eye + Vector3(2.0, 0.0, 0.0))
-	var north := _ground_at(eye + Vector3(0.0, 0.0, 2.0))
+	var east := ground_at(eye + Vector3(2.0, 0.0, 0.0))
+	var north := ground_at(eye + Vector3(0.0, 0.0, 2.0))
 	_splash_look.set_shader_parameter(&"eye", eye)
 	_splash_look.set_shader_parameter(&"ahead", look if look.length_squared() > 0.0 else Vector2(0.0, 1.0))
 	_splash_look.set_shader_parameter(&"ground", Vector3(ground, (east - ground) * 0.5, (north - ground) * 0.5))
@@ -133,7 +133,7 @@ func show_rain(rain: float, wind: float, flash: float, light: float, mist: Color
 
 
 ## How high the ground (or the water on it) is under a point.
-func _ground_at(point: Vector3) -> float:
+func ground_at(point: Vector3) -> float:
 	if maze == null:
 		return 0.0
 	var height := maze.ground_height(point)

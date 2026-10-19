@@ -8,7 +8,7 @@ extends Control
 ##   loot), under headings, with a search: tap a row and one is put in;
 ## - Travel: a map of the whole maze (tap it and he is there; the wheel zooms on
 ##   him) and the places by name: the clearing, each ring, each desert quarter, the way out;
-## - World: the time of day (a slider, and dawn, noon, dusk, night) and the weather;
+## - World: the time of day (a slider, and dawn, noon, dusk, night), the weather and the ground fog;
 ## - along its foot, where he is and the frame rate.
 ## Keys: ` opens it, G god, F fly, M a mummy, N the snake, B a Griever.
 ##
@@ -92,6 +92,7 @@ var _map: DevMap
 var _hour: HSlider
 var _hour_label: Label
 var _weather: OptionButton
+var _ground_fog: OptionButton
 var _status: Label
 var _status_in := 0.0
 var _open: Button
@@ -621,6 +622,7 @@ func _show() -> void:
 	_freeze_button.set_pressed_no_signal(frozen)
 	var forced: int = world.weather.forced if world.weather else -1
 	_weather.select(forced + 1)
+	_ground_fog.select((world.weather.forced_ground_fog if world.weather else -1) + 1)
 	if world.day:
 		_hour.set_value_no_signal(world.day.hour)
 		_hour_label.text = _clock(world.day.hour)
@@ -897,6 +899,14 @@ func _world_page() -> Control:
 		if world.weather:
 			world.weather.forced = index - 1)
 	page.add_child(_weather)
+	# (the low fog on the ground, GroundFog: as the spells have it, or none, or fog)
+	_ground_fog = OptionButton.new()
+	for choice in ["Ground fog as the spells have it", "No ground fog", "Ground fog"]:
+		_ground_fog.add_item(choice)
+	_ground_fog.item_selected.connect(func(index: int) -> void:
+		if world.weather:
+			world.weather.forced_ground_fog = index - 1)
+	page.add_child(_ground_fog)
 	return page
 
 

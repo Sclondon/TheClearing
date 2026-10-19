@@ -9,11 +9,13 @@ extends Node3D
 ## and darker as it clouds over; rain falls round the camera (Rain: streaks,
 ## droplets, distant sheets of it and splashes where it lands), more and faster
 ## and blown slantwise the harder it rains; the day is darker with it
-## (DayCycle.gloom) and the ground wetter. In a thunderstorm lightning flashes
+## (DayCycle.gloom) and the ground wetter. Some spells, and some dawns, have a
+## low fog lying on the ground (GroundFog), rising and sinking slowly, that
+## whoever walks through it leaves a wake in. In a thunderstorm lightning flashes
 ## over the maze (lighting it from above and the clouds from inside) and the
 ## thunder rolls after it, the further off the longer after.
 ##
-## The spells, and each flash of lightning, come from the room's seed and how
+## The spells, the ground fog, and each flash of lightning, come from the room's seed and how
 ## long the round has gone, so it rains, and lightens, for everyone in a room
 ## at once.
 
@@ -34,6 +36,18 @@ const CHANCES := {
 	Kind.OVERCAST: 0.32, Kind.CLOUDY: 0.2, Kind.SPRINKLE: 0.11, Kind.SUNNY: 0.14,
 	Kind.RAIN: 0.11, Kind.DOWNPOUR: 0.07, Kind.THUNDERSTORM: 0.05,
 }
+## How likely a spell of each kind is to have ground fog lying low (GroundFog):
+## most in still grey weather, little in rain, none in a storm's wind. A dawn
+## has it this often too, till DAWN_FOG_UNTIL o'clock, unless it pours.
+const FOG_CHANCES := {
+	Kind.OVERCAST: 0.4, Kind.CLOUDY: 0.35, Kind.SPRINKLE: 0.35, Kind.RAIN: 0.2,
+	Kind.DOWNPOUR: 0.08, Kind.THUNDERSTORM: 0.0, Kind.SUNNY: 0.12,
+}
+const DAWN_FOG_CHANCE := 0.5
+const DAWN_FOG_UNTIL := 8.5
+## How high the ground fog's top is over the ground, metres: it rises and sinks
+## slowly between these, over minutes.
+const FOG_HEIGHT := Vector2(0.35, 1.9)
 ## Lightning in a thunderstorm: time is cut into slots this long, and in each
 ## there is a strike this often (at a point in it the seed picks); a flash
 ## lasts FLASH s (flickering), and thunder comes 0.4 to 4 s after (far or near).
@@ -54,18 +68,24 @@ var wind := 0.1
 var flash := 0.0
 ## How sunny it is (0 to 1): a clear blue day (DayCycle.sunshine).
 var sunshine := 0.0
+## How much ground fog is lying (0 to 1), and how high its top is over the ground, metres.
+var ground_fog := 0.0
+var ground_fog_height := 1.0
 ## For DevTools: a kind to have instead of the spells (-1: the spells).
 var forced := -1
+## For DevTools: ground fog or none instead of as the spells have it (-1: the spells, 0 none, 1 fog).
+var forced_ground_fog := -1
 
 var day: DayCycle
 var ground: ShaderMaterial
 ## The maze it is over (for where its ground is, under the rain).
 var maze: Maze
 var _seed := 0
-# [start second, kind] for each spell.
+# [start second, kind, whether there is ground fog] for each spell.
 var _spells: Array = []
 var _cloud_material: ShaderMaterial
 var _rain: Rain
+var _ground_fog: GroundFog
 var _lightning: DirectionalLight3D
 var _thunder: AudioStreamPlayer
 ## The strike now under way: when it began (INF: none), and its thunder still to come.
@@ -95,7 +115,11 @@ func _plan(seed_value: int) -> void:
 	# (the first is always the usual overcast, so a round does not begin in rain)
 	var kind := Kind.OVERCAST
 	while at < 4.0 * 3600.0:
-		_spells.append([at, kind])
+		# (and whether there is ground fog in it: a roll of its own, so that the
+		# spells are the same whether or not it is looked at)
+		var fog_roll := RandomNumberGenerator.new()
+		fog_roll.seed = hash("ground fog/%d/%d" % [seed_value, _spells.size()])
+		_spells.append([at, kind, fog_roll.randf() < FOG_CHANCES[kind]])
 		at += rng.randf_range(SPELL.x, SPELL.y)
 		var pick := rng.randf()
 		for each: Kind in CHANCES:
@@ -115,9 +139,28 @@ func kind_at(at: float) -> Kind:
 	return found
 
 
+## Whether there is ground fog `at` seconds into the round (as the spells have
+## it, or every dawn), at `hour` o'clock.
+func ground_fog_at(at: float, hour: float) -> bool:
+	var fog := false
+	for spell: Array in _spells:
+		if spell[0] > at:
+			break
+		fog = spell[2]
+	if fog or hour < DayCycle.DAWN - 0.5 or hour >= DAWN_FOG_UNTIL:
+		return fog
+	# (a misty dawn, or not, for each day)
+	var each_day := day.day_seconds + day.night_seconds if day else 600.0
+	var roll := RandomNumberGenerator.new()
+	var which_day := floori(day.seconds / each_day) if day else floori(at / each_day)
+	roll.seed = hash("dawn fog/%d/%d" % [_seed, which_day])
+	return roll.randf() < DAWN_FOG_CHANCE
+
+
 func _ready() -> void:
 	_cloud_layer()
 	_rain = Rain.put(self, maze)
+	_ground_fog = GroundFog.put(self, get_parent())
 	_storm()
 
 
@@ -151,7 +194,20 @@ func _process(delta: float) -> void:
 	var player := get_parent().get(&"player") as CharacterBody3D if get_parent() else null
 	if player and player.is_on_floor():
 		feet = player.global_position.y
-	_rain.show_rain(rain, wind, flash, light, day.mist if day else Color(0.66, 0.7, 0.69), eye, -camera.global_basis.z if camera else Vector3.FORWARD, feet, delta)
+	var mist := day.mist if day else Color(0.66, 0.7, 0.69)
+	_rain.show_rain(rain, wind, flash, light, mist, eye, -camera.global_basis.z if camera else Vector3.FORWARD, feet, delta)
+	# Ground fog, as the spells have it (or every dawn), but not in heavy rain
+	# or a storm's wind; its top rising and sinking slowly, the same for everyone.
+	var fog_wanted := ground_fog_at(seconds, day.hour if day else 12.0) and rain < 0.7 and wind < 0.6
+	if forced_ground_fog >= 0:
+		fog_wanted = forced_ground_fog == 1
+	ground_fog = move_toward(ground_fog, 1.0 if fog_wanted else 0.0, delta / CHANGE_SECONDS)
+	var swell := 0.5 + 0.32 * sin(seconds / 61.0 + float(_seed % 13)) + 0.18 * sin(seconds / 23.0 + float(_seed % 7))
+	ground_fog_height = lerpf(FOG_HEIGHT.x, FOG_HEIGHT.y, clampf(swell, 0.0, 1.0))
+	if ground_fog > 0.01:
+		_ground_fog.show_fog(smoothstep(0.0, 1.0, ground_fog), ground_fog_height, wind, light, mist, eye, _rain.ground_at(eye), delta)
+	else:
+		_ground_fog.show_fog(0.0, 0.0, 0.0, 0.0, mist, eye, 0.0, delta)
 
 
 ## The kind of weather now (as the spells have it, or as DevTools forces it).
