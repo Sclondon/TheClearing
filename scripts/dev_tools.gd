@@ -694,25 +694,49 @@ func _physics_process(delta: float) -> void:
 		world.player.facing_yaw = atan2(forward.x, forward.z)
 
 
+## Where on the ground near `at` (a cell's middle) he can stand, clear of the
+## walls and ledges round him (rays down from high over it, his width about, all
+## reaching the ground), or INF if nowhere across the cell is.
+func _clear_floor(at: Vector3) -> Vector3:
+	var space := world.get_world_3d().direct_space_state
+	var maze: Maze = world.maze
+	for off: Vector2 in [Vector2.ZERO, Vector2(3, 0), Vector2(-3, 0), Vector2(0, 3), Vector2(0, -3)]:
+		var spot := at + Vector3(off.x, 0.0, off.y)
+		var ground := maze.ground_height(spot)
+		var clear := true
+		for side: Vector2 in [Vector2.ZERO, Vector2(0.6, 0), Vector2(-0.6, 0), Vector2(0, 0.6), Vector2(0, -0.6)]:
+			var from := spot + Vector3(side.x, 400.0, side.y)
+			var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 410.0, 1, [world.player.get_rid()]))
+			if hit and (hit.position as Vector3).y > ground + 0.5:
+				clear = false
+				break
+		if clear:
+			return Vector3(spot.x, ground, spot.z)
+	return Vector3.INF
+
+
 ## Somewhere open in ring `ring` (counting out from the clearing, the square
 ## ones first, then the desert, then the round ones), facing out.
 func to_ring(ring: int) -> void:
 	var maze: Maze = world.maze
 	if ring <= maze.rings:
-		# (the open cell of that ring nearest the line out from the middle to the east)
-		var best := Vector2i(-1, -1)
-		var best_off := INF
+		# (the open cell of that ring nearest the line out from the middle to the
+		# east whose floor is clear: a cell's middle can be in a thick wall or under
+		# a ledge, the user, 2026-10-18: "the dev teleports for ring 2 just teleports
+		# me into a wall")
+		var cells: Array = []
 		for i in maze.size * maze.size:
 			var cell := Vector2i(i % maze.size, i / maze.size)
 			if maze.ring_of(cell) != ring or maze.solid.has(cell) or maze.entrances.has(cell):
 				continue
 			var at := maze.world(cell)
-			var off := absf(at.z) + (0.0 if at.x > 0.0 else 100000.0)
-			if off < best_off:
-				best_off = off
-				best = cell
-		if best.x >= 0:
-			world.put_player(maze.world(best) + Vector3.UP * 0.05, PI * 0.5)
+			cells.append([absf(at.z) + (0.0 if at.x > 0.0 else 100000.0), cell])
+		cells.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+		for pick: Array in cells:
+			var spot := _clear_floor(maze.world(pick[1]))
+			if spot.is_finite():
+				world.put_player(spot + Vector3.UP * 0.05, PI * 0.5)
+				return
 		return
 	var outer: RoundMaze = maze.round_rings
 	if outer == null or ring - maze.rings - 1 > outer.rings.size():
