@@ -22,6 +22,13 @@ static var _counts := {}
 static var _dirty := {}
 
 
+## Some members of `group` have moved (vines hung from a strung vine that was cut, as
+## they swing down): the grid is made again now, and again once they have settled.
+static func moved(tree: SceneTree, group: StringName, settle := 4.0) -> void:
+	_dirty[group] = true
+	tree.create_timer(settle).timeout.connect(func() -> void: _dirty[group] = true)
+
+
 static func near(tree: SceneTree, group: StringName, at: Vector3, reach: float) -> Array:
 	if _dirty.get(group, true) or _counts.get(group, -1) != tree.get_node_count_in_group(group):
 		_build(tree, group)

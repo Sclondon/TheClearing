@@ -32,6 +32,13 @@ var hold := Vector3.ZERO
 ## wall's face, or out past the ledge's edge).
 var held: int = Held.OVER
 var reach := 0.0
+## Its roots and the leaves bunched over them (as laid at first, from `_held_from`), which
+## go with its top if it is moved (`follow`); and the vines hanging from it, each
+## [vine, how far down it] (`carry`: a strung vine cut, with vines hanging from it).
+var _roots: Node3D
+var _held_from := Vector3.ZERO
+var _held_leaves: Array[Transform3D] = []
+var _carried: Array = []
 
 ## How a vine is held at its top (or a strung vine at an end): what its roots grip.
 enum Held {
@@ -44,6 +51,10 @@ enum Held {
 	FACE,
 	## Out of the ground (a vine swept down to the floor): its roots spread over the ground.
 	GROUND,
+	## From a vine strung across a hall (VineStrand.hang): its roots wrapped under the strung
+	## stem, and its top going where that point of it goes (the user, 2026-10-19: "hanging
+	## vines should be able to hang from crossing vines").
+	STRAND,
 }
 
 
@@ -81,13 +92,19 @@ func _ready() -> void:
 		multi.set_instance_color(PIECES * each + k, leaf_colour(rng))
 	# (where it is held: young green roots over what holds it, and a bunch of leaves over them)
 	var how := held
+	# (from a strung vine: roots under it, as under a beam)
+	if how == Held.STRAND:
+		how = Held.OVER
 	if how == Held.OVER and hold.length_squared() > 0.0001:
 		how = Held.LIP
 	var made := anchor(global_position, hold, how, reach, true, rng, ANCHOR_LEAVES)
 	add_child(made[0])
+	_roots = made[0]
+	_held_from = global_position
 	for k in ANCHOR_LEAVES:
 		multi.set_instance_transform(on_stem + k, made[1][k][0])
 		multi.set_instance_color(on_stem + k, made[1][k][1])
+		_held_leaves.append(made[1][k][0])
 	_leaves = MultiMeshInstance3D.new()
 	_leaves.multimesh = multi
 	_leaves.material_override = _leaf
@@ -96,6 +113,36 @@ func _ready() -> void:
 	_leaves.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_leaves)
 	_draw()
+
+
+## Moves its top to `top` (where what holds it, a strung vine, has gone), its roots and
+## the leaves over them with it; it swings on from there.
+func follow(top: Vector3) -> void:
+	if top.distance_squared_to(global_position) < 0.000001:
+		return
+	global_position = top
+	if _roots:
+		_roots.global_position = top
+	if _leaves:
+		var moved := top - _held_from
+		var on_stem := _placing.size()
+		for k in _held_leaves.size():
+			_leaves.multimesh.set_instance_transform(on_stem + k, _held_leaves[k].translated(moved))
+	if not is_physics_processing():
+		set_physics_process(true)
+
+
+## Hangs `vine` from this one, `distance` down it: its top goes where that point goes.
+func carry(vine: Vine, distance: float) -> void:
+	_carried.append([vine, distance])
+	vine.follow(point_at(distance))
+
+
+func _physics_process(delta: float) -> void:
+	super(delta)
+	for each: Array in _carried:
+		if is_instance_valid(each[0]):
+			(each[0] as Vine).follow(point_at(each[1]))
 
 
 func _draw() -> void:

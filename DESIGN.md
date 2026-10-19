@@ -168,7 +168,8 @@ same with sewers (wall decor) and tunnels."). The groups:
 - **Climbing**: the mezzanines (a list of levels of ledge along the walls, each with its height, depth and share of
   faces; see "The levels of ledge" below), terraces (how many, upper terraces),
   arched concrete bridges between ledges at the same level (how many, deck width, arch rise),
-  rope bridges (between terraces, wall top to wall top, between mezzanine ledges).
+  rope bridges (between terraces, wall top to wall top, between mezzanine ledges), metal catwalks over the top
+  ledges (how many, how high, how wide, railings; see "The catwalks" below).
 - **Ivy**: wall ivy from the ground (how many, how high), ivy on from upper terraces to the wall top, ivy between
   mezzanine levels.
 - **Vines**: one box and five settings, hung on whatever is on the walls (see "The vines" below): mezzanine crossing
@@ -301,6 +302,14 @@ vines' settings change only the vines:
   to hang and 1.5 times it to be strung across (`MazeFeatures.PULL`).
 - *Overall vine density* (x) multiplies all three. *Height limit* (% of the wall's height, each wall's own): nothing
   higher holds a vine, and ledges over it have none.
+- *Vines hanging from the vines strung across* (the user, 2026-10-19: "hanging vines should be able to hang from
+  crossing vines"): laid after all of those, the hanging density times 0.8 for each strung vine (`MazeFeatures.
+  STRAND_PULL`; none from one swept to the floor), from points along it clear of its ends, down towards the floor (or
+  the ledge or catwalk under them), ending 2.4 m clear of it at least, under the height limit; roots and leaves where
+  each is held under the stem (`Vine.Held.STRAND`). Their tops go where those points go (`VineStrand.hang`, `Vine.
+  follow`): as it sags, sways and dips under someone walking it (only while it is awake, near someone), and cut, each
+  goes with its half as that swings down (`Vine.carry`), or falls with a half too short to hang. Check and picture:
+  `tools/strand_vines_shots.gd`.
 
 Vines out of bare wall have their roots and a bunch of leaves where they come out, under the first ledge or over the
 top one. They are Vines and VineStrands as any: swung on, climbed, walked and cut. Mazes saved with the old vine
@@ -310,6 +319,25 @@ vines) load with them let go of (`MazeStyle.RETIRED`).
 Pictures: `tools/zone1_vines_shots.gd` (pass `zone2` for the second section, `corners` for ledges round wall ends and
 sewer props on ledges, `anchors` for where vines are held, `leaves` for the leaves close up,
 `wallvines` for the vines out of the walls, `hung` for vines hung on the props).
+
+**The catwalks** (MazeStyle "Climbing", Catwalks; the user, 2026-10-18: "we need to add a metal cat walk option that
+will add pathways above the mezzanines, rarely in zone 2 and then lots in zone 3"). Grated steel walkways gone to rust,
+dark and muted (`Catwalks`, `MazePiece.Kind.CATWALK` and `LADDER`, laid out by `MazeFeatures._catwalks`), at one height
+in a section: *height* (m) over its top level of ledge, or over the floor where it has none, and never nearer the
+walls' tops than 2.5 m under the cornice (`MazeStyle.catwalk_level`). Each straight stretch of wall (*share of halls*)
+may have one along it, all of it or part, on brackets from the wall, railed on the hall's side, into the corners
+(meeting one along the wall there) and short of the piers that stand out where walls meet. Across the halls (0.6 of
+the share), from wall to wall on struts, or from one along a wall, meeting its side; one longer than 9 m also hangs on
+rods from a steel beam under the walls' cornices; railed on one side or both (*railings*). *Width* (m) of the deck.
+Ladders (the boy's own `Ladder`s) go up to them from the top ledge under them, or the floor: at some free ends of those
+along the walls, beside some of those across the halls by a wall, and one at least to every way they make over the
+maze; an end in the air with no ladder has a railing across it, and a railing is left open where a catwalk meets it
+or a ladder comes up. Vines hang from their sides (the hall's side of one along a wall, both sides of one across, over
+the floor) and are strung across from them, as the vines' rules say (`MazeFeatures.Anchor.CATWALK`). Cheap: every bar
+of steel is one box in a MultiMesh, the decks another (the grating holes are cut by a shader, solid far off), the rungs
+a third, a set for each 48 m square; one body for them all, a box shape for each deck and each stretch of railing.
+Defaults: none in the first section, few in the second (0.08 of halls, 5 m over the top ledge), many in the third
+(0.45, 9 m over the floor). Pictures and a climb: `tools/catwalk_shots.gd`.
 
 **Grappling hook spots** (added 2026-10-18 at the user's request: "we should also have grappling hook spots"). Places
 made for the grappling hook to catch, in rusty iron dark against the concrete, so that a way up can be seen from below
