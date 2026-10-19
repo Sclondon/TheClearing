@@ -300,9 +300,31 @@ func goal() -> Vector3:
 			_last_seen = Vector3.INF
 		else:
 			return _last_seen
+	# (steered by the director: there first, unless it is reached, cannot be got to, or the steer is up)
+	if directed.x >= 0:
+		if here == directed or Time.get_ticks_msec() > _directed_until or nav.distance(here, directed) < 0:
+			directed = Vector2i(-1, -1)
+		else:
+			return nav.point(directed)
 	if _wander_goal.x < 0 or here == _wander_goal or nav.distance(here, _wander_goal) < 0:
 		_wander_goal = nav.wander(here, _rng)
 	return nav.point(_wander_goal)
+
+
+## Where the director (MazeDirector) has steered it, while it has nothing better
+## to do: it goes there before wandering on. (-1, -1): nowhere.
+var directed := Vector2i(-1, -1)
+var _directed_until := 0
+
+
+## Steers it to `cell` for at most `seconds`.
+func direct(cell: Vector2i, seconds: float) -> void:
+	directed = cell
+	_directed_until = Time.get_ticks_msec() + int(seconds * 1000.0)
+
+
+func is_directed() -> bool:
+	return directed.x >= 0 and Time.get_ticks_msec() <= _directed_until
 
 
 ## The way to go from where it is to `goal()`, flat, keeping `radius` off the walls.

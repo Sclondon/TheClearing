@@ -84,7 +84,8 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ## passages from the others as can be. Call it after `populate` (the snake and
 ## the mummies) with the same maze; the same seed gives the same ones.
 ##
-## - Ghouls stand in dead ends, facing out. Centipedes lie in dead ends too.
+## - Ghouls and centipedes have their homes anywhere in the passages (not only dead
+##   ends: the user, 2026-10-19, "their homes could be anywhere").
 ## - Slime walls fill straight halls, set across them.
 ## - Flesh mounds and striders wait in halls, as abominations do; amalgams and
 ##   pairs in any passage.
@@ -96,7 +97,7 @@ func populate(plan: Maze, seed_value: int, packs := 3, snakes := 1, away := 5) -
 ## - Beetle swarms wait in cracks at the foot of a wall, in a dead end and a
 ##   hall in turn.
 ## - Angels hang over the middle of a straight hall (where they see furthest).
-## - Giant toads squat in dead ends, facing out; a frog swarm's muddy pool is
+## - Giant toads squat anywhere in the passages; a frog swarm's muddy pool is
 ##   at the end of a dead end too.
 ## - Harpies are put in hallways and perch on the nearest high wall over one.
 ## - A boar roots in a dead end or a straight hall, facing out.
@@ -138,11 +139,11 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	for enemy in enemies:
 		taken.append(maze.cell_at(enemy.global_position))
 	for i in style.ghouls:
-		var cell := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		var cell := _far_from(taken, lairs, rng)
 		taken.append(cell)
 		add(MazeGhoul.new(), cell, _facing_out(cell), rng.randi())
 	for i in style.centipedes:
-		var cell := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		var cell := _far_from(taken, lairs, rng)
 		taken.append(cell)
 		add(Centipede.new(), cell, _facing_out(cell), rng.randi())
 	for i in style.slime_walls:
@@ -204,8 +205,8 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		var troop: Array = MazeBaboon.troop(rng.randi_range(4, 5))
 		_add_pack(troop, _far_from(taken, lairs, rng), nav, rng, taken)
 	for i in style.dog_packs:
-		# (a pack's den is a dead end: they go out from it on the scent)
-		var den := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		# (a pack's den is anywhere in the passages: they go out from it on the scent)
+		var den := _far_from(taken, lairs, rng)
 		_add_pack(MazeDog.pack_of(rng.randi_range(3, 4), rng.randi()), den, nav, rng, taken)
 	for i in style.deer_herds:
 		# (a herd stands in a straight hall, where it can be seen from far off, facing along it)
@@ -239,8 +240,8 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 			along = Vector2i(0, 1)
 		add(MazeAngel.new(), cell, atan2(float(along.x), float(along.y)), rng.randi())
 	for i in style.frogs:
-		# (a giant toad squats in a dead end, facing out)
-		var cell := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		# (a giant toad squats anywhere in the passages, facing out of its cell)
+		var cell := _far_from(taken, lairs, rng)
 		taken.append(cell)
 		add(MazeFrog.new(), cell, _facing_out(cell), rng.randi())
 	for i in style.frog_swarms:
@@ -407,8 +408,8 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 		taken.append(cell)
 		add(MazePanther.new(), cell, rng.randf_range(-PI, PI), rng.randi())
 	for i in style.wolf_packs:
-		# (each a den in a dead end, the pack round it: the leader in the den)
-		var den := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		# (each a den anywhere in the passages, the pack round it: the leader in the den)
+		var den := _far_from(taken, lairs, rng)
 		_add_pack(MazeWolf.pack_of(rng.randi_range(4, 6), rng.randi()), den, nav, rng, taken)
 	for i in style.frog_ponds:
 		# (a pond of frogs in a hall or a dead end, where people pass it)
@@ -459,8 +460,8 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	# Carnivorous plants in clumps at the feet of the walls; mushrooms, and the zombies' hordes round them.
 	MazePlants.populate(self, nav, rng, taken, halls, ends, lairs, style.flytraps, style.sundews, style.pitchers, style.mushroom_patches, style.zombie_hordes)
 	for i in style.gnome_bands:
-		# (in a dead end: the first finds the nearest wall and digs the hollow at its foot)
-		var cell := _far_from(taken, ends if not ends.is_empty() else lairs, rng)
+		# (anywhere in the passages: the first finds the nearest wall and digs the hollow at its foot)
+		var cell := _far_from(taken, lairs, rng)
 		taken.append(cell)
 		var band := MazeGnome.band_of(rng.randi_range(3, 5))
 		for k in band.size():
