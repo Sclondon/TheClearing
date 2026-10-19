@@ -34,7 +34,7 @@ var load_at := -1.0: set = _set_load
 
 var _points := PackedVector3Array()
 var _before := PackedVector3Array()
-var _links: Array[MeshInstance3D] = []
+var _links: MultiMeshInstance3D
 var _knot: MeshInstance3D
 ## Where whoever is on it has hold of it, and where that was a moment ago.
 var _rider := Vector3.ZERO
@@ -49,42 +49,61 @@ var _taken_in := false
 
 func _ready() -> void:
 	add_to_group(&"ropes")
-	var hemp := StandardMaterial3D.new()
-	hemp.albedo_color = Color(0.45, 0.38, 0.26)
-	hemp.roughness = 1.0
-	hemp.metallic_specular = 0.0
+	if _hemp == null:
+		_hemp = StandardMaterial3D.new()
+		_hemp.albedo_color = Color(0.45, 0.38, 0.26)
+		_hemp.roughness = 1.0
+		_hemp.metallic_specular = 0.0
 	var piece := length / PIECES
+	_link_height = piece * 1.04
 	if _points.is_empty():
 		for i in PIECES + 1:
 			_points.append(global_position + Vector3.DOWN * piece * i)
 		_before = _points.duplicate()
-	for i in PIECES:
-		var link := MeshInstance3D.new()
+	# (every rope as thick shares one link, a metre long and drawn as long as its
+	# piece, and one knot)
+	var made: Array = _made.get(thickness, [])
+	if made.is_empty():
 		var mesh := CylinderMesh.new()
 		mesh.top_radius = thickness
 		mesh.bottom_radius = thickness
-		mesh.height = piece * 1.04
+		mesh.height = 1.0
 		mesh.radial_segments = 6
 		mesh.rings = 1
-		link.mesh = mesh
-		link.material_override = hemp
-		link.top_level = true
-		link.visibility_range_end = SEEN
-		add_child(link)
-		_links.append(link)
+		var ball := SphereMesh.new()
+		ball.radius = thickness * 2.0
+		ball.height = thickness * 4.0
+		ball.radial_segments = 8
+		ball.rings = 4
+		made = [mesh, ball]
+		_made[thickness] = made
+	# (its links all one thing to draw: a thing each, the vines and ropes of a maze were
+	# tens of thousands, which the renderer took seconds to take in as a round began)
+	var many := MultiMesh.new()
+	many.transform_format = MultiMesh.TRANSFORM_3D
+	many.mesh = made[0]
+	many.instance_count = PIECES
+	_links = MultiMeshInstance3D.new()
+	_links.multimesh = many
+	_links.material_override = _hemp
+	_links.top_level = true
+	_links.visibility_range_end = SEEN
+	add_child(_links)
+	_links.global_transform = Transform3D.IDENTITY
 	# A knot at the end, so the bottom reads
 	_knot = MeshInstance3D.new()
-	var ball := SphereMesh.new()
-	ball.radius = thickness * 2.0
-	ball.height = thickness * 4.0
-	ball.radial_segments = 8
-	ball.rings = 4
-	_knot.mesh = ball
-	_knot.material_override = hemp
+	_knot.mesh = made[1]
+	_knot.material_override = _hemp
 	_knot.top_level = true
 	_knot.visibility_range_end = SEEN
 	add_child(_knot)
 	_draw()
+
+
+static var _hemp: StandardMaterial3D
+## thickness -> [link, knot] (see _ready), and how long this one's links are drawn.
+static var _made := {}
+var _link_height := 1.0
 
 
 ## Lays the rope out along a line from its top (where this node is) to `end`,
@@ -95,7 +114,7 @@ func lay_to(end: Vector3) -> void:
 	for i in PIECES + 1:
 		_points.append(global_position.lerp(end, float(i) / PIECES))
 	_before = _points.duplicate()
-	if not _links.is_empty():
+	if _links:
 		_draw()
 
 
@@ -258,7 +277,7 @@ func _draw() -> void:
 		var along := (b - a).normalized() if a.distance_squared_to(b) > 0.0000001 else Vector3.DOWN
 		var across := along.cross(Vector3.RIGHT)
 		across = across.normalized() if across.length_squared() > 0.001 else Vector3.BACK
-		_links[i].global_transform = Transform3D(Basis(across.cross(along), -along, across), (a + b) * 0.5)
+		_links.multimesh.set_instance_transform(i, Transform3D(Basis(across.cross(along), -along * _link_height, across), (a + b) * 0.5))
 	_knot.global_position = _points[PIECES]
 
 

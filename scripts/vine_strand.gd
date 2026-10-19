@@ -21,6 +21,7 @@ const CLEAR := 1.6
 static var _stem: StandardMaterial3D
 static var _leaf: StandardMaterial3D
 static var _leaf_mesh: ArrayMesh
+static var _stem_mesh: CylinderMesh
 
 var _stems: Array[MeshInstance3D] = []
 var _leaves: MultiMeshInstance3D
@@ -40,14 +41,9 @@ func _ready() -> void:
 	super()
 	add_to_group(&"vine_strands")
 	# (no planks, hand ropes or posts to be seen: only the vine, where the deck is)
-	for plank in _planks:
-		for child in plank.get_children():
-			if child is MeshInstance3D:
-				child.visible = false
-	for rail in _rails:
-		rail.visible = false
-	for post in _posts:
-		post.visible = false
+	_deck.visible = false
+	_rails.visible = false
+	_posts.visible = false
 	if _stem == null:
 		_stem = StandardMaterial3D.new()
 		_stem.albedo_color = Color(0.2, 0.24, 0.12)
@@ -59,15 +55,15 @@ func _ready() -> void:
 		_leaf.roughness = 1.0
 		_leaf.metallic_specular = 0.0
 		_leaf_mesh = Vine.leaf_mesh(0.16)
+		_stem_mesh = CylinderMesh.new()
+		_stem_mesh.top_radius = 0.045
+		_stem_mesh.bottom_radius = 0.045
+		_stem_mesh.height = 1.0
+		_stem_mesh.radial_segments = 6
+		_stem_mesh.rings = 1
 	for i in POINTS - 1:
 		var stem := MeshInstance3D.new()
-		var line := CylinderMesh.new()
-		line.top_radius = 0.045
-		line.bottom_radius = 0.045
-		line.height = 1.0
-		line.radial_segments = 6
-		line.rings = 1
-		stem.mesh = line
+		stem.mesh = _stem_mesh
 		stem.material_override = _stem
 		stem.top_level = true
 		stem.visibility_range_end = Rope.SEEN

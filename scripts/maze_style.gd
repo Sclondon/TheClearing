@@ -761,6 +761,34 @@ func _set(property: StringName, value: Variant) -> bool:
 	return false
 
 
+## The groups `bare` empties: every count in them goes to none.
+const PEOPLED := ["What hunts it", "Who else is in it", "Wildlife"]
+
+
+## A copy of this style with nothing in it: none of what hunts it, who else is in
+## it, its wildlife or what lies about, and none of its dressing (ledges, terraces,
+## ivy, vines, sewers, clutter, hook spots, plants, ponds), as narrow as a section
+## can be. For the clearing alone (Maze.generate with no rings, a test mode): its
+## first section is only a narrow way round behind the clearing's shut gates.
+func bare() -> MazeStyle:
+	var copy: MazeStyle = duplicate(true)
+	copy.section_width_cells = 1
+	copy.mezzanine_height = 0.0
+	copy.loot_items = 0
+	copy.abandoned_camps = 0
+	var group := ""
+	for property in get_property_list():
+		if property.usage & PROPERTY_USAGE_GROUP:
+			group = property.name
+			continue
+		var name: String = property.name
+		if property.type == TYPE_INT and group in PEOPLED:
+			copy.set(name, 0)
+		elif property.type == TYPE_FLOAT and (name.ends_with("_share") or name.ends_with("_density")):
+			copy.set(name, 0.0)
+	return copy
+
+
 static func made(depth_cells: int, hallway_cells: int, straightness: float, branches: float, loops: float, corridor := 0, door := 0.0, round := false) -> MazeStyle:
 	var style: MazeStyle = RoundStyle.new() if round else MazeStyle.new()
 	style.section_width_cells = depth_cells
