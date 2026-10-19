@@ -542,10 +542,17 @@ func add_hunters(style: MazeStyle, seed_value: int, away := 5) -> void:
 	for spot: Vector3 in MazeBrachiosaurus.spots(maze, style.desert_dimetrodons, rng.randi()):
 		var cell := maze.cell_at(spot)
 		add(MazeDimetrodon.new(), cell, rng.randf_range(-PI, PI), rng.randi(), spot - maze.world(cell) - Vector3.UP * 0.05)
-	# (gibbons only where there are ledges and terraces for them: past the first section)
+	# (gibbons only where there are ledges, terraces or wall tops low enough for them:
+	# put where there are none, they had nothing to hang from and hung under the
+	# ground, the user, 2026-10-18: "gibbons just fall through the floor")
 	var high_halls: Array[Vector2i] = []
 	for cell in some_halls:
-		if maze.ring_of(cell) > 1:
+		var ring := maze.ring_of(cell)
+		if ring < 1 or ring > maze.styles.size():
+			continue
+		var here: MazeStyle = maze.styles[ring - 1]
+		if (here.mezzanine_height > 0.0 and here.mezzanine_height <= GibbonWays.MOST_HIGH) or here.amount(&"terrace_share") > 0.0 \
+				or here.maze_wall_height <= GibbonWays.MOST_HIGH:
 			high_halls.append(cell)
 	for i in style.gibbon_troops:
 		if high_halls.is_empty():

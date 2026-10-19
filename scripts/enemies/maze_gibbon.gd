@@ -177,6 +177,13 @@ func _find_ways() -> void:
 	if start < 0:
 		start = ways.nearest(global_position, Maze.CELL * 2.5)
 	if start < 0:
+		# (nothing to hang from near: it stands on the ground where it is, not
+		# hung by its hands from the ground with the rest of it under the floor)
+		_gait = Gibbon.Gait.WALK
+		global_position.y = maze.ground_height(global_position)
+		_prev_pos = global_position
+		_curr_pos = global_position
+		mode = Mode.SITTING
 		return
 	placed = true
 	home = start
