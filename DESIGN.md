@@ -115,7 +115,8 @@ maze editor (groups Forest, Swamp, Plains), nothing in the way within `keep_clea
 - **Swamp:** one sheet of still water, knee deep at most, over the middle of the quarter, hummocks of wet ground
   standing up through it cut by winding channels; dry boggy ground round its edges; sedges all over, reeds and
   bulrushes at the water's edge, lily pads, grey dead and drowned trees, and low banks of mist.
-- **Plains:** wide grass over low hills, boulders, and outcrops of great rocks (the biggest as high as a house).
+- **Plains:** wide grass over low hills, boulders, and outcrops of great rocks (the biggest as high as a house), and a
+  couple of fields of tall dry corn (Corn).
 
 `WildLands` (scripts/wild_lands.gd) works out where everything is from the seed, in squares of 64 m; `Wilds`
 (scripts/wilds.gd) builds only the squares near the camera (MultiMeshes, shapes put in before their body enters the
@@ -146,6 +147,14 @@ room is a light well: in the middle a column of the walls' stone from the floor 
 four cells across), a great pine, or a pond (only in a section with ponds). Nothing is strung or bridged across a
 room; the ledges go round its walls as round any other.
 
+**Corn** (the user, 2026-10-18: "Lets also add corn like that one scene in the inside video"; MazeStyle "Plants": an
+on/off box, the share of rooms and of hall cells, on by default with a third of the rooms and a twentieth of the
+halls): Inside's cornfield. Dry, pale, yellow-grey stalks taller than the boy, close in rows, filling a room from wall
+to wall (round its column or pine; never a room with a pond) or a stretch of hall a few cells long and as wide as the
+hall (none at a gate between sections). They bend and sway apart round anyone pushing through, spring back behind
+with a sway, and rustle; you cannot see far through them, and deep in them the hunters see you only near. The plains
+quarters have a couple of big fields too (DesertStyle "Plains": cornfields, how big).
+
 Each feature of a section has its own on/off box in the maze editor's Inspector, its amount and size settings shown
 under it only while it is on (the user, 2026-10-18: "Rather than a share slider - there should be check boxes to turn
 on and off each feature for the section in the editor. Vines and ivy should be their own sections not in climbing,
@@ -164,7 +173,7 @@ same with sewers (wall decor) and tunnels."). The groups:
 - **Signs of life**: heaps of boxes and barrels, cables across the halls (snapped, lamps), cables beside the vines,
   junction boxes with a vine-grown cable between, slanting cables, cables down from a ledge.
 - **Grappling hook spots**: routes up the walls, rings at ledge lips, hooks to swing from.
-- **Plants**: undergrowth along the wall feet, wall grass. **Water**: ponds, and within them flooded halls,
+- **Plants**: undergrowth along the wall feet, wall grass, corn. **Water**: ponds, and within them flooded halls,
   swimming ponds and fish.
 
 Boxes that only matter with another on (bridges, vines and ivy-to-top of terraces; flooded halls, swimming ponds and

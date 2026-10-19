@@ -103,6 +103,15 @@ leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened i
   (none in its middle, dense woods in one corner)
   and a few past the last ring (GameCommon's pine-tree); real grass over the clearing (GameCommon's
   grass: knee-high blades that the wind moves and the players push aside); the light past the exit.
+- `scripts/corn.gd` (`Corn`): corn after Inside's cornfield (the user, 2026-10-18: "Lets also add corn like that one
+  scene in the inside video"). Tall dry stalks (2.2 to 2.8 m: drooping, twisted leaves, an ear, a tassel; made in
+  code) in rows over patches of ground, drawn per 8 m square as two MultiMeshes (the full stalk out to 16 m, a plainer
+  one to 52; less of both on LOW quality), each square filled only when the camera first comes near. All the bending
+  is in the vertex shader: the weather's wind, a lean from anyone near (plant_push's `pushed`), and a spring for each
+  stalk shoved aside (at most 64, run in `Corn._spring`), so the stalks part round whoever pushes through and swing
+  back behind. A rustle made in code follows the nearest few moving through it. Deep in it the hunters see you only
+  within 8 m (`Corn.sight_reach`, asked by `MazeNav.sees`); they still hear you. `Corn.plant_maze` lays it down in
+  rooms and stretches of hall (MazeStyle "Plants"), `Wilds` the plains quarters' fields (`WildLands.cornfields`).
 - `scripts/marsh.gd` (`Marsh`): the marsh in front of the clearing's flooded entrance. How it lies is
   `ClearingStyle`'s (the marsh settings; `height_at`, `marsh_wet_at`, `marsh_depth_at`, `marsh_lane_at`); `Marsh`
   builds it: its own ground a point a metre (the hills' coarse ground, `ClearingStyle.coarse_height_at`, sunk out of
@@ -241,6 +250,7 @@ sh tools/coop_test.sh                                     # two copies in one ro
 "$G" --path . --resolution 1280x720 -s res://tools/shots.gd -- <folder>   # pictures to look at
 "$G" --path . --resolution 1280x720 -s res://tools/clearing_shots.gd -- <folder> [seed]   # the clearing: hills, woods
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/room_shots.gd -- <folder> [seed]   # the rooms: the plan, in each kind, from above
+"$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/corn_shots.gd -- <folder> [seed]   # the corn: in a field at his height, him walking through, the plains, from above; and its costs
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/deer_shots.gd -- <folder> [studio|strips|maze|clearing|all]   # deer and elk, gallop strips, the herd, wildlife
 "$G" --headless --audio-driver Dummy --path . -s res://tests/marsh_test.gd   # the marsh: water, sedges in it, the lane in
 "$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/crow_shots.gd -- <folder> [studio|beat|maze|clearing]   # crows, ravens, blue jays, the wingbeat
