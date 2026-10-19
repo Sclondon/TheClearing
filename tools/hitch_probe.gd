@@ -39,6 +39,7 @@ func _run() -> void:
 		await _worst_scripts(seconds)
 		quit()
 		return
+	print("hunters %d" % main.world.enemies.enemies.size())
 	var times: Array[float] = []
 	var rows: Array = []
 	var start := Time.get_ticks_usec()

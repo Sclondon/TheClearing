@@ -51,6 +51,11 @@ var styles: Array[MazeStyle]:
 				round_sections.append(RoundStyle.from(style))
 			elif style:
 				square_sections.append(style)
+## How many times as many of what hunts as the sections' styles say ("What hunts
+## it": each count times this, rounded). The user, 2026-10-18: "The monster
+## frequency should be much higher".
+@export_range(0.0, 10.0, 0.25, "suffix:x") var monster_multiplier := MONSTER_MULTIPLIER
+const MONSTER_MULTIPLIER := 3.0
 ## Whether the game plays this one when it is in res://mazes/.
 @export var playable := true
 ## In the editor, whether it is lit and misted as in the game (off: the editor's

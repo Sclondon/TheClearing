@@ -65,6 +65,9 @@ var ecology: Ecology
 ## Everyone starts in front of a gate instead of in the middle (with dev tools on,
 ## unless the flag `start=middle` is given).
 var start_at_gate := false
+## How many times as many of what hunts as the styles say (the maze editor's
+## MazeLayout.monster_multiplier; the flag `monsters=<x>` overrides it).
+var monster_multiplier := MazeLayout.MONSTER_MULTIPLIER
 ## Only the clearing, for testing in (set before `setup`, or the flag `clearing`, or
 ## `rings=0`): no maze round it past its wall, its gates kept shut, nothing that
 ## hunts and no runners; its own wildlife, loot and the rest as ever (Maze.clearing_only).
@@ -111,6 +114,7 @@ func setup(seed_value: int, my_slot: int, players: Array, is_online: bool, layou
 	if laid_out:
 		laid_out.name = "Layout"
 		builder.add_child(laid_out)
+		monster_multiplier = laid_out.monster_multiplier
 		await builder.realize(laid_out)
 		maze = builder.maze
 	else:
@@ -239,7 +243,7 @@ func _enemies(seed_value: int) -> void:
 	enemies = MazeEnemies.new()
 	enemies.name = "Enemies"
 	add_child(enemies)
-	var style: MazeStyle = maze.styles[0]
+	var style: MazeStyle = maze.styles[0].crowded(float(Flags.value("monsters", str(monster_multiplier))))
 	enemies.populate(maze, hash("enemies/%d" % seed_value), style.mummy_packs, style.snakes)
 	enemies.add_hunters(style, hash("hunters/%d" % seed_value))
 	# (and the tame coyotes of the clearing, run and sent with them)
@@ -593,6 +597,18 @@ const SLEEPERS: Array[StringName] = [&"pursuers", &"maze_enemies", &"grievers", 
 var _sleep_in := 0.0
 
 
+## Which part of the maze a point is in: 0 the clearing and the square sections,
+## 1 the desert, 2 the round sections. What is in a part nobody is in sleeps,
+## however near (the user, 2026-10-18: "We dont need to simulate monsters past
+## the square zone while in it- they should be separeate").
+func zone_of(point: Vector3) -> int:
+	if maze.ring_of(maze.cell_at(point)) <= maze.rings:
+		return 0
+	if maze.round_rings and Vector2(point.x, point.z).length() >= maze.round_rings.inner_radius:
+		return 2
+	return 1
+
+
 func _sleep_far() -> void:
 	var eyes: Array[Vector3] = []
 	if player:
@@ -602,6 +618,9 @@ func _sleep_far() -> void:
 			eyes.append((remotes[seat] as Node3D).global_position)
 	if eyes.is_empty():
 		return
+	var zones := {}
+	for eye in eyes:
+		zones[zone_of(eye)] = true
 	var found := {}
 	for group in SLEEPERS:
 		for node in get_tree().get_nodes_in_group(group):
@@ -620,6 +639,8 @@ func _sleep_far() -> void:
 		var nearest := INF
 		for eye in eyes:
 			nearest = minf(nearest, eye.distance_to(thing.global_position))
+		if not zones.has(zone_of(thing.global_position)):
+			nearest = INF
 		var asleep := thing.process_mode == Node.PROCESS_MODE_DISABLED
 		if not asleep and nearest > SLEEP_FAR:
 			thing.process_mode = Node.PROCESS_MODE_DISABLED

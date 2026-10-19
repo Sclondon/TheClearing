@@ -865,6 +865,23 @@ func _set(property: StringName, value: Variant) -> bool:
 const PEOPLED := ["What hunts it", "Who else is in it", "Wildlife"]
 
 
+## A copy of this style with `times` as many of each thing that hunts it (every
+## count in "What hunts it", rounded; one there is never rounded away). 1: itself.
+func crowded(times: float) -> MazeStyle:
+	if is_equal_approx(times, 1.0):
+		return self
+	var copy: MazeStyle = duplicate(true)
+	var group := ""
+	for property in get_property_list():
+		if property.usage & PROPERTY_USAGE_GROUP:
+			group = property.name
+			continue
+		if property.type == TYPE_INT and group == "What hunts it":
+			var count := int(get(property.name))
+			copy.set(property.name, maxi(roundi(count * times), 1 if count > 0 and times > 0.0 else 0))
+	return copy
+
+
 ## A copy of this style with nothing in it: none of what hunts it, who else is in
 ## it, its wildlife or what lies about, and none of its dressing (ledges, terraces,
 ## ivy, vines, sewers, clutter, hook spots, plants, ponds), as narrow as a section
