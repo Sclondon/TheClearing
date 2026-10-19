@@ -199,7 +199,7 @@ func footprint(at: Vector3, yaw: float, strength: float, left: bool) -> void:
 
 ## A foot (or a body) coming down in a puddle at `at`: a crown of drops, a ring, a splash.
 func splash(at: Vector3, power := 1.0) -> void:
-	var count := clampi(roundi(10.0 + 10.0 * power), 8, 28)
+	var count := clampi(roundi(14.0 + 14.0 * power), 10, 36)
 	for k in count:
 		var i := _next_drop
 		_next_drop = (_next_drop + 1) % DROPS
@@ -235,7 +235,7 @@ func _move_drops(delta: float) -> void:
 			_drops.multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3.ZERO), Vector3.ZERO))
 			continue
 		any = true
-		var size := 0.05 * (1.0 - _drop_age[i] * 0.4)
+		var size := 0.032 * (1.0 - _drop_age[i] * 0.4)
 		_drops.multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3(size, size * 1.3, size)), _drop_at[i]))
 	_drops_live = any
 
@@ -318,9 +318,9 @@ func _make_drops() -> void:
 	drop.radial_segments = 6
 	drop.rings = 3
 	var wet := StandardMaterial3D.new()
-	wet.albedo_color = Color(0.62, 0.62, 0.58)
+	wet.albedo_color = Color(0.42, 0.41, 0.37)
 	wet.emission_enabled = true
-	wet.emission = Color(0.25, 0.26, 0.25)
+	wet.emission = Color(0.1, 0.1, 0.1)
 	wet.metallic_specular = 0.9
 	wet.roughness = 0.15
 	drop.material = wet
