@@ -64,6 +64,7 @@ const HUNTERS := [
 	["LUCK DRAGON", "luck_dragon", COLOSSUS_AHEAD],
 	["HORSE", "horse", AHEAD],
 	["WYVERNS", "wyverns", AHEAD],
+	["WOODSMAN", "woodsman", AHEAD], ["BEAST", "beast", SNAKE_AHEAD],
 ]
 ## The peaceful animals the panel puts in (spawn_wildlife): the button and the kind.
 const WILDLIFE := [
@@ -442,6 +443,13 @@ func spawn_hunter(kind: String, reach := AHEAD) -> void:
 		"wyverns":
 			# (a pair: they nest on the nearest high wall top ahead and hunt from there)
 			made = [MazeWyvern.new(), MazeWyvern.new()]
+		"woodsman":
+			made = [MazeWoodsman.new()]
+		"beast":
+			# (it stands where it is put, shown at once, and lures him if he is alone)
+			var beast := MazeBeast.new()
+			beast.shown_at_once = true
+			made = [beast]
 		"ravens":
 			# (wildlife: on the walls round where they are put, not among the hunters)
 			world.birds.add_ravens_at(at)
@@ -783,6 +791,7 @@ const HEADINGS := {
 	"foxes": "Tame animals", "pond_frogs": "Tame animals", "rabbits": "Tame animals", "hares": "Tame animals",
 	"jackalope": "Tame animals", "lynx": "Big cats", "panther": "Big cats",
 	"spider_monkeys": "Apes and monkeys", "gibbons": "Apes and monkeys", "baboons": "Apes and monkeys",
+	"woodsman": "The woods", "beast": "The woods",
 }
 
 

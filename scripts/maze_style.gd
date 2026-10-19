@@ -677,6 +677,29 @@ extends Resource
 ## follow whoever passes along the walls, and erupt cawing at anyone who runs,
 ## which calls the hunters.
 @export_range(0, 4, 1, "suffix:murders") var crow_murders := 2
+## The woodsman (MazeWoodsman, after Over the Garden Wall; the user, 2026-10-18: "Lets add
+## a woodsmen with an axe and top hat and lantern"): a weary old man walking the halls with
+## his axe and his lantern, chopping at the ivy. His lantern keeps the hunters back; he
+## warns off whoever comes near and swings his axe at whoever will not leave him be.
+@export var woodsmen_on: bool:
+	get:
+		return feature_on(&"woodsmen_on")
+	set(value):
+		_switch(&"woodsmen_on", value)
+## How many woodsmen walk the section's halls.
+@export_range(0, 2, 1, "suffix:woodsmen") var woodsmen := 1
+## The beast (MazeBeast, after Over the Garden Wall; the user, 2026-10-18: "a the Beast
+## inspired character from Over the Garden Wall"): a tall antlered shadow with a lantern,
+## seen far off down the halls, nearer at night and in the mist, that lures whoever is
+## alone with its light and its hum, and takes them if it reaches them. It shuns the
+## woodsman's light. Rare: one in a section at most.
+@export var beasts_on: bool:
+	get:
+		return feature_on(&"beasts_on")
+	set(value):
+		_switch(&"beasts_on", value)
+## Whether the section has the beast (one at most).
+@export_range(0, 1, 1, "suffix:beasts") var beasts := 1
 
 @export_group("Who else is in it")
 ## How many runners run the section's passages (MazeRunners, from the round's
@@ -790,6 +813,8 @@ const FEATURES := {
 	&"flooded_halls_on": [&"flooded_hall_share", &"flooded_hall_length"],
 	&"swim_ponds_on": [&"swim_pond_share", &"swim_pond_depth"],
 	&"fish_on": [&"fish_share", &"fish_per_school"],
+	&"woodsmen_on": [&"woodsmen"],
+	&"beasts_on": [&"beasts"],
 }
 ## Features that are only of another (hidden, box and all, while that is off).
 const PART_OF := {
