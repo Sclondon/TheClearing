@@ -221,7 +221,16 @@ maze laid out before is otherwise as it was:
   down across to the far ledge a level under it. And, as in section 1, vines strung across between the ledges at each
   level (over the top ledges, across the floor's channel) and hanging from each level's edge to the one under it.
 
-Pictures: `tools/zone1_vines_shots.gd` (pass `zone2` for the second section).
+The ledges go round the ends of walls and outside corners, every level (the user: "the mezzanine should go around
+corners not just end"); vents, outlets, culverts and wall cables stand out of a ledge's front instead of being buried
+in it, and sewer pipes go through over the highest ledge there may be, their ivy up from the highest ledge under them
+("sewer parts should stick out of the mezzanine rather than get clipped"). Every vine has a knot of roots and a
+clump of leaves where it is held ("the vines need to have a root or leaves at their connection points"), and its
+leaves go round with the stem as it swings (they jumped round it as a hanging vine swung past upright: "the leaves
+seem to teleport when they move").
+
+Pictures: `tools/zone1_vines_shots.gd` (pass `zone2` for the second section, `corners` for ledges round wall ends and
+sewer props on ledges, `anchors` for where vines are held).
 
 **Grappling hook spots** (added 2026-10-18 at the user's request: "we should also have grappling hook spots"). Places
 made for the grappling hook to catch, in rusty iron dark against the concrete, so that a way up can be seen from below
