@@ -30,13 +30,23 @@ extends CharacterBody3D
 ## eats there a while. One a bigger meat-eater is after, or that is hungry near
 ## it, runs from it (`threat`). Out of everyone's sight it goes on its way
 ## (`roam_unseen`); killed, it is brought back in time where it began (`revive`).
+##
+## CLIMBING (`climbs`; the user, 2026-10-18: "more creatures should be able to climb
+## things"). One that can goes up after a player who has got up out of reach of the
+## floor, onto a ledge, a terrace or a concrete bridge (HighWays), each kind in its own
+## way: SCRAMBLE (clinging to the face, as a rat or an ant goes up a wall), CLAMBER
+## (hand over hand, as a person climbs), LEAP (a crouch and a bound, `leap_most` high,
+## the rest clawed up) or FLOAT. Along the top to them, and down again when they get
+## down (HighClimb). Each kind that climbs calls `_ways_up` first in its own thinking
+## and does nothing else while it gives true, and poses itself by `aloft`; as a puppet
+## it calls `_follow_aloft`. Only the awake and hunting ever look.
 
 signal caught(player: Node3D)
 ## It has noticed someone it was not after.
 signal spotted(player: Node3D)
 
 ## Bytes in `state_bytes`.
-const STATE_SIZE := 28
+const STATE_SIZE := 29
 ## How high a dead one is said to be, in `state_bytes`.
 const DEAD_DEPTH := -9999.0
 ## The bodies of hunters: layer 4 run here, this layer as puppets (run by
@@ -85,6 +95,20 @@ var chasing := false
 ## MazeImpSwarm, MazeFrogSwarm.)
 @export var fears_fire := false
 
+## How it gets up after someone (see CLIMBING above): not at all, clinging to the face,
+## climbing as a person does, in a bound, or floating up.
+enum Climbs { NO, SCRAMBLE, CLAMBER, LEAP, FLOAT }
+@export_group("Climbing")
+@export var climbs := Climbs.NO
+## How fast it goes up a face, m/s.
+@export var climb_speed := 2.0
+## The highest it leaps in one bound, m (LEAP).
+@export var leap_most := 6.0
+@export_group("")
+## What it is doing up off the floor (HighClimb.Aloft: 0, on the floor as its own kind has it).
+var aloft := 0
+var _high: HighClimb
+
 ## The world's own life (Ecology): how hungry it is (0 fed, 1 starving), whether
 ## it is dead (gone until the world brings it back), and what it is running from.
 var hunger := 0.0
@@ -108,6 +132,7 @@ var _heard_yaw := 0.0
 var _heard_state := 0
 var _heard_extra := Vector3.ZERO
 var _heard_flag := 0
+var _heard_aloft := 0
 
 
 func _enter_tree() -> void:
@@ -202,6 +227,8 @@ func _sense(delta: float) -> void:
 			continue
 		var at := player.global_position
 		var noticed := eye.distance_to(at) < hear_range or nav.sees(eye, at + Vector3.UP, sight_range)
+		if not noticed and climbs != Climbs.NO:
+			noticed = _sees_up(eye, at, player)
 		if not noticed:
 			continue
 		var steps := nav.distance(here, maze.cell_at(at))
@@ -301,6 +328,98 @@ func _away_from(danger: Vector3) -> Vector3:
 	return best
 
 
+# --- Climbing (see CLIMBING above) ---
+
+## First in its own thinking, for a kind that climbs: whether it is going up after
+## someone, up there, or coming down (or on its way to the foot of the way up), in
+## which case it does nothing else this step. `radius` is its body's, `speed` how
+## fast it runs.
+func _ways_up(delta: float, radius: float, speed: float) -> bool:
+	if climbs == Climbs.NO or maze == null or puppet or dead:
+		return false
+	if _high == null:
+		if not hunting():
+			return false
+		_high = HighClimb.new(self)
+	var busy := _high.step(delta, radius, speed)
+	aloft = _high.aloft if busy else 0
+	return busy
+
+
+## For one that climbs: whether it sees someone up on a ledge (MazeNav.sees counts
+## the first level of ledge as the wall: a line to someone standing on one ends in
+## it). From the floor, a line to the air a few metres out from them, over the hall;
+## up there itself, along the ledge to the one it is after.
+func _sees_up(eye: Vector3, at: Vector3, player: Node3D) -> bool:
+	if at.y - maze.ground_height(at) < HighWays.UP:
+		return false
+	var flat := Vector3(eye.x - at.x, 0.0, eye.z - at.z)
+	if flat.length() > sight_range:
+		return false
+	if is_aloft():
+		return player == quarry and absf(at.y - global_position.y) < 2.0 and flat.length() < sight_range * 0.6
+	if flat.length() < 3.5:
+		return true
+	var out := at + flat.normalized() * 3.0
+	return nav.sees(eye, Vector3(out.x, at.y + 1.0, out.z), sight_range)
+
+
+## Whether `_ways_up` has it now (going to the foot of a way up, on it, up there, or coming down).
+func climbing_now() -> bool:
+	return _high != null and _high.busy()
+
+
+## Which way it faces while `_ways_up` has it (radians about Y).
+func aloft_yaw() -> float:
+	return _high.facing if _high else yaw()
+
+
+## The way out from the face it is going up or down (or was last), for its pose.
+func aloft_out() -> Vector3:
+	if _high:
+		return _high.out
+	# (a puppet: it faces the face it is on)
+	return -Vector3(sin(yaw()), 0.0, cos(yaw()))
+
+
+## Up off the floor (going up, on a ledge, leaping, coming down): not on the floor as its own kind has it.
+func is_aloft() -> bool:
+	return aloft != HighClimb.Aloft.NONE
+
+
+## Up there, within reach of who it is after: each kind may strike as it does; a catch.
+func _strike_aloft(player: Node3D) -> void:
+	_catch(player)
+
+
+## A body's turn for a pose while it climbs (to go after its yaw): clinging to the face,
+## nose up it (`upright` false: on all fours) or leaning into it (a person, upright);
+## crouched or stretched in a leap. Unturned on a ledge or the floor.
+func aloft_tilt(upright := false) -> Basis:
+	match aloft:
+		HighClimb.Aloft.CLIMB, HighClimb.Aloft.DOWN:
+			# (about its right side: less than nothing tips its nose up, more its head forward)
+			if upright:
+				return Basis(Vector3.RIGHT, 0.15)
+			return Basis(Vector3.RIGHT, -PI * 0.5 if aloft == HighClimb.Aloft.CLIMB else PI * 0.5)
+		HighClimb.Aloft.LEAP:
+			return Basis(Vector3.RIGHT, -0.5 if not upright else 0.25)
+		HighClimb.Aloft.DROP:
+			return Basis(Vector3.RIGHT, 0.45)
+	return Basis.IDENTITY
+
+
+## As a puppet, up off the floor: put where it is heard to be (gravity has no say).
+## Whether it is (each kind calls it first in following its news).
+func _follow_aloft(delta: float) -> bool:
+	if aloft == HighClimb.Aloft.NONE or not _heard:
+		return false
+	_heard_at += _heard_moving * delta
+	global_position = global_position.lerp(_heard_at, 1.0 - exp(-14.0 * delta))
+	velocity = _heard_moving
+	return true
+
+
 # --- The others (Ecology) ---
 
 ## Looks out for what would eat it, and, hungry, for what it could eat; and
@@ -360,6 +479,9 @@ func die() -> void:
 	chasing = false
 	velocity = Vector3.ZERO
 	process_mode = Node.PROCESS_MODE_DISABLED
+	if _high:
+		_high = null
+	aloft = 0
 
 
 ## Brought back at `at` (its den, out of everyone's sight), as hungry as `hungry`.
@@ -387,6 +509,10 @@ func revive(at: Vector3, facing: float, hungry := 0.3) -> void:
 func roam_unseen(step: float) -> void:
 	if maze == null or puppet or dead:
 		return
+	# (asleep, nothing climbs: down on the floor)
+	if _high and _high.busy():
+		_high.land_now()
+		aloft = 0
 	var here := maze.cell_at(global_position)
 	if _roam_to == Vector2i(-1, -1) or here == _roam_to or not nav.allowed(_roam_to):
 		_roam_to = _next_roam_cell(here)
@@ -456,6 +582,10 @@ func net_point() -> Vector3:
 func hear(at: Vector3, moving: Vector3, facing: float, state: int, flag := 0, point := Vector3.ZERO) -> void:
 	var first := not _heard
 	_heard = true
+	if aloft != _heard_aloft and _heard_aloft == HighClimb.Aloft.NONE:
+		# (down on the floor again: from where it is heard to be)
+		global_position = at
+	aloft = _heard_aloft
 	_heard_at = at
 	_heard_moving = moving
 	_heard_yaw = facing
@@ -481,7 +611,7 @@ func _put(at: Vector3, _facing: float) -> void:
 
 ## Follows what it heard: carries on as it was going and closes the gap.
 func _follow(delta: float) -> void:
-	if not _heard:
+	if not _heard or _follow_aloft(delta):
 		return
 	_heard_at += _heard_moving * delta
 	var wish := _heard_moving + (_heard_at - global_position) * 6.0
@@ -497,8 +627,9 @@ func _follow(delta: float) -> void:
 
 
 ## Its state, in STATE_SIZE bytes: where it is (3 floats), how fast it is
-## going (3 halves), which way it faces, what it is doing, a flag, and a point
-## near it (3 halves, from where it is).
+## going (3 halves), which way it faces, what it is doing, a flag, a point
+## near it (3 halves, from where it is), and what it is doing up off the floor
+## (`aloft`: climbing, leaping, on a ledge, coming down).
 func state_bytes() -> PackedByteArray:
 	var data := PackedByteArray()
 	data.resize(STATE_SIZE)
@@ -520,6 +651,7 @@ func state_bytes() -> PackedByteArray:
 	data.encode_half(22, clampf(point.x, -60000.0, 60000.0))
 	data.encode_half(24, clampf(point.y, -60000.0, 60000.0))
 	data.encode_half(26, clampf(point.z, -60000.0, 60000.0))
+	data[28] = aloft
 	return data
 
 
@@ -538,6 +670,7 @@ func from_bytes(data: PackedByteArray, offset := 0) -> void:
 	var facing := data.decode_u16(offset + 18) / 65535.0 * TAU
 	var point := Vector3(data.decode_half(offset + 22), data.decode_half(offset + 24), data.decode_half(offset + 26))
 	point = Vector3.INF if point.y < -900.0 else at + point
+	_heard_aloft = data[offset + 28]
 	hear(at, moving, facing, data[offset + 20], data[offset + 21], point)
 
 

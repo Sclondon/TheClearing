@@ -38,7 +38,7 @@ enum Mode { PERCH, DOWN, HUNT, LEAP, RIDING, FLUNG, TANTRUM, HOME, CLIMB, ABOUT 
 
 ## How high up the wall it perches (it picks its own height about this).
 @export var perch_height := 4.0
-@export var climb_speed := 2.4
+## (how fast it climbs, `climb_speed`, is MazeEnemy's: 2.4 m/s, set in _init)
 @export var run_speed := 5.0
 @export var walk_speed := 0.9
 @export var leap_range := 2.6
@@ -117,6 +117,7 @@ func _init() -> void:
 	alert_range = 25.0
 	pack = &"imps"
 	spare_time = 4.0
+	climb_speed = 2.4
 
 
 func _ready() -> void:

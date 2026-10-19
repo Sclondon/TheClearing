@@ -102,6 +102,14 @@ var sprint_speed: float:
 		return 5.6 * global_basis.get_scale().y
 var pickup_progress := 1.0
 var pickup_point := Vector3.ZERO
+## Climbing a wall's face hand over hand, as on a ladder (the game sets these: the
+## maze's HighClimb.hold_wall, 2026-10-18): what he is doing as a Player's state
+## (LADDER or FREE), how far he has climbed, and where his hands and feet hold.
+var state := 0
+var ladder_travel := 0.0
+var hand_reach := 0.0
+var hand_points := PackedVector3Array([Vector3.ZERO, Vector3.ZERO])
+var foot_points := PackedVector3Array([Vector3.ZERO, Vector3.ZERO])
 
 var _rig: TribesmanRig
 var _mask: MeshInstance3D

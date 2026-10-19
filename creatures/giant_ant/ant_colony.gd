@@ -67,7 +67,7 @@ signal clicked(at: Vector3)
 ## What they were carrying has gone down into the nest.
 signal carried_home(thing: Node3D)
 
-enum State { NEST, OUT, FORAGE, HOME, GUARD, ALERT, RUSH, ON, FLUNG, CALM, FETCH, HAUL }
+enum State { NEST, OUT, FORAGE, HOME, GUARD, ALERT, RUSH, ON, FLUNG, CALM, FETCH, HAUL, CLIMB }
 
 @export_range(1, 60) var workers := 22
 @export_range(0, 12) var soldiers := 5
@@ -127,6 +127,16 @@ var guide := Callable()
 var ground := Callable()
 ## Optional, Callable(point: Vector3) -> bool: ground they will not go onto (inside walls).
 var forbid := Callable()
+## Optional, Callable(from: Vector3, goal: Vector3) -> PackedVector3Array: the way up
+## to a target up off the ground (on a ledge), from about `from`: the foot of the
+## wall, up its face (and any step on the way), and onto the top. Empty if there is
+## none. Asked for an ant running at a target well over it, now and then; it runs
+## to the foot and climbs the face nose up at `climb_speed`, and on along the top
+## (the `ground` and `forbid` given say what is up there). The user, 2026-10-18:
+## "more creatures should be able to climb things".
+var climb := Callable()
+## How fast an ant goes up a wall's face, m/s.
+@export var climb_speed := 2.4
 
 ## How many are on the target, and whether the alarm is up.
 var on_target := 0
@@ -175,6 +185,10 @@ class Ant:
 	var ground_in := 0
 	var floor_y := NAN
 	var haul_slot := Vector3.ZERO
+	# (the way up it is taking to a target over it: `climb`'s points, the next of them, and when it asks again)
+	var route := PackedVector3Array()
+	var route_at := 0
+	var route_in := 0.0
 
 
 var ants: Array[Ant] = []
@@ -620,7 +634,7 @@ func alarm(at: Vector3) -> void:
 	var near_nest := at.distance_to(_nest) < alarm_reach
 	var out_of_nest := 0
 	for ant in ants:
-		if ant.state in [State.ALERT, State.RUSH, State.ON, State.FLUNG] or ant.wait >= 0.0:
+		if ant.state in [State.ALERT, State.RUSH, State.ON, State.FLUNG, State.CLIMB] or ant.wait >= 0.0:
 			continue
 		var d := ant.pos.distance_to(at)
 		if ant.state == State.NEST:
@@ -646,7 +660,7 @@ func calm() -> void:
 	target = Vector3.INF
 	for ant in ants:
 		ant.wait = -1.0
-		if ant.state in [State.ALERT, State.RUSH, State.ON, State.FLUNG]:
+		if ant.state in [State.ALERT, State.RUSH, State.ON, State.FLUNG, State.CLIMB]:
 			_to_calm(ant)
 	if _thing and _thing_sink < 0.0:
 		_take_hold()
@@ -739,7 +753,7 @@ func counted(state: State) -> int:
 func alarmed_count() -> int:
 	var n := 0
 	for ant in ants:
-		if ant.state in [State.ALERT, State.RUSH, State.ON, State.FLUNG]:
+		if ant.state in [State.ALERT, State.RUSH, State.ON, State.FLUNG, State.CLIMB]:
 			n += 1
 	return n
 
@@ -795,6 +809,10 @@ func _process(delta: float) -> void:
 				_rush_step(ant, delta, i)
 				rushing += 1
 				middle += ant.pos
+			State.CLIMB:
+				_climb_step(ant, delta)
+				rushing += 1
+				middle += ant.pos
 			State.ON:
 				_on_step(ant, delta)
 				rushing += 1
@@ -811,7 +829,7 @@ func _process(delta: float) -> void:
 		moved.y = 0.0
 		ant.speed = lerpf(ant.speed, moved.length() / maxf(delta, 0.0001), minf(delta * 12.0, 1.0))
 		ant.phase = fposmod(ant.phase + moved.length() / maxf(0.52 * ant.size, 0.01), 1.0)
-		var alarmed_now := ant.state in [State.ALERT, State.RUSH, State.ON, State.FLUNG]
+		var alarmed_now := ant.state in [State.ALERT, State.RUSH, State.ON, State.FLUNG, State.CLIMB]
 		ant.alarm = move_toward(ant.alarm, 1.0 if alarmed_now else 0.0, delta * (6.0 if alarmed_now else 1.5))
 		ant.bite = move_toward(ant.bite, 1.0 if ant.state == State.ON else 0.0, delta * 8.0)
 		if target.is_finite() and ant.state != State.NEST:
@@ -1042,6 +1060,17 @@ func _rush_step(ant: Ant, delta: float, index: int) -> void:
 		ant.grip = 0.0
 		_click(ant.pos)
 		return
+	# (a target well over it, up a wall: to the foot of the way up, and up it)
+	if climb.is_valid() and target.is_finite() and at.y - ant.pos.y > 1.5:
+		ant.route_in -= delta
+		if ant.route_in <= 0.0:
+			ant.route_in = 0.8 + 0.05 * (index % 7)
+			ant.route = climb.call(ant.pos, at)
+		if not ant.route.is_empty():
+			if _go(ant, ant.route[0], run_speed * clampf(ant.pace, 0.9, 1.04), delta, index, 0.3):
+				ant.state = State.CLIMB
+				ant.route_at = 1
+			return
 	# (the rest mill round those on it, a body's width further out)
 	var goal := at
 	if target.is_finite() and on_target >= most_on and flat < reach + 2.0:
@@ -1050,6 +1079,37 @@ func _rush_step(ant: Ant, delta: float, index: int) -> void:
 	goal += _apart(ant, index) * 0.8
 	# (each at its own pace, but none much faster than `run_speed`: a sprint must get away)
 	_go(ant, goal, run_speed * clampf(ant.pace, 0.9, 1.04), delta, index, 0.05)
+
+
+# Up its way (`route`): along the ground and over lips at a run, up faces nose up at
+# `climb_speed`; at the top it runs on at the target.
+func _climb_step(ant: Ant, delta: float) -> void:
+	if ant.route_at >= ant.route.size():
+		ant.state = State.RUSH
+		ant.pitch = 0.0
+		ant.way_in = 0
+		ant.ground_in = 0
+		ant.floor_y = ant.pos.y
+		return
+	var to := ant.route[ant.route_at]
+	var rise := absf(to.y - ant.pos.y)
+	var flat := Vector2(to.x - ant.pos.x, to.z - ant.pos.z).length()
+	var up_face := rise > flat
+	var speed := climb_speed * ant.pace if up_face else run_speed * 0.6
+	if up_face:
+		# (its back out from the wall, nose up it; it faces the way on from the face)
+		if ant.route_at + 1 < ant.route.size():
+			var on := ant.route[ant.route_at + 1] - to
+			on.y = 0.0
+			if on.length() > 0.01:
+				ant.yaw = lerp_angle(ant.yaw, _yaw_of(on), minf(delta * 10.0, 1.0))
+		ant.pitch = lerpf(ant.pitch, -PI * 0.5 if to.y > ant.pos.y else PI * 0.5, minf(delta * 12.0, 1.0))
+	else:
+		_turn(ant, to - ant.pos, delta, 10.0)
+		ant.pitch = lerpf(ant.pitch, 0.0, minf(delta * 12.0, 1.0))
+	ant.pos = ant.pos.move_toward(to, speed * delta)
+	if ant.pos.distance_to(to) < 0.02:
+		ant.route_at += 1
 
 
 # A push away from the others near it that are running too.

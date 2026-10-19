@@ -27,8 +27,11 @@ extends MazeEnemy
 ##   they come at whoever it was at a run (AntColony.run_speed: faster than a
 ##   run, slower than a sprint). Those that reach them seize them; a few
 ##   (AntColony.catch_count) on at once for a moment (AntColony.catch_time) is
-##   a catch. A sprint tears them off and gets away, and so does a jump; they do
-##   not climb, so ivy, a terrace or a vine is safe. When none has got near them
+##   a catch. A sprint tears them off and gets away, and so does a jump. Up on a
+##   ledge, a terrace or a concrete bridge is not safe: they stream up the wall's
+##   face under it, nose up, and come along the top (HighWays: the way up from the
+##   foot of the wall, AntColony.climb; the user, 2026-10-18: "more creatures should
+##   be able to climb things"); a vine, a rope bridge or a wall top still is. When none has got near them
 ##   for `give_up_after`, or they are further than `chase_range` from the nest
 ##   and the trail, or they are caught, the ants calm and go back to their ways.
 ##
@@ -101,6 +104,8 @@ func _init() -> void:
 	memory = 6.0
 	pack = &"ants"
 	look_every = 0.2
+	# (each ant goes up the face by itself: AntColony.climb, not MazeEnemy's own climbing)
+	climbs = Climbs.SCRAMBLE
 
 
 func seed_choices(value: int) -> void:
@@ -135,8 +140,9 @@ func _make_colony() -> void:
 	colony.colony_seed = _colony_seed
 	colony.sound = sound
 	colony.guide = _guide
-	colony.ground = maze.ground_height
+	colony.ground = _ground
 	colony.forbid = _forbid
+	colony.climb = _climb_way
 	colony.target_radius = 0.35
 	colony.set_trail(points)
 	colony.top_level = true
@@ -241,7 +247,83 @@ func _carcasses() -> Array[Node3D]:
 
 
 func _forbid(point: Vector3) -> bool:
-	return not maze.inside(maze.cell_at(point)) or not nav.clear_of_walls(point, 0.45)
+	if not maze.inside(maze.cell_at(point)):
+		return true
+	if point.y - maze.ground_height(point) > 1.0:
+		# Up off the floor: along the tops at its height, and off the edge only down to
+		# a target under it (or with none: calm, home); never into a wall.
+		var ways := _high_ways(point)
+		if ways.in_wall(point):
+			return true
+		if ways.level_at(point, point.y, 0.6, 0.25) >= 0:
+			return false
+		var after := colony.target if colony else Vector3.INF
+		return after.is_finite() and after.y > point.y - 1.5
+	return not nav.clear_of_walls(point, 0.45)
+
+
+## How high the ground under an ant at `point` is: the top it is on, up off the floor, or the floor.
+func _ground(point: Vector3) -> float:
+	var floor := maze.ground_height(point)
+	if point.y - floor > 1.0:
+		var ways := _high_ways(point)
+		var s := ways.level_at(point, point.y, 0.8, 0.0)
+		if s >= 0:
+			return ways.tops[s]
+	return floor
+
+
+## The way up to `goal` (up on a ledge, a terrace, a bridge, or on the ivy up to one)
+## from about `from`, for the ants (AntColony.climb): the foot of the wall, up each
+## face, onto the top. Worked out once for all of them for each surface, now and then.
+func _climb_way(from: Vector3, goal: Vector3) -> PackedVector3Array:
+	var ways := _high_ways(goal)
+	var s := ways.under(goal)
+	if s < 0:
+		s = ways.near(goal)
+	if s < 0:
+		return PackedVector3Array()
+	var now := Time.get_ticks_msec()
+	if s == _climb_for and now - _climb_when < 700 and absf(_climb_from.y - from.y) < 1.0 and _climb_from.distance_to(from) < 12.0:
+		return _climb_points
+	_climb_for = s
+	_climb_when = now
+	_climb_from = from
+	_climb_points = PackedVector3Array()
+	var stages := ways.way_up(s, goal)
+	for k in stages.size():
+		var stage: Array = stages[k]
+		var edge: Vector3 = stage[0]
+		var out: Vector3 = stage[1]
+		var top: float = stage[2]
+		var base: float = stage[3]
+		# (an ant already up on a step of it starts from there)
+		if base < from.y - 1.0:
+			continue
+		if _climb_points.is_empty():
+			var foot := edge + out * 1.0
+			foot.y = base
+			_climb_points.append(foot)
+		var face := edge + out * 0.3
+		_climb_points.append(Vector3(face.x, base, face.z))
+		_climb_points.append(Vector3(face.x, top, face.z))
+		var over := edge - out * 0.35
+		_climb_points.append(Vector3(over.x, top, over.z))
+	return _climb_points
+
+
+var _climb_for := -1
+var _climb_when := -100000
+var _climb_from := Vector3.ZERO
+var _climb_points := PackedVector3Array()
+var _ways_zone: HighWays
+
+
+func _high_ways(at: Vector3) -> HighWays:
+	var zone := MazeLayout.zone_at(maze, at)
+	if _ways_zone == null or _ways_zone.zone != zone:
+		_ways_zone = HighWays.of(maze, zone, HighWays.layout_for(self, maze))
+	return _ways_zone
 
 
 # Where an ant at `from` should make for on its way to `goal`: MazeNav's
@@ -354,8 +436,9 @@ func _hunt(delta: float) -> void:
 		return
 	_aim_at(after)
 	var at := after.global_position
-	# (got away: none near them for a while, or too far from home, or up out of reach)
-	var high := at.y - maze.ground_height(at) > 2.2
+	# (got away: none near them for a while, or too far from home, or up out of reach:
+	# somewhere high with no way up to it)
+	var high := at.y - maze.ground_height(at) > 2.2 and _climb_way(colony.front, at).is_empty()
 	if colony.gap > near_enough or high:
 		_far_off += delta
 	else:
