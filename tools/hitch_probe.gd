@@ -80,6 +80,22 @@ func _worst_scripts(seconds: int) -> void:
 		n.set_process(false)
 		n.set_physics_process(false)
 	var worst := {}
+	var total := {}
+	var count := {}
+	for n: Node in nodes:
+		var k: String = n.get_script().resource_path.get_file()
+		count[k] = count.get(k, 0) + 1
+	# (awake hunters by how far from the boy)
+	var bands := {}
+	var boy: Node3D = main.world.player
+	for e: Node in main.world.enemies.enemies:
+		if e.can_process():
+			var band := int(boy.global_position.distance_to(e.global_position) / 40.0) * 40
+			bands[band] = bands.get(band, 0) + 1
+	var band_keys := bands.keys()
+	band_keys.sort()
+	for b in band_keys:
+		print("  awake hunters %3d-%3d m: %d" % [b, b + 40, bands[b]])
 	var when := {}
 	for f in seconds * 60:
 		await process_frame
@@ -93,6 +109,7 @@ func _worst_scripts(seconds: int) -> void:
 			if was[n][1] and n.has_method("_physics_process"):
 				n._physics_process(1.0 / 60.0)
 			var us := Time.get_ticks_usec() - t
+			total[key] = total.get(key, 0) + us
 			if us > worst.get(key, 0):
 				worst[key] = us
 				when[key] = "%s, frame %d" % [n.name, f]
@@ -100,3 +117,11 @@ func _worst_scripts(seconds: int) -> void:
 	keys.sort_custom(func(a, b) -> bool: return worst[a] > worst[b])
 	for key in keys.slice(0, 15):
 		print("  %-32s worst %7.1f ms  (%s)" % [key, worst[key] / 1000.0, when[key]])
+	keys = total.keys()
+	keys.sort_custom(func(a, b) -> bool: return total[a] > total[b])
+	var all := 0.0
+	for key in keys:
+		all += total[key]
+	print("  scripts in all: %.1f ms a frame" % (all / 1000.0 / (seconds * 60)))
+	for key in keys.slice(0, 20):
+		print("  %-32s %6.2f ms a frame  (%d of them)" % [key, total[key] / 1000.0 / (seconds * 60), count[key]])
