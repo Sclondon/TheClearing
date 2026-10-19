@@ -131,6 +131,10 @@ leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened i
   across a hall and between wall tops. And grappling hook spots (`scripts/grapple_spots.gd`, `GrappleSpots`, pieces
   of kind ANCHOR: rings on corbels up the walls and at ledges' lips, hooks and pipes; one MultiMesh per look per 48 m
   square, found by the hook through `NearIndex`), by MazeStyle "Grappling hook spots".
+  Sewer pipes through the walls high up (`scripts/sewer_pipe.gd`, `SewerPipe`; MazeStyle "Tunnels"), each mouth a
+  modelled one (`scripts/sewer_mouth.gd`, `SewerMouth`): a bell of concrete flaring out of the wall on a lip that
+  juts out under it, its underside curving back into the wall, drawn with the walls from the platform (a PIER piece
+  with `mouth`) and bumped into as a few boxes; ivy up to the front of the lip, vines and a hook ring at its edge.
 - `scenes/wall_gallery.tscn` (`scripts/wall_gallery.gd`, made by `tools/make_wall_gallery.gd`): a room of every
   wall style and look side by side, each signed; play it to walk among them.
 - `scripts/wall.gd` (`Wall`, scene `scenes/wall.tscn`): a wall in a style (Basic: a plain box; Cornice, Pilasters,
@@ -226,6 +230,8 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/maze_test.gd      # the maze plan
 "$G" --headless --path . -s res://tests/smoke_test.gd     # alone: walk, walls, out, next maze, touch
 "$G" --headless --path . -s res://tests/climb_test.gd     # ivy onto a terrace, a vine, a rope bridge
+"$G" --headless --audio-driver Dummy --path . -s res://tests/pipe_test.gd   # a sewer pipe: up the ivy onto the lip of its mouth, crawled through ducked
+"$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/pipe_shots.gd -- <folder>   # pictures of sewer pipes' mouths: from the floor, beside, in, the boy on one
 "$G" --headless --path . -s res://tests/strand_test.gd    # a strung vine: walked as a tightrope, cut into two vines
 "$G" --headless --audio-driver Dummy --path . -s res://tests/bodies_test.gd   # bodies as a round starts; a strung vine's planks made as he comes up to it, gone once he leaves
 "$G" --headless --path . -s res://tests/hunt_test.gd      # enemies in a round; caught, back to the clearing

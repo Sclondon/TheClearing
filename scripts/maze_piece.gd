@@ -56,6 +56,13 @@ enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, 
 	set(value):
 		arch = value
 		_refresh()
+## The platform under a sewer pipe's mouth (a pier): the way out of the wall from
+## it, in its own space, and drawn as the pipe's modelled mouth (SewerMouth: a bell
+## of concrete on a lip, its top this box's top). Zero: a plain box.
+@export var mouth := Vector3.ZERO:
+	set(value):
+		mouth = value
+		_refresh()
 ## A ledge along a wall (MazeStyle.mezzanines): a step of it, standing from
 ## the ground or the level under it (only a note: the plan of the maze ignores it).
 @export var ledge := false
@@ -180,11 +187,16 @@ func _refresh() -> void:
 				var arched := WallMesh.new()
 				arched.add_arch(Transform3D.IDENTITY, Vector3.UP * s.y * 0.5, s, arch)
 				mesh.mesh = arched.mesh()
+			elif mouth != Vector3.ZERO:
+				var modelled := WallMesh.new()
+				SewerMouth.add(modelled, Transform3D.IDENTITY, s, mouth)
+				mesh.mesh = modelled.mesh()
 			else:
 				for part: Array in Wall.style_boxes(style if kind == Kind.WALL else Wall.Style.BASIC, s):
 					MazeBuilder.box(tool, part[0], part[1])
 				mesh.mesh = tool.commit()
 			mesh.material_override = Wall.material_for(MazeBuilder.surface_of(self), true)
+			mesh.material_override.set_shader_parameter(&"curved", mouth != Vector3.ZERO)
 			# (drawn at the box's own size: undo the node's scale, which is in `size` already)
 			mesh.scale = Vector3.ONE / scale.abs().max(Vector3.ONE * 0.001)
 			_shown = mesh

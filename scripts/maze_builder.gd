@@ -202,7 +202,7 @@ func realize_ground(pieces: MazeLayout, plan: Maze) -> void:
 ## of blocks and one of plain boxes in each for every height of stone (the ivy
 ## curtains of the stone hang from its top, so each height has its own material).
 func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
-	# [look, square, section] -> WallMesh (each section's walls their own moss:
+	# [look, square, section, a sewer's mouth] -> WallMesh (each section's walls their own moss:
 	# MazeStyle.wall_moss_height, and their own rounding: wall_edge_rounding).
 	var chunks := {}
 	var boxes: Array[MazePiece] = pieces.pieces(MazePiece.Kind.WALL) + pieces.pieces(MazePiece.Kind.PIER) + pieces.pieces(MazePiece.Kind.TERRACE)
@@ -211,7 +211,9 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 		var where := piece.box_transform()
 		var look := _look_of(piece)
 		var section := clampi(maze.ring_of(maze.cell_at(where.origin)), 1, maxi(maze.rings, 1))
-		var key := [look, Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK)), section]
+		# (the sewers' modelled mouths in meshes of their own, their concrete laid on as
+		# suits a curve: Wall.SHADER's `curved`)
+		var key := [look, Vector2i(floori(where.origin.x / CHUNK), floori(where.origin.z / CHUNK)), section, piece.mouth != Vector3.ZERO]
 		if not chunks.has(key):
 			chunks[key] = WallMesh.new()
 		var rounding := edge_rounding(_style_of(section), piece.great, look == LEDGE_LOOK)
@@ -231,6 +233,13 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 					continue
 				_collide(body, where, axis * u * long * 0.5 + Vector3.UP * (size.y - piece.arch - tall * 0.5), flat + axis * long / 8.0 + Vector3.UP * (tall - size.y))
 			continue
+		# (the platform under a sewer pipe's mouth: the modelled mouth, a bell on a lip,
+		# bumped into as a few boxes: SewerMouth)
+		if piece.mouth != Vector3.ZERO:
+			SewerMouth.add(chunks[key], where, size, piece.mouth)
+			for part: Array in SewerMouth.colliders(where, size, piece.mouth):
+				_collide(body, part[0], Vector3.ZERO, part[1])
+			continue
 		# (a wall in its style; piers and terraces always plain)
 		var chosen: Wall.Style = piece.style if piece.kind == MazePiece.Kind.WALL else Wall.Style.BASIC
 		for part: Array in Wall.style_boxes(chosen, size):
@@ -242,7 +251,7 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 			_collide(body, where, part[0], part[1])
 	var materials := {}
 	for key: Array in chunks:
-		var kind := [key[0], key[2]]
+		var kind := [key[0], key[2], key[3]]
 		var style := _style_of(key[2])
 		if not materials.has(kind):
 			# (laid on in the world's space, so that the pieces meet without seams)
@@ -252,6 +261,7 @@ func _walls(body: StaticBody3D, pieces: MazeLayout) -> void:
 				materials[kind].set_shader_parameter(&"tile_size", Wall.LOOKS[GREAT_LOOK][1] * GREAT_TILE_SCALE)
 			moss(materials[kind], style)
 			weather(materials[kind], style, key[0] == GREAT_LOOK, key[0] == LEDGE_LOOK)
+			materials[kind].set_shader_parameter(&"curved", key[3])
 			# (the maze walls' concrete laid on as big as the section says: MazeStyle.wall_texture_scale)
 			if style and key[0] != GREAT_LOOK:
 				materials[kind].set_shader_parameter(&"tile_size", Wall.LOOKS[key[0]][1] * style.wall_texture_scale)
