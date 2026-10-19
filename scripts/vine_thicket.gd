@@ -16,8 +16,6 @@ extends Node3D
 
 ## How big a square is, metres.
 const SQUARE := 32.0
-## A transform that draws nothing (the places of something not parked).
-const NOTHING := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 ## [square, key] -> Part
 var _parts := {}
@@ -27,14 +25,21 @@ var _places := {}
 var _parked := {}
 
 
-## One MultiMesh of a square: the rows of its instances (12 floats a transform, 4 more
-## a colour), its places handed out in turn, and whether it is to be sent again.
+## One MultiMesh of a square: each thing's rows in it (12 floats a transform, 4 more a
+## colour), one PackedFloat32Array each (all zero for one not parked: drawn as
+## nothing), put together when it is sent again; and whether it is to be.
 class Part:
 	var shown: MultiMeshInstance3D
 	var stride := 12
-	var rows := PackedFloat32Array()
+	var segments: Array[PackedFloat32Array] = []
 	var count := 0
 	var dirty := false
+
+	func rows() -> PackedFloat32Array:
+		var all := PackedFloat32Array()
+		for segment in segments:
+			all.append_array(segment)
+		return all
 
 
 ## The thicket under `holder` (the vines' parent), made if there is none yet.
@@ -81,20 +86,20 @@ func _park(thing: Node3D, draws: Array) -> void:
 		var draw: Array = draws[k]
 		var rows: PackedFloat32Array = draw[6]
 		var part: Part
-		var first: int
+		var which: int
 		if first_time:
 			part = _part(square, draw)
-			first = part.count
+			which = part.segments.size()
+			part.segments.append(rows)
 			part.count += rows.size() / part.stride
-			part.rows.resize(part.count * part.stride)
-			places.append([part, first, rows.size() / part.stride])
+			places.append([part, which, rows.size()])
 		else:
 			part = places[k][0]
-			first = places[k][1]
-		# (the same number as when its places were kept: its instances do not change)
-		var n := mini(rows.size(), int(places[k][2]) * part.stride)
-		for i in n:
-			part.rows[first * part.stride + i] = rows[i]
+			which = places[k][1]
+			# (the same size as when its place was kept: its instances do not change)
+			if rows.size() != int(places[k][2]):
+				rows.resize(int(places[k][2]))
+			part.segments[which] = rows
 		if not part.dirty:
 			part.dirty = true
 			_dirty.append(part)
@@ -110,14 +115,13 @@ func _unpark(id: int) -> void:
 	_parked.erase(id)
 	for place: Array in _places.get(id, []):
 		var part: Part = place[0]
-		for i in int(place[2]):
-			var o: int = (int(place[1]) + i) * part.stride
-			for j in 12:
-				part.rows[o + j] = 0.0
+		var nothing := PackedFloat32Array()
+		nothing.resize(int(place[2]))
+		part.segments[int(place[1])] = nothing
 		if not part.dirty:
 			part.dirty = true
 			_dirty.append(part)
-	# (freed: its places stay empty)
+	# (freed: its place stays empty)
 
 
 func _part(square: Vector2i, draw: Array) -> Part:
@@ -154,7 +158,7 @@ func _process(_delta: float) -> void:
 		var multi := part.shown.multimesh
 		if multi.instance_count != part.count:
 			multi.instance_count = part.count
-		multi.buffer = part.rows
+		multi.buffer = part.rows()
 	_dirty.clear()
 	_cull()
 
