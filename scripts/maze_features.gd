@@ -188,11 +188,11 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 		for step: Vector2i in Maze.STEPS:
 			if not plan.blocked(cell, step) or _taken.has([cell, step]):
 				continue
-			if _rng.randf() >= _style.terrace_share:
+			if _rng.randf() >= _style.amount(&"terrace_share"):
 				# (or ivy up the bare wall from the ground, part of the way, and now and
 				# then a vine hanging from its top: climb the ivy, swing from the vine)
-				var hangs := _rng.randf() < _style.hanging_vine_share
-				if hangs or _rng.randf() < _style.wall_ivy_share:
+				var hangs := _rng.randf() < _style.amount(&"hanging_vine_share")
+				if hangs or _rng.randf() < _style.amount(&"wall_ivy_share"):
 					_taken[[cell, step]] = true
 					var high := minf(_face_top(cell, step) * _rng.randf_range(_style.wall_ivy_height_range.x, _style.wall_ivy_height_range.y), IVY_MOST)
 					# (with a ledge along the walls, a curtain of it hanging from the ledge's
@@ -222,7 +222,7 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 			var across := -step
 			# A terrace across the hall too (however wide it is), and a bridge between them.
 			var far := _far_side(cell, across)
-			var paired := _rng.randf() < _style.terrace_bridge_share and far != NOWHERE and not _taken.has([far, across])
+			var paired := _rng.randf() < _style.amount(&"terrace_bridge_share") and far != NOWHERE and not _taken.has([far, across])
 			_terrace(cell, step, upper or paired, along)
 			if paired:
 				# (along that wall runs the other way)
@@ -245,7 +245,7 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 				continue
 			var far := _far_side(cell, step)
 			if far != NOWHERE and not plan.ring_wall(far, step):
-				if _rng.randf() < _style.wall_top_bridge_share:
+				if _rng.randf() < _style.amount(&"wall_top_bridge_share"):
 					var a := _edge(far, step, MazeBuilder.CORNICE.x, 0.0) + Vector3.UP * _maze.wall_height(far, step)
 					var b := _edge(cell, -step, MazeBuilder.CORNICE.x, 0.0) + Vector3.UP * _maze.wall_height(cell, -step)
 					_bridge(a, b)
@@ -264,7 +264,7 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 			if not plan.blocked(cell, -step):
 				continue
 			var far := _far_side(cell, step)
-			if far == NOWHERE or _taken.has([cell, -step]) or _rng.randf() >= _style.tightrope_vine_share:
+			if far == NOWHERE or _taken.has([cell, -step]) or _rng.randf() >= _style.amount(&"tightrope_vine_share"):
 				continue
 			var low := minf(_face_top(cell, -step), _face_top(far, step))
 			var high := low * _rng.randf_range(_style.tightrope_vine_height_range.x, _style.tightrope_vine_height_range.y)
@@ -294,14 +294,14 @@ func _place(layout: MazeLayout, plan: Maze) -> void:
 			continue
 		if not _enter(ring):
 			continue
-		if _style.sewer_pipe_share <= 0.0:
+		if _style.amount(&"sewer_pipe_share") <= 0.0:
 			continue
 		for step: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
 			var other := cell + step
 			if not plan.blocked(cell, step) or plan.ring_wall(cell, step) or plan.ring_of(other) != ring \
 					or plan.solid.has(other) or plan.entrances.has(other) or _taken.has([cell, step]) or _taken.has([other, -step]):
 				continue
-			if _rng.randf() < _style.sewer_pipe_share:
+			if _rng.randf() < _style.amount(&"sewer_pipe_share"):
 				_pipe(cell, step)
 
 	_levels(plan)
@@ -345,7 +345,7 @@ func _levels(plan: Maze) -> void:
 				var size := flat_side.abs() * length + s.abs() * deep + Vector3.UP * (high - under)
 				_layout.add_piece(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, _edge(cell, step, deep * 0.5, middle) + Vector3.UP * under), {"size": size, "ledge": true})
 				# (ivy from its edge down onto the level under it, somewhere along it)
-				if _rng.randf() < _style.mezzanine_ivy_share:
+				if _rng.randf() < _style.amount(&"mezzanine_ivy_share"):
 					var along := middle + _rng.randf_range(-0.3, 0.3) * length
 					_climb(_edge(cell, step, deep, along) + Vector3.UP * under, step, high - under, WALL_IVY * 0.6)
 	# Rope bridges across the halls between ledges at the same level.
@@ -359,7 +359,7 @@ func _levels(plan: Maze) -> void:
 		if far == NOWHERE or not levels.has([far, -step]):
 			continue
 		for level in mini(levels[key], levels[[far, -step]]):
-			if _rng.randf() >= _style.mezzanine_bridge_share:
+			if _rng.randf() >= _style.amount(&"mezzanine_bridge_share"):
 				continue
 			var along := _rng.randf_range(-0.3, 0.3) * Maze.CELL
 			var deep := _level_depth(level)
@@ -527,7 +527,7 @@ func _terrace(cell: Vector2i, step: Vector2i, upper: bool, along: float) -> void
 	# Ivy up its face, somewhere along it.
 	var ivy_along := _rng.randf_range(-0.3, 0.3) * length
 	_climb(_edge(cell, step, LOWER.y, ivy_along), step, LOWER.x)
-	if _rng.randf() < _style.terrace_vine_share:
+	if _rng.randf() < _style.amount(&"terrace_vine_share"):
 		_vine(cell, step, LOWER.y + VINE_OUT, _away_from(ivy_along, length), LOWER.x, VINE_CLEAR)
 	if not upper:
 		return
@@ -537,11 +537,11 @@ func _terrace(cell: Vector2i, step: Vector2i, upper: bool, along: float) -> void
 	# Ivy from the lower terrace up the upper's face, away from the one below.
 	var up_along := along + (_rng.randf_range(0.1, 0.35) if ivy_along < along else _rng.randf_range(-0.35, -0.1)) * upper_length
 	_climb(_edge(cell, step, UPPER.y, up_along) + Vector3.UP * LOWER.x, step, UPPER.x - LOWER.x)
-	if _rng.randf() < _style.terrace_vine_share:
+	if _rng.randf() < _style.amount(&"terrace_vine_share"):
 		# (out past the lower terrace's edge, over the hall: jumped to from that edge)
 		_vine(cell, step, LOWER.y + 1.0, along + _away_from(up_along - along, upper_length), UPPER.x, LOWER.x + 1.6)
 	# And now and then on up the wall to its top (stood off it by the cornice).
-	if not _maze.ring_wall(cell, step) and _rng.randf() < _style.ivy_to_wall_top_share:
+	if not _maze.ring_wall(cell, step) and _rng.randf() < _style.amount(&"ivy_to_wall_top_share"):
 		var top_along := along + _rng.randf_range(-0.3, 0.3) * upper_length
 		_climb(_edge(cell, step, MazeBuilder.CORNICE.x, top_along) + Vector3.UP * UPPER.x, step, _maze.wall_height(cell, step) - UPPER.x)
 
@@ -606,9 +606,9 @@ func _spots(plan: Maze) -> void:
 					or plan.solid.has(beyond) or _taken.has([cell, step]):
 				continue
 			var pick := _spot_rng.randf()
-			if pick < _style.grapple_route_share:
+			if pick < _style.amount(&"grapple_route_share"):
 				_route(cell, step)
-			elif pick < _style.grapple_route_share + _style.grapple_swing_share:
+			elif pick < _style.amount(&"grapple_route_share") + _style.amount(&"grapple_swing_share"):
 				_swing_spot(cell, step)
 	# Rings at the lips of the ledges: each level along a face, terraces, platforms.
 	for key: Array in _level_counts:
@@ -617,12 +617,12 @@ func _spots(plan: Maze) -> void:
 		_enter(plan.ring_of(cell))
 		var room := minf(_room(cell, step, -1), _room(cell, step, 1)) - 1.0
 		for level in int(_level_counts[key]):
-			if _spot_rng.randf() < _style.grapple_ring_share and room > 0.0:
+			if _spot_rng.randf() < _style.amount(&"grapple_ring_share") and room > 0.0:
 				var along := _spot_rng.randf_range(-room, room) * 0.8
 				_ring(_edge(cell, step, _level_depth(level), along) + Vector3.UP * _level_height(level), -Vector3(step.x, 0.0, step.y))
 	for lip: Array in _lips:
 		_enter(int(lip[3]))
-		if _spot_rng.randf() >= _style.grapple_ring_share:
+		if _spot_rng.randf() >= _style.amount(&"grapple_ring_share"):
 			continue
 		var out: Vector3 = lip[1]
 		var side := Vector3(-out.z, 0.0, out.x)

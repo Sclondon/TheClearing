@@ -14,471 +14,665 @@ extends Resource
 ## hallways. Then some of the walls left between hallways are knocked through
 ## (loop share), so there is more than one way round.
 ##
+## Each thing on or about its walls (terraces, ivy, vines, vents, pipes...) has a
+## box to turn it on or off (the user, 2026-10-18: "there should be check boxes to
+## turn on and off each feature for the section in the editor"); its settings show
+## under the box while it is on. Shares are 0 to 1 (0.25: a quarter of them).
+##
 ## A cell is Maze.CELL (14 m) across, from the middle of one wall to the next.
 
 @export_group("Size")
 ## Round: rings of passages between circular walls (see RoundMaze), not square.
 ## Set by being a RoundStyle (MazeLayout's round sections), not in the inspector.
 @export var round_section := false
-## How wide the section is, in cells: from the border wall round its inside to the
-## one round its outside (on each side). The extra thickness of the wall round its
-## inside (the clearing's, or the section inside it's) is on top of this.
-@export_range(1, 16) var section_width_cells := 4
-## How wide its hallways are, in cells.
-@export_range(1, 4) var hallway_diameter_cells := 1
-## How many gates lead into it from the section inside it, spread round the wall
-## between them. (The first section's are the clearing's four, one on each side.)
-@export_range(1, 8) var entrance_count := 1
+## How wide the section is, in cells (14 m each), from the wall round its inside to the one round its outside.
+@export_range(1, 16, 1, "suffix:cells") var section_width_cells := 4
+## How wide its hallways are, in cells (14 m each).
+@export_range(1, 4, 1, "suffix:cells") var hallway_diameter_cells := 1
+## How many gates lead into it from the section inside it, spread round the wall between them.
+@export_range(1, 8, 1, "suffix:gates") var entrance_count := 1
 
 @export_group("Walls")
-## How thick the maze walls inside the section are, metres. (A way through a wall
-## one cell long is a slot a cell wide less this.)
-@export_range(0.5, 13.0) var maze_wall_diameter := 3.2
+## How thick the maze walls inside the section are, metres (a way through one is a cell less this wide).
+@export_range(0.5, 13.0, 0.001, "suffix:m") var maze_wall_diameter := 3.2
 ## How high the maze walls inside the section are, metres.
-@export_range(8.0, 120.0) var maze_wall_height := 34.0
-## How high the border wall round the outside of the section is, metres: the wall
-## between it and the next section out (for the last square section, the wall out
-## to the desert; for the last round one, the wall round the whole maze), and the
-## walls beside its gates. The clearing's own wall is ClearingStyle's.
-@export_range(20.0, 300.0) var section_border_wall_height := 46.0
-## How many cells of solid wall thicken that border wall (each gate a slot through
-## them): the next section out is moved that much further out. (Not for the last
-## square section, nor round ones.)
-@export_range(0, 6) var border_wall_thickness_cells := 0
-## Moss up the foot of its walls, to about this many metres off the ground (its
-## top edge ragged; 0: none), and in patches higher up over about this share of
-## the walls' faces (0: none).
-@export_range(0.0, 8.0) var wall_moss_height := 1.2
-@export_range(0.0, 1.0) var wall_moss_patches := 0.12
-## How many times bigger than the concrete texture's own size it is laid on the
-## maze walls and their ledges (walls this high want it big; the great walls
-## between sections have their own, bigger still).
-@export_range(0.5, 12.0) var wall_texture_scale := 4.0
-## How far round the maze walls' top edges and corners are worn, metres (more in
-## places, nearly sharp in others; 0: square). Their ledges half this.
-@export_range(0.0, 0.6, 0.01) var wall_edge_rounding := 0.14
-## The same for the border wall round its outside (and the clearing's, for the
-## first section): walls that big are worn rounder.
-@export_range(0.0, 1.5, 0.01) var border_wall_edge_rounding := 0.4
-## How weathered its walls are at their edges and tops: grime where the rain runs
-## off their top edges, paler worn corners with chips out of them, and faces
-## very slightly uneven (0: none).
+@export_range(8.0, 120.0, 0.001, "suffix:m") var maze_wall_height := 34.0
+## How high the border wall round the outside of the section is, metres (and the walls beside its gates).
+@export_range(20.0, 300.0, 0.001, "suffix:m") var section_border_wall_height := 46.0
+## How many cells of solid wall thicken that border wall, moving the next section out (not the last ones).
+@export_range(0, 6, 1, "suffix:cells") var border_wall_thickness_cells := 0
+## How high moss grows up the foot of its walls, metres (its top edge ragged; 0: none).
+@export_range(0.0, 8.0, 0.001, "suffix:m") var wall_moss_height := 1.2
+## How much of its walls' faces have patches of moss higher up (a share, 0 to 1; 0: none).
+@export_range(0.0, 1.0, 0.001, "suffix:of faces") var wall_moss_patches := 0.12
+## How many times its own size the concrete texture is laid on the maze walls and their ledges.
+@export_range(0.5, 12.0, 0.001, "suffix:x") var wall_texture_scale := 4.0
+## How far round the maze walls' top edges and corners are worn, metres (ledges half this; 0: square).
+@export_range(0.0, 0.6, 0.01, "suffix:m") var wall_edge_rounding := 0.14
+## How far round the border wall's edges are worn, metres (and the clearing's, for the first section).
+@export_range(0.0, 1.5, 0.01, "suffix:m") var border_wall_edge_rounding := 0.4
+## How weathered its walls are: grime under their tops, paler chipped corners, uneven faces (0 none, 1 most).
 @export_range(0.0, 1.0, 0.01) var wall_weathering := 0.5
-## The share of wall faces with short grass along their foot, in runs of a few metres.
-@export_range(0.0, 1.0) var wall_grass_share := 0.25
 
 @export_group("Hallways")
-## The chance a passage goes on straight when it can.
-@export_range(0.0, 1.0) var straight_on_chance := 0.0
-## The chance a passage grows from an older place instead of the newest.
-@export_range(0.0, 1.0) var side_branch_chance := 0.0
-## The share of blocks with a wall knocked through afterwards.
-@export_range(0.0, 0.5) var loop_share := 0.06
-## How far each way in runs, in cells, as a narrow corridor (one cell wide) before
-## it opens into the section's hallways; 0 (or 1) for none.
-@export_range(0, 16) var entrance_corridor_cells := 0
-## How wide the way through an entrance corridor is, metres: walls fill the rest
-## of the cell either side of it (0: the whole cell is open).
-@export_range(0.0, 12.0) var entrance_doorway_width := 0.0
-
-@export_group("Mezzanine")
-## How high the ledge along every wall face in the section is, metres, a mezzanine
-## to walk along (0 for none). The same height along the higher border walls, so
-## that it all joins up. Ivy up the walls grows to its edge, and vines hang past it.
-@export_range(0.0, 100.0) var mezzanine_height := 0.0
-## How deep it stands out from the wall, and how thick it is, metres.
-@export_range(0.5, 4.0) var mezzanine_depth := 1.2
-@export_range(0.2, 2.0) var mezzanine_thickness := 0.6
-## How many levels of ledge there are, one over another (the first all along the
-## walls, the ones over it only along some: platforms), and how far apart they
-## are, metres.
-@export_range(1, 5) var mezzanine_levels := 1
-@export_range(3.0, 30.0) var mezzanine_level_rise := 8.0
-## Of the wall faces with a level, the share with the level over it too.
-@export_range(0.0, 1.0) var mezzanine_upper_share := 0.5
-## How much shallower each level is than the one under it, metres: so they step
-## back as they go up, and ivy hung from one's edge comes down onto the one under.
-@export_range(0.0, 1.5) var mezzanine_depth_step := 0.6
-## The share of wall faces with a level that have ivy up to the level over it.
-@export_range(0.0, 1.0) var mezzanine_ivy_share := 0.2
-## The share of halls with ledges at the same level both sides that have a rope
-## bridge across between them, at each level.
-@export_range(0.0, 1.0) var mezzanine_bridge_share := 0.0
+## The chance a passage goes on straight when it can (0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:chance") var straight_on_chance := 0.0
+## The chance a passage grows from an older place instead of the newest, making side branches (0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:chance") var side_branch_chance := 0.0
+## How many blocks get a wall knocked through afterwards, making loops (a share, 0 to 0.5).
+@export_range(0.0, 0.5, 0.001, "suffix:of blocks") var loop_share := 0.06
+## How far each way in runs as a narrow corridor before it opens into the hallways, in cells (0 or 1: none).
+@export_range(0, 16, 1, "suffix:cells") var entrance_corridor_cells := 0
+## How wide the way through an entrance corridor is, metres; walls fill the rest of the cell (0: all open).
+@export_range(0.0, 12.0, 0.001, "suffix:m") var entrance_doorway_width := 0.0
 
 @export_group("Climbing")
-## The share of wall faces with a terrace against them: steps of stone like those
-## of something far bigger than a boy, with ivy up their faces to climb.
-@export_range(0.0, 1.0) var terrace_share := 0.13
-## Of those, the share with an upper terrace set back above the lower.
-@export_range(0.0, 1.0) var upper_terrace_share := 0.55
-## The share of terraces matched by one across the hallway, with a rope bridge between.
-@export_range(0.0, 1.0) var terrace_bridge_share := 0.45
-## Of upper terraces, the share with ivy on up to the top of the wall.
-@export_range(0.0, 1.0) var ivy_to_wall_top_share := 0.35
-## The share of terraces with a vine to swing on, hung from a beam out over them.
-@export_range(0.0, 1.0) var terrace_vine_share := 0.5
-## The share of hallways with a rope bridge across from wall top to wall top.
-@export_range(0.0, 1.0) var wall_top_bridge_share := 0.05
-## The share of wall faces with climbable ivy from the ground: up to the mezzanine
-## if there is one, otherwise part of the way up the wall (wall ivy height range,
-## as shares of the wall's height), never to the top.
-@export_range(0.0, 1.0) var wall_ivy_share := 0.0
-@export var wall_ivy_height_range := Vector2(0.3, 0.6)
-## The share of wall faces with a vine hanging from the top of such ivy, down to
-## a jump over the ground.
-@export_range(0.0, 1.0) var hanging_vine_share := 0.0
-## The share of hallways with a vine strung across from wall to wall: walked as a
-## tightrope from a corbel set into the wall with a curtain of ivy from it, and cut into two hanging vines. How
-## high (tightrope vine height range), as shares of the lower wall's height.
-@export_range(0.0, 1.0) var tightrope_vine_share := 0.0
-@export var tightrope_vine_height_range := Vector2(0.3, 0.75)
-## The share of maze walls with a sewer pipe through them, high up, dripping: a
-## platform under each mouth with ivy up to it from the ground, so that he can
-## climb to one, crawl through the wall and come down the other side. How high
-## (sewer pipe height), as a share of the wall's height.
-@export_range(0.0, 0.5) var sewer_pipe_share := 0.0
-@export_range(0.2, 0.9) var sewer_pipe_height := 0.62
+@export_subgroup("Mezzanine (ledges)")
+## How high the ledge along every wall face is, metres, a mezzanine to walk along (0: none).
+@export_range(0.0, 100.0, 0.001, "suffix:m") var mezzanine_height := 0.0
+## How deep the ledge stands out from the wall, metres.
+@export_range(0.5, 4.0, 0.001, "suffix:m") var mezzanine_depth := 1.2
+## How thick the ledge is, metres.
+@export_range(0.2, 2.0, 0.001, "suffix:m") var mezzanine_thickness := 0.6
+## How many levels of ledge there are, one over another (those over the first only along some faces).
+@export_range(1, 5, 1, "suffix:levels") var mezzanine_levels := 1
+## How far apart the levels are, one over the next, metres.
+@export_range(3.0, 30.0, 0.001, "suffix:m") var mezzanine_level_rise := 8.0
+## Of the faces with a level, how many have the level over it too (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of faces") var mezzanine_upper_share := 0.5
+## How much shallower each level is than the one under it, metres (so they step back going up).
+@export_range(0.0, 1.5, 0.001, "suffix:m") var mezzanine_depth_step := 0.6
 
-@export_group("Sewers")
-## What the maze's drains and ducts show of themselves (MazeProps; dressing,
-## nothing to climb). The share of wall faces with an old vent high on them:
-## louvred or round, rusted, some of them big.
-@export_range(0.0, 0.5) var wall_vent_share := 0.0
-## The share of wall faces with a barred culvert at their foot, black behind its
-## bars, a wet stain and a puddle in front of it.
-@export_range(0.0, 0.5) var culvert_share := 0.0
-## The share of wall faces with a small pipe coming out of them a little up, a
-## rust stain running down the wall under it and a puddle at the foot; of those,
-## the share that drip.
-@export_range(0.0, 0.5) var outlet_share := 0.0
-@export_range(0.0, 1.0) var outlet_drip_share := 0.6
-## The share of hall cells with a drain grate in the floor by a wall's foot (a
-## puddle round some), and with a manhole cover out in the hall (now and then
-## pushed half off its hole).
-@export_range(0.0, 0.5) var drain_share := 0.0
-@export_range(0.0, 0.5) var manhole_share := 0.0
+@export_subgroup("Terraces")
+## Terraces: steps of stone against the walls, like those of something far bigger than a boy, ivy up their faces.
+@export var terraces_on: bool:
+	get:
+		return feature_on(&"terraces_on")
+	set(value):
+		_switch(&"terraces_on", value)
+## How many wall faces have a terrace against them (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of faces") var terrace_share := 0.13
+## Of terraces, how many have an upper terrace set back above the lower (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of terraces") var upper_terrace_share := 0.55
+
+@export_subgroup("Rope bridges")
+## Rope bridges between terraces: a terrace matched by one across the hallway, a bridge between them.
+@export var terrace_bridges_on: bool:
+	get:
+		return feature_on(&"terrace_bridges_on")
+	set(value):
+		_switch(&"terrace_bridges_on", value)
+## How many terraces are matched by one across the hallway, with a rope bridge (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of terraces") var terrace_bridge_share := 0.45
+## Rope bridges across hallways from wall top to wall top.
+@export var wall_top_bridges_on: bool:
+	get:
+		return feature_on(&"wall_top_bridges_on")
+	set(value):
+		_switch(&"wall_top_bridges_on", value)
+## How many hallways have a rope bridge from wall top to wall top (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var wall_top_bridge_share := 0.05
+## Rope bridges across hallways between mezzanine ledges at the same level.
+@export var mezzanine_bridges_on: bool:
+	get:
+		return feature_on(&"mezzanine_bridges_on")
+	set(value):
+		_switch(&"mezzanine_bridges_on", value)
+## How many halls with ledges level both sides have a rope bridge between them, at each level (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var mezzanine_bridge_share := 0.0
+
+@export_group("Ivy")
+## Climbable ivy up the walls from the ground: to the mezzanine if there is one, else part way up, never to the top.
+@export var wall_ivy_on: bool:
+	get:
+		return feature_on(&"wall_ivy_on")
+	set(value):
+		_switch(&"wall_ivy_on", value)
+## How many wall faces have ivy from the ground (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of faces") var wall_ivy_share := 0.0
+## How high that ivy reaches with no mezzanine: lowest and highest, as shares of the wall's height (0 to 1).
+@export var wall_ivy_height_range := Vector2(0.3, 0.6)
+## Ivy on from an upper terrace up to the top of the wall.
+@export var ivy_to_wall_top_on: bool:
+	get:
+		return feature_on(&"ivy_to_wall_top_on")
+	set(value):
+		_switch(&"ivy_to_wall_top_on", value)
+## Of upper terraces, how many have ivy on up to the top of the wall (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of terraces") var ivy_to_wall_top_share := 0.35
+## Ivy from the edge of each mezzanine level up to the level over it.
+@export var mezzanine_ivy_on: bool:
+	get:
+		return feature_on(&"mezzanine_ivy_on")
+	set(value):
+		_switch(&"mezzanine_ivy_on", value)
+## Of the faces with a level over the first, how many have ivy up to it (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of faces") var mezzanine_ivy_share := 0.2
+
+@export_group("Vines")
+## Vines hanging from the top of a run of wall ivy (its own, with wall ivy off), down to a jump over the ground.
+@export var hanging_vines_on: bool:
+	get:
+		return feature_on(&"hanging_vines_on")
+	set(value):
+		_switch(&"hanging_vines_on", value)
+## How many wall faces have ivy with a vine hanging from its top (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of faces") var hanging_vine_share := 0.0
+## Vines strung across hallways wall to wall: walked as tightropes from a corbel with ivy under it, cut into two hanging vines.
+@export var tightrope_vines_on: bool:
+	get:
+		return feature_on(&"tightrope_vines_on")
+	set(value):
+		_switch(&"tightrope_vines_on", value)
+## How many hallways have a vine strung across (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var tightrope_vine_share := 0.0
+## How high a strung vine is: lowest and highest, as shares of the lower wall's height (0 to 1).
+@export var tightrope_vine_height_range := Vector2(0.3, 0.75)
+## Vines to swing on over terraces, hung from a beam out of the wall.
+@export var terrace_vines_on: bool:
+	get:
+		return feature_on(&"terrace_vines_on")
+	set(value):
+		_switch(&"terrace_vines_on", value)
+## How many terraces have a vine over them (a share, 0 to 1; for the lower and the upper each).
+@export_range(0.0, 1.0, 0.001, "suffix:of terraces") var terrace_vine_share := 0.5
+
+@export_group("Wall decor")
+## Old vents high on the walls: louvred or round, rusted, some of them big (dressing, nothing to climb).
+@export var vents_on: bool:
+	get:
+		return feature_on(&"vents_on")
+	set(value):
+		_switch(&"vents_on", value)
+## How many wall faces have a vent (a share, 0 to 0.5).
+@export_range(0.0, 0.5, 0.001, "suffix:of faces") var wall_vent_share := 0.0
+## Small pipes out of the walls a little up, a rust stain down the wall under each and a puddle at its foot.
+@export var outlets_on: bool:
+	get:
+		return feature_on(&"outlets_on")
+	set(value):
+		_switch(&"outlets_on", value)
+## How many wall faces have an outlet pipe (a share, 0 to 0.5).
+@export_range(0.0, 0.5, 0.001, "suffix:of faces") var outlet_share := 0.0
+## Of outlet pipes, how many drip (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of outlets") var outlet_drip_share := 0.6
+## Old electric cables looped along the walls on brackets.
+@export var wall_cables_on: bool:
+	get:
+		return feature_on(&"wall_cables_on")
+	set(value):
+		_switch(&"wall_cables_on", value)
+## How many wall faces have a cable looped along them (a share, 0 to 0.5).
+@export_range(0.0, 0.5, 0.001, "suffix:of faces") var wall_cable_share := 0.0
+
+@export_group("Tunnels")
+## Sewer pipes through the maze walls high up, dripping: a platform under each mouth, ivy up to it, crawled through.
+@export var sewer_pipes_on: bool:
+	get:
+		return feature_on(&"sewer_pipes_on")
+	set(value):
+		_switch(&"sewer_pipes_on", value)
+## How many maze walls have a sewer pipe through them (a share, 0 to 0.5).
+@export_range(0.0, 0.5, 0.001, "suffix:of walls") var sewer_pipe_share := 0.0
+## How high the pipe goes through, as a share of the wall's height (0.2 to 0.9).
+@export_range(0.2, 0.9, 0.001, "suffix:of height") var sewer_pipe_height := 0.62
+## Barred culverts at the foot of the walls, black behind the bars, a wet stain and a puddle in front.
+@export var culverts_on: bool:
+	get:
+		return feature_on(&"culverts_on")
+	set(value):
+		_switch(&"culverts_on", value)
+## How many wall faces have a culvert (a share, 0 to 0.5).
+@export_range(0.0, 0.5, 0.001, "suffix:of faces") var culvert_share := 0.0
+## Drain grates in the floor by a wall's foot, a puddle round some.
+@export var drains_on: bool:
+	get:
+		return feature_on(&"drains_on")
+	set(value):
+		_switch(&"drains_on", value)
+## How many hall cells have a drain grate (a share, 0 to 0.5).
+@export_range(0.0, 0.5, 0.001, "suffix:of cells") var drain_share := 0.0
+## Manhole covers out in the halls, now and then pushed half off the shaft.
+@export var manholes_on: bool:
+	get:
+		return feature_on(&"manholes_on")
+	set(value):
+		_switch(&"manholes_on", value)
+## How many hall cells have a manhole cover (a share, 0 to 0.5).
+@export_range(0.0, 0.5, 0.001, "suffix:of cells") var manhole_share := 0.0
 
 @export_group("Signs of life")
-## Others lived here once (MazeProps). The share of wall faces with boxes and
-## barrels left against them, how many things in each heap (most and least), and
-## the share of those that are barrels (some fallen over). They are solid.
-@export_range(0.0, 0.5) var clutter_share := 0.0
+## Heaps of boxes and barrels left against the walls by those who lived here once (solid).
+@export var clutter_on: bool:
+	get:
+		return feature_on(&"clutter_on")
+	set(value):
+		_switch(&"clutter_on", value)
+## How many wall faces have a heap against them (a share, 0 to 0.5).
+@export_range(0.0, 0.5, 0.001, "suffix:of faces") var clutter_share := 0.0
+## How many things are in each heap: least and most (things).
 @export var clutter_heap_size := Vector2i(3, 7)
-@export_range(0.0, 1.0) var clutter_barrel_share := 0.4
-## The share of halls with an old electric cable strung across them high up,
-## sagging, from wall to wall, and how high its ends are, metres (never over the
-## lower wall top).
-@export_range(0.0, 1.0) var cable_share := 0.0
+## Of the things in a heap, how many are barrels, some fallen over (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of things") var clutter_barrel_share := 0.4
+## Old electric cables strung across the halls high up, sagging, wall to wall.
+@export var cables_on: bool:
+	get:
+		return feature_on(&"cables_on")
+	set(value):
+		_switch(&"cables_on", value)
+## How many halls have a cable strung across (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of halls") var cable_share := 0.0
+## How high the cables' ends are: lowest and highest, metres (never over the lower wall top).
 @export var cable_height_range := Vector2(9.0, 22.0)
-## The share of vines strung across a hall with a cable strung beside them, in
-## among the vine, and of vines hanging from the walls with a cable's end hanging
-## beside them.
-@export_range(0.0, 1.0) var cable_by_vine_share := 0.0
-## Of cables across halls, the share snapped, their two ends hanging; of the rest,
-## the share with an old lamp (dead) hanging from them.
-@export_range(0.0, 1.0) var snapped_cable_share := 0.25
-@export_range(0.0, 1.0) var cable_lamp_share := 0.3
-## The share of wall faces with a cable looped along them on brackets.
-@export_range(0.0, 0.5) var wall_cable_share := 0.0
+## Of cables across halls, how many are snapped, their two ends hanging (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of cables") var snapped_cable_share := 0.25
+## Of the cables not snapped, how many have an old dead lamp hanging from them (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of cables") var cable_lamp_share := 0.3
+## Cables beside the vines: in among the strung vines, and a cable's end beside the hanging ones.
+@export var cables_by_vines_on: bool:
+	get:
+		return feature_on(&"cables_by_vines_on")
+	set(value):
+		_switch(&"cables_by_vines_on", value)
+## How many strung vines have a cable beside them (a share, 0 to 1; hanging vines 0.6 of this).
+@export_range(0.0, 1.0, 0.001, "suffix:of vines") var cable_by_vine_share := 0.0
 
 @export_group("Grappling hook spots")
-## Places made for the grappling hook to catch (GrappleSpots), each marked in
-## iron so that a route up can be seen from below and planned. The share of maze
-## wall faces with a route up them: stone corbels sticking out of the wall one
-## above another, an iron ring hanging from the end of each, from the ground (or
-## the highest ledge along the face) to the top of the wall, where a last ring
-## hangs from the cornice. Throw at the ring above, climb, pull up onto the
-## corbel, throw at the next.
-@export_range(0.0, 1.0) var grapple_route_share := 0.03
-## How far apart the corbels of a route are, at most, metres (the hook reaches 13).
-@export_range(3.0, 11.0) var grapple_route_rise := 6.5
-## The share of ledge edges (each level of the mezzanine along a face, each
-## terrace, the platform under each sewer pipe's mouth) with an iron ring at
-## their lip: the hook would catch the lip anyway; the ring shows where.
-@export_range(0.0, 1.0) var grapple_ring_share := 0.2
-## The share of maze wall faces with an iron hook or an old pipe sticking out of
-## them high over the hall, to swing from; how high (grapple swing height range)
-## over the ground or the highest ledge along the face, metres.
-@export_range(0.0, 1.0) var grapple_swing_share := 0.04
+## Routes up bare maze walls for the hook: corbels one above another, an iron ring from each, to a last at the top.
+@export var grapple_routes_on: bool:
+	get:
+		return feature_on(&"grapple_routes_on")
+	set(value):
+		_switch(&"grapple_routes_on", value)
+## How many maze wall faces have a route up them (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of faces") var grapple_route_share := 0.03
+## How far apart a route's corbels are at most, metres (the hook reaches 13 m).
+@export_range(3.0, 11.0, 0.001, "suffix:m") var grapple_route_rise := 6.5
+## Iron rings at the lips of ledges (mezzanine levels, terraces, the platforms under pipes) showing where the hook bites.
+@export var grapple_rings_on: bool:
+	get:
+		return feature_on(&"grapple_rings_on")
+	set(value):
+		_switch(&"grapple_rings_on", value)
+## How many ledge edges have a ring at their lip (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of ledges") var grapple_ring_share := 0.2
+## Iron hooks and old pipes sticking out of the walls high over the halls, to swing from.
+@export var grapple_swings_on: bool:
+	get:
+		return feature_on(&"grapple_swings_on")
+	set(value):
+		_switch(&"grapple_swings_on", value)
+## How many maze wall faces have a hook or pipe to swing from (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of faces") var grapple_swing_share := 0.04
+## How high a swing hook is over the ground or the highest ledge on the face: lowest and highest, metres.
 @export var grapple_swing_height_range := Vector2(7.0, 10.5)
 
 @export_group("Plants")
-## How thickly ferns, moss and tufts of grass grow along the foot of its walls (0
-## none, 1 all along every wall).
-@export_range(0.0, 1.0) var plant_density := 0.0
+## Ferns, moss and tufts of grass along the foot of the walls.
+@export var undergrowth_on: bool:
+	get:
+		return feature_on(&"undergrowth_on")
+	set(value):
+		_switch(&"undergrowth_on", value)
+## How thickly the undergrowth grows along the walls' feet (0 none, 1 all along every wall).
+@export_range(0.0, 1.0, 0.001, "suffix:density") var plant_density := 0.0
+## Short grass along the foot of the walls, in runs of a few metres.
+@export var wall_grass_on: bool:
+	get:
+		return feature_on(&"wall_grass_on")
+	set(value):
+		_switch(&"wall_grass_on", value)
+## How many wall faces have grass along their foot (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of faces") var wall_grass_share := 0.25
 
 @export_group("Water")
-## The share of hall cells with standing water in them (Ponds): a pond lying in
-## the hall, or a stretch of the hall flooded from wall to wall. The ground goes
-## down under it, so he wades, and in the deepest swims.
-@export_range(0.0, 0.3) var pond_share := 0.02
-## Of those, the share that flood a stretch of the hall, how many cells long at
-## most (the rest are ponds lying within one cell).
-@export_range(0.0, 1.0) var flooded_hall_share := 0.4
-@export_range(2, 8) var flooded_hall_length := 4
-## How deep a pond is, metres, from puddle-deep to wading (to his waist at 0.8).
+## Ponds: standing water in the halls (Ponds), the ground going down under it so he wades, and in the deepest swims.
+@export var ponds_on: bool:
+	get:
+		return feature_on(&"ponds_on")
+	set(value):
+		_switch(&"ponds_on", value)
+## How many hall cells have standing water, a pond or a flooded stretch (a share, 0 to 0.3).
+@export_range(0.0, 0.3, 0.001, "suffix:of cells") var pond_share := 0.02
+## How deep a pond is: shallowest and deepest, metres (to his waist at 0.8).
 @export var pond_depth_range := Vector2(0.15, 0.8)
-## The share of ponds deep enough to swim, and how deep those are, metres.
-@export_range(0.0, 1.0) var swim_pond_share := 0.12
-@export_range(1.0, 3.0) var swim_pond_depth := 1.7
-## The share of ponds (no shallower than FishSchool.SHALLOWEST) with a school of
-## small fish in them, that dart off from whoever wades near; how many in each.
-@export_range(0.0, 1.0) var fish_share := 0.6
-@export_range(1, 40) var fish_per_school := 12
+## Flooded halls: a stretch of hall under water from wall to wall, instead of a pond lying within one cell.
+@export var flooded_halls_on: bool:
+	get:
+		return feature_on(&"flooded_halls_on")
+	set(value):
+		_switch(&"flooded_halls_on", value)
+## Of the standing water, how much floods a stretch of hall (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of ponds") var flooded_hall_share := 0.4
+## How long a flooded stretch is at most, in cells.
+@export_range(2, 8, 1, "suffix:cells") var flooded_hall_length := 4
+## Ponds deep enough to swim.
+@export var swim_ponds_on: bool:
+	get:
+		return feature_on(&"swim_ponds_on")
+	set(value):
+		_switch(&"swim_ponds_on", value)
+## How many ponds are deep enough to swim (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of ponds") var swim_pond_share := 0.12
+## How deep a swimming pond is, metres.
+@export_range(1.0, 3.0, 0.001, "suffix:m") var swim_pond_depth := 1.7
+## Schools of small fish in the ponds, that dart off from whoever wades near.
+@export var fish_on: bool:
+	get:
+		return feature_on(&"fish_on")
+	set(value):
+		_switch(&"fish_on", value)
+## How many ponds (no shallower than FishSchool.SHALLOWEST) have a school of fish (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.001, "suffix:of ponds") var fish_share := 0.6
+## How many fish are in each school.
+@export_range(1, 40, 1, "suffix:fish") var fish_per_school := 12
 
 @export_group("What hunts it")
-## How many of each thing that hunts are put in the section's passages (by
-## MazeEnemies.populate, from the round's seed). Packs and colonies count as one.
-@export_range(0, 4) var snakes := 1
-@export_range(0, 6) var mummy_packs := 2
+## Snakes in the section's passages (how many of each thing that hunts are put in the section, from the round's seed).
+@export_range(0, 4, 1, "suffix:snakes") var snakes := 1
+## Packs of mummies in the section.
+@export_range(0, 6, 1, "suffix:packs") var mummy_packs := 2
 ## A ReDead-like ghoul each, standing in a dead end.
-@export_range(0, 6) var ghouls := 2
-@export_range(0, 3) var centipedes := 1
+@export_range(0, 6, 1, "suffix:ghouls") var ghouls := 2
+## Giant centipedes in the section.
+@export_range(0, 3, 1, "suffix:centipedes") var centipedes := 1
 ## Giant spiders, each waiting high on a wall.
-@export_range(0, 4) var spiders := 2
-@export_range(0, 3) var abominations := 1
+@export_range(0, 4, 1, "suffix:spiders") var spiders := 2
+## Abominations in the section.
+@export_range(0, 3, 1, "suffix:abominations") var abominations := 1
 ## Walls of slime that fill a hallway.
-@export_range(0, 3) var slime_walls := 1
-@export_range(0, 4) var bat_colonies := 2
-@export_range(0, 3) var baboon_troops := 1
+@export_range(0, 3, 1, "suffix:walls") var slime_walls := 1
+## Colonies of bats in the section.
+@export_range(0, 4, 1, "suffix:colonies") var bat_colonies := 2
+## Troops of baboons in the section.
+@export_range(0, 3, 1, "suffix:troops") var baboon_troops := 1
 ## Pairs of aliens (each pack two or three).
-@export_range(0, 3) var alien_packs := 1
+@export_range(0, 3, 1, "suffix:packs") var alien_packs := 1
 ## "Biblically accurate" angels (MazeAngel): wheels of eyes drifting over the
 ## halls, whose gaze takes whoever stays in it.
-@export_range(0, 2) var angels := 1
-@export_range(0, 3) var dog_packs := 1
+@export_range(0, 2, 1, "suffix:angels") var angels := 1
+## Packs of dogs in the section.
+@export_range(0, 3, 1, "suffix:packs") var dog_packs := 1
 ## Swarms of beetles, each waiting in cracks at the foot of a wall (in a dead end or along a hall).
-@export_range(0, 4) var beetle_swarms := 2
+@export_range(0, 4, 1, "suffix:swarms") var beetle_swarms := 2
 ## Fish people, each lurking in a pool of black water in a hall.
-@export_range(0, 6) var fish_people := 2
+@export_range(0, 6, 1, "suffix:fish people") var fish_people := 2
 ## Giant toads, each squatting in a dead end.
-@export_range(0, 3) var frogs := 1
+@export_range(0, 3, 1, "suffix:toads") var frogs := 1
 ## Swarms of small frogs, each in a muddy pool in a dead end.
-@export_range(0, 3) var frog_swarms := 1
+@export_range(0, 3, 1, "suffix:swarms") var frog_swarms := 1
 ## Amalgams: three or four bodies grown together, that shamble and cartwheel (and
 ## grow, absorbing whom they catch and merging when they meet).
-@export_range(0, 4) var amalgams := 2
+@export_range(0, 4, 1, "suffix:amalgams") var amalgams := 2
 ## Pairs: two bodies grown together back to back, that scuttle and rush (and
 ## grow as amalgams do: a pair that catches someone is an amalgam).
-@export_range(0, 6) var pairs := 2
+@export_range(0, 6, 1, "suffix:pairs") var pairs := 2
 ## Striders: five or six bodies joined at the hips in a ring that walks on all
 ## their legs and grabs with those facing you (and grows: past six, a mound).
-@export_range(0, 3) var striders := 1
+@export_range(0, 3, 1, "suffix:striders") var striders := 1
 ## Balls: seven or eight bodies grown into a sphere that rolls after you, faster
 ## and faster down a straight hall, slow to turn a corner (and grows: past eight, a mound).
-@export_range(0, 3) var balls := 1
+@export_range(0, 3, 1, "suffix:balls") var balls := 1
 ## Flesh mounds: many bodies grown together into a mound that nearly fills a hall.
-@export_range(0, 3) var flesh_mounds := 1
+@export_range(0, 3, 1, "suffix:mounds") var flesh_mounds := 1
 ## Harpies, each perched high on a wall (its ledge, or its top) over a hallway.
-@export_range(0, 4) var harpies := 1
+@export_range(0, 4, 1, "suffix:harpies") var harpies := 1
 ## Giant boars, each rooting in a dead end or a wide hall.
-@export_range(0, 3) var boars := 1
+@export_range(0, 3, 1, "suffix:boars") var boars := 1
 ## Flocks of feral chickens (a rooster and his hens), foraging in a hall.
-@export_range(0, 4) var chicken_flocks := 2
+@export_range(0, 4, 1, "suffix:flocks") var chicken_flocks := 2
 ## Gargoyles, each crouched as a statue on a ledge over a hall (a terrace's edge or a
 ## wall top), dropping on whoever passes beneath.
-@export_range(0, 4) var gargoyles := 2
+@export_range(0, 4, 1, "suffix:gargoyles") var gargoyles := 2
 ## Herds of deer (four or five each, one of them wrong), standing in the halls.
-@export_range(0, 3) var deer_herds := 1
+@export_range(0, 3, 1, "suffix:herds") var deer_herds := 1
 ## Bull elk, each holding a stretch of halls as his own.
-@export_range(0, 3) var elk := 1
+@export_range(0, 3, 1, "suffix:elk") var elk := 1
 ## Gangs of tiny imps (three or four), each perched on a wall.
-@export_range(0, 4) var imp_gangs := 2
+@export_range(0, 4, 1, "suffix:gangs") var imp_gangs := 2
 ## Swarms of imps, each a crack at the foot of a wall that dozens pour out of.
-@export_range(0, 3) var imp_swarms := 1
+@export_range(0, 3, 1, "suffix:swarms") var imp_swarms := 1
 ## A colossus that crawls over the ring on its wall tops (one at most: it would
 ## stand 260 m tall). The Avenues and the Galleries, whose walls are thick and
 ## far apart, have one.
-@export_range(0, 1) var colossi := 0
+@export_range(0, 1, 1, "suffix:colossi") var colossi := 0
 ## Packs of coyotes (three to five each): skittish, they shadow people at a
 ## distance and yip, but three or more of them can grow bold round someone alone.
-@export_range(0, 4) var coyote_packs := 2
+@export_range(0, 4, 1, "suffix:packs") var coyote_packs := 2
 ## Skinwalkers, each hidden among a pack of coyotes as one of them (one more
 ## pack is put in for any there is no pack for).
-@export_range(0, 2) var skinwalkers := 1
+@export_range(0, 2, 1, "suffix:skinwalkers") var skinwalkers := 1
 ## Martian tripods (MazeTripod), each striding round the ring over the walls,
 ## its searchlight sweeping the halls. One at most: it is huge.
-@export_range(0, 1) var tripods := 1
+@export_range(0, 1, 1, "suffix:tripods") var tripods := 1
 ## Horror clowns (MazeClown), each prowling the halls with a red balloon floating
 ## over the walls: still while anyone looks at him, a sprint when nobody does.
-@export_range(0, 3) var clowns := 1
+@export_range(0, 3, 1, "suffix:clowns") var clowns := 1
 ## Stegosaurs, each grazing in a hall (sometimes with a calf): they hunt nobody,
 ## but anyone too near is warned off, and then the spiked tail is swung at them.
-@export_range(0, 4) var stegosaurs := 1
+@export_range(0, 4, 1, "suffix:stegosaurs") var stegosaurs := 1
 ## Troops of spider monkeys (four to seven), hanging from vines strung along the
 ## walls over a hall, dropping on whoever passes under.
-@export_range(0, 4) var spider_monkey_troops := 1
+@export_range(0, 4, 1, "suffix:troops") var spider_monkey_troops := 1
 ## Bands of lizard people (two or three each), clinging to the walls over a hall.
-@export_range(0, 4) var lizard_people := 2
+@export_range(0, 4, 1, "suffix:bands") var lizard_people := 2
 ## Hunting parties of the masked tribe (MazeTribesman: three to five of the maze's
 ## lost boys gone wild, masked, with spears), each camped round its totem in a dead end.
-@export_range(0, 4) var tribe_parties := 1
+@export_range(0, 4, 1, "suffix:parties") var tribe_parties := 1
 ## Packs of deinonychus (each three or four): feathered pack hunters, one drawing
 ## you while the others go round to cut you off; climbing high escapes them.
-@export_range(0, 3) var deinonychus_packs := 1
+@export_range(0, 3, 1, "suffix:packs") var deinonychus_packs := 1
 ## Pterodactyls, soaring high over the maze and roosting on its high wall tops;
 ## they dive at anyone out in the open.
-@export_range(0, 6) var pterodactyls := 2
+@export_range(0, 6, 1, "suffix:pterodactyls") var pterodactyls := 2
 ## Wyverns (MazeWyvern): two-legged dragons, a pair nesting on a high wall top in the
 ## outer rings, soaring over their territory. They hunt anyone in the open (a diving grab
 ## that carries you off, or landing to stalk you and lash with the barbed tail) part of the
 ## time, and go at once for anyone who climbs near the nest.
-@export_range(0, 2) var wyvern_pairs := 1
+@export_range(0, 2, 1, "suffix:pairs") var wyvern_pairs := 1
 ## Giant snails, each crawling a straight hall (it climbs the walls after anyone up high).
-@export_range(0, 3) var snails := 1
+@export_range(0, 3, 1, "suffix:snails") var snails := 1
 ## Hydras (MazeHydra): each lies in a marsh pool of its own in a hall and strikes
 ## with many heads at anyone who passes in reach.
-@export_range(0, 3) var hydras := 1
+@export_range(0, 3, 1, "suffix:hydras") var hydras := 1
 ## Troops of gibbons (three to five), living on the ledges, terraces and wall tops
 ## (only of sections that have them): they call when they see you below (fetching
 ## other hunters) and knock down climbers.
-@export_range(0, 3) var gibbon_troops := 1
+@export_range(0, 3, 1, "suffix:troops") var gibbon_troops := 1
 ## Screaming bears: each prowls the halls calling out in the voice of the last
 ## thing it killed; it rears and screams, charges and swipes.
-@export_range(0, 2) var bears := 1
+@export_range(0, 2, 1, "suffix:bears") var bears := 1
 ## Brachiosaurs roaming out past the square sections: the desert's quarters and the
 ## round sections with wide halls (read from the first section's style). Gentle; only
 ## their feet are dangerous.
-@export_range(0, 8) var brachiosaurs := 4
+@export_range(0, 8, 1, "suffix:brachiosaurs") var brachiosaurs := 4
 ## Dimetrodons basking in the wide halls (cold-blooded ambushers, slow to chase).
-@export_range(0, 4) var dimetrodons := 1
+@export_range(0, 4, 1, "suffix:dimetrodons") var dimetrodons := 1
 ## Dimetrodons basking out in the desert's open ground (read from the first section's style).
-@export_range(0, 6) var desert_dimetrodons := 2
+@export_range(0, 6, 1, "suffix:dimetrodons") var desert_dimetrodons := 2
 ## Pairs of griffinflies (MazeGriffinfly: giant dragonflies), each holding a stretch of
 ## halls: they buzz and knock you down; two harrying someone alone catch them.
-@export_range(0, 4) var griffinfly_pairs := 1
+@export_range(0, 4, 1, "suffix:pairs") var griffinfly_pairs := 1
 ## Psychic children (MazePsychicChild), each drifting about the halls: they hunt
 ## nobody, watch over whoever is calm near them (taking hold of what comes after
 ## them with their minds), and burst when they are frightened.
-@export_range(0, 3) var psychic_children := 1
+@export_range(0, 3, 1, "suffix:children") var psychic_children := 1
 ## Lynx (MazeLynx): shy small-game hunters that watch from the ledges over the halls
 ## and slip away; dangerous only cornered or at a kill.
-@export_range(0, 4) var lynxes := 2
+@export_range(0, 4, 1, "suffix:lynx") var lynxes := 2
 ## Black panthers (MazePanther): solitary stalkers that lie up on ledges and come on
 ## from above or behind, strongest at night; face them, don't run.
-@export_range(0, 3) var panthers := 1
+@export_range(0, 3, 1, "suffix:panthers") var panthers := 1
 ## Packs of grey wolves (four to six each, a breeding pair at their head), each with
 ## its den in a dead end: they patrol in file, howl at dusk and through the night, and
 ## hunt by endurance (a trot slower than a run that never tires).
-@export_range(0, 3) var wolf_packs := 1
+@export_range(0, 3, 1, "suffix:packs") var wolf_packs := 1
 ## Jackalopes (MazeJackalope): a hare with antlers that stares instead of hiding, and
 ## butts whoever comes too near.
-@export_range(0, 2) var jackalopes := 1
+@export_range(0, 2, 1, "suffix:jackalopes") var jackalopes := 1
 ## Giant octopuses, each lurking in a black pool against a hall's wall or in a
 ## drain through a wall (every other one), reaching for whoever lingers near.
-@export_range(0, 3) var octopuses := 1
+@export_range(0, 3, 1, "suffix:octopuses") var octopuses := 1
 ## Moose, each at a wallow of its own in a hall (every other one a cow with her calf;
 ## the bulls in the rut some of the time): unpredictable, charging whoever comes near
 ## the calf, or a bull in the rut whoever he sees.
-@export_range(0, 3) var moose := 1
+@export_range(0, 3, 1, "suffix:moose") var moose := 1
 ## Herds of woolly mammoths (a matriarch, cows and a calf) grazing in the widest halls:
 ## they ring the calf, and the matriarch trumpets, mock-charges and then charges.
-@export_range(0, 2) var mammoth_herds := 1
+@export_range(0, 2, 1, "suffix:herds") var mammoth_herds := 1
 ## Lonely horses: feral, each alone, wandering the wide halls; wary, but come slowly
 ## and touch one and it trusts and follows you.
-@export_range(0, 2) var horses := 1
+@export_range(0, 2, 1, "suffix:horses") var horses := 1
 ## Giant Venus flytraps (MazeFlytrap), in pairs at the foot of a hall's walls: a touch
 ## makes one shiver, and it snaps shut on whoever is still in it.
-@export_range(0, 8) var flytraps := 4
+@export_range(0, 8, 1, "suffix:flytraps") var flytraps := 4
 ## Giant sundews (MazeSundew): sticky rosettes out from a wall's foot that slow and hold you.
-@export_range(0, 6) var sundews := 2
+@export_range(0, 6, 1, "suffix:sundews") var sundews := 2
 ## Giant pitcher plants (MazePitcher): a slippery mouth at a wall's foot; step on it and you go in.
-@export_range(0, 6) var pitchers := 2
+@export_range(0, 6, 1, "suffix:pitchers") var pitchers := 2
 ## Patches of mushrooms (MazeMushrooms) whose puffballs' spores blur and slow you and call the zombies.
-@export_range(0, 12) var mushroom_patches := 4
+@export_range(0, 12, 1, "suffix:patches") var mushroom_patches := 4
 ## Hordes of mushroom zombies (three or four and a sleeper each): blind, hunting by sound.
-@export_range(0, 4) var zombie_hordes := 2
+@export_range(0, 4, 1, "suffix:hordes") var zombie_hordes := 2
 ## Bands of gnomes (three to five), each in a hollow at a wall's foot: statues when looked
 ## at, they creep up and steal from pockets, and trip runners with a rope.
-@export_range(0, 4) var gnome_bands := 2
+@export_range(0, 4, 1, "suffix:bands") var gnome_bands := 2
 ## Weavers: six-armed, four-winged figures drifting over the halls, leaving strands across
 ## them that hold whoever walks into them upright, until it comes and takes them.
-@export_range(0, 2) var weavers := 1
+@export_range(0, 2, 1, "suffix:weavers") var weavers := 1
 ## Colonies of giant ants (MazeAnts), each a nest in a dead end with a trail out along the
 ## halls: they let alone whoever keeps off the trail, and come at whoever treads on it.
-@export_range(0, 3) var ant_colonies := 1
+@export_range(0, 3, 1, "suffix:colonies") var ant_colonies := 1
 ## Giant praying mantises (MazeMantis), each still among ferns against a hall wall, striking
 ## at whoever comes within its reach.
-@export_range(0, 3) var mantises := 1
+@export_range(0, 3, 1, "suffix:mantises") var mantises := 1
 ## Mischiefs of rats (three to six each) running the wall feet, scavenging; harmless.
-@export_range(0, 6) var rat_mischiefs := 2
+@export_range(0, 6, 1, "suffix:mischiefs") var rat_mischiefs := 2
 ## Swarms of rats in drains at a wall's foot, that pour out like a river at whoever comes by.
-@export_range(0, 3) var rat_swarms := 1
+@export_range(0, 3, 1, "suffix:swarms") var rat_swarms := 1
 ## Rat kings: knots of rats fused by their tails, slow, whose shriek calls the swarms in, bold.
-@export_range(0, 2) var rat_kings := 1
+@export_range(0, 2, 1, "suffix:rat kings") var rat_kings := 1
 ## The luck dragon: soars over the outer rings and the desert, comes down to whoever stands
 ## still in the open, calms the hunters near and may carry them further out (one in all).
-@export_range(0, 1) var luck_dragons := 1
+@export_range(0, 1, 1, "suffix:dragons") var luck_dragons := 1
 ## Murders of crows (Crows), each sitting along the wall tops over a hall: they
 ## follow whoever passes along the walls, and erupt cawing at anyone who runs,
 ## which calls the hunters.
-@export_range(0, 4) var crow_murders := 2
+@export_range(0, 4, 1, "suffix:murders") var crow_murders := 2
 
 @export_group("Who else is in it")
 ## How many runners run the section's passages (MazeRunners, from the round's
 ## seed): other boys, driven by the computer, who know their section. They lead
 ## anyone who comes up to them to its gate out, draw what hunts away, and are
 ## hunted themselves. Each one poses a whole boy, so keep it small.
-@export_range(0, 6) var runners := 2
+@export_range(0, 6, 1, "suffix:runners") var runners := 2
 
 @export_group("Wildlife")
 ## Herds of ordinary deer in the halls (Wildlife: peaceful, they run from you;
 ## not among what hunts it).
-@export_range(0, 4) var wild_deer_herds := 1
-@export_range(0, 4) var wild_elk_herds := 1
+@export_range(0, 4, 1, "suffix:herds") var wild_deer_herds := 1
+## Herds of ordinary elk in the halls (peaceful, they run from you).
+@export_range(0, 4, 1, "suffix:herds") var wild_elk_herds := 1
 ## Colonies of ordinary frogs (MazePondFrogs, a dozen or so) round a little pond of
 ## their own in a hall: they sing at dusk and in the rain, go quiet and plop into the
 ## water as you come near. Prey for the hunters.
-@export_range(0, 6) var frog_ponds := 2
+@export_range(0, 6, 1, "suffix:colonies") var frog_ponds := 2
 ## Red foxes (MazeFox), alone or a pair: curious, they follow at a distance, sit and
 ## watch, slip away, carry off things lying about, and hunt the small things.
-@export_range(0, 4) var fox_pairs := 2
+@export_range(0, 4, 1, "suffix:foxes or pairs") var fox_pairs := 2
 ## Rabbit warrens (MazeRabbit): a bank of burrows at the foot of a wall in a hall, its
 ## colony grazing in front of it; they thump and bolt down their holes at anyone near.
-@export_range(0, 4) var rabbit_warrens := 1
+@export_range(0, 4, 1, "suffix:warrens") var rabbit_warrens := 1
 ## Brown hares (MazeHare) lying up in the halls, every other one a pair that box.
-@export_range(0, 4) var hares := 1
+@export_range(0, 4, 1, "suffix:hares") var hares := 1
 ## Patches of fireflies at dusk and by night, at the foot of the ivy and the walls (Insects).
-@export_range(0, 60) var firefly_patches := 24
+@export_range(0, 60, 1, "suffix:patches") var firefly_patches := 24
 ## Flocks of tame chickens (TameChickens), which hunt nobody, foraging in the halls.
-@export_range(0, 4) var tame_chicken_flocks := 0
+@export_range(0, 4, 1, "suffix:flocks") var tame_chicken_flocks := 0
 ## Pairs of ravens (Ravens) on the wall tops, which hunt nobody: omens, that fly
 ## ahead of whoever comes near to sit over a hunter waiting there.
-@export_range(0, 4) var raven_pairs := 2
-## Insects (Insects): moths round each light in its halls (the angel, fires,
-## the light past the exit), big moths resting on its walls that scatter as
-## you pass, flies round each thing of meat in it (flesh mounds, the meat
-## beast, the slime wall, the boar's lair, carcasses), and carcasses lying in
-## its dead ends.
-@export_range(0, 60) var moths_per_light := 18
-@export_range(0, 30) var wall_moths := 8
-@export_range(0, 80) var flies_per_carrion := 26
-@export_range(0, 8) var carcasses := 3
+@export_range(0, 4, 1, "suffix:pairs") var raven_pairs := 2
+## Moths round each light in its halls (the angel, fires, the light past the exit).
+@export_range(0, 60, 1, "suffix:per light") var moths_per_light := 18
+## Big moths resting on its walls, that scatter as you pass.
+@export_range(0, 30, 1, "suffix:moths") var wall_moths := 8
+## Flies round each thing of meat in it (flesh mounds, the slime wall, the boar's lair, carcasses).
+@export_range(0, 80, 1, "suffix:per carcass") var flies_per_carrion := 26
+## Carcasses lying in its dead ends.
+@export_range(0, 8, 1, "suffix:carcasses") var carcasses := 3
 
 @export_group("What lies about")
-## Things left lying in its halls to find (Loot): in the ends of halls first
-## (the most walls round them), then anywhere, never by its gates.
-@export_range(0, 20) var loot_items := 6
-## Camps left behind in its halls (cold fires, tallies scratched on the wall
-## beside them, often signs of a struggle).
-@export_range(0, 8) var abandoned_camps := 1
-## How likely each thing lying in its halls is to be a stick (common, weak, it
-## snaps), a bat (knocks a hunter back) or a sword (the best: never breaks),
-## weighed against the rest of what lies there (flares and maps 3 each, torches
-## and spears 2, a hook, a ladder and a backpack 1).
-@export_range(0, 12) var stick_weight := 3
-@export_range(0, 12) var bat_weight := 2
-@export_range(0, 12) var sword_weight := 1
-## The chance that any one thing lying in its halls (or by its camps) is a gun:
-## rare. A shotgun `shotgun_share` of the time, a revolver otherwise; and found
-## with a few rounds in it (`rounds_in_gun`, of six or two).
-@export_range(0.0, 1.0, 0.005) var gun_chance := 0.04
-@export_range(0.0, 1.0, 0.05) var shotgun_share := 0.3
+## Things left lying in its halls to find (Loot): in the ends of halls first, then anywhere, never by its gates.
+@export_range(0, 20, 1, "suffix:things") var loot_items := 6
+## Camps left behind in its halls (cold fires, tallies scratched on the wall, often signs of a struggle).
+@export_range(0, 8, 1, "suffix:camps") var abandoned_camps := 1
+## How likely a thing lying about is a stick (common, weak, it snaps), weighed against the rest
+## (flares and maps 3 each, torches and spears 2, a hook, a ladder and a backpack 1).
+@export_range(0, 12, 1, "suffix:weight") var stick_weight := 3
+## How likely a thing lying about is a bat (knocks a hunter back), weighed against the rest.
+@export_range(0, 12, 1, "suffix:weight") var bat_weight := 2
+## How likely a thing lying about is a sword (the best: never breaks), weighed against the rest.
+@export_range(0, 12, 1, "suffix:weight") var sword_weight := 1
+## The chance that any one thing lying in its halls (or by its camps) is a gun: rare (0 to 1).
+@export_range(0.0, 1.0, 0.005, "suffix:chance") var gun_chance := 0.04
+## Of guns (and boxes of rounds), how many are shotguns, the rest revolvers (a share, 0 to 1).
+@export_range(0.0, 1.0, 0.05, "suffix:of guns") var shotgun_share := 0.3
+## How many rounds a gun is found with: fewest and most (rounds, of six or two).
 @export var rounds_in_gun := Vector2i(1, 3)
-## The chance that any one is a box of rounds for one (rarer still), and how
-## many are left in a box (revolver rounds or shotgun shells, as `shotgun_share`).
-@export_range(0.0, 1.0, 0.005) var ammo_chance := 0.025
+## The chance that any one thing is a box of rounds for a gun: rarer still (0 to 1).
+@export_range(0.0, 1.0, 0.005, "suffix:chance") var ammo_chance := 0.025
+## How many rounds are left in a box: fewest and most (rounds or shells).
 @export var rounds_per_box := Vector2i(2, 4)
+
+## Which features' boxes have been set by hand (feature -> on). A feature not in
+## it is on when its amount is more than 0: so sections saved before the boxes
+## came load just as they were, and so do the presets below.
+@export_storage var features_switched := {}
+
+## Each feature's on/off box, and the settings it shows under it while on (the
+## first: how much of it there is, which goes to 0 while it is off).
+const FEATURES := {
+	&"terraces_on": [&"terrace_share", &"upper_terrace_share"],
+	&"terrace_bridges_on": [&"terrace_bridge_share"],
+	&"wall_top_bridges_on": [&"wall_top_bridge_share"],
+	&"mezzanine_bridges_on": [&"mezzanine_bridge_share"],
+	&"wall_ivy_on": [&"wall_ivy_share", &"wall_ivy_height_range"],
+	&"ivy_to_wall_top_on": [&"ivy_to_wall_top_share"],
+	&"mezzanine_ivy_on": [&"mezzanine_ivy_share"],
+	&"hanging_vines_on": [&"hanging_vine_share"],
+	&"tightrope_vines_on": [&"tightrope_vine_share", &"tightrope_vine_height_range"],
+	&"terrace_vines_on": [&"terrace_vine_share"],
+	&"vents_on": [&"wall_vent_share"],
+	&"outlets_on": [&"outlet_share", &"outlet_drip_share"],
+	&"wall_cables_on": [&"wall_cable_share"],
+	&"sewer_pipes_on": [&"sewer_pipe_share", &"sewer_pipe_height"],
+	&"culverts_on": [&"culvert_share"],
+	&"drains_on": [&"drain_share"],
+	&"manholes_on": [&"manhole_share"],
+	&"clutter_on": [&"clutter_share", &"clutter_heap_size", &"clutter_barrel_share"],
+	&"cables_on": [&"cable_share", &"cable_height_range", &"snapped_cable_share", &"cable_lamp_share"],
+	&"cables_by_vines_on": [&"cable_by_vine_share"],
+	&"grapple_routes_on": [&"grapple_route_share", &"grapple_route_rise"],
+	&"grapple_rings_on": [&"grapple_ring_share"],
+	&"grapple_swings_on": [&"grapple_swing_share", &"grapple_swing_height_range"],
+	&"undergrowth_on": [&"plant_density"],
+	&"wall_grass_on": [&"wall_grass_share"],
+	&"ponds_on": [&"pond_share", &"pond_depth_range"],
+	&"flooded_halls_on": [&"flooded_hall_share", &"flooded_hall_length"],
+	&"swim_ponds_on": [&"swim_pond_share", &"swim_pond_depth"],
+	&"fish_on": [&"fish_share", &"fish_per_school"],
+}
+## Features that are only of another (hidden, box and all, while that is off).
+const PART_OF := {
+	&"terrace_bridges_on": &"terraces_on", &"ivy_to_wall_top_on": &"terraces_on", &"terrace_vines_on": &"terraces_on",
+	&"flooded_halls_on": &"ponds_on", &"swim_ponds_on": &"ponds_on", &"fish_on": &"ponds_on",
+}
+## How much of a feature there is when its box is turned on with its amount at 0
+## and nothing to go back to (its own default is 0).
+const AMOUNT_WHEN_TURNED_ON := 0.05
+
+## Each feature's amount setting -> its box.
+static var _box_of := {}
 
 ## For tests and tools: styles used in place of the defaults while set.
 static var chosen: Array[MazeStyle] = []
@@ -498,10 +692,61 @@ const RENAMED := {
 }
 
 
+## Whether a feature (its box: a key of FEATURES) is on: as set by hand, or else
+## whether there is any of it (so an old save, or a preset, is as its amounts say).
+func feature_on(box: StringName) -> bool:
+	if features_switched.has(box):
+		return features_switched[box]
+	return float(get(FEATURES[box][0])) > 0.0
+
+
+## How much of a feature there is, by its amount setting (`setting`, the first of
+## a FEATURES entry): the setting while its box is on, 0 while it is off. What
+## makes the maze reads this instead of the setting, so that off is as 0 was,
+## the same random numbers drawn.
+func amount(setting: StringName) -> float:
+	if _box_of.is_empty():
+		for box: StringName in FEATURES:
+			_box_of[FEATURES[box][0]] = box
+	var box: StringName = _box_of[setting]
+	return float(get(setting)) if feature_on(box) else 0.0
+
+
+func _switch(box: StringName, on: bool) -> void:
+	# (a new dictionary: duplicated styles may share the old one)
+	var switched := features_switched.duplicate()
+	switched[box] = on
+	features_switched = switched
+	var setting: StringName = FEATURES[box][0]
+	if on and float(get(setting)) <= 0.0:
+		# (turned on with none of it: back to its default, or a little)
+		var default := float(get_script().get_property_default_value(setting))
+		set(setting, default if default > 0.0 else AMOUNT_WHEN_TURNED_ON)
+	notify_property_list_changed()
+
+
 func _validate_property(property: Dictionary) -> void:
+	var name := StringName(property.name)
 	# (whether it is round is what kind of style it is: saved, not shown)
-	if property.name == "round_section":
+	if name == &"round_section":
 		property.usage = PROPERTY_USAGE_NO_EDITOR
+	elif FEATURES.has(name):
+		# (a box: saved in features_switched, not itself)
+		property.usage &= ~PROPERTY_USAGE_STORAGE
+		if PART_OF.has(name) and not feature_on(PART_OF[name]):
+			property.usage &= ~PROPERTY_USAGE_EDITOR
+		elif Engine.is_editor_hint() and not features_switched.has(name):
+			# (shown in the editor: held as it is, so that dragging its amount to 0
+			# leaves the box on)
+			var switched := features_switched.duplicate()
+			switched[name] = feature_on(name)
+			features_switched = switched
+	else:
+		for box: StringName in FEATURES:
+			if FEATURES[box].has(name):
+				if not feature_on(box) or (PART_OF.has(box) and not feature_on(PART_OF[box])):
+					property.usage &= ~PROPERTY_USAGE_EDITOR
+				break
 
 
 # A maze saved with the old names still loads.

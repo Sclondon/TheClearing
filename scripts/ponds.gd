@@ -224,9 +224,9 @@ static func lay_out(layout: MazeLayout, maze: Maze, zones: Dictionary = {}) -> v
 			(rngs[ring] as RandomNumberGenerator).seed = hash("ponds/%d/%d" % [maze.maze_seed, ring])
 		var rng: RandomNumberGenerator = rngs[ring]
 		var style: MazeStyle = maze.styles[ring - 1]
-		if style.round_section or rng.randf() >= style.pond_share:
+		if style.round_section or rng.randf() >= style.amount(&"pond_share"):
 			continue
-		var flooded := rng.randf() < style.flooded_hall_share
+		var flooded := rng.randf() < style.amount(&"flooded_hall_share")
 		var cells := _stretch(maze, cell, style.hallway_diameter_cells, rng.randi_range(2, style.flooded_hall_length) if flooded else 1, taken, rng)
 		if cells.is_empty():
 			continue
@@ -244,9 +244,9 @@ static func lay_out(layout: MazeLayout, maze: Maze, zones: Dictionary = {}) -> v
 		for each in cells:
 			taken[each] = true
 		var depth := rng.randf_range(style.pond_depth_range.x, style.pond_depth_range.y)
-		if rng.randf() < style.swim_pond_share and minf(rect.size.x, rect.size.y) >= 6.0:
+		if rng.randf() < style.amount(&"swim_pond_share") and minf(rect.size.x, rect.size.y) >= 6.0:
 			depth = style.swim_pond_depth * rng.randf_range(0.9, 1.1)
-		var fish := style.fish_per_school if depth >= FishSchool.SHALLOWEST and rng.randf() < style.fish_share else 0
+		var fish := style.fish_per_school if depth >= FishSchool.SHALLOWEST and rng.randf() < style.amount(&"fish_share") else 0
 		var round := 3.0 if flooded else minf(rect.size.x, rect.size.y) * 0.45
 		_put(layout, rect, LEVEL, depth, round, fish)
 
