@@ -128,7 +128,7 @@ extends Resource
 ## a jump over the ground.
 @export_range(0.0, 1.0) var hanging_vine_share := 0.0
 ## The share of hallways with a vine strung across from wall to wall: walked as a
-## tightrope from a buttress with ivy up it, and cut into two hanging vines. How
+## tightrope from a corbel set into the wall with a curtain of ivy from it, and cut into two hanging vines. How
 ## high (tightrope vine height range), as shares of the lower wall's height.
 @export_range(0.0, 1.0) var tightrope_vine_share := 0.0
 @export var tightrope_vine_height_range := Vector2(0.3, 0.75)
