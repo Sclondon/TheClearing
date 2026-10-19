@@ -145,7 +145,14 @@ func realize(layout: MazeLayout) -> void:
 		strand.to_held = piece.strand_held(true)
 		add_child(strand)
 		strands.append(strand)
-	_hang_from_strands()
+	# (the strung vines know where they hang only once in the tree: built off it,
+	# the vines are hung from them when it is ready)
+	if is_inside_tree():
+		_hang_from_strands()
+	elif not is_node_ready() and not ready.is_connected(_hang_from_strands):
+		ready.connect(_hang_from_strands, CONNECT_ONE_SHOT)
+	elif is_node_ready() and not tree_entered.is_connected(_hang_from_strands):
+		tree_entered.connect(_hang_from_strands, CONNECT_ONE_SHOT | CONNECT_DEFERRED)
 	for piece in layout.pieces(MazePiece.Kind.PIPE):
 		var pipe := SewerPipe.new()
 		pipe.length = piece.length
