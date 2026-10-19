@@ -169,5 +169,30 @@ func _run() -> void:
 	style.woodsmen_on = false
 	style.beasts_on = false
 	check("their boxes off: none", style.amount(&"woodsmen") == 0.0 and style.amount(&"beasts") == 0.0)
+	# In the round itself: put in by the first section's rules (crowded by the monster
+	# multiplier, but never more than one beast); the beast hidden
+	# until it finds somewhere down a hall from someone to show itself.
+	var woodsmen := 0
+	var round_beast: MazeBeast = null
+	for k in before:
+		var one: MazeEnemy = world.enemies.enemies[k]
+		if one is MazeWoodsman:
+			woodsmen += 1
+		elif one is MazeBeast:
+			round_beast = one
+	check("the round has its woodsmen (times the monster multiplier) and its one beast", woodsmen >= 1 and round_beast != null and not round_beast.shown(), "(%d woodsmen)" % woodsmen)
+	if round_beast:
+		round_beast.process_mode = Node.PROCESS_MODE_INHERIT
+		var cell: Vector2i = world.maze.cell_at(round_beast.global_position)
+		player.global_position = round_beast.nav.point(cell) + Vector3.UP * 0.3
+		await frames(5)
+		var shown := false
+		for i in 40:
+			round_beast._try_show()
+			if round_beast.shown():
+				shown = true
+				break
+		check("it finds somewhere to step out and show itself to someone alone", shown and round_beast.mode == MazeBeast.Mode.STEP_OUT,
+				"(%.0f m off)" % round_beast.global_position.distance_to(player.global_position))
 	print("woods_test: %d failures" % failures)
 	quit(1 if failures > 0 else 0)

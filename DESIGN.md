@@ -640,7 +640,8 @@ lays out the same spots from the seed; a hooked vine swings on each player's own
 - **The woodsman and the beast** (2026-10-18, the user: "Lets add a woodsmen with an axe and top hat and lantern,
   and a the Beast inspired character from Over the Garden Wall"). In the mood of *Over the Garden Wall*, in the
   maze's greys. One of each in a section by default (MazeStyle "What hunts it": `woodsmen` and `beasts`, each with
-  its box; the beast one at most), none in the clearing.
+  its box), none in the clearing; the monster multiplier makes three woodsmen of it, but there is never more than
+  one beast.
   - **The woodsman** (`MazeWoodsman`, `creatures/woodsman/`): a tall, gaunt, weary old man in a long coat and a
     battered top hat, an axe over his shoulder and an oil lantern held out before him. Its warm light is the one
     warm thing in the grey and really lights the halls round him (one light, no shadows; none on low detail, only
@@ -658,8 +659,8 @@ lays out the same spots from the seed; a hooked vine swings on each player's own
     great branching antlers like dead boughs, two pale burning eyes, and a lantern of its own glowing faintly.
     Rare and **mostly unseen**: hidden (not there at all) most of the time; every 14 to 34 s (sooner in the dark)
     it shows itself to the nearest player in its section, alone best (nobody else within 18 m; runners count as
-    company): it steps out of a side passage they cannot see into a straight hall at the far end from them and
-    stands there, a silhouette, eyes and lantern faint. By day 38 to 52 m off and less often; at night or in rain
+    company): it steps out of a side passage they cannot see into a straight hall at the far end from them (or,
+    with none, is simply there, far enough off that the mist hides its coming) and stands there, a silhouette, eyes and lantern faint. By day 38 to 52 m off and less often; at night or in rain
     and mist 18 to 30 m; with company further still and seldom. **It lures whoever is alone**: its lantern held up
     and out at them, brightening and swaying, and a low hum, a tune of its own, carrying down the hall; it comes on
     very slowly (0.75 m/s), and whoever it lures, on the ground in its sight, is drawn towards it (0.55 m/s, less

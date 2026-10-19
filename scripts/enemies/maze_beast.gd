@@ -347,6 +347,7 @@ func _try_show() -> void:
 	var eye := mark.global_position + Vector3.UP * 1.5
 	var from := maze.cell_at(mark.global_position)
 	var found: Array = []
+	var far_ends: Array = []
 	for step: Vector2i in Maze.STEPS:
 		var cell := from
 		for k in 10:
@@ -370,9 +371,12 @@ func _try_show() -> void:
 				if nav.sees(eye, nav.point(hide) + Vector3.UP * 2.0, 400.0):
 					continue
 				found.append([hide, cell])
-			# (in the mist and the dark, it may simply be there at the far end, where the mist hides its coming)
-			if found.is_empty() and dark > 0.5 and d > 26.0:
-				found.append([cell, cell])
+			# (with no side passage to step out of, it may simply be there, far enough off that the
+			# mist hides its coming)
+			if d > lerpf(32.0, 22.0, dark):
+				far_ends.append([cell, cell])
+	if found.is_empty():
+		found = far_ends
 	if found.is_empty():
 		return
 	var pick: Array = found[_rng.randi_range(0, found.size() - 1)]

@@ -87,6 +87,7 @@ var _pause_in := 12.0
 var _struck := false
 var _swing_at: Node3D
 var _beast: Node3D
+var _beast_in := 0.0
 var _chops := 0
 var _swings := 0
 var _warns := 0
@@ -242,16 +243,18 @@ func _physics_process(delta: float) -> void:
 			if _mode_time > 4.0:
 				_point = Vector3.INF
 				_set_mode(Mode.WALK)
-	# The beast, in his sight: he goes for it with his light.
-	var beast := _beast_seen()
+	# The beast, in his sight: he goes for it with his light. (Looked for as often as he looks about.)
+	_beast_in -= delta
+	if _beast_in <= 0.0:
+		_beast_in = look_every
+		_beast = _beast_seen()
+	var beast := _beast if is_instance_valid(_beast) and (_beast as MazeBeast).shown() else null
 	if beast and mode != Mode.HUNT and mode != Mode.FOLLOW:
-		_beast = beast
 		_warns += 1
 		figure.grunt()
 		_set_mode(Mode.HUNT)
 	if mode == Mode.HUNT:
 		if beast == null or _mode_time > 14.0:
-			_beast = null
 			_set_mode(Mode.WALK)
 		else:
 			_point = beast.global_position + Vector3.UP * 2.0
