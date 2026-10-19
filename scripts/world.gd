@@ -386,6 +386,8 @@ func put_player(at: Vector3, yaw: float) -> void:
 	var wilds := (get_node(^"Maze") as MazeBuilder).wilds
 	if wilds:
 		wilds.fill_near(at, 90.0)
+	# (and the bridges and strung vines round him solid at once, not a few a step)
+	RopeBridge.bodies_now(get_tree())
 
 
 ## Where a seat starts: round the middle of the clearing, facing out (or in

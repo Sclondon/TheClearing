@@ -21,7 +21,7 @@ https://sclondon.github.io/Warren/build/.
 
 - **Move:** a thumb on the left half of the screen (touch), WASD or arrows, or a gamepad stick.
 - **Look:** drag on the right half, the mouse, or the right stick. **Jump:** the jump button, Space, or A.
-- **Cut** a vine strung across a hall (walk it like a tightrope from the stone corbel at its end): the hand button, E or F.
+- **Cut** a vine strung across a hall (walk it like a tightrope from the ledge or bracket it is strung from): the hand button, E or F.
   It falls into two vines hanging from the walls; if you were on it, you keep hold of yours.
 - **Take** what lies about (a grappling hook, a backpack, a spear, a torch, a flare, a map scrap, a rope ladder): the act
   button near it. **Tap a slot** at the top (or 1 to 4; a pad's d-pad and Y) to take a tool into his hand or put it
@@ -84,7 +84,8 @@ leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened i
   branching, loops, entrances, rooms (`Maze.rooms`: open floors of whole blocks, a few halls into each from
   different sides, a column, a pine or a pond in the middle; `Maze.columns` are in the plan so the hunters go
   round them), and
-  what is on its walls (see DESIGN.md). `rings` of them are built (1 for now) and the grid runs to the outside of
+  what is on its walls (see DESIGN.md): its levels of ledge are a list (`mezzanines`, each a `MezzanineLevel`,
+  `scripts/mezzanine_level.gd`: height over the one under it, depth, share of faces). `rings` of them are built (1 for now) and the grid runs to the outside of
   the last. Each ring is grown from its first way in (into the first, a gate in the middle of each side of the
   clearing; into each later one, the gate out of the ring inside it), and its gate out put on its outside as far
   round the walls from its ways in as there is. The gate out of the last ring is the exit. The same seed always
@@ -121,9 +122,12 @@ leaf by leaf was most of what Generate cost. `tests/preview_check.tscn` opened i
 - `scripts/maze_features.gd` (`MazeFeatures`): the ways up, chosen from the seed. Terraces of stone against the walls
   like steps for something huge (a lower one 6.5 m up and 3 m deep, often an upper one at 13 m set back above
   it), with climbable ivy up their faces (`scripts/ivy_climb.gd`, `IvyClimb`, a `Ladder`) and sometimes on up to the
-  wall top, where he can walk to the next pier; vines to swing on (`scripts/vine.gd`, `Vine`, a `Rope`, its end
+  wall top, where he can walk to the next pier; stone brackets with ivy up to them; vines to swing on, hung last of
+  all on whatever is on the walls (`hang_vines`, after `MazeProps`; MazeStyle "Vines": mezzanine crossing, hanging
+  and random crossing densities, an overall density and a height limit) (`scripts/vine.gd`, `Vine`, a `Rope`, its end
   2.6 m up so it takes a jump); and rope bridges (`scripts/rope_bridge.gd`, `RopeBridge`: a chain of points that
-  sags, dips under anyone in the group `bridge_weights` and sways, its planks moving bodies) between terraces
+  sags, dips under anyone in the group `bridge_weights` and sways, its planks moving bodies, but only within
+  36 m of someone in `bridge_weights`: `RopeBridge.Bodies`) between terraces
   across a hall and between wall tops. And grappling hook spots (`scripts/grapple_spots.gd`, `GrappleSpots`, pieces
   of kind ANCHOR: rings on corbels up the walls and at ledges' lips, hooks and pipes; one MultiMesh per look per 48 m
   square, found by the hook through `NearIndex`), by MazeStyle "Grappling hook spots".
@@ -223,6 +227,7 @@ Godot is `C:/Program Files (x86)/Steam/steamapps/common/Godot Engine/godot.windo
 "$G" --headless --path . -s res://tests/smoke_test.gd     # alone: walk, walls, out, next maze, touch
 "$G" --headless --path . -s res://tests/climb_test.gd     # ivy onto a terrace, a vine, a rope bridge
 "$G" --headless --path . -s res://tests/strand_test.gd    # a strung vine: walked as a tightrope, cut into two vines
+"$G" --headless --audio-driver Dummy --path . -s res://tests/bodies_test.gd   # bodies as a round starts; a strung vine's planks made as he comes up to it, gone once he leaves
 "$G" --headless --path . -s res://tests/hunt_test.gd      # enemies in a round; caught, back to the clearing
 "$G" --headless --audio-driver Dummy --path . -s res://tests/runner_test.gd   # runners: a route, ivy, drawing a hunter, caught, leading to a gate, a puppet
 "$G" --path . --resolution 1280x720 --audio-driver Dummy -s res://tools/runner_shots.gd -- <folder>   # pictures of runners

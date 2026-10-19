@@ -82,20 +82,10 @@ extends Resource
 
 @export_group("Climbing")
 @export_subgroup("Mezzanine (ledges)")
-## How high the ledge along every wall face is, metres, a mezzanine to walk along (0: none).
-@export_range(0.0, 100.0, 0.001, "suffix:m") var mezzanine_height := 0.0
-## How deep the ledge stands out from the wall, metres.
-@export_range(0.5, 4.0, 0.001, "suffix:m") var mezzanine_depth := 1.2
-## How thick the ledge is, metres.
-@export_range(0.2, 2.0, 0.001, "suffix:m") var mezzanine_thickness := 0.6
-## How many levels of ledge there are, one over another (those over the first only along some faces).
-@export_range(1, 5, 1, "suffix:levels") var mezzanine_levels := 1
-## How far apart the levels are, one over the next, metres.
-@export_range(3.0, 30.0, 0.001, "suffix:m") var mezzanine_level_rise := 8.0
-## Of the faces with a level, how many have the level over it too (a share, 0 to 1).
-@export_range(0.0, 1.0, 0.001, "suffix:of faces") var mezzanine_upper_share := 0.5
-## How much shallower each level is than the one under it, metres (so they step back going up).
-@export_range(0.0, 1.5, 0.001, "suffix:m") var mezzanine_depth_step := 0.6
+## The levels of ledge along the walls, mezzanines to walk along, first to last going up: each its height over the
+## one under it, its depth and its share of faces (MezzanineLevel; Add Element, then New MezzanineLevel). They stack by
+## themselves, each standing on the one under it; the first runs along every wall. None: no ledges.
+@export var mezzanines: Array[MezzanineLevel] = []
 
 @export_subgroup("Terraces")
 ## Terraces: steps of stone against the walls, like those of something far bigger than a boy, ivy up their faces.
@@ -149,14 +139,6 @@ extends Resource
 @export_range(0.0, 8.0, 0.01, "suffix:m") var concrete_bridge_arch_rise := 2.2
 ## How wide a bridge's deck is, metres.
 @export_range(1.0, 8.0, 0.01, "suffix:m") var concrete_bridge_width := 3.0
-## Vines hanging from the side of a concrete bridge, down past the level under it (to the one under that, or the floor).
-@export var bridge_hanging_vines_on: bool:
-	get:
-		return feature_on(&"bridge_hanging_vines_on")
-	set(value):
-		_switch(&"bridge_hanging_vines_on", value)
-## How many concrete bridges have a vine hanging from them (a share, 0 to 1).
-@export_range(0.0, 1.0, 0.001, "suffix:of bridges") var bridge_hanging_vine_share := 0.6
 
 @export_group("Ivy")
 ## Climbable ivy up the walls from the ground: to the mezzanine if there is one, else part way up, never to the top.
@@ -187,84 +169,45 @@ extends Resource
 @export_range(0.0, 1.0, 0.001, "suffix:of faces") var mezzanine_ivy_share := 0.2
 
 @export_group("Vines")
-## Vines hanging from the top of a run of wall ivy (its own, with wall ivy off), down to a jump over the ground.
-@export var hanging_vines_on: bool:
+## Vines, hung on whatever is on the walls once the rest is laid out: the edges of the
+## ledges, the sides of concrete bridges, terraces, brackets, vents, outlets, culverts,
+## the sewer pipes' mouths and platforms, junction boxes, and bare wall (the user,
+## 2026-10-18: "all of the wall decor props should be independent of the vines- the
+## vines are hung on whats there"). Turning them off, or any of these, changes only the vines.
+@export var vines_on: bool:
 	get:
-		return feature_on(&"hanging_vines_on")
+		return feature_on(&"vines_on")
 	set(value):
-		_switch(&"hanging_vines_on", value)
-## How many wall faces have ivy with a vine hanging from its top (a share, 0 to 1).
-@export_range(0.0, 1.0, 0.001, "suffix:of faces") var hanging_vine_share := 0.0
-## Vines strung across hallways wall to wall: walked as tightropes from a corbel with ivy under it, cut into two hanging vines.
-@export var tightrope_vines_on: bool:
-	get:
-		return feature_on(&"tightrope_vines_on")
-	set(value):
-		_switch(&"tightrope_vines_on", value)
-## How many hallways have a vine strung across (a share, 0 to 1).
-@export_range(0.0, 1.0, 0.001, "suffix:of halls") var tightrope_vine_share := 0.0
-## How high a strung vine is: lowest and highest, as shares of the lower wall's height (0 to 1).
-@export var tightrope_vine_height_range := Vector2(0.3, 0.75)
-## Vines to swing on over terraces, hung from a beam out of the wall.
-@export var terrace_vines_on: bool:
-	get:
-		return feature_on(&"terrace_vines_on")
-	set(value):
-		_switch(&"terrace_vines_on", value)
-## How many terraces have a vine over them (a share, 0 to 1; for the lower and the upper each).
-@export_range(0.0, 1.0, 0.001, "suffix:of terraces") var terrace_vine_share := 0.5
-## Pairs of stone brackets high over the ledges, across a hall from each other: ivy up to one from the ledge (and up to
-## the ledge from the floor, both walls), and from it vines strung across to the other, swept down to the far ledge's
-## edge and hanging down to its own ledge (only along walls with a ledge; the user's concept of the first section).
-@export var bracket_vines_on: bool:
-	get:
-		return feature_on(&"bracket_vines_on")
-	set(value):
-		_switch(&"bracket_vines_on", value)
-## How many halls with a ledge along both walls have a pair of brackets (a share, 0 to 1).
-@export_range(0.0, 1.0, 0.001, "suffix:of halls") var bracket_vine_share := 0.3
-## How high the brackets are over the ledge's top: lowest and highest, metres.
-@export_custom(PROPERTY_HINT_RANGE, "1,80,0.1,suffix:m") var bracket_height_range := Vector2(7.0, 10.0)
-## Vines strung across the hall between the edges of the ledges at the same level, both walls, walked as tightropes.
-@export var ledge_strung_vines_on: bool:
-	get:
-		return feature_on(&"ledge_strung_vines_on")
-	set(value):
-		_switch(&"ledge_strung_vines_on", value)
-## How many halls with ledges level both sides have a vine strung between them, at each level (a share, 0 to 1).
-@export_range(0.0, 1.0, 0.001, "suffix:of halls") var ledge_strung_vine_share := 0.2
-## Vines swept down across the hall, from the edge of a ledge to the edge of the one a level under it on the far wall.
-@export var swept_vines_on: bool:
-	get:
-		return feature_on(&"swept_vines_on")
-	set(value):
-		_switch(&"swept_vines_on", value)
-## How many halls with ledges both sides have a vine swept down across, at each level over the first (a share, 0 to 1).
-@export_range(0.0, 1.0, 0.001, "suffix:of halls") var swept_vine_share := 0.25
-## Vines hanging from the edge of each level of ledge down to the level under it, or the floor, to climb up to it.
-@export var ledge_hanging_vines_on: bool:
-	get:
-		return feature_on(&"ledge_hanging_vines_on")
-	set(value):
-		_switch(&"ledge_hanging_vines_on", value)
-## How many walls with a ledge have a vine hanging from its edge, at each level (a share, 0 to 1).
-@export_range(0.0, 1.0, 0.001, "suffix:of faces") var ledge_hanging_vine_share := 0.1
-## Vines grown straight out of a wall's face, roots and a bunch of leaves where they come out: some hang a random way
-## down, some sweep down across the hall to the far wall or to the floor part way across (the user, 2026-10-18: "Vines
-## should be able to connect directly to the wall and hang a random amount down across the hall as well").
-@export var wall_vines_on: bool:
-	get:
-		return feature_on(&"wall_vines_on")
-	set(value):
-		_switch(&"wall_vines_on", value)
-## How many wall faces have a vine grown out of them (a share, 0 to 1).
-@export_range(0.0, 1.0, 0.001, "suffix:of faces") var wall_vine_share := 0.05
-## How high up the wall they grow out: lowest and highest, metres over the floor (or the top ledge under them).
-@export_custom(PROPERTY_HINT_RANGE, "1,60,0.1,suffix:m") var wall_vine_height_range := Vector2(4.0, 14.0)
-## Of the vines out of a wall, how many sweep down across the hall instead of hanging (a share, 0 to 1).
-@export_range(0.0, 1.0, 0.001, "suffix:of vines") var wall_vine_sweep_share := 0.45
+		_switch(&"vines_on", value)
+## Vines strung across a hall between the ledges facing each other, edge to edge: at the same level, or swept down from
+## one level to the level under it on the far side (vines per hall with ledges both sides, at each level; 0.25: one hall
+## in four).
+@export_range(0.0, 2.0, 0.001, "or_greater", "suffix:per hall per level") var mezzanine_crossing_density := 0.25
+## Vines hanging straight down from anything they can hang on (the chance for each ledge edge, at each level; more on
+## the things on the walls, fewer on bare wall: see MazeFeatures.PULL).
+@export_range(0.0, 1.0, 0.001, "suffix:per anchor") var hanging_vine_density := 0.1
+## Vines strung or swept across a hall from anything else on the walls (brackets, vents, sewer pipes, junction boxes,
+## terraces, ledges with none across from them, bare wall) to the far side, or swept down to the floor part way across
+## (the chance for each, as for hanging vines).
+@export_range(0.0, 1.0, 0.001, "suffix:per anchor") var random_crossing_density := 0.04
+## How many vines in all: times each of the three above (1: as they say; 0: none).
+@export_range(0.0, 4.0, 0.01, "or_greater", "suffix:x") var vine_density := 1.0
+## How high up the walls vines go: no vine is hung from anything higher than this, as a percentage of the height of
+## the wall it is on (each wall's own; ledges over it have none).
+@export_range(0.0, 100.0, 0.1, "suffix:% of wall height") var vine_height_limit := 75.0
 
 @export_group("Wall decor")
+## Stone brackets set into the walls, ivy up to each from the floor or from the ledge under it (laid out whether or
+## not there are vines: vines hang from them and are strung across from them, as from anything on the walls).
+@export var brackets_on: bool:
+	get:
+		return feature_on(&"brackets_on")
+	set(value):
+		_switch(&"brackets_on", value)
+## How many wall faces have a bracket (a share, 0 to 0.5).
+@export_range(0.0, 0.5, 0.001, "suffix:of faces") var bracket_share := 0.04
+## How high a bracket is over what is under it (the floor, or the top ledge along its wall): lowest and highest, metres.
+@export_custom(PROPERTY_HINT_RANGE, "1,80,0.1,suffix:m") var bracket_height_range := Vector2(7.0, 10.0)
 ## Old vents high on the walls: louvred or round, rusted, some of them big (dressing, nothing to climb).
 @export var vents_on: bool:
 	get:
@@ -355,16 +298,8 @@ extends Resource
 @export_range(0.0, 1.0, 0.001, "suffix:of cables") var snapped_cable_share := 0.25
 ## Of the cables not snapped, how many have an old dead lamp hanging from them (a share, 0 to 1).
 @export_range(0.0, 1.0, 0.001, "suffix:of cables") var cable_lamp_share := 0.3
-## Cables beside the vines: in among the strung vines, and a cable's end beside the hanging ones.
-@export var cables_by_vines_on: bool:
-	get:
-		return feature_on(&"cables_by_vines_on")
-	set(value):
-		_switch(&"cables_by_vines_on", value)
-## How many strung vines have a cable beside them (a share, 0 to 1; hanging vines 0.6 of this).
-@export_range(0.0, 1.0, 0.001, "suffix:of vines") var cable_by_vine_share := 0.0
-## Old junction boxes high on both walls of a hall over the ledges, the cable between them grown over by a vine
-## (walked as a tightrope; only along walls with a ledge).
+## Old junction boxes high on both walls of a hall over the ledges, a cable between them (only along walls with a
+## ledge; a vine is strung between them now and then, as the vines say).
 @export var junction_boxes_on: bool:
 	get:
 		return feature_on(&"junction_boxes_on")
@@ -793,16 +728,9 @@ const FEATURES := {
 	&"wall_ivy_on": [&"wall_ivy_share", &"wall_ivy_height_range"],
 	&"ivy_to_wall_top_on": [&"ivy_to_wall_top_share"],
 	&"mezzanine_ivy_on": [&"mezzanine_ivy_share"],
-	&"hanging_vines_on": [&"hanging_vine_share"],
-	&"tightrope_vines_on": [&"tightrope_vine_share", &"tightrope_vine_height_range"],
-	&"terrace_vines_on": [&"terrace_vine_share"],
-	&"bracket_vines_on": [&"bracket_vine_share", &"bracket_height_range"],
-	&"ledge_strung_vines_on": [&"ledge_strung_vine_share"],
-	&"swept_vines_on": [&"swept_vine_share"],
 	&"concrete_bridges_on": [&"concrete_bridge_share", &"concrete_bridge_arch_rise", &"concrete_bridge_width"],
-	&"bridge_hanging_vines_on": [&"bridge_hanging_vine_share"],
-	&"ledge_hanging_vines_on": [&"ledge_hanging_vine_share"],
-	&"wall_vines_on": [&"wall_vine_share", &"wall_vine_height_range", &"wall_vine_sweep_share"],
+	&"vines_on": [&"vine_density", &"mezzanine_crossing_density", &"hanging_vine_density", &"random_crossing_density", &"vine_height_limit"],
+	&"brackets_on": [&"bracket_share", &"bracket_height_range"],
 	&"vents_on": [&"wall_vent_share"],
 	&"outlets_on": [&"outlet_share", &"outlet_drip_share"],
 	&"wall_cables_on": [&"wall_cable_share"],
@@ -812,7 +740,6 @@ const FEATURES := {
 	&"manholes_on": [&"manhole_share"],
 	&"clutter_on": [&"clutter_share", &"clutter_heap_size", &"clutter_barrel_share"],
 	&"cables_on": [&"cable_share", &"cable_height_range", &"snapped_cable_share", &"cable_lamp_share"],
-	&"cables_by_vines_on": [&"cable_by_vine_share"],
 	&"junction_boxes_on": [&"junction_box_share", &"junction_box_height_range"],
 	&"slanting_cables_on": [&"slanting_cable_share", &"slanting_cable_heights"],
 	&"ledge_cables_on": [&"ledge_cable_share", &"ledge_cable_fix_height"],
@@ -831,9 +758,8 @@ const FEATURES := {
 }
 ## Features that are only of another (hidden, box and all, while that is off).
 const PART_OF := {
-	&"terrace_bridges_on": &"terraces_on", &"ivy_to_wall_top_on": &"terraces_on", &"terrace_vines_on": &"terraces_on",
+	&"terrace_bridges_on": &"terraces_on", &"ivy_to_wall_top_on": &"terraces_on",
 	&"flooded_halls_on": &"ponds_on", &"swim_ponds_on": &"ponds_on", &"fish_on": &"ponds_on",
-	&"bridge_hanging_vines_on": &"concrete_bridges_on",
 }
 ## How much of a feature there is when its box is turned on with its amount at 0
 ## and nothing to go back to (its own default is 0).
@@ -852,12 +778,21 @@ const RENAMED := {
 	&"straight": &"straight_on_chance", &"branching": &"side_branch_chance", &"loops": &"loop_share",
 	&"entrance": &"entrance_corridor_cells", &"doorway": &"entrance_doorway_width",
 	&"terraces": &"terrace_share", &"upper_terraces": &"upper_terrace_share", &"bridges": &"terrace_bridge_share",
-	&"ivy_to_top": &"ivy_to_wall_top_share", &"terrace_vines": &"terrace_vine_share",
+	&"ivy_to_top": &"ivy_to_wall_top_share",
 	&"top_bridges": &"wall_top_bridge_share", &"wall_ivy": &"wall_ivy_share", &"ivy_reach": &"wall_ivy_height_range",
-	&"wall_vines": &"hanging_vine_share", &"strands": &"tightrope_vine_share",
-	&"strand_reach": &"tightrope_vine_height_range", &"undergrowth": &"plant_density",
+	&"undergrowth": &"plant_density",
 	&"ledge_depth": &"mezzanine_depth", &"ledge_thick": &"mezzanine_thickness",
 }
+## The vine rules there were before the three densities (2026-10-18), as saved in older
+## mazes: let go of when they load (the vines are as the new rules say).
+const RETIRED := [
+	&"hanging_vine_share", &"tightrope_vine_share", &"tightrope_vine_height_range", &"terrace_vine_share",
+	&"bracket_vine_share", &"ledge_strung_vine_share", &"swept_vine_share", &"ledge_hanging_vine_share",
+	&"wall_vine_share", &"wall_vine_height_range", &"wall_vine_sweep_share", &"bridge_hanging_vine_share",
+	&"cable_by_vine_share", &"terrace_vines", &"wall_vines", &"strands", &"strand_reach",
+	&"hanging_vines_on", &"tightrope_vines_on", &"terrace_vines_on", &"bracket_vines_on", &"ledge_strung_vines_on",
+	&"swept_vines_on", &"ledge_hanging_vines_on", &"wall_vines_on", &"bridge_hanging_vines_on", &"cables_by_vines_on",
+]
 
 
 ## Whether a feature (its box: a key of FEATURES) is on: as set by hand, or else
@@ -922,11 +857,98 @@ func _set(property: StringName, value: Variant) -> bool:
 	if RENAMED.has(property):
 		set(RENAMED[property], value)
 		return true
+	if RETIRED.has(property):
+		return true
 	if property == &"ledge":
 		# (it was a share of the maze walls' height)
-		mezzanine_height = float(value) * maze_wall_height
+		return _set(&"mezzanine_height", float(value) * maze_wall_height)
+	if OLD_MEZZANINE.has(property):
+		_old_mezzanine[property] = value
+		_from_old_mezzanine()
 		return true
 	return false
+
+
+# --- The levels of ledge (mezzanines) ---
+
+## The rules the levels of ledge were made by before the list of them (2026-10-18), and
+## what each was when not saved: a section saved with them is given the levels they made.
+const OLD_MEZZANINE := {
+	&"mezzanine_height": 0.0, &"mezzanine_depth": 1.2, &"mezzanine_thickness": 0.6, &"mezzanine_levels": 1,
+	&"mezzanine_level_rise": 8.0, &"mezzanine_upper_share": 0.5, &"mezzanine_depth_step": 0.6,
+}
+## The old rules as loaded (OLD_MEZZANINE), and whether `mezzanines` was made from them.
+var _old_mezzanine := {}
+var _mezzanines_from_old := false
+
+## How near the top of its walls the top of a level of ledge may come, metres; and how
+## wide a way along a hall ledges facing each other at the same level leave at least.
+const LEDGE_UNDER_TOP := 2.0
+const LEDGE_WALKWAY := 1.5
+
+
+## The levels of ledge as the old rules loaded say (once the list is empty, or was made
+## from them): the first along every wall `mezzanine_height` up, `mezzanine_depth` deep;
+## each over it `mezzanine_level_rise` higher, `mezzanine_depth_step` shallower (0.6 m at
+## least), along `mezzanine_upper_share` of the faces under it.
+func _from_old_mezzanine() -> void:
+	if not mezzanines.is_empty() and not _mezzanines_from_old:
+		return
+	var old := OLD_MEZZANINE.duplicate()
+	old.merge(_old_mezzanine, true)
+	var made: Array[MezzanineLevel] = []
+	if float(old.mezzanine_height) > 0.0:
+		for level in maxi(int(old.mezzanine_levels), 1):
+			var deep := float(old.mezzanine_depth) if level == 0 else maxf(float(old.mezzanine_depth) - level * float(old.mezzanine_depth_step), 0.6)
+			made.append(MezzanineLevel.made(float(old.mezzanine_height) if level == 0 else float(old.mezzanine_level_rise), deep,
+				1.0 if level == 0 else float(old.mezzanine_upper_share)))
+	mezzanines = made
+	_mezzanines_from_old = true
+
+
+## How many levels of ledge there are: those of `mezzanines` up to the first that is
+## empty, rises nothing, or would come within LEDGE_UNDER_TOP of the maze walls' tops.
+func mezzanine_count() -> int:
+	var top := 0.0
+	var count := 0
+	for level in mezzanines:
+		if level == null or level.height <= 0.0:
+			break
+		top += level.height
+		if top > maze_wall_height - LEDGE_UNDER_TOP:
+			break
+		count += 1
+	return count
+
+
+## Whether its walls have ledges along them.
+func has_mezzanine() -> bool:
+	return mezzanine_count() > 0
+
+
+## How high the top of level `level` is (0 the first; under it, the ground: 0), metres.
+func level_height(level: int) -> float:
+	var top := 0.0
+	for k in mini(level + 1, mezzanine_count()):
+		top += mezzanines[k].height
+	return top
+
+
+## How deep level `level` stands out from the wall, metres: no deeper than leaves
+## LEDGE_WALKWAY between it and one facing it across a hall of the section (and 0.3 m
+## at least).
+func level_depth(level: int) -> float:
+	if level < 0 or level >= mezzanine_count():
+		return 0.0
+	var most := (hallway_diameter_cells * Maze.CELL - maze_wall_diameter - LEDGE_WALKWAY) * 0.5
+	return clampf(mezzanines[level].depth, 0.3, maxf(most, 0.3))
+
+
+## Of the faces with level `level` - 1, how many have level `level` too (the first: every one).
+func level_share(level: int) -> float:
+	if level <= 0:
+		return 1.0
+	return mezzanines[level].share if level < mezzanine_count() else 0.0
 
 
 ## The groups `bare` empties: every count in them goes to none.
@@ -959,7 +981,7 @@ func bare() -> MazeStyle:
 	var copy: MazeStyle = duplicate(true)
 	copy.section_width_cells = 1
 	copy.room_count = 0
-	copy.mezzanine_height = 0.0
+	copy.mezzanines = []
 	copy.loot_items = 0
 	copy.abandoned_camps = 0
 	var group := ""
@@ -997,17 +1019,16 @@ static func made(depth_cells: int, hallway_cells: int, straightness: float, bran
 static func avenues() -> MazeStyle:
 	var style := made(6, 2, 0.5, 0.0, 0.0)
 	style.maze_wall_diameter = 12.0
-	style.mezzanine_height = style.maze_wall_height / 3.0
-	# (one thin ledge: a lip of concrete, not a balcony)
-	style.mezzanine_levels = 1
-	style.mezzanine_thickness = 0.25
-	style.mezzanine_depth = 0.9
+	# (one narrow ledge a third of the way up: a lip of concrete, not a balcony)
+	style.mezzanines = [MezzanineLevel.made(style.maze_wall_height / 3.0, 0.9)]
 	style.terrace_share = 0.0
 	style.wall_top_bridge_share = 0.0
 	style.wall_ivy_share = 0.1
-	style.hanging_vine_share = 0.08
-	style.tightrope_vine_share = 0.22
-	style.tightrope_vine_height_range = Vector2(0.45, 0.75)
+	# (vines hung on the ledges, the brackets and the sewer parts, and strung across the halls: a few more than the defaults)
+	style.bracket_share = 0.15
+	style.hanging_vine_density = 0.1
+	style.random_crossing_density = 0.15
+	style.mezzanine_crossing_density = 0.4
 	style.sewer_pipe_share = 0.08
 	style.plant_density = 0.8
 	style.harpies = 2
@@ -1017,8 +1038,8 @@ static func avenues() -> MazeStyle:
 	# cables strung high across the halls among the vines, some snapped, lamps)
 	style.abandoned_camps = 3
 	style.clutter_share = 0.07
-	style.cable_share = 0.14
-	style.cable_by_vine_share = 0.6
+	# (more of them since they no longer come with the vines: 2026-10-18)
+	style.cable_share = 0.2
 	style.wall_cable_share = 0.05
 	return style
 
@@ -1042,19 +1063,17 @@ static func galleries() -> MazeStyle:
 	style.maze_wall_diameter = 12.0
 	# (three ways in from the Avenues)
 	style.entrance_count = 3
-	style.mezzanine_height = 8.0
-	style.mezzanine_depth = 2.4
-	style.mezzanine_levels = 3
-	style.mezzanine_level_rise = 8.0
-	style.mezzanine_upper_share = 0.55
-	style.mezzanine_depth_step = 0.6
+	# (three levels 8 m apart, each 0.6 m shallower than the one under it, the upper two along about half the faces under them)
+	style.mezzanines = [MezzanineLevel.made(8.0, 2.4), MezzanineLevel.made(8.0, 1.8, 0.55), MezzanineLevel.made(8.0, 1.2, 0.55)]
 	style.mezzanine_ivy_share = 0.25
 	style.mezzanine_bridge_share = 0.2
-	style.tightrope_vine_share = 0.15
+	style.bracket_share = 0.1
+	style.mezzanine_crossing_density = 0.4
+	style.hanging_vine_density = 0.14
+	style.random_crossing_density = 0.07
 	style.terrace_share = 0.0
 	style.wall_top_bridge_share = 0.0
 	style.wall_ivy_share = 0.1
-	style.hanging_vine_share = 0.04
 	style.plant_density = 0.6
 	style.colossi = 1
 	sewers(style, 0.8)

@@ -53,7 +53,7 @@ enum Kind { WALL, PIER, TERRACE, IVY, VINE, BRIDGE, TREE, BEACON, STRAND, PIPE, 
 	set(value):
 		arch = value
 		_refresh()
-## A ledge along a wall (MazeStyle.mezzanine_height): a step of it, standing from
+## A ledge along a wall (MazeStyle.mezzanines): a step of it, standing from
 ## the ground or the level under it (only a note: the plan of the maze ignores it).
 @export var ledge := false
 ## How tall a patch of ivy is, how long a vine, or a pipe from mouth to mouth

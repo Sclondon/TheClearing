@@ -793,7 +793,7 @@ func _undergrowth(pieces: MazeLayout) -> void:
 			# (in front of the step of ledge along its foot, if it has one)
 			var style: MazeStyle = maze.styles[ring - 1]
 			if maze.has_ledge(cell, step):
-				face -= s * style.mezzanine_depth
+				face -= s * style.level_depth(0)
 			# Short grass along the foot of some faces: a run of close clumps a few metres long.
 			if rng.randf() < grassy:
 				var from := rng.randf_range(-0.5, 0.2) * Maze.CELL

@@ -31,7 +31,7 @@ func _run() -> void:
 	world.add_child(camera)
 	camera.make_current()
 	var maze = world.maze
-	var high: float = maze.styles[ring - 1].mezzanine_height
+	var high: float = maze.styles[ring - 1].level_height(0)
 	var shots := 0
 	for i in maze.size * maze.size:
 		var cell := Vector2i(i % maze.size, i / maze.size)

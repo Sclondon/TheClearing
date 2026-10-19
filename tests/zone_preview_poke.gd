@@ -8,7 +8,7 @@ extends Node
 ##     "$G" --headless --path . --editor tests/zone_preview_check.tscn
 
 const POKES := [
-	[1, "tightrope_vine_share", 0.4],
+	[1, "random_crossing_density", 0.4],
 	[2, "clutter_share", 0.2],
 	[1, "maze_wall_height", 90.0],
 	[0, "straight_on_chance", 0.3],

@@ -137,7 +137,7 @@ rocks are bumped into; the swamp's and plains' ground is walked on (Maze.ground_
 | Halls | 2 cells wide (about 16 m between walls) | 1 cell | 1 cell |
 | Walls | 12 m thick, 34 m high | 3.2 m thick | 3.2 m thick |
 | Passages | go on straight half the time; no extra branching; no loops | winding, forking | branching often, many loops |
-| On the walls | climbable ivy up a tenth of the faces (a third to two-thirds of the way up, never to the top), vines hanging from some of it, vines strung across an eighth of the halls (walked as tightropes from a stone corbel set into the wall, a curtain of ivy hanging from it (no buttresses: the user, 2026-10-18, "I never asked for butresses"); the act button cuts one into two hanging vines) | terraces, ivy, vines, rope bridges | as Narrows |
+| On the walls | climbable ivy up a tenth of the faces (a third to two-thirds of the way up, never to the top), stone brackets with ivy up to them, vines hung on the ledges, the brackets and the sewer parts and strung across the halls (walked as tightropes; no buttresses: the user, 2026-10-18, "I never asked for butresses"; the act button cuts one into two hanging vines) | terraces, ivy, vines, rope bridges | as Narrows |
 
 What a style can set: depth (cells), hall width (cells), wall thickness, its border wall (the wall round its outside: how high, and extra cells of solid wall
 thickening it on the far side), how often passages go straight, how often they branch, how many loops, narrow entrances (a passage of
@@ -165,29 +165,44 @@ Each feature of a section has its own on/off box in the maze editor's Inspector,
 under it only while it is on (the user, 2026-10-18: "Rather than a share slider - there should be check boxes to turn
 on and off each feature for the section in the editor. Vines and ivy should be their own sections not in climbing,
 same with sewers (wall decor) and tunnels."). The groups:
-- **Climbing**: the mezzanine (ledges along the walls: height, depth, levels), terraces (how many, upper terraces),
-  arched concrete bridges between ledges at the same level (how many, deck width, arch rise, vines hanging from them),
+- **Climbing**: the mezzanines (a list of levels of ledge along the walls, each with its height, depth and share of
+  faces; see "The levels of ledge" below), terraces (how many, upper terraces),
+  arched concrete bridges between ledges at the same level (how many, deck width, arch rise),
   rope bridges (between terraces, wall top to wall top, between mezzanine ledges).
 - **Ivy**: wall ivy from the ground (how many, how high), ivy on from upper terraces to the wall top, ivy between
   mezzanine levels.
-- **Vines**: hanging vines (from the top of a run of ivy), strung vines walked as tightropes (how many, how high),
-  vines over terraces, bracket vines, vines strung between ledges, vines swept down across, vines hanging from ledges,
-  vines out of the walls (how many, how high, how many sweep across).
-- **Wall decor**: vents, outlet pipes (and how many drip), cables looped along the walls.
+- **Vines**: one box and five settings, hung on whatever is on the walls (see "The vines" below): mezzanine crossing
+  density, hanging density, random crossing density, overall vine density, and a height limit (a percentage of
+  the wall's height).
+- **Wall decor**: stone brackets (with ivy up to them), vents, outlet pipes (and how many drip), cables looped along
+  the walls.
 - **Tunnels** (ways through and down): sewer pipes through the walls (how many, how high), culverts, drain grates,
   manholes.
-- **Signs of life**: heaps of boxes and barrels, cables across the halls (snapped, lamps), cables beside the vines,
-  junction boxes with a vine-grown cable between, slanting cables, cables down from a ledge.
+- **Signs of life**: heaps of boxes and barrels, cables across the halls (snapped, lamps),
+  junction boxes with a cable between, slanting cables, cables down from a ledge.
 - **Grappling hook spots**: routes up the walls, rings at ledge lips, hooks to swing from.
 - **Plants**: undergrowth along the wall feet, wall grass, corn. **Water**: ponds, and within them flooded halls,
   swimming ponds and fish.
 
-Boxes that only matter with another on (bridges, vines and ivy-to-top of terraces; flooded halls, swimming ponds and
+Boxes that only matter with another on (bridges and ivy-to-top of terraces; flooded halls, swimming ponds and
 fish of ponds) are hidden while it is off. A box is saved in the style's `features_switched`; a section saved before
 the boxes (or a preset) has each feature on when its amount is more than 0, so it looks as it did. Off reads as an
 amount of 0 (`MazeStyle.amount`), so the same random numbers are drawn and a maze with nothing changed is the same.
 Every setting shows its unit in the Inspector (m, cells, s, "of faces", "of halls", per hectare...; shares are 0 to
 1) and has a one-line tooltip (the user, 2026-10-18: "the editor also needs units - its hard to tell what im changing").
+
+**The levels of ledge** (MazeStyle `mezzanines`, a list of `MezzanineLevel`; the user, 2026-10-18: "I should be able to
+add mezzanines as a list and control them indvidiually, height and depth. The automatically get stacked on top of
+eachother, and the limits of depth and theight should be the whole hallway for edditing purposes"). Add Element adds a
+level over the last. Each has its *height* (m over the top of the level under it; the first, over the ground), its
+*depth* (m out from the wall) and its *share* (of the faces with the level under it, how many have it too; the first
+runs along every wall, a step of stone from the floor). They stack by themselves, each standing on the one under it,
+and step back where each is shallower. The sliders run to 120 m (the highest maze wall) and 56 m (across the widest
+hall, four cells), and further typed in; laying out keeps them sensible for the section (`MazeStyle.level_height`,
+`level_depth`): the levels stop at the first that would come within 2 m of the maze walls' tops (or rises nothing),
+and no level is deeper than leaves a 1.5 m walkway between it and one facing it across a hall of the section's width.
+A section saved with the old rules (mezzanine height, depth, levels, level rise, depth step, upper share; thickness
+was unused) is given the levels they made when it loads (`MazeStyle._set`): the same ledges as before.
 
 Because walls are thick, any opening one cell long through a wall is itself a slot (cell minus wall thickness):
 that is how the gates become slots.
@@ -224,26 +239,24 @@ ring has is its style's choice. The wall tops are a second level you can travel 
 vines and wires should work in zone 1 - its a slice of the maze, not to scale"; "I also included concept art for zone
 2, how the mezzanines and vines should work, and there should be arched concrete bridges"; "Keep the ivy - I just left
 it off for simplicity"). All of it is rules, each with its box, laid out only where both walls of a hall have a ledge
-(`MazeFeatures._ledge_vines`, `MazeProps._ledge_cables`), after everything else and with numbers of their own, so a
-maze laid out before is otherwise as it was:
+(`MazeFeatures._concrete_bridges`, `MazeProps._ledge_cables`; the vines are hung on all of it afterwards, see "The
+vines"), with numbers of their own, so a maze laid out before is otherwise as it was:
 
-- **Section 1** (one ledge along the walls, the hall narrow under it and full width over it). *Bracket vines*
-  (Vines): a pair of stone brackets high over the ledges across a hall (bracket height over the ledge, m). Under one,
-  ivy from the floor to the ledge's edge and from the ledge up to the bracket; from it a vine strung across to the
-  other bracket, a vine swept down to the far ledge's edge and a vine hanging down to its own ledge; ivy to the ledge
-  under the other one too. So: climb the ivy to the ledge, the ivy (or the vine) to the bracket, and walk or swing the
-  vines from there. *Vines strung between the ledges* (at each level: under the ledges here), *vines hanging from a
-  ledge's edge* to the level under it or the floor. Wires (Signs of life, props, not climbed): *junction boxes* high on
-  both walls (height over the ledge, m) with the cable between them grown over by a vine (that vine is a strung vine,
-  walked and cut as any), *slanting cables* from high on one wall down to the other (low end and high end over the
+- **Section 1** (one ledge along the walls, the hall narrow under it and full width over it). *Brackets*
+  (Wall decor): stone brackets high over the ledges (height over the ledge, m), ivy up to each from the ledge; vines
+  are strung across from them, swept down to the far ledge and hung from them. So: climb the ivy to the ledge, the ivy
+  to the bracket, and walk or swing the vines from there. *Vines strung between the ledges* (at each level: under the
+  ledges here), *vines hanging from a ledge's edge* to the level under it or the floor. Wires (Signs of life, props, not climbed): *junction boxes* high on
+  both walls (height over the ledge, m) with a cable between them (a vine is now and then strung between them too, as
+  from anything on the walls), *slanting cables* from high on one wall down to the other (low end and high end over the
   ledge, m), and *ledge cables* from a ledge's edge across and down to the far wall under its ledge (fixed at a share
   of the ledge's height), hanging on from there to the floor. The undergrowth at the walls' feet is the Plants one.
 - **Section 2** (three levels of ledge, each stepping back from the one under it, so the hall is a narrow channel at
   the floor and widens level by level). *Concrete bridges* (Climbing): arched concrete bridges across the hall
   between the ledges at the same level, over the first (deck width, m; arch rise, m): a flat deck flush with the
   ledges, its underside an arch of blocks of the ledges' concrete worn round as the walls are; solid, walked across;
-  ivy up to each end from the floor, level by level, so every bridge can be climbed to. *Vines hanging from the
-  bridges* past the level under them (to the one under that, or the floor). *Swept vines* (Vines) from a ledge's edge
+  ivy up to each end from the floor, level by level, so every bridge can be climbed to. Vines hang from the
+  bridges' sides past the level under them (to the one under that, or the floor), and are swept from a ledge's edge
   down across to the far ledge a level under it. And, as in section 1, vines strung across between the ledges at each
   level (over the top ledges, across the floor's channel) and hanging from each level's edge to the one under it.
 
@@ -267,18 +280,36 @@ curling back, ten triangles (`Vine.leaf_mesh`), each stalk's foot on the stem; i
 twelve triangles (`IvyClimb.leaf_mesh`), each on its stalk off one of the stems, which lie on the wall's face, the
 leaf lying over the wall with its tip just off it.
 
-**Vines out of the walls** (Vines, 2026-10-18: "Vines should be able to connect directly to the wall and hang a
-random amount down across the hall as well as the designated anchor points"): as well as from the corbels, brackets,
-ledges' edges and bridges, vines grow straight out of a wall's face, their roots and a bunch of leaves where they come
-out (`MazeFeatures._wall_vines`, after everything else, on faces nothing else has taken, each face with numbers of its
-own). Where a wall has ledges they come out under the first or over the top one. Some hang a random way down (no
-lower than a hop over what is under them); the rest sweep down across the hall, to the far wall lower down or, from
-under the ledges or a wall without, to the floor part way across, rooted there (sagging little, so as not to dip into
-it), clear of the ledges both sides. They are Vines and VineStrands as any: swung on, climbed, walked and cut.
+**The vines** (2026-10-18: "all of the wall decor props should be independent of the vines- the vines are hung on
+whats there. There should be 3 sliders- one for mezzanine crossing density, one for hanging straight down vine
+desnity, a thirdn for random corssing vine desnity ... and fourth and final for overall vine density. There hsould
+also be a single height limit as a percentage of hte wall height"). Everything on the walls is laid out by its own
+rules first, vines or none: ledges, terraces, brackets, sewer pipes, concrete bridges (`MazeFeatures`), then vents,
+outlets, culverts, junction boxes and cables (`MazeProps`). Then the vines are hung on what is there
+(`MazeFeatures.hang_vines`, last of all in `MazeLayout`), each place a vine may hang with numbers of its own, so the
+vines' settings change only the vines:
+- *Mezzanine crossing density* (vines per hall with ledges both sides, at each level): strung edge to edge across
+  between ledges at the same level, or swept down from a level to the one under it on the far side.
+- *Hanging density* (per anchor): a vine hanging straight down from a ledge's edge (every level), a bridge's side, a
+  terrace, a bracket, a sewer pipe's platform, over the top of a vent, an outlet, a culvert or a junction box (to a
+  hop over what is under it), or out of bare wall (a random way down).
+- *Random crossing density* (per anchor): a vine strung or swept across the hall from any of those (but a ledge with
+  a ledge across from it, and a bridge): to a thing on the far wall about across from it (a bracket, a junction
+  box...), to the far wall itself (lower down, or up from low down), or swept down to the floor part way across,
+  rooted there; clear of the ledges both sides.
+- The densities are the chance for each ledge edge; bare wall faces have 0.3 of it, things on the walls 4 times it
+  to hang and 1.5 times it to be strung across (`MazeFeatures.PULL`).
+- *Overall vine density* (x) multiplies all three. *Height limit* (% of the wall's height, each wall's own): nothing
+  higher holds a vine, and ledges over it have none.
+
+Vines out of bare wall have their roots and a bunch of leaves where they come out, under the first ledge or over the
+top one. They are Vines and VineStrands as any: swung on, climbed, walked and cut. Mazes saved with the old vine
+rules (hanging, tightrope, terrace, bracket, ledge strung, swept, ledge hanging, wall and bridge vines, cables by
+vines) load with them let go of (`MazeStyle.RETIRED`).
 
 Pictures: `tools/zone1_vines_shots.gd` (pass `zone2` for the second section, `corners` for ledges round wall ends and
 sewer props on ledges, `anchors` for where vines are held, `leaves` for the leaves close up,
-`wallvines` for the vines out of the walls).
+`wallvines` for the vines out of the walls, `hung` for vines hung on the props).
 
 **Grappling hook spots** (added 2026-10-18 at the user's request: "we should also have grappling hook spots"). Places
 made for the grappling hook to catch, in rusty iron dark against the concrete, so that a way up can be seen from below
@@ -901,8 +932,7 @@ section's MazeStyle:
   small pipes with a rust stain down the wall and a puddle under them (some dripping), drain grates by the walls and
   manhole covers out in the halls (now and then pushed half off the black shaft).
 - **Signs of life** (the Avenues): three camps left; heaps of boxes and barrels against the walls (solid, some
-  stacked, a barrel fallen over); old black cables strung high across the halls, in among the strung vines and
-  hanging beside the hanging ones, some snapped with their ends hanging, now and then a dead lamp; cables looped
+  stacked, a barrel fallen over); old black cables strung high across the halls, some snapped with their ends hanging, now and then a dead lamp; cables looped
   along walls on brackets.
 - All weathered and dull, kept clear of the ways up (ivy, terraces, pipes), the gates and each other; the camps and
   what lies about keep off the heaps. Drawn as a MultiMesh a kind per 140 m square (cables merged into one mesh a
