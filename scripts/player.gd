@@ -533,6 +533,12 @@ func _ready() -> void:
 	collision_layer = 2
 	_spawn = global_transform
 	_rig.top_level = true
+	# (a capsule of his own: player.tscn's is shared by every boy made from it,
+	# runners and campers too, and one sitting down shortened all of theirs, so
+	# that the others, with their colliders still where a tall one sits, sank
+	# into the ground as far as it had shrunk)
+	_capsule = _capsule.duplicate()
+	_collider.shape = _capsule
 	_set_height(stand_height)
 	_reset_visuals()
 	_connect_touch.call_deferred()
