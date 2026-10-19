@@ -95,12 +95,13 @@ func _park(thing: Node3D, draws: Array) -> void:
 		var n := mini(rows.size(), int(places[k][2]) * part.stride)
 		for i in n:
 			part.rows[first * part.stride + i] = rows[i]
-		part.dirty = true
+		if not part.dirty:
+			part.dirty = true
+			_dirty.append(part)
 	if first_time:
 		_places[id] = places
 		thing.tree_exiting.connect(_unpark.bind(id), CONNECT_ONE_SHOT)
 	_parked[id] = true
-	set_process(true)
 
 
 func _unpark(id: int) -> void:
@@ -113,9 +114,10 @@ func _unpark(id: int) -> void:
 			var o: int = (int(place[1]) + i) * part.stride
 			for j in 12:
 				part.rows[o + j] = 0.0
-		part.dirty = true
+		if not part.dirty:
+			part.dirty = true
+			_dirty.append(part)
 	# (freed: its places stay empty)
-	set_process(true)
 
 
 func _part(square: Vector2i, draw: Array) -> Part:
@@ -137,20 +139,77 @@ func _part(square: Vector2i, draw: Array) -> Part:
 	part.shown.visibility_range_end = float(draw[4]) + SQUARE * 0.71
 	add_child(part.shown)
 	_parts[key] = part
+	if not _squares.has(square):
+		_squares[square] = []
+	(_squares[square] as Array).append(part)
+	part.shown.visible = not _out_of_sight.has(square)
 	return part
 
 
-## The squares that changed are sent to be drawn, once a frame at most.
+## The squares that changed are sent to be drawn, once a frame at most; and the
+## squares out of the camera's sight (MazeSight) are not drawn.
 func _process(_delta: float) -> void:
-	for part: Part in _parts.values():
-		if not part.dirty:
-			continue
+	for part: Part in _dirty:
 		part.dirty = false
 		var multi := part.shown.multimesh
 		if multi.instance_count != part.count:
 			multi.instance_count = part.count
 		multi.buffer = part.rows
-	set_process(false)
+	_dirty.clear()
+	_cull()
+
+
+## Squares (Vector2i) -> their Parts; those hidden now, out of sight; and what was
+## in sight when they were last hidden or shown (MazeSight.version).
+var _squares := {}
+var _out_of_sight := {}
+var _sight_version := -1
+var _maze: Maze
+var _dirty: Array[Part] = []
+
+
+## Hides the squares none of whose cells are in sight, and shows again those that are.
+func _cull() -> void:
+	if _maze == null:
+		var up := get_parent()
+		while up != null and not (&"maze" in up and up.get(&"maze") is Maze):
+			up = up.get_parent()
+		if up == null:
+			return
+		_maze = up.get(&"maze")
+	MazeSight.look(_maze)
+	if MazeSight.version == _sight_version:
+		return
+	_sight_version = MazeSight.version
+	var showing := {}
+	if MazeSight.everything():
+		showing = _squares
+	else:
+		var size := _maze.size
+		var middle := (size - 1) * 0.5
+		var half := Maze.CELL * 0.5
+		for index: int in MazeSight.seen():
+			var x := (index % size - middle) * Maze.CELL
+			var z := (index / size - middle) * Maze.CELL
+			for sz in range(floori((z - half) / SQUARE), floori((z + half) / SQUARE) + 1):
+				for sx in range(floori((x - half) / SQUARE), floori((x + half) / SQUARE) + 1):
+					showing[Vector2i(sx, sz)] = true
+		# (and the squares round the camera itself)
+		var eye := MazeSight.eye()
+		var near := MazeSight.NEAR
+		for sz in range(floori((eye.z - near) / SQUARE), floori((eye.z + near) / SQUARE) + 1):
+			for sx in range(floori((eye.x - near) / SQUARE), floori((eye.x + near) / SQUARE) + 1):
+				showing[Vector2i(sx, sz)] = true
+	for square: Vector2i in _squares:
+		var hide := not showing.has(square)
+		if hide == _out_of_sight.has(square):
+			continue
+		if hide:
+			_out_of_sight[square] = true
+		else:
+			_out_of_sight.erase(square)
+		for part: Part in _squares[square]:
+			part.shown.visible = not hide
 
 
 ## How many are parked now (for tests and probes).
