@@ -39,6 +39,8 @@ var clearing_style: ClearingStyle
 var desert_style: DesertStyle
 ## The round sections outside the square ones, if any were built (RoundMaze).
 var round_rings: RoundMaze
+## Only the clearing (Maze.generate with no rings): a test mode, its gates kept shut (World).
+var clearing_only := false
 ## How many rings are built.
 var rings := 1
 var maze_seed := 0
@@ -81,10 +83,16 @@ static func seed_for(code: String, round_number: int) -> int:
 
 ## Makes the maze for `seed_value`, with `built` rings round the clearing (the square
 ## sections, then the desert, then the round ones), each made as its style says
-## (MazeStyle.defaults() if none are given).
+## (MazeStyle.defaults() if none are given). With none (0), only the clearing: `clearing_only`.
 static func generate(seed_value: int, built := 1, ring_styles: Array[MazeStyle] = [], clearing_look: ClearingStyle = null, desert_look: DesertStyle = null) -> Maze:
 	var maze := Maze.new()
 	maze.styles = ring_styles if not ring_styles.is_empty() else MazeStyle.defaults()
+	# (none: the clearing alone, for testing in, its first section only a narrow way
+	# round behind its gates, with nothing in it: MazeStyle.bare)
+	if built <= 0:
+		maze.clearing_only = true
+		maze.styles = maze.styles.duplicate()
+		maze.styles[0] = maze.styles[0].bare()
 	maze.clearing_style = clearing_look if clearing_look else ClearingStyle.new()
 	maze.desert_style = desert_look if desert_look else DesertStyle.new()
 	maze.ring_sizes = sizes_for(maze.styles, maze.clearing_style)

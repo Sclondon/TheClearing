@@ -248,6 +248,19 @@ hunts, be uncatchable, go to a gate, the middle or the exit. Keys: ` the panel, 
 Griever. What it puts in is only in your copy, so use it playing alone; no score is sent with it on
 (`scripts/dev_tools.gd`, `DevTools`).
 
+The clearing alone, to test in (it starts in about 2 s, not 11): `clearing` goes straight into a round of only the
+clearing (its meadow, woods, tall grass, marsh, hills, wall and gates, its wildlife and loot), with no maze past its
+wall, its gates kept shut, nothing that hunts and no runners; with dev tools on, the title has a CLEARING ONLY button
+too, and the dev panel works there as anywhere (put creatures in to look at them). `rings=0` does the same for any
+round started. In a test, set `main.clearing_only = true` (or call `main.start_clearing()`), or `world.clearing_only`
+before `World.setup`. `times` prints how long each stage of making a round takes.
+
+```
+"$G" --path . --audio-driver Dummy -- --clearing --dev                      # play the clearing alone
+"$G" --path . --audio-driver Dummy --resolution 1280x720 -s res://tools/start_times.gd -- times [clearing]   # how long a launch takes
+```
+On the web, add `?clearing&dev` to the page's address.
+
 ## Not done yet
 
 Rings past the first; enemies knowing about the ways up (terraces, bridges); ears;

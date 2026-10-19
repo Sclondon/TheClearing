@@ -7,6 +7,7 @@ extends Node
 ## the round and calls the next one; every copy builds the same maze from the
 ## room code and the round number (Maze.seed_for).
 
+const Flags := preload("res://scripts/flags.gd")
 const FONT := preload("res://fonts/SpecialElite-Regular.ttf")
 const CODE_KEYS := "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 const INK := Color(0.93, 0.9, 0.8)
@@ -21,6 +22,9 @@ var round_number := 1
 var look := Looks.pick()
 ## Set by tests: nothing is saved or reported.
 var testing := false
+## Rounds of the clearing alone, to test in (World.clearing_only): CLEARING ONLY on
+## the title with dev tools on, or the flag `clearing`.
+var clearing_only := false
 
 var _ui: CanvasLayer
 var _page: Control
@@ -51,7 +55,13 @@ func _ready() -> void:
 	voice.name = "Voice"
 	add_child(voice)
 	voice.changed.connect(_show_mic)
-	_show_preview()
+	# (the flag `clearing`: straight into the clearing alone, to test in; tests start their own rounds)
+	if Flags.value("clearing") != "" and not testing:
+		start_clearing()
+		return
+	# (tests go straight to a round: the menu's maze behind the title would only cost them time)
+	if not testing:
+		_show_preview()
 	show_title()
 
 
@@ -67,6 +77,9 @@ func show_title() -> void:
 	page.add_child(_button("PLAY ALONE", start_solo))
 	page.add_child(_button("MAKE A ROOM", make_room))
 	page.add_child(_button("JOIN A ROOM", show_join))
+	# (with dev tools on, a round of the clearing alone, to test in: World.clearing_only)
+	if DevTools.enabled():
+		page.add_child(_button("CLEARING ONLY", start_clearing, 26))
 	page.add_child(_spacer(0.3))
 	_status = _label("Up to four can play together.", 20, INK.darkened(0.3))
 	page.add_child(_status)
@@ -190,6 +203,12 @@ func _show_round_over() -> void:
 
 # --- Flow -------------------------------------------------------------------
 
+## A round of the clearing alone, played alone (see `clearing_only`).
+func start_clearing() -> void:
+	clearing_only = true
+	start_solo()
+
+
 func start_solo() -> void:
 	_solo_code = "SOLO%d" % randi_range(0, 99999)
 	round_number = 1
@@ -222,6 +241,7 @@ func leave() -> void:
 	if Net.active():
 		Net.leave()
 	_end_world()
+	clearing_only = false
 	_show_preview()
 	show_title()
 
@@ -238,6 +258,7 @@ func _begin(players: Array, my_slot: int, online: bool, seed_value: int) -> void
 	screen = "play"
 	world = World.new()
 	world.name = "World"
+	world.clearing_only = clearing_only
 	add_child(world)
 	# (a loading screen while the round is made, a stage at a time, so that it is not
 	# frozen; tests have it all at once)

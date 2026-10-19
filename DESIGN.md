@@ -812,6 +812,32 @@ section's MazeStyle:
 - `tools/frame_split.gd` (frame time and every processing script, per place) and `tools/runner_costs.gd` measure these.
 - Check the first seconds too: no settling or warm-up work that runs for everything at once.
 
+### Startup
+
+A launch is the engine starting, every script compiled (about 4 s here: World and MazeEnemies reach all ~70 kinds),
+the title over the menu's maze, then the round (`World.setup`) and its first frames. Rules for keeping it short:
+
+- Count the things drawn, not only the triangles. Each MeshInstance3D (or MultiMeshInstance3D) is one more instance
+  for the renderer to take in, and taking in tens of thousands at once costs seconds, more than in proportion. A
+  thing made of many like parts is one MultiMesh, its parts the instances: a vine's or rope's links (`Rope`), a rope
+  bridge's planks, ropes and posts (`RopeBridge`). The vines and bridges were 50,000 of the round's 55,000
+  instances, and about 8 s of its start.
+- Share meshes and materials among all the things of a kind (statics, made once), drawing a mesh of a metre as long
+  as it needs to be, not one mesh each.
+- Placing things apart (`MazeEnemies._far_from`) keeps how far every cell is from what is placed, adding only the
+  newly placed; walking a field from every one placed so far, for each one more, was quadratic (about 2 s).
+- Nothing set up at the start may change what is made, its order or the seeded choices: every copy in a room must
+  build the same hunters in the same order (`MazeEnemies.enemies`) and the same loot from the same seed.
+- Tests go straight to a round (`Main.testing`): no menu maze for them.
+- Measure with `tools/start_times.gd` (each part of a launch; the flag `times` adds each stage of `World.setup`,
+  `clearing` the clearing alone). Here, 1280x720: from about 35 s from launch to playing to about 22 s; the round
+  from about 20 s to 11 s; the clearing alone about 2 s (7 s from launch). What is left: building the maze (about
+  6 s: walls 2, the round sections 2, laying out 1), what hunts it (about 3.5 s, each kind building its look as it
+  is put in, even those far off), compiling (4 s), the menu's maze (3 s) and the first frames (3 s).
+- To test something in the clearing, play the clearing alone (`clearing`, or CLEARING ONLY on the title with dev
+  tools on; `World.clearing_only`, `Maze.generate` with no rings): the clearing as ever, its first section only a
+  narrow way round with nothing in it behind its gates, which stay shut, nothing that hunts and no runners.
+
 ## Not decided or not done
 
 - Rings 2 and 3 (styles exist; not built or played yet), and what changes between rings beyond the style.
