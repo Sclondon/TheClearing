@@ -30,9 +30,13 @@ extends MazeEnemy
 ##   them (the catch), wings beating; if not, it stumbles and is tired a
 ##   moment. A step aside, a jump or a duck into a side way as it leaps, and it
 ##   misses.
-## THE WAY OUT IS UP. It can jump up onto a low ledge (the foot of a wall,
-## up to `reach_up` over its feet), but it cannot climb: anyone on a terrace,
-## up ivy, a vine, a rope or a wall top is out of its reach. It is BAFFLED:
+## THE WAY OUT IS UP, but not onto a ledge. It jumps up onto a low step (the
+## foot of a wall, up to `reach_up` over its feet), and anyone up on a ledge, a
+## terrace or a concrete bridge (or on the ivy up to one) it goes after in a
+## crouch and a bound, `leap_most` up the face, its sickle claws hooking it up the
+## rest, and along the top to them; down again in a drop (MazeEnemy's CLIMBING;
+## the user, 2026-10-18: "more creatures should be able to climb things"). Anyone
+## up a vine, a rope or on a wall top is out of its reach. It is BAFFLED:
 ## it circles below, looking up, leaping at the wall and hooting, and after
 ## `baffle_time` it gives them up for a while.
 ##
@@ -141,6 +145,9 @@ func _init() -> void:
 	alert_range = 50.0
 	pack = &"deinonychus"
 	look_every = 0.2
+	climbs = Climbs.LEAP
+	leap_most = 4.5
+	climb_speed = 2.2
 
 
 func _ready() -> void:
@@ -296,6 +303,12 @@ func _physics_process(delta: float) -> void:
 	_sense(delta)
 	chasing = hunting()
 	var after := quarry if chasing and quarry.get(&"is_limp") != true else null
+	# (up after them, out of reach on a ledge: not in the middle of a pounce)
+	if (climbing_now() or (after and not (mode in [Mode.WIND_UP, Mode.LEAP, Mode.PIN, Mode.MISS]))) and _ways_up(delta, _radius, burst_speed * 0.8):
+		facing_yaw = aloft_yaw()
+		_prev_pos = _curr_pos
+		_curr_pos = global_position
+		return
 	var grounded := is_on_floor()
 	_timer -= delta
 	_call_in -= delta
@@ -601,6 +614,15 @@ func _process(delta: float) -> void:
 	if puppet:
 		facing_yaw = lerp_angle(facing_yaw, _heard_yaw, 1.0 - exp(-12.0 * delta))
 	dino.global_position = _prev_pos.lerp(_curr_pos, Engine.get_physics_interpolation_fraction())
+	if is_aloft():
+		# (up after someone: up the face nose first, in a bound, or dropping)
+		dino.global_basis = (Basis(Vector3.UP, facing_yaw) * aloft_tilt()).scaled(Vector3.ONE * size)
+		dino.grounded = not (aloft in [HighClimb.Aloft.LEAP, HighClimb.Aloft.DROP])
+		dino.crouching = aloft == HighClimb.Aloft.CROUCH
+		dino.tired = false
+		dino.cocking = false
+		dino.look_at_point = _heard_extra if puppet else _point
+		return
 	dino.rotation = Vector3(0.0, facing_yaw, 0.0)
 	dino.grounded = (is_on_floor() and mode != Mode.LEAP) or (puppet and mode != Mode.LEAP)
 	dino.crouching = mode in [Mode.STALK, Mode.WAIT]

@@ -134,7 +134,8 @@ func _run() -> void:
 	var a: int = ways.groups.find(biggest)
 	var reached: Array = ways.around(a, 1000)
 	var b: int = reached[reached.size() - 1]
-	var route: Array = ways.route(a, b, 2000.0)
+	# (the furthest of the biggest stretch can be more than 2 km of ways off: no limit)
+	var route: Array = ways.route(a, b, 1.0e6)
 	check("a way from one face to another far off", route.size() > 3, "(%d faces; the biggest stretch of joined-up ways %d faces, %d stretches)" % [route.size(), ways.group_sizes[biggest], ways.group_sizes.size()])
 
 	# --- A troop finds its ways ---

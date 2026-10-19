@@ -61,6 +61,7 @@ var _next_look := 0.0
 
 
 func _init() -> void:
+	super()
 	kind = BigCat.Kind.PANTHER
 	size = 1.0
 	sight_range = 42.0
@@ -81,6 +82,11 @@ func _settle_in() -> void:
 		_set_mode(Mode.REST)
 		_prev_pos = global_position
 		_curr_pos = global_position
+
+
+## Up after whoever it stalks when they get up out of reach, unless it has given them up.
+func _climbs_after() -> bool:
+	return _shy <= 0.0 and mode != Mode.DRAG
 
 
 func huntable(player: Node3D) -> bool:

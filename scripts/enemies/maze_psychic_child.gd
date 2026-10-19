@@ -11,7 +11,11 @@ extends MazeEnemy
 ##   calm (within `watch_range`, not running) for `follow_after` seconds and she
 ##   takes to you, like a lost child: she follows you (`follow_gap` behind, at
 ##   most `follow_speed`), and goes back to drifting if you get far ahead of her
-##   (`lose_follow`) for a while.
+##   (`lose_follow`) for a while. Climb up onto a ledge, a terrace or a concrete
+##   bridge and she floats up after you, rising slowly beside the wall with the
+##   air warping round her, and drifts along the top to you; down again when you
+##   get down (MazeEnemy's CLIMBING, FLOAT; the user, 2026-10-18: "the psychic
+##   child (floats up with telekinesis?)").
 ## - SHE WATCHES OVER whoever is calm near her and whoever she follows (her
 ##   `wards`). Anything that comes after one of them within `protect_range` of
 ##   her, in her sight, she takes hold of with her mind (GUARD): she turns to it
@@ -154,6 +158,8 @@ func _init() -> void:
 	alert_range = 0.0
 	spare_time = 4.0
 	pack = &"psychic_children"
+	climbs = Climbs.FLOAT
+	climb_speed = 1.2
 
 
 func _ready() -> void:
@@ -228,6 +234,12 @@ func _physics_process(delta: float) -> void:
 	if _feel_in <= 0.0:
 		_feel_in = 0.1
 		_look_about(0.1)
+	# (whom she follows gone up on a ledge: she floats up after them)
+	if (climbing_now() or mode == Mode.FOLLOW) and _ways_up(delta, _radius, follow_speed * 1.5):
+		facing_yaw = aloft_yaw()
+		_prev_pos = _curr_pos
+		_curr_pos = global_position
+		return
 	var wish := Vector3.ZERO
 	var speed := 0.0
 	match mode:
@@ -278,6 +290,16 @@ func _physics_process(delta: float) -> void:
 func _go(next: Mode) -> void:
 	mode = next
 	_mode_time = 0.0
+
+
+## Whom she floats up after: whom she follows (she hunts nobody).
+func _climb_after() -> Node3D:
+	return followed if mode == Mode.FOLLOW and is_instance_valid(followed) else null
+
+
+## Up there beside whom she follows: she catches nobody; she stays by them.
+func _strike_aloft(_player: Node3D) -> void:
+	pass
 
 
 ## Where she is making for: whom she follows, or somewhere to drift to.
@@ -733,7 +755,9 @@ func _process(delta: float) -> void:
 	figure.global_position = _prev_pos.lerp(_curr_pos, Engine.get_physics_interpolation_fraction())
 	figure.rotation = Vector3(0.0, facing_yaw, 0.0)
 	figure.velocity = Vector3(velocity.x, 0.0, velocity.z) if not puppet else Vector3(_heard_moving.x, 0.0, _heard_moving.z)
-	figure.distress = distress if mode != Mode.DRAINED else 0.0
+	# (floating up or down beside a wall, the air warps round her as it does when she holds something)
+	var floating := aloft in [HighClimb.Aloft.CLIMB, HighClimb.Aloft.DOWN]
+	figure.distress = (distress if mode != Mode.DRAINED else 0.0) if not floating else maxf(distress, 0.15)
 	figure.drained = mode == Mode.DRAINED
 	figure.humming = mode in [Mode.DRIFT, Mode.FOLLOW]
 	var point := _heard_extra if puppet else net_point()

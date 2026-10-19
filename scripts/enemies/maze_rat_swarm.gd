@@ -20,8 +20,11 @@ extends MazeEnemy
 ##   second), then out they pour after the nearest player they can get at, by
 ##   the passages, a little faster than a run and slower than a sprint: a
 ##   sprint gets away. They go up anything lower than about a metre and up the
-##   feet of walls to `RatSwarm.wall_climb`: getting up higher than about two
-##   metres (a terrace, the ivy, a vine) is safe. Those that reach someone climb
+##   feet of walls to `RatSwarm.wall_climb`; and whoever stands up at the edge of
+##   a ledge over them, they pour up its front after, a river of rats up the wall
+##   (`CLIMB_AFTER`; the user, 2026-10-18: "more creatures should be able to climb
+##   things"). Back from the edge, on a terrace, a vine or a wall top is safe
+##   (they do not run along the tops). Those that reach someone climb
 ##   them; sprinting or jumping shakes them off; `RatSwarm.catch_count` on at
 ##   once for `catch_time` and they are caught.
 ## - HOME. When they get no nearer for `give_up_after` seconds, or whoever they
@@ -43,6 +46,9 @@ extends MazeEnemy
 ## in, the same on every machine, and so are the rats (seeded by `seed_choices`).
 
 enum Mode { DORMANT, HUNT, HOME }
+
+## How far up a wall's face they pour after whoever is over them (RatSwarm.climb_after), m.
+const CLIMB_AFTER := 26.0
 
 ## How many rats.
 @export var rat_count := 240
@@ -81,6 +87,8 @@ func _init() -> void:
 	pack = &"rat_swarms"
 	fears_fire = true
 	look_every = 0.25
+	# (each rat runs up the face by itself: RatSwarm.climb_after; this is so it sees someone up on a ledge)
+	climbs = Climbs.SCRAMBLE
 
 
 func seed_choices(value: int) -> void:
@@ -125,6 +133,8 @@ func _find_drains() -> void:
 	swarm.swarm_seed = _swarm_seed
 	swarm.reach = called_range + 6.0
 	swarm.guide = _guide
+	# (up the front of a ledge after whoever stands at its edge: the highest level there is, and a little)
+	swarm.climb_after = MazeRatSwarm.CLIMB_AFTER
 	swarm.top_level = true
 	if faces.is_empty():
 		swarm.add_drain(Vector3(middle.x, ground, middle.z))

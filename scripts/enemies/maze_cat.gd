@@ -14,6 +14,11 @@ extends MazeEnemy
 ## - Up: by ivy whose top is at a ledge (it climbs as a leopard goes up a tree,
 ##   bounding). Down: by ivy, head first, or (in a hurry) it drops off the edge
 ##   into the hall, landing on all fours.
+## - After someone up out of reach (a ledge, a terrace, a bridge; MazeEnemy's
+##   CLIMBING, the user, 2026-10-18: "more creatures should be able to climb
+##   things"): a crouch and a bound up the face (`leap_most`), clawing up the rest,
+##   along the top to them; down again in a drop. Each kind says whether it goes
+##   after people so (`_climbs_after`): the panther does, the shy lynx does not.
 ##
 ## WHAT IT DOES WITH ITS BODY (each kind decides when):
 ## - `_start_pounce(at)`: the wiggle (the last warning, BigCat.WIGGLE_TIME),
@@ -53,8 +58,9 @@ const FACES: Array[Vector3] = [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector
 @export var gravity := 24.0
 @export var acceleration := 10.0
 @export var turn_rate := 7.0
-## How fast it goes up and down ivy, m/s.
-@export var climb_speed := 2.6
+## How fast it runs to the foot of a way up, and along the top, after someone up
+## out of reach (its climbing up a face is MazeEnemy's `climb_speed`).
+@export var climb_run := 5.0
 
 var mode := Mode.REST
 var place := Place.GROUND
@@ -94,6 +100,12 @@ var _day: Node
 var _day_looked := false
 var _placed := false
 var _unwatched := 0.0
+
+
+func _init() -> void:
+	climbs = Climbs.LEAP
+	climb_speed = 2.6
+	leap_most = 7.0
 
 
 func _ready() -> void:
@@ -141,6 +153,11 @@ func _physics_process(delta: float) -> void:
 		return
 	_mode_time += delta
 	_sense(delta)
+	if place == Place.GROUND and (climbing_now() or _climbs_after()) and _ways_up(delta, _radius, climb_run):
+		facing_yaw = aloft_yaw()
+		_prev_pos = _curr_pos
+		_curr_pos = global_position
+		return
 	match place:
 		Place.WALL:
 			_climb(delta)
@@ -155,6 +172,11 @@ func _physics_process(delta: float) -> void:
 				_think(delta)
 	_prev_pos = _curr_pos
 	_curr_pos = global_position
+
+
+## Whether it goes up after whom it hunts when they are up out of reach (each kind; see above).
+func _climbs_after() -> bool:
+	return false
 
 
 ## The first moment it is in the world: each kind may put itself somewhere (on a ledge).
@@ -618,6 +640,21 @@ func _process(delta: float) -> void:
 func _pose(_delta: float) -> void:
 	var at := _prev_pos.lerp(_curr_pos, Engine.get_physics_interpolation_fraction())
 	var on := place if not puppet else _heard_place
+	if is_aloft():
+		# (after someone up out of reach: up the face nose first, in a bound, or dropping)
+		cat.global_transform = Transform3D((Basis(Vector3.UP, facing_yaw) * aloft_tilt()).scaled(Vector3.ONE * size), at)
+		cat.climbing = aloft in [HighClimb.Aloft.CLIMB, HighClimb.Aloft.DOWN]
+		cat.grounded = not (aloft in [HighClimb.Aloft.LEAP, HighClimb.Aloft.DROP])
+		cat.crouching = aloft == HighClimb.Aloft.CROUCH
+		cat.stalking = aloft == HighClimb.Aloft.ON
+		cat.feeding = false
+		cat.lashing = false
+		cat.wary = false
+		cat.lying = false
+		cat.sitting = false
+		cat.look_at_point = _point
+		cat.set_eyeshine(lerpf(0.5, 3.0, smoothstep(0.35, 0.9, night)))
+		return
 	if on == Place.WALL:
 		var into := Vector3(sin(facing_yaw), 0.0, cos(facing_yaw))
 		var up := mode != Mode.CLIMB or _climbing_up()
@@ -698,7 +735,7 @@ func hear(at: Vector3, moving: Vector3, facing: float, state: int, flag := 0, po
 ## As a puppet: on the ground it walks where it is heard to be (MazeEnemy);
 ## anywhere else it is put there (gravity has no say).
 func _follow_heard(delta: float) -> void:
-	if not _heard:
+	if not _heard or _follow_aloft(delta):
 		return
 	if _heard_place == Place.GROUND and mode != Mode.DROP:
 		_follow(delta)

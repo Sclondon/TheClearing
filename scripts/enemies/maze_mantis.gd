@@ -30,6 +30,11 @@ extends MazeEnemy
 ##   creeps after, swaying, a few metres from its post at most (`leash`), and
 ##   goes back to its post and its stillness when they are gone.
 ## - EAT. Fed (Ecology), it holds its kill to its jaws and chews.
+## - UP THE WALL. Someone up on the ledge over its post (within `climb_leash` of
+##   it) it goes up after, clinging to the wall's face as a mantis goes up a
+##   stem, and along the top to them; never far from its post: past that it goes
+##   back down (MazeEnemy's CLIMBING; the user, 2026-10-18: "more creatures
+##   should be able to climb things").
 ##
 ## THE OTHERS (Ecology, KINDS: a big meat-eater). Hungry, it strikes at what
 ## smaller creature comes in reach, and will stalk one it sees a little further
@@ -97,6 +102,12 @@ func _init() -> void:
 	memory = 4.0
 	pack = &"mantises"
 	look_every = 0.2
+	climbs = Climbs.SCRAMBLE
+	climb_speed = 1.3
+
+
+## How far from its post (flat, m) it goes up after someone on the ledge over it, and along it.
+@export var climb_leash := 12.0
 
 
 func seed_choices(value: int) -> void:
@@ -208,6 +219,16 @@ func _physics_process(delta: float) -> void:
 	_sense(delta)
 	_display_in -= delta
 	_rustle_in -= delta
+	# (up the wall after someone on the ledge over its post; never far from it)
+	if climbing_now() and _off_post() > climb_leash:
+		_give_up_climb(0.45)
+	var near_post := quarry != null and Vector2(quarry.global_position.x - _post.x, quarry.global_position.z - _post.z).length() < climb_leash
+	if (climbing_now() or (near_post and mode in [Mode.TRACK, Mode.STALK, Mode.DISPLAY, Mode.RECOVER])) and _ways_up(delta, 0.45, 2.2):
+		facing_yaw = aloft_yaw()
+		_point = quarry.global_position + Vector3.UP if quarry else _point
+		_prev_pos = _curr_pos
+		_curr_pos = global_position
+		return
 	var who := _nearest_seen()
 	var prey := quarry as MazeEnemy if quarry is MazeEnemy and hunting() else null
 	match mode:
@@ -271,6 +292,15 @@ func _physics_process(delta: float) -> void:
 				mantis.eating = false
 				_set_mode(Mode.STILL)
 	_settle_body(delta)
+
+
+## Up the wall or on the ledge, within reach of them: the forelegs shoot out, and shut on them.
+func _strike_aloft(player: Node3D) -> void:
+	strikes += 1
+	_struck_at = _head_of(player)
+	_point = _struck_at
+	mantis.strike(_struck_at)
+	_catch(player)
 
 
 func _set_mode(now: Mode) -> void:
@@ -502,8 +532,9 @@ func _process(delta: float) -> void:
 	if puppet:
 		facing_yaw = lerp_angle(facing_yaw, _heard_yaw, 1.0 - exp(-10.0 * delta))
 	mantis.global_position = _prev_pos.lerp(_curr_pos, Engine.get_physics_interpolation_fraction())
-	mantis.rotation = Vector3(0.0, facing_yaw, 0.0)
-	mantis.look_at_point = _point if mode != Mode.STILL else Vector3.INF
+	# (up a wall's face it clings nose up it, as up a stem)
+	mantis.global_basis = Basis(Vector3.UP, facing_yaw) * aloft_tilt()
+	mantis.look_at_point = _point if mode != Mode.STILL or is_aloft() else Vector3.INF
 
 
 # --- Being run by someone else ---
@@ -542,6 +573,10 @@ func hear(at: Vector3, moving: Vector3, facing: float, state: int, flag := 0, po
 
 func _follow_news(delta: float) -> void:
 	if not _heard:
+		return
+	if _follow_aloft(delta):
+		_prev_pos = _curr_pos
+		_curr_pos = global_position
 		return
 	_heard_at += _heard_moving * delta
 	global_position = global_position.lerp(_heard_at, 1.0 - exp(-8.0 * delta))

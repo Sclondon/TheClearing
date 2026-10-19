@@ -52,6 +52,7 @@ var _ledge_dir := 1.0
 
 
 func _init() -> void:
+	super()
 	kind = BigCat.Kind.LYNX
 	size = 1.0
 	sight_range = 40.0

@@ -596,6 +596,15 @@ lays out the same spots from the seed; a hooked vine swings on each player's own
 - **Solid** (2026-10-18, the user: "the enemies should have collision"): the boy is stopped by a hunter's body as by
   a wall (layer 4; copies run by another machine on their own layer, MazeEnemy.PUPPET_LAYER, so a guest is stopped
   by them too). Swarms, flocks and the giants stay passable.
+- **Up is not safe from everything** (2026-10-18, the user: "more creatures should be able to climb things"): a
+  hunter that climbs (MazeEnemy.climbs) goes up after a player who is up on a ledge, a terrace, a concrete bridge or
+  a catwalk (or on the ivy up to one), each in its own way: the panther and the deinonychus leap (a crouch, a bound,
+  the rest clawed up), the masked tribe, the clown (only unwatched), the gnomes and the mushroom zombies (slow, slipping
+  back) climb hand over hand, lizard people, imps, the mantis (near its post) and the giant ants cling to the face,
+  rat swarms pour up a ledge's front to whoever is at its edge, and the psychic child floats up after whom she
+  follows. They come along the top and catch, and come down when you do. The lynx (shy), the wolves (they pace
+  below), the giants, swimmers and grazers do not climb; a vine, a rope bridge or a wall top is still safe.
+  `scripts/enemies/high_ways.gd` (HighWays: the surfaces of a zone, made once from its layout) and `high_climb.gd`.
 
 ### The added hunters (2026-10-18)
 

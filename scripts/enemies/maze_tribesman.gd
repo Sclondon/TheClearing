@@ -27,9 +27,14 @@ extends MazeEnemy
 ## while.
 ## THE JAB. Within `jab_range` in front of him he drives it at you, both hands;
 ## its point catches.
-## OUT OF REACH. Someone more than `reach_up` above the floor (up the ivy, on a
-## wall top, a terrace) cannot be got at: they gather below and drum, and after
-## `wait_below` seconds they give it up and go home.
+## UP AFTER YOU. Someone up on a ledge, a terrace or a concrete bridge (or on the
+## ivy up to one) they climb up after, hand over hand up the bare face as the boys
+## they were climbed ladders, and come along it at them; down the same way when you
+## get down (MazeEnemy's CLIMBING; the user, 2026-10-18: "more creatures should be
+## able to climb things").
+## OUT OF REACH. Someone more than `reach_up` above the floor where no ledge is (a
+## wall top, a rope bridge, a vine) cannot be got at: they gather below and drum,
+## and after `wait_below` seconds they give it up and go home.
 ##
 ## Escape: break their line (a corner, a turning), out-sprint them, climb high.
 ##
@@ -133,6 +138,8 @@ func _init() -> void:
 	alert_range = 40.0
 	pack = &"tribe"
 	look_every = 0.2
+	climbs = Climbs.CLAMBER
+	climb_speed = 1.5
 
 
 func _enter_tree() -> void:
@@ -225,6 +232,12 @@ func _physics_process(delta: float) -> void:
 	_cool -= delta
 	_mode_time += delta
 	_spear_hits()
+	# (up after someone out of reach, hunting: in the chase, or below them)
+	if (climbing_now() or mode in [Mode.CHASE, Mode.BELOW]) and _ways_up(delta, _radius, chase_speed):
+		facing_yaw = aloft_yaw()
+		_prev_pos = _curr_pos
+		_curr_pos = global_position
+		return
 	var grounded := is_on_floor()
 	var wish := Vector3.ZERO
 	var speed := 0.0
@@ -556,10 +569,14 @@ func _process(delta: float) -> void:
 			facing_yaw = lerp_angle(facing_yaw, atan2(to.x, to.z), 1.0 - exp(-(12.0 if mode == Mode.WIND else 6.0) * delta))
 	elif heading.length_squared() > 0.04:
 		facing_yaw = lerp_angle(facing_yaw, atan2(heading.x, heading.z), 1.0 - exp(-turn_rate * delta))
+	if is_aloft() and not puppet:
+		facing_yaw = aloft_yaw()
 	tribesman.global_position = _prev_pos.lerp(_curr_pos, Engine.get_physics_interpolation_fraction())
-	tribesman.rotation = Vector3(0.0, facing_yaw, 0.0)
-	tribesman.velocity = heading
-	tribesman.grounded = is_on_floor() or puppet
+	tribesman.global_basis = Basis(Vector3.UP, facing_yaw) * aloft_tilt(true)
+	var on_face := aloft == HighClimb.Aloft.CLIMB or aloft == HighClimb.Aloft.DOWN
+	HighClimb.hold_wall(tribesman, on_face, tribesman.global_position, aloft_out())
+	tribesman.velocity = heading if not on_face else Vector3(0.0, velocity.y, 0.0)
+	tribesman.grounded = is_on_floor() or puppet or is_aloft()
 	tribesman.stalking = false
 	tribesman.aim = _point if mode != Mode.PATROL else Vector3.INF
 

@@ -20,6 +20,12 @@ extends MazeEnemy
 ##   hearing it (`memory` past the last sound). Go quiet (stop, walk, crouch)
 ##   and it goes on to where it last heard you, stands there listening
 ##   (`search_time`), and wanders off.
+## - IT CLIMBS AFTER IT. Heard up on a ledge, a terrace or a concrete bridge, it
+##   claws its way up the bare face after the sound, slowly and clumsily, losing
+##   its hold and sliding back now and then (`climb_clumsy`), and lurches along the
+##   top (MazeEnemy's CLIMBING; the user, 2026-10-18: "more creatures should be
+##   able to climb things", "mushroom zombies (clumsy, slow)"). Up there, go quiet
+##   and it loses you, and climbs down.
 ## - IT LUNGES. Within `lunge_range` of what it hears, it throws itself at it,
 ##   arms out; its hands closing on someone catches them (`caught(player)`).
 ##   Step aside as it lunges (it lunges at the sound, not at you).
@@ -107,6 +113,9 @@ func _init() -> void:
 	pack = &"mushroom_zombies"
 	look_every = 0.2
 	spare_time = 4.0
+	climbs = Climbs.CLAMBER
+	climb_speed = 0.6
+	climb_clumsy = 0.25
 
 
 ## A horde of `count`, the last `sleepers` of them lying under the ground until it feeds.
@@ -181,6 +190,14 @@ func _physics_process(delta: float) -> void:
 	if quarry and not huntable(quarry):
 		quarry = null
 	_watch_falls()
+	# (up after what it hears up on a ledge: slowly, clumsily, hand over hand; listening all the while)
+	if climbing_now():
+		_listen(delta)
+	if (climbing_now() or mode == Mode.HUNT) and _ways_up(delta, _radius, hunt_speed):
+		facing_yaw = aloft_yaw()
+		_prev_pos = _curr_pos
+		_curr_pos = global_position
+		return
 	var wish := Vector3.ZERO
 	var speed := 0.0
 	match mode:
@@ -434,9 +451,13 @@ func _process(delta: float) -> void:
 			facing_yaw = lerp_angle(facing_yaw, atan2(heading.x, heading.z), 1.0 - exp(-1.5 * delta))
 		elif heading.length_squared() > 0.04 and mode != Mode.GRAB:
 			facing_yaw = lerp_angle(facing_yaw, atan2(heading.x, heading.z), 1.0 - exp(-turn_rate * delta))
-	figure.rotation.y = facing_yaw
-	figure.velocity = velocity
-	figure.grounded = is_on_floor() or puppet
+	if is_aloft() and not puppet:
+		facing_yaw = aloft_yaw()
+	var on_face := aloft == HighClimb.Aloft.CLIMB or aloft == HighClimb.Aloft.DOWN
+	figure.global_basis = (Basis(Vector3.UP, facing_yaw) * aloft_tilt(true)).scaled(Vector3.ONE * SIZE)
+	HighClimb.hold_wall(figure, on_face, at, aloft_out(), SIZE)
+	figure.velocity = Vector3(0.0, velocity.y, 0.0) if on_face else velocity
+	figure.grounded = is_on_floor() or puppet or is_aloft()
 	figure.clicking = {Mode.WANDER: 0.25, Mode.LISTEN: 1.0, Mode.HUNT: 0.85, Mode.SEARCH: 0.55, Mode.GRAB: 1.0, Mode.RISING: 0.6}.get(mode, 0.3)
 	figure.frenzy = 1.0 if mode in [Mode.HUNT, Mode.GRAB] else 0.0
 

@@ -47,7 +47,7 @@ const HOLD := 1.7
 ## Its speeds: crawling about, after someone, and up and over a wall (a walk is 1.6).
 @export var crawl_speed := 0.55
 @export var hunt_speed := 1.15
-@export var climb_speed := 0.95
+## (how fast it climbs, `climb_speed`, is MazeEnemy's: 0.95 m/s, set in _init)
 ## How fast it turns, radians a second.
 @export var turn_rate := 0.9
 ## How big it is (1: its foot 8 m long, its shell nearly 4 m across).
@@ -117,6 +117,7 @@ func _init() -> void:
 	alert_range = 0.0
 	spare_time = 3.0
 	pack = &"snails"
+	climb_speed = 0.95
 
 
 func _ready() -> void:
