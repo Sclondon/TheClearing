@@ -112,6 +112,10 @@ var _preview_keys := {}
 var _preview_built := {}
 var _preview_views := {}
 var _preview_root: Node3D
+# (and the key of each zone's stone, _stone_key, and of the ground, so that they are
+# kept where they have not changed)
+var _preview_stone := {}
+var _preview_ground := 0
 
 
 func _ready() -> void:
@@ -234,6 +238,27 @@ static func zone_keys(maze: Maze) -> Dictionary:
 		outer.append(_rules_of(style))
 	keys["round"] = hash(var_to_str(outer))
 	return keys
+
+
+## Of a section's rules, those its walls are drawn by (MazeBuilder._walls).
+const WALL_LOOK_RULES: Array[String] = ["wall_edge_rounding", "border_wall_edge_rounding", "wall_weathering",
+	"wall_moss_height", "wall_moss_patches", "wall_texture_scale"]
+
+
+## A key of the stone (walls, piers, terraces) and standing water of `view` (zone
+## `zone` of `maze`), and of how its walls are drawn: where it is as before, the
+## live preview keeps the walls it built there, and the ground if no zone's changed.
+static func _stone_key(view: MazeLayout, maze: Maze, zone: int) -> int:
+	var parts: Array = []
+	for kind: MazePiece.Kind in [MazePiece.Kind.WALL, MazePiece.Kind.PIER, MazePiece.Kind.TERRACE, MazePiece.Kind.POND]:
+		for piece in view.pieces(kind):
+			parts.append(var_to_str([kind, piece.transform, piece.size, piece.style, piece.great, piece.ledge, piece.length, piece.width]))
+	parts.sort()
+	# (a zone's walls are drawn as its section's: the clearing's as the first, outside as the last)
+	var style: MazeStyle = maze.styles[clampi(zone, 1, maxi(maze.rings, 1)) - 1] if not maze.styles.is_empty() else null
+	if style:
+		parts.append(WALL_LOOK_RULES.map(func(rule: String) -> Variant: return style.get(rule)))
+	return hash(var_to_str(parts))
 
 
 ## The zones (zone_at) whose key in `now` (zone_keys) is not the one in `before`,
@@ -361,21 +386,42 @@ func _show_preview() -> void:
 		if zone is int:
 			zones[zone] = true
 	var views := _preview_pieces.zone_views(plan, zones)
+	var kept := 0
 	for zone: int in zones:
+		# (its walls as they were, if its stone is: only what is on them changed)
+		var stone := _stone_key(views[zone], plan, zone)
+		var walls: Node = null
+		var old: Node = _preview_built.get(zone)
+		if _preview_stone.get(zone) == stone and is_instance_valid(old):
+			walls = old.get_node_or_null("Walls")
+			if walls:
+				old.remove_child(walls)
+				kept += 1
 		var built := MazeBuilder.new()
 		built.name = "Zone%d" % zone
 		built.preview = true
 		_put_preview(zone, built)
-		built.realize_zone(views[zone], plan)
+		built.realize_zone(views[zone], plan, walls)
+		_preview_stone[zone] = stone
 		if is_instance_valid(_preview_views.get(zone)):
 			(_preview_views[zone] as MazeLayout).free()
 		_preview_views[zone] = views[zone]
-	# (the ground under it all, which shows where the walls stand, and the water in it)
-	var ground := MazeBuilder.new()
-	ground.name = "Ground"
-	ground.preview = true
-	_put_preview("ground", ground)
-	ground.realize_ground(_preview_pieces, plan)
+	# (the ground under it all, which shows where the walls stand, and the water in
+	# it: built again only if they, or the clearing's hills or the desert, have changed)
+	var stones: Array = []
+	for zone in keys:
+		if zone is int:
+			stones.append(_preview_stone.get(zone))
+	var ground_key := hash(var_to_str([stones, plan.ring_sizes, _rules_of(plan.clearing_style), keys.get("round")]))
+	if ground_key != _preview_ground or not is_instance_valid(_preview_built.get("ground")):
+		var ground := MazeBuilder.new()
+		ground.name = "Ground"
+		ground.preview = true
+		_put_preview("ground", ground)
+		ground.realize_ground(_preview_pieces, plan)
+		_preview_ground = ground_key
+	else:
+		kept += 1
 	if changed.has("round"):
 		var sections: RoundBuilder = null
 		if plan.round_rings:
@@ -384,7 +430,8 @@ func _show_preview() -> void:
 			sections.plan = plan.round_rings
 		_put_preview("round", sections)
 	_preview_keys = keys
-	print("Maze preview: %s built in %.1f s" % ["every zone" if whole else _zone_names(plan, changed), (Time.get_ticks_msec() - started) / 1000.0])
+	print("Maze preview: %s built in %.1f s%s" % ["every zone" if whole else _zone_names(plan, changed), (Time.get_ticks_msec() - started) / 1000.0,
+		" (walls and ground kept)" if kept > zones.size() else (" (some walls kept)" if kept > 0 else "")])
 
 
 ## Puts `node` (or nothing) in the live preview as what is built of `part`, in
@@ -411,6 +458,8 @@ func _drop_preview() -> void:
 			view.free()
 	_preview_views.clear()
 	_preview_keys.clear()
+	_preview_stone.clear()
+	_preview_ground = 0
 	if is_instance_valid(_preview_pieces):
 		_preview_pieces.free()
 	_preview_pieces = null
@@ -541,21 +590,22 @@ func _lay_out(maze: Maze) -> void:
 	rings = maze.rings + (1 + maze.round_rings.rings.size() if maze.round_rings else 0)
 	clearing_style = maze.clearing_style
 	desert = maze.desert_style
-	for run: Array in _runs(maze):
+	var runs := _runs(maze)
+	for run: Array in runs:
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, Vector3(run[0].x, 0.0, run[0].z)), {"size": run[1], "great": run[2]})
 	# (the wall round the next ring, unbuilt, when the maze stops here; round
 	# sections past the moor are RoundBuilder's)
 	for run: Array in ([] if maze.round_rings else _next_ring(maze)):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, Vector3(run[0].x, 0.0, run[0].z)), {"size": run[1], "great": true})
 	for great in [false, true]:
-		for pier: Array in _piers(maze, great):
+		for pier: Array in _piers(maze, great, _zones):
 			_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, Vector3(pier[0].x, 0.0, pier[0].z)), {"size": pier[1], "great": great})
 	for rampart: Array in _ramparts(maze):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, rampart[0]), {"size": rampart[1], "great": true})
 	for gatehouse: Array in _gatehouses(maze):
 		_add(MazePiece.Kind.WALL, Transform3D(Basis.IDENTITY, gatehouse[0]), {"size": gatehouse[1], "great": true})
 	# (along the maze walls only, not the great walls round the rings)
-	for ledge: Array in _ledges(maze, _runs(maze).filter(func(run: Array) -> bool: return not run[2])):
+	for ledge: Array in _ledges(maze, runs.filter(func(run: Array) -> bool: return not run[2])):
 		_add(MazePiece.Kind.PIER, Transform3D(Basis.IDENTITY, ledge[0]), {"size": ledge[1], "ledge": true})
 	MazeFeatures.lay_out(self, maze, _zones)
 	Ponds.lay_out(self, maze, _zones)
@@ -828,13 +878,16 @@ const MAX_PIERED := 5.0
 
 ## Square piers, standing above the walls, wherever three or four walls meet or
 ## one turns a corner: the great ones (`great`) where a wall between rings is
-## one of them, the others elsewhere. As [middle, size].
-static func _piers(maze: Maze, great: bool) -> Array:
+## one of them, the others elsewhere. As [middle, size]. Only those in `zones`
+## (zone_at), if any are given.
+static func _piers(maze: Maze, great: bool, zones: Dictionary = {}) -> Array:
 	var piers: Array = []
 	var n := maze.size
 	var middle := (n - 1) * 0.5
 	for j in n + 1:
 		for i in n + 1:
+			if not zones.is_empty() and not zones.has(zone_at(maze, Vector3((i - 0.5 - middle) * Maze.CELL, 0.0, (j - 0.5 - middle) * Maze.CELL))):
+				continue
 			# The four walls that meet at the corner north-west of cell (i, j).
 			var walls := [_along_x(maze, i - 1, j), _along_x(maze, i, j), _along_z(maze, i, j - 1), _along_z(maze, i, j)]
 			var thickest := maxf(maxf(_thick_x(maze, i - 1, j), _thick_x(maze, i, j)), maxf(_thick_z(maze, i, j - 1), _thick_z(maze, i, j)))

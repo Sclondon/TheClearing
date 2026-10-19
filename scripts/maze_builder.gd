@@ -153,14 +153,17 @@ func realize(pieces: MazeLayout, plan: Maze = null) -> void:
 
 ## For the maze editor's live preview, which is built a zone at a time
 ## (MazeLayout.zone_views): the walls, ways up, props, trees and beacon of `pieces`
-## alone, as realize builds them; the ground and water are realize_ground's.
-func realize_zone(pieces: MazeLayout, plan: Maze) -> void:
+## alone, as realize builds them; the ground and water are realize_ground's. With
+## `walls`, those walls (built before of the same stone) in place of building them.
+func realize_zone(pieces: MazeLayout, plan: Maze, walls: Node = null) -> void:
 	layout = pieces
 	maze = plan
-	var body := StaticBody3D.new()
-	body.name = "Walls"
-	_walls(body, pieces)
-	add_child(body)
+	if walls == null:
+		var body := StaticBody3D.new()
+		body.name = "Walls"
+		_walls(body, pieces)
+		walls = body
+	add_child(walls)
 	features = MazeFeatures.new()
 	features.name = "Features"
 	add_child(features)

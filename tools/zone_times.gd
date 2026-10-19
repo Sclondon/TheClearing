@@ -67,13 +67,14 @@ func _initialize() -> void:
 	print("realize round        %7.0f ms" % _ms(t))
 	# The live preview after a change to one section's own rule: only it again.
 	print("-- section 2's tightrope vines changed")
+	var keys := MazeLayout.zone_keys(plan)
 	var style: MazeStyle = editor.styles[1]
 	style.tightrope_vine_share = style.tightrope_vine_share * 0.5 + 0.1
 	t = Time.get_ticks_usec()
 	var after := Maze.generate(editor.maze_seed, editor.rings, editor.styles, editor.clearing_style, editor.desert)
 	print("plan                 %7.0f ms" % _ms(t))
 	t = Time.get_ticks_usec()
-	var changed := MazeLayout.changed_zones(MazeLayout.zone_keys(plan), MazeLayout.zone_keys(after))
+	var changed := MazeLayout.changed_zones(keys, MazeLayout.zone_keys(after))
 	print("zone keys            %7.0f ms  (%s)" % [_ms(t), str(changed.keys())])
 	t = Time.get_ticks_usec()
 	layout.remove_zones(after, changed)
